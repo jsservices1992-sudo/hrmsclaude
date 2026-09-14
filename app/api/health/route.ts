@@ -31,7 +31,7 @@ export async function GET() {
     hint: databaseUrl
       ? undefined
       : isProduction
-        ? "DATABASE_URL is not set. Add a Turso database in the Vercel project's Storage tab, then redeploy."
+        ? "DATABASE_URL is not set. Add your PostgreSQL connection string to the deployment's environment variables, then redeploy."
         : "Using a local file — expected in development.",
   };
 
