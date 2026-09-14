@@ -1,0 +1,360 @@
+/**
+ * Bulk employee import from a spreadsheet.
+ *
+ * Two decisions shape this.
+ *
+ * The file names things by the codes a person actually has in front of
+ * them — a branch code, a department code, a grade name — never by
+ * internal ids. Nobody has a UUID in their spreadsheet, and a column of
+ * them is a column nobody can check.
+ *
+ * And the whole file is validated before anything is written. The
+ * attendance import deliberately skips a bad row and carries on,
+ * because a missing day is recoverable. Half an organisation is not:
+ * the fix for eleven of thirty employees created is to work out which
+ * eleven, and that is worse than being told to correct the file. So
+ * every row is checked, every problem is reported with its line number,
+ * and nothing is imported unless all of it can be.
+ */
+
+export const GENDERS = ["female", "male", "other"] as const;
+export const EMPLOYMENT_TYPES = [
+  "permanent",
+  "probation",
+  "contract",
+  "intern",
+  "consultant",
+] as const;
+
+/** The columns, in the order the template writes them. */
+export const EMPLOYEE_COLUMNS = [
+  "empCode",
+  "firstName",
+  "lastName",
+  "email",
+  "mobile",
+  "gender",
+  "dateOfBirth",
+  "dateOfJoining",
+  "employmentType",
+  "designation",
+  "branchCode",
+  "departmentCode",
+  "gradeName",
+  "managerEmpCode",
+  "pan",
+  "uan",
+  "bankAccount",
+  "ifsc",
+] as const;
+
+export type EmployeeRow = {
+  line: number;
+  empCode: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  mobile: string | null;
+  gender: (typeof GENDERS)[number];
+  dateOfBirth: string | null;
+  dateOfJoining: string;
+  employmentType: (typeof EMPLOYMENT_TYPES)[number];
+  designation: string | null;
+  branchCode: string;
+  departmentCode: string | null;
+  gradeName: string | null;
+  managerEmpCode: string | null;
+  pan: string | null;
+  uan: string | null;
+  bankAccount: string | null;
+  ifsc: string | null;
+};
+
+export type RowProblem = { line: number; column: string; message: string };
+
+export type EmployeeParseResult = {
+  rows: EmployeeRow[];
+  problems: RowProblem[];
+};
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+
+/** Splits a CSV line, honouring double quotes around commas. */
+export function splitCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quoted) {
+      if (c === '"' && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else if (c === '"') {
+        quoted = false;
+      } else {
+        cur += c;
+      }
+    } else if (c === '"') {
+      quoted = true;
+    } else if (c === ",") {
+      out.push(cur.trim());
+      cur = "";
+    } else {
+      cur += c;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+export function parseEmployeeCsv(text: string): EmployeeParseResult {
+  const rows: EmployeeRow[] = [];
+  const problems: RowProblem[] = [];
+
+  const lines = text.split(/\r\n|\r|\n/);
+  const firstNonBlank = lines.findIndex((l) => l.trim() !== "");
+  if (firstNonBlank < 0) {
+    return { rows, problems: [{ line: 1, column: "", message: "The file is empty." }] };
+  }
+
+  /* The header is matched by name so a re-uploaded export still works,
+     and so the columns can be in any order — a spreadsheet that has
+     been through someone's hands rarely keeps the original order. */
+  const header = splitCsvLine(lines[firstNonBlank]).map((h) =>
+    h.toLowerCase().replace(/[\s_]/g, ""),
+  );
+  const looksLikeHeader = header.includes("empcode");
+  if (!looksLikeHeader) {
+    return {
+      rows,
+      problems: [
+        {
+          line: firstNonBlank + 1,
+          column: "",
+          message: `The first row must name the columns. Expected at least: ${EMPLOYEE_COLUMNS.slice(0, 3).join(", ")}…`,
+        },
+      ],
+    };
+  }
+
+  const at = (name: string) =>
+    header.indexOf(name.toLowerCase().replace(/[\s_]/g, ""));
+
+  const missing = (["empCode", "firstName", "lastName", "dateOfJoining", "branchCode"] as const).filter(
+    (c) => at(c) < 0,
+  );
+  if (missing.length > 0) {
+    return {
+      rows,
+      problems: [
+        {
+          line: firstNonBlank + 1,
+          column: missing.join(", "),
+          message: `These required columns are missing: ${missing.join(", ")}.`,
+        },
+      ],
+    };
+  }
+
+  const seen = new Map<string, number>();
+
+  for (let i = firstNonBlank + 1; i < lines.length; i++) {
+    if (lines[i].trim() === "") continue;
+    /* The template carries a commented example and a reference block,
+       so the file imports cleanly whether or not they are deleted. */
+    if (lines[i].trimStart().startsWith("#")) continue;
+    const line = i + 1;
+    const cols = splitCsvLine(lines[i]);
+    const get = (name: string) => {
+      const idx = at(name);
+      const v = idx >= 0 ? (cols[idx] ?? "").trim() : "";
+      return v === "" ? null : v;
+    };
+    const problem = (column: string, message: string) =>
+      problems.push({ line, column, message });
+
+    const empCode = get("empCode")?.toUpperCase() ?? null;
+    const firstName = get("firstName");
+    const lastName = get("lastName");
+    const dateOfJoining = get("dateOfJoining");
+    const branchCode = get("branchCode")?.toUpperCase() ?? null;
+
+    if (!empCode) problem("empCode", "An employee code is required.");
+    if (!firstName) problem("firstName", "A first name is required.");
+    if (!lastName) problem("lastName", "A last name is required.");
+    if (!branchCode) problem("branchCode", "A branch code is required.");
+
+    if (empCode) {
+      const earlier = seen.get(empCode);
+      if (earlier !== undefined) {
+        problem("empCode", `"${empCode}" is already used on line ${earlier}.`);
+      } else {
+        seen.set(empCode, line);
+      }
+    }
+
+    if (!dateOfJoining || !DATE_RE.test(dateOfJoining)) {
+      problem("dateOfJoining", `"${dateOfJoining ?? ""}" is not a date. Use YYYY-MM-DD.`);
+    }
+
+    const dateOfBirth = get("dateOfBirth");
+    if (dateOfBirth && !DATE_RE.test(dateOfBirth)) {
+      problem("dateOfBirth", `"${dateOfBirth}" is not a date. Use YYYY-MM-DD.`);
+    }
+    if (dateOfBirth && dateOfJoining && DATE_RE.test(dateOfJoining) && dateOfBirth >= dateOfJoining) {
+      problem("dateOfBirth", "Date of birth is on or after the joining date.");
+    }
+
+    const genderRaw = get("gender")?.toLowerCase() ?? "other";
+    const gender = (GENDERS as readonly string[]).includes(genderRaw)
+      ? (genderRaw as EmployeeRow["gender"])
+      : null;
+    if (!gender) problem("gender", `"${genderRaw}" is not one of: ${GENDERS.join(", ")}.`);
+
+    const typeRaw = (get("employmentType") ?? "permanent").toLowerCase().replace(/\s+/g, "_");
+    const employmentType = (EMPLOYMENT_TYPES as readonly string[]).includes(typeRaw)
+      ? (typeRaw as EmployeeRow["employmentType"])
+      : null;
+    if (!employmentType) {
+      problem("employmentType", `"${typeRaw}" is not one of: ${EMPLOYMENT_TYPES.join(", ")}.`);
+    }
+
+    const email = get("email");
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      problem("email", `"${email}" is not an email address.`);
+    }
+
+    const mobile = get("mobile")?.replace(/[\s-]/g, "").replace(/^\+91/, "") ?? null;
+    if (mobile && !/^[0-9]{10}$/.test(mobile)) {
+      problem("mobile", `"${mobile}" is not a 10-digit mobile number.`);
+    }
+
+    const pan = get("pan")?.toUpperCase() ?? null;
+    if (pan && !PAN_RE.test(pan)) {
+      problem("pan", `"${pan}" is not a PAN. It looks like ABCDE1234F.`);
+    }
+
+    const uan = get("uan");
+    if (uan && !/^[0-9]{12}$/.test(uan)) {
+      problem("uan", `"${uan}" is not a 12-digit UAN.`);
+    }
+
+    const ifsc = get("ifsc")?.toUpperCase() ?? null;
+    if (ifsc && !IFSC_RE.test(ifsc)) {
+      problem("ifsc", `"${ifsc}" is not an IFSC. It looks like HDFC0000123.`);
+    }
+
+    const bankAccount = get("bankAccount")?.replace(/\s/g, "") ?? null;
+    if (bankAccount && !/^\d{9,18}$/.test(bankAccount)) {
+      problem("bankAccount", "A bank account number is 9 to 18 digits.");
+    }
+    if (bankAccount && !ifsc) {
+      problem("ifsc", "An account number without an IFSC cannot be paid into.");
+    }
+
+    if (!empCode || !firstName || !lastName || !gender || !employmentType || !branchCode) continue;
+    if (!dateOfJoining || !DATE_RE.test(dateOfJoining)) continue;
+
+    rows.push({
+      line,
+      empCode,
+      firstName,
+      lastName,
+      email,
+      mobile,
+      gender,
+      dateOfBirth,
+      dateOfJoining,
+      employmentType,
+      designation: get("designation"),
+      branchCode,
+      departmentCode: get("departmentCode")?.toUpperCase() ?? null,
+      gradeName: get("gradeName"),
+      managerEmpCode: get("managerEmpCode")?.toUpperCase() ?? null,
+      pan,
+      uan,
+      bankAccount,
+      ifsc,
+    });
+  }
+
+  if (rows.length === 0 && problems.length === 0) {
+    problems.push({ line: 1, column: "", message: "The file has a header but no rows." });
+  }
+
+  return { rows, problems };
+}
+
+/**
+ * Codes in the file that this company does not have. Resolved against
+ * what actually exists rather than created on the fly: a typo'd branch
+ * code should be a message, not a new branch.
+ */
+export function unresolvedReferences(
+  rows: EmployeeRow[],
+  known: {
+    branchCodes: string[];
+    departmentCodes: string[];
+    gradeNames: string[];
+    empCodes: string[];
+  },
+): RowProblem[] {
+  const problems: RowProblem[] = [];
+  const branches = new Set(known.branchCodes.map((c) => c.toUpperCase()));
+  const departments = new Set(known.departmentCodes.map((c) => c.toUpperCase()));
+  const grades = new Set(known.gradeNames.map((g) => g.toLowerCase()));
+  const existing = new Set(known.empCodes.map((c) => c.toUpperCase()));
+  const inFile = new Set(rows.map((r) => r.empCode));
+
+  for (const r of rows) {
+    if (existing.has(r.empCode)) {
+      problems.push({ line: r.line, column: "empCode", message: `"${r.empCode}" already exists.` });
+    }
+    if (!branches.has(r.branchCode)) {
+      problems.push({
+        line: r.line,
+        column: "branchCode",
+        message: `"${r.branchCode}" is not a branch of this company.`,
+      });
+    }
+    if (r.departmentCode && !departments.has(r.departmentCode)) {
+      problems.push({
+        line: r.line,
+        column: "departmentCode",
+        message: `"${r.departmentCode}" is not a department of this company.`,
+      });
+    }
+    if (r.gradeName && !grades.has(r.gradeName.toLowerCase())) {
+      problems.push({
+        line: r.line,
+        column: "gradeName",
+        message: `"${r.gradeName}" is not a grade of this company.`,
+      });
+    }
+    /* A manager may be someone already on the books or someone further
+       down the same file — a whole team imported at once is the normal
+       case, and insisting the manager exist first would mean two passes. */
+    if (
+      r.managerEmpCode &&
+      !existing.has(r.managerEmpCode) &&
+      !inFile.has(r.managerEmpCode)
+    ) {
+      problems.push({
+        line: r.line,
+        column: "managerEmpCode",
+        message: `"${r.managerEmpCode}" is neither an existing employee nor in this file.`,
+      });
+    }
+    if (r.managerEmpCode === r.empCode) {
+      problems.push({
+        line: r.line,
+        column: "managerEmpCode",
+        message: "Someone cannot report to themselves.",
+      });
+    }
+  }
+  return problems;
+}

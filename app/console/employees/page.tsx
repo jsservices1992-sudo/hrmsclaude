@@ -13,6 +13,7 @@ import { listCompanies } from "@/lib/payroll/load";
 import { PageHeader, Card, StatCard, Button, Input, Select, FilterBar, FilterField, Badge, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
 import { ProfileChangeDecisionForm } from "./change-request-form";
+import { BulkEmployeeForm } from "./bulk-form";
 
 export const metadata = { title: "Employees" };
 
@@ -169,6 +170,16 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
               );
             })}
           </ul>
+        </Card>
+      )}
+
+      {(canMutate(user) || user.role === "hr_manager") && companyIds[0] && (
+        <Card>
+          <h2 className="font-display text-lg font-semibold mb-1">Add people in bulk</h2>
+          <p className="text-sm text-ink-2 mb-3 max-w-[70ch]">
+            For a first import, or whenever a batch joins at once.
+          </p>
+          <BulkEmployeeForm companyId={companyIds[0]} />
         </Card>
       )}
 

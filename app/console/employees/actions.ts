@@ -15,6 +15,7 @@ import {
 import { recordAuditAs } from "@/lib/audit/log";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
+import { parseEmployeeCsv, unresolvedReferences } from "@/lib/hris/employee-bulk";
 
 export type EmployeeFormState = { error?: string; ok?: string; fieldErrors?: Record<string, string> };
 
@@ -562,5 +563,141 @@ export async function decideProfileChange(
       decision === "approved"
         ? `${def.label} updated.`
         : "Request rejected. The employee sees your note.",
+  };
+}
+
+/* ==================== bulk import ==================== */
+
+export type BulkEmployeeState = {
+  error?: string;
+  ok?: string;
+  /** Every problem in the file, so the spreadsheet is fixed in one pass. */
+  problems?: { line: number; column: string; message: string }[];
+};
+
+/**
+ * Import employees from a spreadsheet.
+ *
+ * Nothing is written unless the whole file can be. The attendance
+ * import deliberately skips a bad row and carries on, because a missing
+ * day is recoverable; half an organisation is not. So the file is
+ * parsed, its references resolved against what this company actually
+ * has, and only then — inside one transaction — is anyone created.
+ */
+export async function bulkUploadEmployees(
+  _prev: BulkEmployeeState,
+  formData: FormData,
+): Promise<BulkEmployeeState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Not authorised." };
+  if (!canMutate(user) && user.role !== "hr_manager") {
+    return { error: "Your role is read-only and cannot add employees." };
+  }
+
+  const companyId = String(formData.get("companyId") ?? "");
+  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose a CSV file to import." };
+  }
+  if (file.size > 2_000_000) {
+    return { error: "That file is larger than 2MB. Split it into a few smaller ones." };
+  }
+
+  const { rows, problems } = parseEmployeeCsv(await file.text());
+  if (problems.length > 0) {
+    return {
+      error: `${problems.length} problem(s) in the file. Nothing has been imported.`,
+      problems: problems.slice(0, 50),
+    };
+  }
+
+  const [branches, departments, grades, existing] = await Promise.all([
+    db
+      .select({ id: s.branches.id, code: s.branches.code })
+      .from(s.branches)
+      .where(eq(s.branches.companyId, companyId)),
+    db
+      .select({ id: s.departments.id, code: s.departments.code })
+      .from(s.departments)
+      .where(eq(s.departments.companyId, companyId)),
+    db
+      .select({ id: s.grades.id, name: s.grades.name })
+      .from(s.grades)
+      .where(eq(s.grades.companyId, companyId)),
+    db
+      .select({ id: s.employees.id, empCode: s.employees.empCode })
+      .from(s.employees)
+      .where(eq(s.employees.companyId, companyId)),
+  ]);
+
+  const unresolved = unresolvedReferences(rows, {
+    branchCodes: branches.map((b) => b.code ?? "").filter(Boolean),
+    departmentCodes: departments.map((d) => d.code ?? "").filter(Boolean),
+    gradeNames: grades.map((g) => g.name),
+    empCodes: existing.map((e) => e.empCode),
+  });
+  if (unresolved.length > 0) {
+    return {
+      error: `${unresolved.length} problem(s) in the file. Nothing has been imported.`,
+      problems: unresolved.slice(0, 50),
+    };
+  }
+
+  const branchByCode = new Map(branches.map((b) => [(b.code ?? "").toUpperCase(), b.id]));
+  const deptByCode = new Map(departments.map((d) => [(d.code ?? "").toUpperCase(), d.id]));
+  const gradeByName = new Map(grades.map((g) => [g.name.toLowerCase(), g.id]));
+  const idByCode = new Map(existing.map((e) => [e.empCode.toUpperCase(), e.id]));
+
+  /* Ids are allocated before the insert so a manager named further down
+     the same file can be pointed at. */
+  const newId = new Map<string, string>();
+  for (const r of rows) newId.set(r.empCode, randomUUID());
+
+  const now = new Date().toISOString();
+
+  await db.transaction(async (tx) => {
+    for (const r of rows) {
+      await tx.insert(s.employees).values({
+        id: newId.get(r.empCode)!,
+        companyId,
+        branchId: branchByCode.get(r.branchCode)!,
+        empCode: r.empCode,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email,
+        mobile: r.mobile,
+        gender: r.gender,
+        dateOfBirth: r.dateOfBirth,
+        dateOfJoining: r.dateOfJoining,
+        employmentType: r.employmentType,
+        designation: r.designation,
+        departmentId: r.departmentCode ? (deptByCode.get(r.departmentCode) ?? null) : null,
+        gradeId: r.gradeName ? (gradeByName.get(r.gradeName.toLowerCase()) ?? null) : null,
+        managerId: r.managerEmpCode
+          ? (idByCode.get(r.managerEmpCode) ?? newId.get(r.managerEmpCode) ?? null)
+          : null,
+        pan: r.pan,
+        uan: r.uan,
+        bankAccount: r.bankAccount,
+        ifsc: r.ifsc,
+        status: "active",
+        createdBy: user.email,
+      });
+    }
+  });
+
+  await audit({
+    actor: user.email,
+    action: "employee.bulk_imported",
+    entityId: companyId,
+    after: { count: rows.length, codes: rows.slice(0, 20).map((r) => r.empCode) },
+  });
+
+  revalidatePath("/console/employees");
+  revalidatePath("/console/org");
+  return {
+    ok: `Imported ${rows.length} employee(s). They have no salary yet — set one from each record before the first payroll.`,
   };
 }
