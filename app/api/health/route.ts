@@ -35,12 +35,26 @@ export async function GET() {
         : "Using a local file — expected in development.",
   };
 
+  /* Names only, never values. A Blob store connected under a custom
+     prefix exports something like MYSTORE_READ_WRITE_TOKEN, which this
+     application does not read — and from the outside that is
+     indistinguishable from no store at all. Listing the names that are
+     present turns "not configured" into something diagnosable without
+     anyone reading a secret aloud. */
+  const tokenNames = Object.keys(process.env)
+    .filter((k) => /BLOB|READ_WRITE_TOKEN/i.test(k))
+    .sort();
+
   checks.documentStorage = {
     configured: blobToken,
+    /* Only worth showing when the expected one is missing. */
+    tokenVariablesPresent: blobToken ? undefined : tokenNames,
 hint: blobToken
       ? undefined
       : isProduction
-        ? "BLOB_READ_WRITE_TOKEN is not set. Add a Blob store in the Vercel project's Storage tab, then redeploy."
+        ? tokenNames.length > 0
+          ? `BLOB_READ_WRITE_TOKEN is not set, but ${tokenNames.join(", ")} is. A Blob store connected under a custom prefix exports that name instead; either reconnect it with the default prefix or copy its value into BLOB_READ_WRITE_TOKEN, then redeploy.`
+          : "BLOB_READ_WRITE_TOKEN is not set, and no similarly-named variable is either. Connect a Blob store to this project, check the variable is enabled for Production, then redeploy — environment variables are fixed at build time, so a store connected after the last deploy is not visible to it."
         : "Using the local filesystem — expected in development.",
   };
 
