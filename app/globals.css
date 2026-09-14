@@ -1,26 +1,365 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ---------------------------------------------------------------
+   Lekha design tokens
+   Ledger-grounded: indigo ink, brass accent, warm paper ground.
+   Light is the base; dark redefines tokens only.
+   --------------------------------------------------------------- */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --paper: #f7f5f0;
+  --surface: #ffffff;
+  --surface-2: #efece4;
+  --surface-3: #e6e1d6;
+
+  --ink: #14161f;
+  --ink-2: #4a4e5e;
+  --ink-3: #797e8e;
+
+  --line: #ddd8cd;
+  --line-2: #e9e5db;
+
+  --indigo: #2a3560;
+  --indigo-2: #3c4a80;
+  --indigo-soft: #e4e6f0;
+  --on-indigo: #f7f5f0;
+
+  --brass: #a8752c;
+  --brass-2: #b8863b;
+  --brass-soft: #f4e9d6;
+
+  --teal: #1c6b5e;
+  --teal-soft: #dfede8;
+
+  --rust: #9a3327;
+  --rust-soft: #f6e3e0;
+
+  --rule: rgba(20, 22, 31, 0.07);
+
+  /* Radius — scoped to the console UI kit (cards, inputs, menus, dialogs).
+     Ledger tables and the sidebar stay square; this is not a global reset. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+
+  /* Elevation — the flat ledger surface has none; floating chrome
+     (menus, dialogs, the command palette) needs to read as lifted. */
+  --shadow-sm: 0 1px 2px rgba(20, 22, 31, 0.06);
+  --shadow-md: 0 4px 16px -4px rgba(20, 22, 31, 0.12);
+  --shadow-lg: 0 16px 40px -12px rgba(20, 22, 31, 0.22);
+  --shadow-ring: 0 0 0 3px var(--indigo-soft);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --paper: #0f1119;
+    --surface: #171a24;
+    --surface-2: #1f2330;
+    --surface-3: #272c3b;
+
+    --ink: #ecedf2;
+    --ink-2: #a1a7b9;
+    --ink-3: #737990;
+
+    --line: #2b3040;
+    --line-2: #222735;
+
+    --indigo: #93a3e2;
+    --indigo-2: #aab8ec;
+    --indigo-soft: #1c2137;
+    --on-indigo: #0f1119;
+
+    --brass: #d9a961;
+    --brass-2: #e3ba7c;
+    --brass-soft: #2e2513;
+
+    --teal: #5cb39f;
+    --teal-soft: #122f29;
+
+    --rust: #d98b7e;
+    --rust-soft: #2f1a17;
+
+    --rule: rgba(236, 237, 242, 0.07);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 20px -4px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 20px 48px -12px rgba(0, 0, 0, 0.6);
   }
 }
 
+:root[data-theme="dark"] {
+  --paper: #0f1119;
+  --surface: #171a24;
+  --surface-2: #1f2330;
+  --surface-3: #272c3b;
+  --ink: #ecedf2;
+  --ink-2: #a1a7b9;
+  --ink-3: #737990;
+  --line: #2b3040;
+  --line-2: #222735;
+  --indigo: #93a3e2;
+  --indigo-2: #aab8ec;
+  --indigo-soft: #1c2137;
+  --on-indigo: #0f1119;
+  --brass: #d9a961;
+  --brass-2: #e3ba7c;
+  --brass-soft: #2e2513;
+  --teal: #5cb39f;
+  --teal-soft: #122f29;
+  --rust: #d98b7e;
+  --rust-soft: #2f1a17;
+  --rule: rgba(236, 237, 242, 0.07);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 20px -4px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 48px -12px rgba(0, 0, 0, 0.6);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+
+  --color-indigo: var(--indigo);
+  --color-indigo-2: var(--indigo-2);
+  --color-indigo-soft: var(--indigo-soft);
+  --color-on-indigo: var(--on-indigo);
+
+  --color-brass: var(--brass);
+  --color-brass-2: var(--brass-2);
+  --color-brass-soft: var(--brass-soft);
+
+  --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
+
+  --color-rust: var(--rust);
+  --color-rust-soft: var(--rust-soft);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-full: var(--radius-full);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-ring: var(--shadow-ring);
+
+  --font-display: var(--font-source-serif), Georgia, serif;
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--brass-soft);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---------------------------------------------------------------
+   Ledger ruling — the motif the whole identity hangs on.
+   --------------------------------------------------------------- */
+
+.ledger-rule {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 31px,
+    var(--rule) 31px,
+    var(--rule) 32px
+  );
+}
+
+.ledger-column {
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent,
+    transparent 79px,
+    var(--rule) 79px,
+    var(--rule) 80px
+  );
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.balance {
+  text-wrap: balance;
+}
+
+.pretty {
+  text-wrap: pretty;
+}
+
+.transition-base {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--ease-out);
+}
+
+/* Dialogs (native <dialog>, used by the console's Dialog/CommandPalette
+   primitives) get a themed backdrop rather than the UA default. */
+dialog::backdrop {
+  background: rgba(15, 17, 25, 0.5);
+}
+
+/* Uppercase mono labels used throughout as the utility voice */
+.label {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==================================================================
+   Print — payslips and registers are documents people file and post.
+   The console chrome has no business on paper.
+   ================================================================== */
+
+/* The sheet itself. Without this the browser applies its own default
+   margin and prints the running header and URL into it. */
+@page {
+  size: A4;
+  margin: 12mm 10mm;
+}
+
+@media print {
+  /* Sidebar, breadcrumbs, user menu and any control that does nothing
+     on paper are hidden rather than left as dead ink. */
+  /* The console's own top bar opts out by name rather than every <header>
+     on the page being hidden: a printed document has its own masthead,
+     and a blanket rule took the company name and logo off the payslip
+     along with the chrome. Un-hiding it afterwards is not equivalent —
+     `display: revert` would drop the masthead's own flex layout. */
+  aside,
+  nav,
+  form,
+  [data-print="hide"] {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  /* Borders that read as tinted panels on screen print as grey mush. */
+  .border,
+  .border-2 {
+    border-color: #999 !important;
+  }
+
+  [class*="bg-surface"],
+  [class*="bg-brass-soft"],
+  [class*="bg-teal-soft"],
+  [class*="bg-rust-soft"] {
+    background: #fff !important;
+  }
+
+  /* One payslip per sheet when several are printed together. */
+  [data-print="page"] {
+    break-after: page;
+    page-break-after: always;
+    /* Fill the sheet rather than leaving the frame floating mid-page, and
+       never exceed it — a table wider than the paper is what gets sliced
+       off down the right-hand edge. */
+    max-width: 100%;
+    overflow: hidden;
+    /* Chrome's own "Margins: None" overrides @page, which would otherwise
+       run the frame into the printer's unprintable edge and slice the
+       right-hand column off. A margin on the document itself keeps a safe
+       gutter whichever margin setting the person picks. */
+    width: auto;
+    margin: 4mm;
+    box-sizing: border-box;
+  }
+  [data-print="page"]:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  /* A row, a panel or a total split across two sheets is unreadable, so
+     each is kept whole and allowed to move down instead. */
+  tr,
+  thead,
+  [data-print="keep"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Responsive breakpoints resolve against the sheet, which is narrower
+     than a laptop — so a grid that is four across on screen would quietly
+     drop to two on paper and run past the bottom of the page. */
+  [data-print="cols-4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  /* Paper is narrower than a console table; let the long derivation text
+     wrap rather than push the amount column off the sheet. */
+  [data-print="page"] table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  [data-print="page"] td,
+  [data-print="page"] th {
+    overflow-wrap: break-word;
+  }
+
+  a[href]::after {
+    content: "";
+  }
 }

@@ -1,0 +1,902 @@
+import "server-only";
+import { and, asc, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { db } from "@/db";
+import * as s from "@/db/schema";
+import {
+  computeEmployeePay,
+  summariseRun,
+  DEFAULT_STRUCTURE,
+  type CompanyConfig,
+  type StatutoryConfig,
+  type EmployeeInput,
+  type EmployeePayResult,
+  type RunTotals,
+  type PayLine,
+} from "./engine";
+import type { ProrationBasis } from "./proration";
+import type { RoundingMode } from "./money";
+import { resolveDepartmentConventions, type DepartmentOverride } from "./settings";
+import type { PtSlab, LwfRate } from "./statutory";
+import type { ComponentSpec } from "./compensation";
+import {
+  buildComponentSpecs,
+  resolveStructureId,
+  type StructureLineJoined,
+  type ResolvedStructureSource,
+} from "./structures";
+import type { RecoverableLoan } from "../loans/engine";
+
+function periodEndDate(year: number, month: number) {
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${year}-${String(month).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+}
+
+/**
+ * The financial year a contribution period belongs to. Jan–Mar fall in the
+ * Oct–Mar period that began in the *previous* calendar year.
+ */
+export function contributionPeriodKey(year: number, month: number) {
+  const period = month >= 4 && month <= 9 ? "apr_sep" : "oct_mar";
+  const financialYear = month >= 4 ? year : year - 1;
+  return { period, financialYear } as const;
+}
+
+/** Statutory config as at a date — the effective-dated lookup. */
+export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig> {
+  const effective = <T extends { effectiveFrom: string; effectiveTo: string | null }>(
+    rows: T[],
+  ) => rows.filter((r) => r.effectiveFrom <= asOf && (r.effectiveTo === null || r.effectiveTo >= asOf));
+
+  const [params, slabs, lwf, juris] = await Promise.all([
+    db.select().from(s.statutoryParams),
+    db.select().from(s.ptSlabs).orderBy(asc(s.ptSlabs.minPaise)),
+    db.select().from(s.lwfRates),
+    db.select().from(s.jurisdictions),
+  ]);
+
+  const p = Object.fromEntries(effective(params).map((r) => [r.key, r.value]));
+
+  const ptSlabsByState: Record<string, PtSlab[]> = {};
+  for (const row of effective(slabs)) {
+    (ptSlabsByState[row.stateCode] ??= []).push({
+      minPaise: row.minPaise,
+      maxPaise: row.maxPaise,
+      amountPaise: row.amountPaise,
+      overrideMonth: row.overrideMonth,
+      overrideAmountPaise: row.overrideAmountPaise,
+      gender: row.gender,
+      annualCapPaise: row.annualCapPaise,
+    });
+  }
+  for (const code of Object.keys(ptSlabsByState)) {
+    ptSlabsByState[code].sort((a, b) => a.minPaise - b.minPaise);
+  }
+
+  const lwfByState: Record<string, LwfRate | null> = {};
+  for (const row of effective(lwf)) {
+    lwfByState[row.stateCode] = {
+      employeePaise: row.employeePaise,
+      employerPaise: row.employerPaise,
+      frequency: row.frequency,
+      deductionMonths: row.deductionMonths.split(",").map(Number),
+    };
+  }
+
+  return {
+    epf: {
+      wageCeilingPaise: p["epf.wage_ceiling"] ?? 1_500_000,
+      employeeBps: p["epf.employee_bps"] ?? 1200,
+      employerBps: p["epf.employer_bps"] ?? 1200,
+      epsBps: p["epf.eps_bps"] ?? 833,
+      epsCeilingPaise: p["epf.eps_ceiling"] ?? 1_500_000,
+    },
+    esic: {
+      wageThresholdPaise: p["esic.wage_threshold"] ?? 2_100_000,
+      employeeBps: p["esic.employee_bps"] ?? 75,
+      employerBps: p["esic.employer_bps"] ?? 325,
+    },
+    ptSlabsByState,
+    ptApplicableByState: Object.fromEntries(juris.map((j) => [j.stateCode, j.ptApplicable])),
+    lwfByState,
+    lwfApplicableByState: Object.fromEntries(juris.map((j) => [j.stateCode, j.lwfApplicable])),
+  };
+}
+
+/**
+ * The company's configured components. Falls back to DEFAULT_STRUCTURE only
+ * when a company has none, so a fresh tenant still computes something.
+ */
+export async function loadStructure(companyId: string): Promise<ComponentSpec[]> {
+  const rows = await db
+    .select()
+    .from(s.payComponents)
+    .where(
+      and(eq(s.payComponents.companyId, companyId), eq(s.payComponents.active, true)),
+    )
+    .orderBy(asc(s.payComponents.sequence));
+
+  if (rows.length === 0) return DEFAULT_STRUCTURE;
+
+  return rows.map((r) => ({
+    code: r.code,
+    label: r.name,
+    kind: r.kind,
+    calcMethod: r.calcMethod,
+    percentValue: r.percentValue,
+    percentOfCode: r.percentOfCode,
+    fixedPaise: r.fixedPaise,
+    taxable: r.taxable,
+    epfBase: r.epfBase,
+    esicBase: r.esicBase,
+    ptBase: r.ptBase,
+    bonusBase: r.bonusBase,
+    gratuityBase: r.gratuityBase,
+    prorates: r.prorates,
+    sequence: r.sequence,
+  }));
+}
+
+export type StructureResolution = {
+  structureId: string | null;
+  source: ResolvedStructureSource;
+  components: ComponentSpec[];
+};
+
+export type StructureResolutionContext = {
+  structuresById: Map<string, ComponentSpec[]>;
+  deptOverrideByDept: Map<string, string>;
+  defaultStructureId: string | null;
+  fallback: ComponentSpec[];
+};
+
+/**
+ * Everything needed to resolve, per employee, which set of pay components
+ * actually applies to them. A company with no salaryStructures rows gets
+ * an empty structuresById and a null defaultStructureId, so every
+ * employee resolves to the untouched loadStructure() fallback below —
+ * this is what keeps existing companies computing exactly as before.
+ */
+export async function loadStructureResolutionContext(
+  companyId: string,
+): Promise<StructureResolutionContext> {
+  const [structureRows, lineRows, deptOverrideRows, fallback] = await Promise.all([
+    db
+      .select()
+      .from(s.salaryStructures)
+      .where(and(eq(s.salaryStructures.companyId, companyId), eq(s.salaryStructures.active, true))),
+    db
+      .select({
+        structureId: s.salaryStructureLines.structureId,
+        sequence: s.salaryStructureLines.sequence,
+        calcMethodOverride: s.salaryStructureLines.calcMethodOverride,
+        percentValueOverride: s.salaryStructureLines.percentValueOverride,
+        fixedPaiseOverride: s.salaryStructureLines.fixedPaiseOverride,
+        componentCode: s.payComponents.code,
+        componentLabel: s.payComponents.name,
+        componentKind: s.payComponents.kind,
+        componentCalcMethod: s.payComponents.calcMethod,
+        componentPercentValue: s.payComponents.percentValue,
+        componentPercentOfCode: s.payComponents.percentOfCode,
+        componentFixedPaise: s.payComponents.fixedPaise,
+        componentTaxable: s.payComponents.taxable,
+        componentEpfBase: s.payComponents.epfBase,
+        componentEsicBase: s.payComponents.esicBase,
+        componentPtBase: s.payComponents.ptBase,
+        componentBonusBase: s.payComponents.bonusBase,
+        componentGratuityBase: s.payComponents.gratuityBase,
+        componentProrates: s.payComponents.prorates,
+      })
+      .from(s.salaryStructureLines)
+      .innerJoin(s.payComponents, eq(s.salaryStructureLines.componentId, s.payComponents.id)),
+    db
+      .select()
+      .from(s.departmentSalaryStructureOverrides)
+      .where(eq(s.departmentSalaryStructureOverrides.companyId, companyId)),
+    loadStructure(companyId),
+  ]);
+
+  const linesByStructure = new Map<string, StructureLineJoined[]>();
+  for (const l of lineRows) {
+    const list = linesByStructure.get(l.structureId) ?? [];
+    list.push(l);
+    linesByStructure.set(l.structureId, list);
+  }
+
+  const structuresById = new Map(
+    structureRows.map((st) => [st.id, buildComponentSpecs(linesByStructure.get(st.id) ?? [])]),
+  );
+  const deptOverrideByDept = new Map(deptOverrideRows.map((r) => [r.departmentId, r.structureId]));
+  const defaultStructureId = structureRows.find((st) => st.isDefault)?.id ?? null;
+
+  return { structuresById, deptOverrideByDept, defaultStructureId, fallback };
+}
+
+export function resolveEmployeeStructure(
+  ctx: StructureResolutionContext,
+  args: { employeeStructureId: string | null; employeeDepartmentId: string | null },
+): StructureResolution {
+  const { structureId, source } = resolveStructureId({
+    employeeStructureId: args.employeeStructureId,
+    employeeDepartmentId: args.employeeDepartmentId,
+    deptOverrideByDept: ctx.deptOverrideByDept,
+    defaultStructureId: ctx.defaultStructureId,
+  });
+  if (structureId && ctx.structuresById.has(structureId)) {
+    return { structureId, source, components: ctx.structuresById.get(structureId)! };
+  }
+  return { structureId: null, source: "fallback_flat_components", components: ctx.fallback };
+}
+
+/** Which active employees currently resolve to a given structure, and how. */
+export async function findCandidateEmployees(
+  companyId: string,
+  structureId: string,
+): Promise<{ employeeId: string; name: string; empCode: string; source: ResolvedStructureSource }[]> {
+  const ctx = await loadStructureResolutionContext(companyId);
+
+  const [emps, salaryRows] = await Promise.all([
+    db
+      .select({
+        id: s.employees.id,
+        empCode: s.employees.empCode,
+        firstName: s.employees.firstName,
+        lastName: s.employees.lastName,
+        departmentId: s.employees.departmentId,
+      })
+      .from(s.employees)
+      .where(and(eq(s.employees.companyId, companyId), eq(s.employees.status, "active"))),
+    db
+      .select({ employeeId: s.employeeSalaries.employeeId, structureId: s.employeeSalaries.structureId })
+      .from(s.employeeSalaries)
+      .where(isNull(s.employeeSalaries.effectiveTo)),
+  ]);
+  const structureIdByEmployee = new Map(salaryRows.map((r) => [r.employeeId, r.structureId]));
+
+  return emps
+    .map((e) => {
+      const resolved = resolveEmployeeStructure(ctx, {
+        employeeStructureId: structureIdByEmployee.get(e.id) ?? null,
+        employeeDepartmentId: e.departmentId,
+      });
+      return {
+        employeeId: e.id,
+        name: `${e.firstName} ${e.lastName}`,
+        empCode: e.empCode,
+        source: resolved.source,
+        structureId: resolved.structureId,
+      };
+    })
+    .filter((r) => r.structureId === structureId)
+    .map(({ employeeId, name, empCode, source }) => ({ employeeId, name, empCode, source }));
+}
+
+export type PreviewResult = {
+  company: typeof s.companies.$inferSelect;
+  results: EmployeePayResult[];
+  totals: RunTotals;
+  asOf: string;
+};
+
+/**
+ * Compute a period without persisting — the pre-run preview.
+ * A finalised run would snapshot these lines plus the config versions used.
+ */
+export async function previewRun(args: {
+  companyId: string;
+  year: number;
+  month: number;
+}): Promise<PreviewResult | null> {
+  const asOf = periodEndDate(args.year, args.month);
+
+  const [company] = await db
+    .select()
+    .from(s.companies)
+    .where(eq(s.companies.id, args.companyId))
+    .limit(1);
+  if (!company) return null;
+
+  const statutory = await loadStatutoryConfig(asOf);
+  const structureCtx = await loadStructureResolutionContext(args.companyId);
+
+  const rows = await db
+    .select({
+      emp: s.employees,
+      branch: s.branches,
+      salary: s.employeeSalaries,
+    })
+    .from(s.employees)
+    .innerJoin(s.branches, eq(s.employees.branchId, s.branches.id))
+    .innerJoin(
+      s.employeeSalaries,
+      and(
+        eq(s.employeeSalaries.employeeId, s.employees.id),
+        lte(s.employeeSalaries.effectiveFrom, asOf),
+        isNull(s.employeeSalaries.effectiveTo),
+      ),
+    )
+    .where(
+      and(
+        eq(s.employees.companyId, args.companyId),
+        lte(s.employees.dateOfJoining, asOf),
+        or(isNull(s.employees.dateOfExit), eq(s.employees.status, "resigned")),
+      ),
+    );
+
+  const attendance = await db
+    .select()
+    .from(s.attendanceInputs)
+    .where(
+      and(
+        eq(s.attendanceInputs.periodYear, args.year),
+        eq(s.attendanceInputs.periodMonth, args.month),
+      ),
+    );
+  const lopByEmployee = Object.fromEntries(
+    attendance.map((a) => [a.employeeId, a.lopDays]),
+  );
+
+  // Persisted ESIC coverage for this contribution period.
+  const { period, financialYear } = contributionPeriodKey(args.year, args.month);
+  const coverageRows = await db
+    .select()
+    .from(s.esicCoverage)
+    .where(
+      and(
+        eq(s.esicCoverage.financialYear, financialYear),
+        eq(s.esicCoverage.period, period),
+      ),
+    );
+  const coverageByEmployee = Object.fromEntries(
+    coverageRows.map((c) => [c.employeeId, c.covered]),
+  );
+
+  const companyConfig: CompanyConfig = {
+    prorationBasis: company.prorationBasis as ProrationBasis,
+    standardDays: company.standardDays,
+    roundingMode: company.roundingMode as RoundingMode,
+    roundComponents: company.roundComponents,
+    roundGross: company.roundGross,
+    roundNet: company.roundNet,
+    epfOnActualBasic: company.epfOnActualBasic,
+    // Placeholder — every employee gets their own resolved structure below.
+    // This is only the base spread into configByDepartment before that.
+    structure: structureCtx.fallback,
+  };
+
+  /*
+   * Department overrides — a department can run different proration or
+   * rounding conventions from the rest of the company (a factory floor
+   * on working days while HQ runs calendar days is the real case). Only
+   * the conventions are ever overridden; the statutory engine, the
+   * component structure and everything else stays company-wide.
+   */
+  const deptOverrideRows = await db
+    .select()
+    .from(s.departmentPayrollOverrides)
+    .where(eq(s.departmentPayrollOverrides.companyId, args.companyId));
+  const companyConventions = {
+    prorationBasis: companyConfig.prorationBasis,
+    standardDays: companyConfig.standardDays,
+    roundingMode: companyConfig.roundingMode,
+    roundComponents: companyConfig.roundComponents ?? false,
+    roundGross: companyConfig.roundGross ?? false,
+    roundNet: companyConfig.roundNet ?? true,
+  };
+  const configByDepartment = new Map<string, CompanyConfig>(
+    deptOverrideRows.map((row) => {
+      const override: DepartmentOverride = {
+        prorationBasis: (row.prorationBasis as ProrationBasis) ?? undefined,
+        standardDays: row.standardDays ?? undefined,
+        roundingMode: (row.roundingMode as RoundingMode) ?? undefined,
+        roundComponents: row.roundComponents ?? undefined,
+        roundGross: row.roundGross ?? undefined,
+        roundNet: row.roundNet ?? undefined,
+      };
+      const resolved = resolveDepartmentConventions(companyConventions, override);
+      return [row.departmentId, { ...companyConfig, ...resolved }];
+    }),
+  );
+
+  /*
+   * Projected TDS per employee — PRD §3.9. Imported dynamically because
+   * the tax loader reads this module's loadStructure(); a static import
+   * either way would close the cycle. By the time a run is previewed both
+   * modules are fully initialised.
+   */
+  const { loadWorksheet } = await import("../tax/load");
+  const tdsByEmployee = new Map<string, { paise: number; basis: string }>();
+  for (const { emp } of rows) {
+    const worksheet = await loadWorksheet(emp.id);
+    if (worksheet && worksheet.projection.monthlyTdsPaise > 0) {
+      tdsByEmployee.set(emp.id, {
+        paise: worksheet.projection.monthlyTdsPaise,
+        basis: worksheet.projection.basis,
+      });
+    }
+  }
+
+  /* Live loans and the scheme floor for each — PRD §3.10. The engine
+     plans the recovery itself, because it is the only place that knows
+     what statutory deductions have already taken. */
+  const loanRows = await db
+    .select({ loan: s.loans, scheme: s.loanSchemes })
+    .from(s.loans)
+    .leftJoin(s.loanSchemes, eq(s.loans.schemeId, s.loanSchemes.id))
+    .where(
+      and(
+        inArray(
+          s.loans.employeeId,
+          rows.map(({ emp }) => emp.id),
+        ),
+        inArray(s.loans.status, ["active", "on_hold"]),
+      ),
+    );
+
+  const loansByEmployee = new Map<string, RecoverableLoan[]>();
+  const floorByEmployee = new Map<string, number>();
+
+  for (const { loan, scheme } of loanRows) {
+    // Recovery has not started for a loan disbursed but not yet due.
+    if (
+      loan.firstRecoveryYear !== null &&
+      loan.firstRecoveryMonth !== null &&
+      args.year * 12 + args.month <
+        loan.firstRecoveryYear * 12 + loan.firstRecoveryMonth
+    ) {
+      continue;
+    }
+
+    const list = loansByEmployee.get(loan.employeeId) ?? [];
+    list.push({
+      loanId: loan.id,
+      label: loan.scheme,
+      outstandingPaise: loan.outstandingPaise,
+      instalmentPaise: loan.instalmentPaise,
+      arrearsPaise: loan.arrearsPaise,
+      status: loan.status,
+      startedOn: loan.startedOn,
+    });
+    loansByEmployee.set(loan.employeeId, list);
+
+    // Where schemes differ, the strictest floor protects the employee.
+    floorByEmployee.set(
+      loan.employeeId,
+      Math.max(
+        floorByEmployee.get(loan.employeeId) ?? 0,
+        scheme?.minNetPayPaise ?? 0,
+      ),
+    );
+  }
+
+  /* One-off incentives and ad-hoc deductions for this period only — not a
+     recurring pay component, not a recoverable loan. */
+  const adjustmentRows = await db
+    .select()
+    .from(s.payrollAdjustments)
+    .where(
+      and(
+        eq(s.payrollAdjustments.periodYear, args.year),
+        eq(s.payrollAdjustments.periodMonth, args.month),
+        inArray(
+          s.payrollAdjustments.employeeId,
+          rows.map(({ emp }) => emp.id),
+        ),
+      ),
+    );
+  const adjustmentsByEmployee = new Map<string, EmployeeInput["oneOffLines"]>();
+  for (const adj of adjustmentRows) {
+    const list = adjustmentsByEmployee.get(adj.employeeId) ?? [];
+    list!.push({
+      code: adj.code,
+      label: adj.label,
+      kind: adj.kind,
+      category: adj.category,
+      amountPaise: adj.amountPaise,
+      reason: adj.reason ?? undefined,
+    });
+    adjustmentsByEmployee.set(adj.employeeId, list);
+  }
+
+  const departmentByEmployee = new Map(rows.map((r) => [r.emp.id, r.emp.departmentId]));
+  const structureIdByEmployee = new Map(rows.map((r) => [r.emp.id, r.salary.structureId]));
+
+  const results = rows
+    .map(({ emp, branch, salary }): EmployeeInput => {
+      const gross = salary.monthlyGrossPaise;
+      return {
+        id: emp.id,
+        name: `${emp.firstName} ${emp.lastName}`,
+        empCode: emp.empCode,
+        gender: emp.gender,
+        stateCode: branch.stateCode,
+        esicImplementedArea: branch.esicImplementedArea,
+        monthlyGrossPaise: gross,
+        dateOfJoining: emp.dateOfJoining,
+        dateOfExit: emp.dateOfExit,
+        lopDays: lopByEmployee[emp.id] ?? 0,
+        hadPriorPfMembership: emp.hadPriorPfMembership,
+        pfOptedIn: emp.pfOptedIn,
+        vpfPercent: emp.vpfPercent,
+        // Read the stored decision for this contribution period. Falling back
+        // to current wages only covers an employee with no record yet (a new
+        // joiner mid-period), which is the correct default for them.
+        esicCoveredAtPeriodStart:
+          coverageByEmployee[emp.id] ??
+          gross <= statutory.esic.wageThresholdPaise,
+        ptYtdPaise: 0,
+        monthlyTdsPaise: tdsByEmployee.get(emp.id)?.paise ?? 0,
+        tdsBasis: tdsByEmployee.get(emp.id)?.basis,
+        loans: loansByEmployee.get(emp.id),
+        minNetPayPaise: floorByEmployee.get(emp.id) ?? 0,
+        oneOffLines: adjustmentsByEmployee.get(emp.id),
+      };
+    })
+    .map((employee) => {
+      const deptId = departmentByEmployee.get(employee.id);
+      const baseConfig = (deptId && configByDepartment.get(deptId)) || companyConfig;
+      const resolved = resolveEmployeeStructure(structureCtx, {
+        employeeStructureId: structureIdByEmployee.get(employee.id) ?? null,
+        employeeDepartmentId: deptId ?? null,
+      });
+      const company: CompanyConfig = { ...baseConfig, structure: resolved.components };
+      return computeEmployeePay({
+        employee,
+        company,
+        statutory,
+        year: args.year,
+        month: args.month,
+      });
+    })
+    .sort((a, b) => b.grossPaise - a.grossPaise);
+
+  return { company, results, totals: summariseRun(results), asOf };
+}
+
+export async function listCompanies() {
+  return db.select().from(s.companies).orderBy(asc(s.companies.name));
+}
+
+export type RunDetailLine = {
+  code: string;
+  label: string;
+  kind: "earning" | "deduction" | "employer_contribution" | "info";
+  amountPaise: number;
+  basis: string | null;
+  sequence: number;
+};
+
+export type RunDetailEmployee = {
+  employeeId: string;
+  empCode: string;
+  name: string;
+  paidDays: number;
+  totalDays: number;
+  lopDays: number;
+  grossPaise: number;
+  deductionsPaise: number;
+  employerCostPaise: number;
+  netPaise: number;
+  lines: RunDetailLine[];
+};
+
+export type RunVersionSummary = {
+  id: string;
+  version: number;
+  status: string;
+  supersedesVersion: number | null;
+  preparedBy: string | null;
+  approvedBy: string | null;
+  calculatedAt: string | null;
+  approvedAt: string | null;
+  reopenReason: string | null;
+};
+
+export type RunDetail = {
+  run: typeof s.payrollRuns.$inferSelect;
+  company: typeof s.companies.$inferSelect;
+  employees: RunDetailEmployee[];
+  totals: {
+    headcount: number;
+    grossPaise: number;
+    deductionsPaise: number;
+    employerCostPaise: number;
+    netPaise: number;
+  };
+  versionChain: RunVersionSummary[];
+};
+
+/**
+ * Every run row for a period, in version order. Not a recursive
+ * supersedesVersion walk — reopening can be invoked on any approved run,
+ * not just the latest, so a strict linear-chain assumption isn't safe.
+ * Listing every version in order (each annotated with what it supersedes)
+ * is correct whether or not branching actually happens in practice.
+ */
+async function loadVersionChain(
+  companyId: string,
+  year: number,
+  month: number,
+): Promise<RunVersionSummary[]> {
+  const rows = await db
+    .select()
+    .from(s.payrollRuns)
+    .where(
+      and(
+        eq(s.payrollRuns.companyId, companyId),
+        eq(s.payrollRuns.periodYear, year),
+        eq(s.payrollRuns.periodMonth, month),
+      ),
+    )
+    .orderBy(asc(s.payrollRuns.version));
+
+  return rows.map((r) => ({
+    id: r.id,
+    version: r.version,
+    status: r.status,
+    supersedesVersion: r.supersedesVersion,
+    preparedBy: r.preparedBy,
+    approvedBy: r.approvedBy,
+    calculatedAt: r.calculatedAt,
+    approvedAt: r.approvedAt,
+    reopenReason: r.reopenReason,
+  }));
+}
+
+/**
+ * The saved snapshot of one specific run version — not a live recompute.
+ * Powers the run detail page, so a reviewer sees exactly what was
+ * calculated (and possibly approved), even if attendance or config has
+ * since changed.
+ */
+export async function loadRunDetail(runId: string): Promise<RunDetail | null> {
+  const [run] = await db.select().from(s.payrollRuns).where(eq(s.payrollRuns.id, runId)).limit(1);
+  if (!run) return null;
+
+  const [company] = await db.select().from(s.companies).where(eq(s.companies.id, run.companyId)).limit(1);
+  if (!company) return null;
+
+  const [summaries, lines, emps, versionChain] = await Promise.all([
+    db.select().from(s.payrollEmployeeSummaries).where(eq(s.payrollEmployeeSummaries.runId, runId)),
+    db
+      .select()
+      .from(s.payrollLines)
+      .where(eq(s.payrollLines.runId, runId))
+      .orderBy(asc(s.payrollLines.sequence)),
+    db
+      .select({
+        id: s.employees.id,
+        empCode: s.employees.empCode,
+        firstName: s.employees.firstName,
+        lastName: s.employees.lastName,
+      })
+      .from(s.employees),
+    loadVersionChain(run.companyId, run.periodYear, run.periodMonth),
+  ]);
+
+  const empById = new Map(emps.map((e) => [e.id, e]));
+  const linesByEmp = new Map<string, RunDetailLine[]>();
+  for (const l of lines) {
+    const list = linesByEmp.get(l.employeeId) ?? [];
+    list.push({ code: l.code, label: l.label, kind: l.kind, amountPaise: l.amountPaise, basis: l.basis, sequence: l.sequence });
+    linesByEmp.set(l.employeeId, list);
+  }
+
+  const employees: RunDetailEmployee[] = summaries
+    .map((sm) => {
+      const e = empById.get(sm.employeeId);
+      return {
+        employeeId: sm.employeeId,
+        empCode: e?.empCode ?? "",
+        name: e ? `${e.firstName} ${e.lastName}` : "Unknown",
+        paidDays: sm.paidDays,
+        totalDays: sm.totalDays,
+        lopDays: sm.lopDays,
+        grossPaise: sm.grossPaise,
+        deductionsPaise: sm.deductionsPaise,
+        employerCostPaise: sm.employerCostPaise,
+        netPaise: sm.netPaise,
+        lines: linesByEmp.get(sm.employeeId) ?? [],
+      };
+    })
+    .sort((a, b) => b.grossPaise - a.grossPaise);
+
+  const totals = employees.reduce(
+    (acc, e) => ({
+      headcount: acc.headcount + 1,
+      grossPaise: acc.grossPaise + e.grossPaise,
+      deductionsPaise: acc.deductionsPaise + e.deductionsPaise,
+      employerCostPaise: acc.employerCostPaise + e.employerCostPaise,
+      netPaise: acc.netPaise + e.netPaise,
+    }),
+    { headcount: 0, grossPaise: 0, deductionsPaise: 0, employerCostPaise: 0, netPaise: 0 },
+  );
+
+  return { run, company, employees, totals, versionChain };
+}
+
+/* ==================================================================
+   Figures of record — what a period actually paid
+   ================================================================== */
+
+/**
+ * The subset of a pay result that a payslip or register needs. Narrower
+ * than EmployeePayResult on purpose: a stored run keeps its lines and
+ * totals, not the transient scaffolding the engine used to derive them.
+ */
+export type PayFigures = {
+  employeeId: string;
+  name: string;
+  empCode: string;
+  paidDays: number;
+  totalDays: number;
+  lopDays: number;
+  lines: PayLine[];
+  grossPaise: number;
+  deductionsPaise: number;
+  employerCostPaise: number;
+  netPaise: number;
+  warnings: string[];
+};
+
+export type PeriodFigures = {
+  company: {
+    id: string;
+    name: string;
+    /* Taken from the run where there is one: a run records the basis it
+       was calculated on, which is the basis that period was actually paid
+       on even if the company setting has changed since. */
+    prorationBasis: string;
+    roundingMode: string;
+  };
+  results: PayFigures[];
+  totals: RunTotals;
+  /** When these figures were fixed; for a preview, today. */
+  asOf: string;
+  /**
+   * "run" — read back from a calculated run: these are the figures of
+   * record, the ones the bank file paid and the returns reported.
+   * "preview" — nothing has been calculated for this period yet, so this
+   * is a projection off today's inputs and will move if they move.
+   */
+  source: "run" | "preview";
+  run: {
+    id: string;
+    version: number;
+    status: string;
+    calculatedAt: string | null;
+  } | null;
+};
+
+/**
+ * The figures for a period, preferring what was actually calculated.
+ *
+ * Payslips and the register used to recompute from live master data every
+ * time they were opened. That silently rewrote history: correcting
+ * attendance, or adding an incentive, after a run was calculated moved
+ * the payslip while the bank file and the statutory returns — which read
+ * the stored run — did not. The employee's payslip and the money that
+ * reached their account disagreed.
+ *
+ * So a calculated run wins. Preview is only for a period nobody has run
+ * yet, and the caller is told which it got so it can say so on screen.
+ */
+export async function loadPeriodFigures(args: {
+  companyId: string;
+  year: number;
+  month: number;
+}): Promise<PeriodFigures | null> {
+  const [company] = await db
+    .select()
+    .from(s.companies)
+    .where(eq(s.companies.id, args.companyId))
+    .limit(1);
+  if (!company) return null;
+
+  const [run] = await db
+    .select()
+    .from(s.payrollRuns)
+    .where(
+      and(
+        eq(s.payrollRuns.companyId, args.companyId),
+        eq(s.payrollRuns.periodYear, args.year),
+        eq(s.payrollRuns.periodMonth, args.month),
+      ),
+    )
+    .orderBy(desc(s.payrollRuns.version))
+    .limit(1);
+
+  if (!run) {
+    const preview = await previewRun(args);
+    if (!preview) return null;
+    return {
+      company: {
+        id: company.id,
+        name: company.name,
+        prorationBasis: company.prorationBasis,
+        roundingMode: company.roundingMode,
+      },
+      results: preview.results,
+      totals: preview.totals,
+      asOf: preview.asOf,
+      source: "preview",
+      run: null,
+    };
+  }
+
+  // Two bulk reads for the whole run — never one query per employee.
+  const [summaries, lines, emps] = await Promise.all([
+    db
+      .select()
+      .from(s.payrollEmployeeSummaries)
+      .where(eq(s.payrollEmployeeSummaries.runId, run.id)),
+    db
+      .select()
+      .from(s.payrollLines)
+      .where(eq(s.payrollLines.runId, run.id))
+      .orderBy(asc(s.payrollLines.sequence)),
+    db
+      .select({
+        id: s.employees.id,
+        empCode: s.employees.empCode,
+        firstName: s.employees.firstName,
+        lastName: s.employees.lastName,
+      })
+      .from(s.employees)
+      .where(eq(s.employees.companyId, args.companyId)),
+  ]);
+
+  const empById = new Map(emps.map((e) => [e.id, e]));
+  const linesByEmployee = new Map<string, PayLine[]>();
+  for (const l of lines) {
+    const list = linesByEmployee.get(l.employeeId) ?? [];
+    list.push({
+      code: l.code,
+      label: l.label,
+      kind: l.kind,
+      category: l.category ?? undefined,
+      amountPaise: l.amountPaise,
+      basis: l.basis ?? "",
+    });
+    linesByEmployee.set(l.employeeId, list);
+  }
+
+  const results: PayFigures[] = summaries
+    .map((sm) => {
+      const e = empById.get(sm.employeeId);
+      return {
+        employeeId: sm.employeeId,
+        name: e ? `${e.firstName} ${e.lastName}` : "Unknown",
+        empCode: e?.empCode ?? "",
+        paidDays: sm.paidDays,
+        totalDays: sm.totalDays,
+        lopDays: sm.lopDays,
+        lines: linesByEmployee.get(sm.employeeId) ?? [],
+        grossPaise: sm.grossPaise,
+        deductionsPaise: sm.deductionsPaise,
+        employerCostPaise: sm.employerCostPaise,
+        netPaise: sm.netPaise,
+        // Findings belong to the calculation, not to the stored figures.
+        warnings: [],
+      };
+    })
+    .sort((a, b) => b.grossPaise - a.grossPaise);
+
+  return {
+    company: {
+      id: company.id,
+      name: company.name,
+      prorationBasis: run.prorationBasis,
+      roundingMode: company.roundingMode,
+    },
+    results,
+    totals: summariseRun(results),
+    asOf: run.calculatedAt ?? run.createdAt,
+    source: "run",
+    run: {
+      id: run.id,
+      version: run.version,
+      status: run.status,
+      calculatedAt: run.calculatedAt,
+    },
+  };
+}

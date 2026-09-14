@@ -1,0 +1,336 @@
+import { currentPeriod } from "@/lib/clock";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { and, asc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import * as s from "@/db/schema";
+import { listCompanies } from "@/lib/payroll/load";
+import { formatINR } from "@/lib/payroll/money";
+import {
+  getSessionUser,
+  canSeeCompensation,
+  canAccessCompany,
+  canMutate,
+  scopeCompanies,
+} from "@/lib/auth/session";
+import {
+  PageHeader,
+  Card,
+  StatCard,
+  Select,
+  Input,
+  FilterBar,
+  FilterField,
+  Badge,
+  EmptyState,
+  Tabs,
+  TabLink,
+  Table,
+  THead,
+  TH,
+  TBody,
+  TR,
+  TD,
+} from "@/components/console/ui";
+import {
+  AddVariablePayForm,
+  BulkVariablePayForm,
+  EditVariablePayForm,
+  RemoveVariablePayForm,
+} from "./forms";
+
+export const metadata = { title: "Variable pay" };
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const CATEGORY_LABEL: Record<string, string> = {
+  ot: "Overtime",
+  bonus: "Bonus",
+  incentive: "Incentive",
+  arrear: "Arrears",
+  deduction: "Deduction",
+  other: "Other",
+};
+
+const CATEGORY_TONE = {
+  ot: "indigo",
+  bonus: "teal",
+  incentive: "teal",
+  arrear: "brass",
+  deduction: "rust",
+  other: "neutral",
+} as const;
+
+/**
+ * Everything that changes an employee's pay for one month and is not
+ * their salary structure: overtime, bonus, incentive, ad-hoc deduction.
+ *
+ * These used to be scattered — incentives sat under an Attendance tab and
+ * overtime did not exist at all — which left no answer to "where do I
+ * enter this month's extras". They are one table and one form here.
+ */
+export default async function VariablePayPage(
+  props: PageProps<"/console/payroll/inputs">,
+) {
+  const user = (await getSessionUser())!;
+  if (!canSeeCompensation(user)) redirect("/console?denied=payroll");
+
+  const sp = await props.searchParams;
+  const companies = scopeCompanies(user, await listCompanies());
+  const requested = typeof sp.company === "string" ? sp.company : null;
+  const companyId =
+    requested && canAccessCompany(user, requested) ? requested : companies[0]?.id;
+  if (!companyId) redirect("/console");
+
+  const period = currentPeriod();
+  const year = Number(sp.year) || period.year;
+  const month = Number(sp.month) || period.month;
+
+  const [company] = await db
+    .select()
+    .from(s.companies)
+    .where(eq(s.companies.id, companyId))
+    .limit(1);
+
+  const employees = await db
+    .select({
+      id: s.employees.id,
+      firstName: s.employees.firstName,
+      lastName: s.employees.lastName,
+      empCode: s.employees.empCode,
+    })
+    .from(s.employees)
+    .where(and(eq(s.employees.companyId, companyId), eq(s.employees.status, "active")))
+    .orderBy(asc(s.employees.empCode));
+  const nameById = new Map(employees.map((e) => [e.id, e]));
+
+  const rows = await db
+    .select()
+    .from(s.payrollAdjustments)
+    .where(
+      and(
+        eq(s.payrollAdjustments.periodYear, year),
+        eq(s.payrollAdjustments.periodMonth, month),
+      ),
+    );
+  // Only this company's people.
+  const adjustments = rows
+    .filter((a) => nameById.has(a.employeeId))
+    .sort((a, b) => a.category.localeCompare(b.category));
+
+  const canAct = canMutate(user);
+  const totalBy = (category: string) =>
+    adjustments.filter((a) => a.category === category).reduce((x, a) => x + a.amountPaise, 0);
+
+  const earnings = adjustments
+    .filter((a) => a.kind === "earning")
+    .reduce((x, a) => x + a.amountPaise, 0);
+  const deductions = adjustments
+    .filter((a) => a.kind === "deduction")
+    .reduce((x, a) => x + a.amountPaise, 0);
+
+  const q = `company=${companyId}&year=${year}&month=${month}`;
+  const mode = sp.mode === "bulk" ? "bulk" : "one";
+
+  const payTypes = await db
+    .select()
+    .from(s.variablePayTypes)
+    .where(
+      and(
+        eq(s.variablePayTypes.companyId, companyId),
+        eq(s.variablePayTypes.active, true),
+        // Arrears are raised by a salary revision, never picked here.
+        eq(s.variablePayTypes.systemManaged, false),
+      ),
+    )
+    .orderBy(asc(s.variablePayTypes.category), asc(s.variablePayTypes.label));
+
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        eyebrow="Payroll"
+        title="Variable pay"
+        description={`${company?.name ?? ""} · ${MONTHS[month - 1]} ${year}`}
+        actions={
+          <FilterBar action="/console/payroll/inputs" mode="switch">
+            {companies.length > 1 && (
+              <FilterField label="Company" showLabel={false}>
+                <Select name="company" defaultValue={companyId} className="w-40">
+                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </Select>
+              </FilterField>
+            )}
+            <FilterField label="Month" showLabel={false}>
+              <Select name="month" defaultValue={String(month)} className="w-36">
+                {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              </Select>
+            </FilterField>
+            <FilterField label="Year" showLabel={false}>
+              <Input name="year" defaultValue={year} className="tnum w-20" />
+            </FilterField>
+          </FilterBar>
+        }
+      />
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="Overtime" value={formatINR(totalBy("ot"))} />
+        <StatCard label="Bonus" value={formatINR(totalBy("bonus"))} />
+        <StatCard label="Incentive" value={formatINR(totalBy("incentive"))} />
+        <StatCard
+          label="Deductions"
+          value={formatINR(deductions)}
+          hint={`Net effect ${formatINR(earnings - deductions)}`}
+        />
+      </div>
+
+      {canAct && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
+            <span className="label text-ink-2">Add for {MONTHS[month - 1]} {year}</span>
+            <div className="flex items-center gap-3">
+              <Link href="/console/settings/master-data?tab=variable" className="label text-brass hover:underline">
+                Pay types →
+              </Link>
+              <Link href={`/console/settings/companies/${companyId}`} className="label text-brass hover:underline">
+                Overtime rate →
+              </Link>
+            </div>
+          </div>
+          <div className="px-4 pt-3">
+            <Tabs>
+              <TabLink href={`/console/payroll/inputs?${q}`} active={mode === "one"}>
+                One employee
+              </TabLink>
+              <TabLink href={`/console/payroll/inputs?${q}&mode=bulk`} active={mode === "bulk"}>
+                Many at once
+              </TabLink>
+            </Tabs>
+          </div>
+          <div className="p-4">
+            {mode === "bulk" ? (
+              <BulkVariablePayForm
+                companyId={companyId}
+                year={year}
+                month={month}
+                types={payTypes.map((t) => ({
+                  id: t.id,
+                  code: t.code,
+                  label: t.label,
+                  category: t.category,
+                  defaultAmountPaise: t.defaultAmountPaise,
+                }))}
+                otRatePaisePerHour={company?.otRatePaisePerHour ?? null}
+                employees={employees.map((e) => ({
+                  id: e.id,
+                  name: `${e.firstName} ${e.lastName}`,
+                  empCode: e.empCode,
+                }))}
+              />
+            ) : (
+              <AddVariablePayForm
+                companyId={companyId}
+                year={year}
+                month={month}
+                types={payTypes.map((t) => ({
+                  id: t.id,
+                  code: t.code,
+                  label: t.label,
+                  category: t.category,
+                  defaultAmountPaise: t.defaultAmountPaise,
+                }))}
+                otRatePaisePerHour={company?.otRatePaisePerHour ?? null}
+                employees={employees.map((e) => ({
+                  id: e.id,
+                  name: `${e.firstName} ${e.lastName}`,
+                  empCode: e.empCode,
+                }))}
+              />
+            )}
+          </div>
+        </Card>
+      )}
+
+      <Card padded={false}>
+        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
+          <span className="label text-ink-2">Entered this period</span>
+          <Link href={`/console/payroll?${q}`} className="label text-brass hover:underline">
+            Register →
+          </Link>
+        </div>
+        {adjustments.length === 0 ? (
+          <EmptyState
+            title="Nothing entered for this period"
+            description="Overtime, bonus, incentives and ad-hoc deductions added here are folded in the next time this period is calculated."
+          />
+        ) : (
+          <Table className="border-0 rounded-none">
+            <THead>
+              <TH>Employee</TH>
+              <TH>Type</TH>
+              <TH>Label</TH>
+              <TH className="text-right">Hours</TH>
+              <TH className="text-right">Rate</TH>
+              <TH className="text-right">Amount</TH>
+              <TH>Reason</TH>
+              {canAct && <TH>&nbsp;</TH>}
+            </THead>
+            <TBody>
+              {adjustments.map((a) => {
+                const emp = nameById.get(a.employeeId);
+                return (
+                  <TR key={a.id}>
+                    <TD className="whitespace-nowrap">
+                      {emp ? `${emp.firstName} ${emp.lastName}` : a.employeeId}
+                      {emp && <span className="block font-mono text-xs text-ink-3">{emp.empCode}</span>}
+                    </TD>
+                    <TD>
+                      <Badge tone={CATEGORY_TONE[a.category] ?? "neutral"}>
+                        {CATEGORY_LABEL[a.category] ?? a.category}
+                      </Badge>
+                    </TD>
+                    <TD>{a.label}</TD>
+                    <TD className="text-right font-mono tnum text-ink-2">
+                      {a.hours ? a.hours.toFixed(1) : "—"}
+                    </TD>
+                    <TD className="text-right font-mono tnum text-ink-2">
+                      {a.ratePaisePerHour ? formatINR(a.ratePaisePerHour) : "—"}
+                    </TD>
+                    <TD className={`text-right font-mono tnum font-medium ${a.kind === "deduction" ? "text-rust" : ""}`}>
+                      {a.kind === "deduction" ? "−" : ""}
+                      {formatINR(a.amountPaise)}
+                    </TD>
+                    <TD className="text-ink-2 max-w-[16rem] truncate" title={a.reason ?? undefined}>
+                      {a.reason ?? "—"}
+                    </TD>
+                    {canAct && (
+                      <TD className="whitespace-nowrap text-right">
+                        {a.category !== "arrear" && (
+                          <EditVariablePayForm
+                            entry={{
+                              id: a.id,
+                              label: a.label,
+                              category: a.category,
+                              amountPaise: a.amountPaise,
+                              hours: a.hours,
+                              ratePaisePerHour: a.ratePaisePerHour,
+                              reason: a.reason,
+                              employeeName: emp ? `${emp.firstName} ${emp.lastName}` : a.employeeId,
+                            }}
+                          />
+                        )}
+                        <RemoveVariablePayForm id={a.id} />
+                      </TD>
+                    )}
+                  </TR>
+                );
+              })}
+            </TBody>
+          </Table>
+        )}
+      </Card>
+    </div>
+  );
+}

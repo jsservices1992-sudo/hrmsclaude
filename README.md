@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lekha
 
-## Getting Started
+Indian payroll and HRMS — employee master, attendance and leave, payroll runs
+with statutory deductions, income tax, loans and advances, full-and-final
+settlement, banking files, and an employee self-service portal.
 
-First, run the development server:
+## Requirements
+
+- Node 20+
+- A libSQL database ([Turso](https://turso.tech)) for any deployment. A local
+  file is used automatically in development.
+
+## Development
 
 ```bash
+npm install
+npm run db:push          # create the schema in ./data/lekha.db
+ADMIN_EMAIL=you@example.com ADMIN_NAME="Your Name" \
+  COMPANY_NAME="Your Company Private Limited" npm run db:bootstrap
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`db:bootstrap` creates the first company and administrator and prints a
+generated password once. There is no demo data and no default account.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Configuration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` and fill it in. In production `DATABASE_URL` is required —
+the app refuses to open a file-backed database there, because a serverless
+filesystem does not survive a redeploy.
 
-## Learn More
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | libSQL/Turso URL. Required in production. |
+| `DATABASE_AUTH_TOKEN` | Turso auth token. |
+| `DATABASE_PATH` | Development only, when `DATABASE_URL` is unset. |
+| `UPLOAD_ROOT` | Where uploaded documents are written. |
 
-To learn more about Next.js, take a look at the following resources:
+## Deploying to Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Create a Turso database and set `DATABASE_URL` and `DATABASE_AUTH_TOKEN`
+   in the Vercel project's environment variables.
+2. Push the schema at it: `DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:push`
+3. Deploy.
+4. Bootstrap the first administrator against the same database:
+   `DATABASE_URL=… DATABASE_AUTH_TOKEN=… ADMIN_EMAIL=… ADMIN_NAME=… COMPANY_NAME=… npm run db:bootstrap`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Known blockers before real use
 
-## Deploy on Vercel
+These are deliberate, documented gaps rather than oversights. Read them before
+putting anyone's payroll in here.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Document storage is on the local filesystem.** `lib/storage/disk.ts` writes
+  uploads to disk. On Vercel that disk is ephemeral, so every PAN card,
+  cancelled cheque and investment proof is lost on the next deploy. This must
+  move to object storage before documents are uploaded in production.
+- **No email.** There is no password reset, no invitation and no notification.
+  An administrator issues passwords from Settings → Accounts and hands them
+  over directly.
+- **Tax and statutory configuration is unverified.** `TAX_CONFIG_VERIFIED` is
+  `false`; the ECR and ESIC return formats are also flagged unverified. The
+  figures are development placeholders and have not been checked against the
+  Finance Act or signed off by a chartered accountant.
+- **Tax configuration covers FY 2026-27 only.** Tax cannot be computed in a
+  financial year with no dated entry in `lib/tax/config.ts`. This is
+  deliberate — silently reusing last year's slabs is worse than refusing.
+- **Login throttling is in-process**, so it does not survive a restart or apply
+  across instances. A shared store is needed for a real deployment.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Commands
+
+```bash
+npm run dev              # development server
+npm run build            # production build
+npm run db:push          # apply the schema
+npm run db:bootstrap     # create the first company and administrator
+npx tsc --noEmit -p .    # typecheck
+npx tsx --test "lib/**/*.test.ts"   # unit tests
+npx eslint .             # lint
+```
+
+## Architecture notes
+
+- **Money is always integer paise.** No floating point anywhere in a
+  calculation that reaches a payslip.
+- **Business logic is pure and tested**; `lib/` holds the rules, Server Actions
+  are thin wrappers over them.
+- **Historical figures are immutable.** An approved run is the figure of
+  record; corrections are versioned revisions and arrears, never edits.
+- **The audit and access logs are append-only**, enforced by database triggers
+  rather than by application convention.
+- **Every query is asynchronous**, including inside transactions. The
+  type-aware `no-floating-promises` lint rule is load-bearing: an un-awaited
+  write inside a transaction is one the commit does not wait for.
