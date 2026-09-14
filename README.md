@@ -59,6 +59,16 @@ filesystem does not survive a redeploy.
 5. Bootstrap the first administrator against the same database:
    `DATABASE_URL=… DATABASE_AUTH_TOKEN=… ADMIN_EMAIL=… ADMIN_NAME=… COMPANY_NAME=… npm run db:bootstrap`
 
+### If a deployment comes up blank
+
+`GET /api/health` reports which piece is missing — whether the database and
+Blob store are configured, whether the database answers, and whether the
+schema has been pushed at it. It reports presence, never values.
+
+A 500 on sign-in or registration with pages that otherwise render is almost
+always an unset `DATABASE_URL`: the pages do not touch the database until
+something is submitted.
+
 ### Known blockers before real use
 
 These are deliberate, documented gaps rather than oversights. Read them before

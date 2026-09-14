@@ -51,10 +51,15 @@ function createDb() {
 let connection: ReturnType<typeof createDb> | undefined = globalThis.__lekhaDb;
 
 export const db = new Proxy({} as ReturnType<typeof createDb>, {
-  get(_target, prop, receiver) {
+  get(_target, prop) {
     connection ??= createDb();
     if (process.env.NODE_ENV !== "production") globalThis.__lekhaDb = connection;
-    return Reflect.get(connection, prop, receiver);
+    const value = Reflect.get(connection, prop) as unknown;
+    /* Bound to the real connection, not to this proxy. A method read
+       through a proxy and then called would otherwise run with `this`
+       set to the proxy, and anything the driver does internally with
+       `this` would re-enter the trap. */
+    return typeof value === "function" ? value.bind(connection) : value;
   },
 });
 
