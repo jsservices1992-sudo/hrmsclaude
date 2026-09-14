@@ -43,7 +43,10 @@ filesystem does not survive a redeploy.
    in the Vercel project's environment variables.
 2. Connect a Vercel Blob store to the project; it sets
    `BLOB_READ_WRITE_TOKEN` for you.
-3. Push the schema at it: `DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:push`
+3. Push the schema at it, from your machine:
+   `DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:push`
+   (`drizzle.config.ts` switches to the Turso dialect when `DATABASE_URL`
+   is set, and uses a local file otherwise.)
 4. Deploy.
 5. Bootstrap the first administrator against the same database:
    `DATABASE_URL=… DATABASE_AUTH_TOKEN=… ADMIN_EMAIL=… ADMIN_NAME=… COMPANY_NAME=… npm run db:bootstrap`
