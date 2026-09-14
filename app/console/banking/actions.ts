@@ -118,8 +118,7 @@ export async function generateBankFile(
       .from(s.bankFiles)
       .where(
         and(eq(s.bankFiles.runId, payments.run.id), eq(s.bankFiles.status, "active")),
-      )
-      .all();
+      );
 
     for (const old of outstanding) {
       await tx.update(s.bankFiles)
@@ -129,8 +128,7 @@ export async function generateBankFile(
           supersededReason:
             "A newer file was generated for this run. Do not upload this one.",
         })
-        .where(eq(s.bankFiles.id, old.id))
-        .run();
+        .where(eq(s.bankFiles.id, old.id));
     }
 
     await tx.insert(s.bankFiles)
@@ -149,8 +147,7 @@ export async function generateBankFile(
         supersededReason: null,
         generatedBy: user.email,
         generatedAt: now,
-      })
-      .run();
+      });
 
     for (const i of payments.paymentRun.instructions) {
       await tx.insert(s.paymentInstructions)
@@ -166,8 +163,7 @@ export async function generateBankFile(
           failureReason: null,
           requeued: false,
           respondedAt: null,
-        })
-        .run();
+        });
     }
 
     return outstanding.length;
@@ -409,11 +405,10 @@ export async function postProvisions(
           eq(s.provisionBalances.periodYear, year),
           eq(s.provisionBalances.periodMonth, month),
         ),
-      )
-      .run();
+      );
 
     for (const row of rows) {
-      await tx.insert(s.provisionBalances).values(row).run();
+      await tx.insert(s.provisionBalances).values(row);
     }
   });
 

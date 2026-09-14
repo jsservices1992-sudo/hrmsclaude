@@ -7,14 +7,16 @@ settlement, banking files, and an employee self-service portal.
 ## Requirements
 
 - Node 20+
-- A libSQL database ([Turso](https://turso.tech)) for any deployment. A local
-  file is used automatically in development.
+- A PostgreSQL database. [Render](https://render.com) is what these
+  instructions assume; any managed Postgres works.
 
 ## Development
 
 ```bash
 npm install
-npm run db:push          # create the schema in ./data/lekha.db
+# a local Postgres, e.g. docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=dev postgres:16
+export DATABASE_URL="postgresql://postgres:dev@localhost:5432/postgres"
+npm run db:push && npm run db:triggers
 ADMIN_EMAIL=you@example.com ADMIN_NAME="Your Name" \
   COMPANY_NAME="Your Company Private Limited" npm run db:bootstrap
 npm run dev
@@ -36,28 +38,27 @@ filesystem does not survive a redeploy.
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | libSQL/Turso URL. Required in production. |
-| `DATABASE_AUTH_TOKEN` | Turso auth token. |
-| `DATABASE_PATH` | Development only, when `DATABASE_URL` is unset. |
+| `DATABASE_URL` | PostgreSQL connection string. Required everywhere. |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob store. Required in production. |
 | `UPLOAD_ROOT` | Development only, when the Blob store is unset. |
 | `SIGNUP_ENABLED` | Set to `false` to close self-serve registration. |
 
 ## Deploying to Vercel
 
-1. Create a Turso database and set `DATABASE_URL` and `DATABASE_AUTH_TOKEN`
-   in the Vercel project's environment variables.
+1. Create a PostgreSQL database on Render, then copy its **External
+   Database URL** into the Vercel project as `DATABASE_URL`. The internal
+   URL only resolves inside Render's own network.
 2. Connect a Vercel Blob store to the project; it sets
    `BLOB_READ_WRITE_TOKEN` for you.
 3. Push the schema at it, from your machine:
-   `DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:push`
-   then `npm run db:triggers` with the same variables — `db:push` creates
-   tables but not the triggers that keep the audit log append-only.
+   `DATABASE_URL=… npm run db:push && npm run db:triggers`
+   — `db:push` creates tables but not the triggers that keep the audit
+   log append-only.
    (`drizzle.config.ts` switches to the Turso dialect when `DATABASE_URL`
    is set, and uses a local file otherwise.)
 4. Deploy.
 5. Bootstrap the first administrator against the same database:
-   `DATABASE_URL=… DATABASE_AUTH_TOKEN=… ADMIN_EMAIL=… ADMIN_NAME=… COMPANY_NAME=… npm run db:bootstrap`
+   `DATABASE_URL=… ADMIN_EMAIL=… ADMIN_NAME=… COMPANY_NAME=… npm run db:bootstrap`
 
 ### If a deployment comes up blank
 
@@ -101,8 +102,10 @@ npx eslint .             # lint
 
 ## Architecture notes
 
-- **Money is always integer paise.** No floating point anywhere in a
-  calculation that reaches a payslip.
+- **Money is always integer paise, stored as `bigint`.** No floating point
+  anywhere in a calculation that reaches a payslip — and not 32-bit
+  `integer` either, which caps at about ₹2.14 crore and would wrap
+  silently on a large annual total.
 - **Business logic is pure and tested**; `lib/` holds the rules, Server Actions
   are thin wrappers over them.
 - **Historical figures are immutable.** An approved run is the figure of

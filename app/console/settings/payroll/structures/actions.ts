@@ -279,12 +279,10 @@ export async function setDefaultStructure(
   await db.transaction(async (tx) => {
     await tx.update(s.salaryStructures)
       .set({ isDefault: false })
-      .where(and(eq(s.salaryStructures.companyId, companyId), eq(s.salaryStructures.isDefault, true)))
-      .run();
+      .where(and(eq(s.salaryStructures.companyId, companyId), eq(s.salaryStructures.isDefault, true)));
     await tx.update(s.salaryStructures)
       .set({ isDefault: true })
-      .where(eq(s.salaryStructures.id, structureId))
-      .run();
+      .where(eq(s.salaryStructures.id, structureId));
   });
 
   await audit({

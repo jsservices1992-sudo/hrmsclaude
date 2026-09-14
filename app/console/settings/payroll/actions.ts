@@ -233,8 +233,7 @@ export async function updateStatutoryParam(
     if (current) {
       await tx.update(s.statutoryParams)
         .set({ effectiveTo: dayBefore })
-        .where(eq(s.statutoryParams.id, current.id))
-        .run();
+        .where(eq(s.statutoryParams.id, current.id));
     }
     await tx.insert(s.statutoryParams)
       .values({
@@ -245,8 +244,7 @@ export async function updateStatutoryParam(
         effectiveFrom,
         effectiveTo: null,
         note: current?.note ?? null,
-      })
-      .run();
+      });
   });
 
   await audit({

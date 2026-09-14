@@ -258,12 +258,12 @@ export async function saveShift(_prev: MasterState, fd: FormData): Promise<Maste
 
   await db.transaction(async (tx) => {
     if (isDefault) {
-      await tx.update(s.shifts).set({ isDefault: false }).where(eq(s.shifts.companyId, companyId)).run();
+      await tx.update(s.shifts).set({ isDefault: false }).where(eq(s.shifts.companyId, companyId));
     }
     if (id) {
-      await tx.update(s.shifts).set(values).where(eq(s.shifts.id, id)).run();
+      await tx.update(s.shifts).set(values).where(eq(s.shifts.id, id));
     } else {
-      await tx.insert(s.shifts).values({ id: randomUUID(), companyId, ...values }).run();
+      await tx.insert(s.shifts).values({ id: randomUUID(), companyId, ...values });
     }
   });
 

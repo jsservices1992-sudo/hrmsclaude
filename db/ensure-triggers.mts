@@ -7,27 +7,30 @@
  * whose audit log an administrator could quietly edit. Idempotent, so
  * running it after every schema push costs nothing.
  *
- *   DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:triggers
+ *   DATABASE_URL=… npm run db:triggers
  */
 
-import { createClient } from "@libsql/client";
-import { createAuditTriggers, auditTriggersPresent, AUDIT_TRIGGERS } from "./triggers";
+import postgres from "postgres";
+import { createAuditTriggers, auditTriggersPresent, APPEND_ONLY_TABLES } from "./triggers";
 
-const url =
-  process.env.DATABASE_URL ?? `file:${process.env.DATABASE_PATH ?? "data/lekha.db"}`;
+const url = process.env.DATABASE_URL;
+if (!url) {
+  console.error("\n  Set DATABASE_URL to the database you are protecting.\n");
+  process.exit(1);
+}
 
-const client = createClient(
-  process.env.DATABASE_AUTH_TOKEN
-    ? { url, authToken: process.env.DATABASE_AUTH_TOKEN }
-    : { url },
-);
+const sql = postgres(url, {
+  max: 1,
+  ssl: url.includes("localhost") || url.includes("127.0.0.1") ? false : "require",
+  prepare: false,
+});
 
-await createAuditTriggers(client);
+await createAuditTriggers(sql);
 
-if (!(await auditTriggersPresent(client))) {
+if (!(await auditTriggersPresent(sql))) {
   console.error("\n  Triggers could not be created. The audit log is editable.\n");
   process.exit(1);
 }
 
-client.close();
-console.log(`  ${AUDIT_TRIGGERS.length} append-only triggers in place.`);
+await sql.end();
+console.log(`  ${APPEND_ONLY_TABLES.length} tables are append-only.`);

@@ -19,18 +19,17 @@
  */
 
 import { randomBytes, randomUUID } from "node:crypto";
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import * as s from "./schema";
 import { createAuditTriggers, auditTriggersPresent } from "./triggers";
 import { hashPassword } from "../lib/auth/password";
 
-/* Same connection rules as the application: a hosted database when
-   DATABASE_URL is set, otherwise a local file. Bootstrapping a
-   deployment means pointing this at the deployment's database. */
-const DB_URL =
-  process.env.DATABASE_URL ?? `file:${process.env.DATABASE_PATH ?? "data/lekha.db"}`;
+/* Bootstrapping a deployment means pointing this at that deployment's
+   database, so there is no local fallback to get wrong. */
+const DB_URL = process.env.DATABASE_URL;
+if (!DB_URL) fail("Set DATABASE_URL to the database you are bootstrapping.");
 
 const email = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
 const name = (process.env.ADMIN_NAME ?? "").trim();
@@ -48,11 +47,11 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
 if (!name) fail("Set ADMIN_NAME to the administrator's name.");
 if (!companyName) fail("Set COMPANY_NAME to the legal entity's name.");
 
-const client = createClient(
-  process.env.DATABASE_AUTH_TOKEN
-    ? { url: DB_URL, authToken: process.env.DATABASE_AUTH_TOKEN }
-    : { url: DB_URL },
-);
+const client = postgres(DB_URL, {
+  max: 1,
+  ssl: DB_URL.includes("localhost") || DB_URL.includes("127.0.0.1") ? false : "require",
+  prepare: false,
+});
 const db = drizzle(client, { schema: s });
 
 /* The audit and access logs are append-only, and that is enforced by
@@ -65,7 +64,7 @@ const db = drizzle(client, { schema: s });
 await createAuditTriggers(client);
 
 /* Bootstrapping twice would quietly mint a second administrator. */
-const existingUsers = await db.select({ id: s.users.id }).from(s.users).all();
+const existingUsers = await db.select({ id: s.users.id }).from(s.users);
 if (existingUsers.length > 0) {
   fail(
     `This database already has ${existingUsers.length} user(s). Bootstrap only runs on an empty instance — add further users from the console.`,
@@ -75,8 +74,7 @@ if (existingUsers.length > 0) {
 const clash = await db
   .select({ id: s.users.id })
   .from(s.users)
-  .where(eq(s.users.email, email))
-  .all();
+  .where(eq(s.users.email, email));
 if (clash.length > 0) fail("That email address already has an account.");
 
 /* 18 random bytes, base64url: ~24 characters, no ambiguity about
@@ -112,8 +110,7 @@ await db.insert(s.companies)
     retroLopTreatment: "adjust_next_period",
     financialYearStartMonth: 4,
     createdAt: now,
-  })
-  .run();
+  });
 
 const userId = randomUUID();
 await db.insert(s.users)
@@ -128,8 +125,7 @@ await db.insert(s.users)
     compensationScope: "all",
     active: true,
     createdAt: now,
-  })
-  .run();
+  });
 
 await db.insert(s.auditLog)
   .values({
@@ -142,14 +138,13 @@ await db.insert(s.auditLog)
     before: null,
     after: JSON.stringify({ company: companyName, admin: email, role: "admin" }),
     reason: "First administrator created by db:bootstrap",
-  })
-  .run();
+  });
 
 if (!(await auditTriggersPresent(client))) {
   fail("Audit triggers could not be created — refusing to hand over an instance whose audit log is editable.");
 }
 
-client.close();
+await client.end();
 
 console.log(`
   Instance ready.

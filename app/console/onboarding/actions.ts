@@ -167,8 +167,7 @@ export async function createJoiner(
         hadPriorPfMembership: false,
         createdBy: user.email,
         createdAt: now,
-      })
-      .run();
+      });
 
     /* A `forEach` with an async body does not wait for anything — the
        transaction would commit while these inserts were still in flight.
@@ -184,8 +183,7 @@ export async function createJoiner(
           mandatory: doc.mandatory,
           status: "pending",
           sequence: i,
-        })
-        .run();
+        });
     }
 
     for (const decl of DECLARATIONS) {
@@ -195,8 +193,7 @@ export async function createJoiner(
           joinerId: id,
           form: decl.form,
           status: "pending",
-        })
-        .run();
+        });
     }
 
     for (const [i, t] of PROVISIONING_TASKS.entries()) {
@@ -209,8 +206,7 @@ export async function createJoiner(
           dueOffsetDays: t.dueOffsetDays,
           status: "pending",
           sequence: i,
-        })
-        .run();
+        });
     }
   });
 
@@ -679,8 +675,7 @@ export async function convertJoiner(
       const [seq] = await tx
         .select()
         .from(s.idSequences)
-        .where(eq(s.idSequences.companyId, j.companyId))
-        .all();
+        .where(eq(s.idSequences.companyId, j.companyId));
 
       const scheme = seq ?? {
         id: randomUUID(),
@@ -691,16 +686,15 @@ export async function convertJoiner(
         includeBranchCode: true,
       };
 
-      const [branch] = await tx.select().from(s.branches).where(eq(s.branches.id, j.branchId!)).all();
+      const [branch] = await tx.select().from(s.branches).where(eq(s.branches.id, j.branchId!));
       allocatedCode = formatEmployeeCode(scheme, branch?.code ?? branch?.stateCode ?? "");
 
       if (seq) {
         await tx.update(s.idSequences)
           .set({ nextValue: seq.nextValue + 1 })
-          .where(eq(s.idSequences.id, seq.id))
-          .run();
+          .where(eq(s.idSequences.id, seq.id));
       } else {
-        await tx.insert(s.idSequences).values({ ...scheme, nextValue: 2 }).run();
+        await tx.insert(s.idSequences).values({ ...scheme, nextValue: 2 });
       }
 
       await tx.insert(s.employees)
@@ -737,8 +731,7 @@ export async function convertJoiner(
           taxRegime: "new",
           bankAccount: j.bankAccount,
           ifsc: j.ifsc,
-        })
-        .run();
+        });
 
       if (pay) {
         await tx.insert(s.employeeSalaries)
@@ -754,8 +747,7 @@ export async function convertJoiner(
             revisionType: "initial",
             createdBy: user.email,
             createdAt: now,
-          })
-          .run();
+          });
       }
 
       await tx.update(s.joiners)
@@ -766,8 +758,7 @@ export async function convertJoiner(
           // Burn the portal token — the candidate is now an employee.
           portalTokenExpiresAt: now,
         })
-        .where(eq(s.joiners.id, joinerId))
-        .run();
+        .where(eq(s.joiners.id, joinerId));
     });
   } catch (e) {
     return {

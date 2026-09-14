@@ -99,11 +99,10 @@ export async function calculateRun(
   await db.transaction(async (tx) => {
     if (latest) {
       // Replacing an unapproved calculation — clear its lines, keep the row.
-      await tx.delete(s.payrollLines).where(eq(s.payrollLines.runId, latest.id)).run();
+      await tx.delete(s.payrollLines).where(eq(s.payrollLines.runId, latest.id));
       await tx.delete(s.payrollEmployeeSummaries)
-        .where(eq(s.payrollEmployeeSummaries.runId, latest.id))
-        .run();
-      await tx.delete(s.payrollRuns).where(eq(s.payrollRuns.id, latest.id)).run();
+        .where(eq(s.payrollEmployeeSummaries.runId, latest.id));
+      await tx.delete(s.payrollRuns).where(eq(s.payrollRuns.id, latest.id));
     }
 
     await tx.insert(s.payrollRuns)
@@ -121,8 +120,7 @@ export async function calculateRun(
         calculatedAt: now,
         approvedAt: null,
         createdAt: now,
-      })
-      .run();
+      });
 
     for (const r of preview.results) {
       await tx.insert(s.payrollEmployeeSummaries)
@@ -137,8 +135,7 @@ export async function calculateRun(
           deductionsPaise: r.deductionsPaise,
           employerCostPaise: r.employerCostPaise,
           netPaise: r.netPaise,
-        })
-        .run();
+        });
 
       /* A `forEach` with an async body awaits nothing, so the
          transaction would commit with these lines still in flight. */
@@ -155,8 +152,7 @@ export async function calculateRun(
             amountPaise: l.amountPaise,
             basis: l.basis,
             sequence: i,
-          })
-          .run();
+          });
       }
     }
 
@@ -172,8 +168,7 @@ export async function calculateRun(
             eq(s.esicCoverage.financialYear, financialYear),
             eq(s.esicCoverage.period, period),
           ),
-        )
-        .all();
+        );
       if (existing.length === 0) {
         await tx.insert(s.esicCoverage)
           .values({
@@ -184,8 +179,7 @@ export async function calculateRun(
             covered: r.esicCoveredNextPeriod,
             decidedOnWagePaise: r.grossPaise,
             decidedAt: now,
-          })
-          .run();
+          });
       }
     }
   });
@@ -306,8 +300,7 @@ export async function approveRun(
         approvedBy: user.email,
         approvedAt: new Date().toISOString(),
       })
-      .where(eq(s.payrollRuns.id, runId))
-      .run();
+      .where(eq(s.payrollRuns.id, runId));
 
     return await bookRecoveriesForRun(tx, {
       runId,
@@ -441,8 +434,7 @@ export async function reopenRun(
         reopenReason: reason,
         supersedesVersion: run.version,
         createdAt: now,
-      })
-      .run();
+      });
 
     for (const r of preview.results) {
       await tx.insert(s.payrollEmployeeSummaries)
@@ -457,8 +449,7 @@ export async function reopenRun(
           deductionsPaise: r.deductionsPaise,
           employerCostPaise: r.employerCostPaise,
           netPaise: r.netPaise,
-        })
-        .run();
+        });
       /* A `forEach` with an async body awaits nothing, so the
          transaction would commit with these lines still in flight. */
       for (const [i, l] of r.lines.entries()) {
@@ -474,8 +465,7 @@ export async function reopenRun(
             amountPaise: l.amountPaise,
             basis: l.basis,
             sequence: i,
-          })
-          .run();
+          });
       }
     }
   });

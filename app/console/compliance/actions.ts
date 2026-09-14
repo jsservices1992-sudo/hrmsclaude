@@ -141,7 +141,7 @@ export async function addPtSlab(_prev: ComplianceState, fd: FormData): Promise<C
   await db.transaction(async (tx) => {
     for (const o of open) {
       if (o.effectiveFrom >= effectiveFrom) continue; // don't close something starting later
-      await tx.update(s.ptSlabs).set({ effectiveTo: dayBefore }).where(eq(s.ptSlabs.id, o.id)).run();
+      await tx.update(s.ptSlabs).set({ effectiveTo: dayBefore }).where(eq(s.ptSlabs.id, o.id));
     }
     await tx.insert(s.ptSlabs)
       .values({
@@ -156,8 +156,7 @@ export async function addPtSlab(_prev: ComplianceState, fd: FormData): Promise<C
         effectiveTo: null,
         verified: true,
         source,
-      })
-      .run();
+      });
   });
 
   await audit({
@@ -223,7 +222,7 @@ export async function addLwfRate(_prev: ComplianceState, fd: FormData): Promise<
   await db.transaction(async (tx) => {
     for (const o of open) {
       if (o.effectiveFrom >= effectiveFrom) continue;
-      await tx.update(s.lwfRates).set({ effectiveTo: dayBefore }).where(eq(s.lwfRates.id, o.id)).run();
+      await tx.update(s.lwfRates).set({ effectiveTo: dayBefore }).where(eq(s.lwfRates.id, o.id));
     }
     await tx.insert(s.lwfRates)
       .values({
@@ -237,8 +236,7 @@ export async function addLwfRate(_prev: ComplianceState, fd: FormData): Promise<
         effectiveTo: null,
         verified: true,
         source,
-      })
-      .run();
+      });
   });
 
   await audit({
@@ -283,7 +281,7 @@ export async function addStatutoryParam(_prev: ComplianceState, fd: FormData): P
   await db.transaction(async (tx) => {
     for (const o of open) {
       if (o.effectiveFrom >= effectiveFrom) continue;
-      await tx.update(s.statutoryParams).set({ effectiveTo: dayBefore }).where(eq(s.statutoryParams.id, o.id)).run();
+      await tx.update(s.statutoryParams).set({ effectiveTo: dayBefore }).where(eq(s.statutoryParams.id, o.id));
     }
     await tx.insert(s.statutoryParams)
       .values({
@@ -294,8 +292,7 @@ export async function addStatutoryParam(_prev: ComplianceState, fd: FormData): P
         effectiveFrom,
         effectiveTo: null,
         note,
-      })
-      .run();
+      });
   });
 
   await audit({

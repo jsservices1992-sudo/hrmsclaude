@@ -1,11 +1,13 @@
 import {
-  sqliteTable,
+  pgTable,
   text,
   integer,
+  bigint,
+  boolean,
   real,
   index,
   uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+} from "drizzle-orm/pg-core";
 
 /* ------------------------------------------------------------------
    Conventions
@@ -16,7 +18,7 @@ import {
      This is what makes historic runs reproducible (PRD FR-AUD-2).
    ------------------------------------------------------------------ */
 
-export const companies = sqliteTable("companies", {
+export const companies = pgTable("companies", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   legalName: text("legal_name").notNull(),
@@ -34,8 +36,8 @@ export const companies = sqliteTable("companies", {
   registeredCity: text("registered_city"),
   registeredStateCode: text("registered_state_code"),
   registeredPincode: text("registered_pincode"),
-  isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
-  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  isDefault: boolean("is_default").notNull().default(false),
+  active: boolean("active").notNull().default(true),
   /* Payroll conventions — PRD FR-SET-2/3/4 */
   prorationBasis: text("proration_basis", {
     enum: ["calendar_days", "fixed_30", "working_days", "standard_days"],
@@ -43,7 +45,7 @@ export const companies = sqliteTable("companies", {
     .notNull()
     .default("calendar_days"),
   standardDays: integer("standard_days").notNull().default(26),
-  sandwichRule: integer("sandwich_rule", { mode: "boolean" })
+  sandwichRule: boolean("sandwich_rule")
     .notNull()
     .default(false),
   roundingMode: text("rounding_mode", { enum: ["nearest", "up", "down"] })
@@ -51,18 +53,18 @@ export const companies = sqliteTable("companies", {
     .default("nearest"),
   /* Which levels rounding is applied at — FR-SET-4. Rounding every level
      makes components stop summing to gross, so this is deliberate. */
-  roundComponents: integer("round_components", { mode: "boolean" })
+  roundComponents: boolean("round_components")
     .notNull()
     .default(false),
-  roundGross: integer("round_gross", { mode: "boolean" }).notNull().default(false),
-  roundNet: integer("round_net", { mode: "boolean" }).notNull().default(true),
-  epfOnActualBasic: integer("epf_on_actual_basic", { mode: "boolean" })
+  roundGross: boolean("round_gross").notNull().default(false),
+  roundNet: boolean("round_net").notNull().default(true),
+  epfOnActualBasic: boolean("epf_on_actual_basic")
     .notNull()
     .default(false),
   /* What an overtime hour is worth, set by the administrator. Null means
      overtime has not been configured, and hours cannot be entered until
      it is — an OT amount with no agreed rate is not auditable. */
-  otRatePaisePerHour: integer("ot_rate_paise_per_hour"),
+  otRatePaisePerHour: bigint("ot_rate_paise_per_hour", { mode: "number" }),
   /* Payroll calendar defaults — FR-SET-1. */
   payDayConvention: text("pay_day_convention", {
     enum: ["last_calendar_day", "last_working_day", "fixed_date"],
@@ -91,7 +93,7 @@ export const companies = sqliteTable("companies", {
 });
 
 /** Disbursement and statutory remittance accounts — FR-PAY-1. */
-export const bankAccounts = sqliteTable(
+export const bankAccounts = pgTable(
   "bank_accounts",
   {
     id: text("id").primaryKey(),
@@ -110,8 +112,8 @@ export const bankAccounts = sqliteTable(
     })
       .notNull()
       .default("neft_generic"),
-    isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    isDefault: boolean("is_default").notNull().default(false),
+    active: boolean("active").notNull().default(true),
   },
   (t) => [index("bank_accounts_company_idx").on(t.companyId)],
 );
@@ -120,7 +122,7 @@ export const bankAccounts = sqliteTable(
  * Per-period calendar — FR-SET-1. Rows exist only where a company has
  * overridden its defaults for that month.
  */
-export const payrollCalendars = sqliteTable(
+export const payrollCalendars = pgTable(
   "payroll_calendars",
   {
     id: text("id").primaryKey(),
@@ -133,7 +135,7 @@ export const payrollCalendars = sqliteTable(
     inputFreeze: text("input_freeze").notNull(),
     approvalDeadline: text("approval_deadline").notNull(),
     payDate: text("pay_date").notNull(),
-    locked: integer("locked", { mode: "boolean" }).notNull().default(false),
+    locked: boolean("locked").notNull().default(false),
     note: text("note"),
   },
   (t) => [
@@ -145,7 +147,7 @@ export const payrollCalendars = sqliteTable(
  * Payroll groups — FR-SET-6. Membership is derived by rule, never
  * maintained by hand, so a transfer moves someone automatically.
  */
-export const payrollGroups = sqliteTable(
+export const payrollGroups = pgTable(
   "payroll_groups",
   {
     id: text("id").primaryKey(),
@@ -171,7 +173,7 @@ export const payrollGroups = sqliteTable(
  * setting", so a department can override just one convention without
  * having to restate all of them.
  */
-export const departmentPayrollOverrides = sqliteTable(
+export const departmentPayrollOverrides = pgTable(
   "department_payroll_overrides",
   {
     id: text("id").primaryKey(),
@@ -186,9 +188,9 @@ export const departmentPayrollOverrides = sqliteTable(
     }),
     standardDays: integer("standard_days"),
     roundingMode: text("rounding_mode", { enum: ["nearest", "up", "down"] }),
-    roundComponents: integer("round_components", { mode: "boolean" }),
-    roundGross: integer("round_gross", { mode: "boolean" }),
-    roundNet: integer("round_net", { mode: "boolean" }),
+    roundComponents: boolean("round_components"),
+    roundGross: boolean("round_gross"),
+    roundNet: boolean("round_net"),
     updatedBy: text("updated_by"),
     updatedAt: text("updated_at").notNull(),
   },
@@ -200,7 +202,7 @@ export const departmentPayrollOverrides = sqliteTable(
  * FR-MC-1 — PT and LWF registration numbers are held per state, not once
  * per company, because that is how the registrations actually work.
  */
-export const companyRegistrations = sqliteTable(
+export const companyRegistrations = pgTable(
   "company_registrations",
   {
     id: text("id").primaryKey(),
@@ -221,7 +223,7 @@ export const companyRegistrations = sqliteTable(
   ],
 );
 
-export const branches = sqliteTable(
+export const branches = pgTable(
   "branches",
   {
     id: text("id").primaryKey(),
@@ -243,20 +245,18 @@ export const branches = sqliteTable(
     esicCodeOverride: text("esic_code_override"),
     /* Derived from the state table, but overridable when the law changes
        before we ship a config update. Null means follow the state table. */
-    lwfApplicableOverride: integer("lwf_applicable_override", {
-      mode: "boolean",
-    }),
+    lwfApplicableOverride: boolean("lwf_applicable_override"),
     /* ESIC applies only in implemented areas — PRD FR-STAT-3 */
-    esicImplementedArea: integer("esic_implemented_area", { mode: "boolean" })
+    esicImplementedArea: boolean("esic_implemented_area")
       .notNull()
       .default(true),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
   },
   (t) => [index("branches_company_idx").on(t.companyId)],
 );
 
 /** Department hierarchy — parentId gives the tree. FR-HRIS-3. */
-export const departments = sqliteTable(
+export const departments = pgTable(
   "departments",
   {
     id: text("id").primaryKey(),
@@ -277,7 +277,7 @@ export const departments = sqliteTable(
 );
 
 /** Grades drive notice period, leave eligibility and structure defaults. */
-export const grades = sqliteTable(
+export const grades = pgTable(
   "grades",
   {
     id: text("id").primaryKey(),
@@ -293,7 +293,7 @@ export const grades = sqliteTable(
   (t) => [uniqueIndex("grades_company_name_idx").on(t.companyId, t.name)],
 );
 
-export const employees = sqliteTable(
+export const employees = pgTable(
   "employees",
   {
     id: text("id").primaryKey(),
@@ -348,12 +348,10 @@ export const employees = sqliteTable(
     esicIp: text("esic_ip"),
     /* No prior PF membership + basic above ceiling at joining = excluded
        employee, PF optional. PRD FR-STAT-1 */
-    hadPriorPfMembership: integer("had_prior_pf_membership", {
-      mode: "boolean",
-    })
+    hadPriorPfMembership: boolean("had_prior_pf_membership")
       .notNull()
       .default(false),
-    pfOptedIn: integer("pf_opted_in", { mode: "boolean" })
+    pfOptedIn: boolean("pf_opted_in")
       .notNull()
       .default(true),
     vpfPercent: real("vpf_percent").notNull().default(0),
@@ -380,7 +378,7 @@ export const employees = sqliteTable(
  * what it should say, who asked, who decided. Nothing is written onto
  * the employee record until somebody approves it — FR-HRIS-3.
  */
-export const profileChangeRequests = sqliteTable(
+export const profileChangeRequests = pgTable(
   "profile_change_requests",
   {
     id: text("id").primaryKey(),
@@ -413,7 +411,7 @@ export const profileChangeRequests = sqliteTable(
  * Custom fields — FR-HRIS-2. HR defines these without an engineering
  * change; values live in a separate table keyed by definition.
  */
-export const customFieldDefinitions = sqliteTable(
+export const customFieldDefinitions = pgTable(
   "custom_field_definitions",
   {
     id: text("id").primaryKey(),
@@ -427,20 +425,20 @@ export const customFieldDefinitions = sqliteTable(
     }).notNull(),
     /** Comma-separated options for a select. */
     options: text("options"),
-    required: integer("required", { mode: "boolean" }).notNull().default(false),
+    required: boolean("required").notNull().default(false),
     /** Groups the field under a section on the profile. */
     section: text("section").notNull().default("Additional"),
     /** Sensitive fields follow compensation visibility rules. */
-    sensitive: integer("sensitive", { mode: "boolean" })
+    sensitive: boolean("sensitive")
       .notNull()
       .default(false),
     sequence: integer("sequence").notNull().default(0),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
   },
   (t) => [uniqueIndex("cfd_company_code_idx").on(t.companyId, t.code)],
 );
 
-export const customFieldValues = sqliteTable(
+export const customFieldValues = pgTable(
   "custom_field_values",
   {
     id: text("id").primaryKey(),
@@ -456,7 +454,7 @@ export const customFieldValues = sqliteTable(
 );
 
 /** Employee documents with expiry tracking — FR-HRIS-4. */
-export const employeeDocuments = sqliteTable(
+export const employeeDocuments = pgTable(
   "employee_documents",
   {
     id: text("id").primaryKey(),
@@ -470,10 +468,10 @@ export const employeeDocuments = sqliteTable(
     issuedOn: text("issued_on"),
     /** Expiry drives the renewal task rather than sitting silently. */
     expiresOn: text("expires_on"),
-    verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+    verified: boolean("verified").notNull().default(false),
     verifiedBy: text("verified_by"),
     /** Restricted documents are visible only to HR and admin. */
-    restricted: integer("restricted", { mode: "boolean" })
+    restricted: boolean("restricted")
       .notNull()
       .default(false),
     uploadedAt: text("uploaded_at").notNull(),
@@ -483,7 +481,7 @@ export const employeeDocuments = sqliteTable(
 
 /* ---------------- compensation ---------------- */
 
-export const payComponents = sqliteTable(
+export const payComponents = pgTable(
   "pay_components",
   {
     id: text("id").primaryKey(),
@@ -503,26 +501,26 @@ export const payComponents = sqliteTable(
     percentValue: real("percent_value").notNull().default(0),
     /** Component code referenced by the percent_of method. */
     percentOfCode: text("percent_of_code"),
-    fixedPaise: integer("fixed_paise").notNull().default(0),
-    taxable: integer("taxable", { mode: "boolean" }).notNull().default(true),
-    epfBase: integer("epf_base", { mode: "boolean" }).notNull().default(false),
-    esicBase: integer("esic_base", { mode: "boolean" }).notNull().default(true),
-    ptBase: integer("pt_base", { mode: "boolean" }).notNull().default(true),
+    fixedPaise: bigint("fixed_paise", { mode: "number" }).notNull().default(0),
+    taxable: boolean("taxable").notNull().default(true),
+    epfBase: boolean("epf_base").notNull().default(false),
+    esicBase: boolean("esic_base").notNull().default(true),
+    ptBase: boolean("pt_base").notNull().default(true),
     /** Counts toward the Payment of Bonus Act wage. */
-    bonusBase: integer("bonus_base", { mode: "boolean" }).notNull().default(false),
+    bonusBase: boolean("bonus_base").notNull().default(false),
     /** Counts toward gratuity's "last drawn wages". */
-    gratuityBase: integer("gratuity_base", { mode: "boolean" })
+    gratuityBase: boolean("gratuity_base")
       .notNull()
       .default(false),
-    prorates: integer("prorates", { mode: "boolean" }).notNull().default(true),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    prorates: boolean("prorates").notNull().default(true),
+    active: boolean("active").notNull().default(true),
     sequence: integer("sequence").notNull().default(0),
   },
   (t) => [uniqueIndex("pay_components_company_code_idx").on(t.companyId, t.code)],
 );
 
 /** Named structures assignable by grade, department or individually. */
-export const salaryStructures = sqliteTable(
+export const salaryStructures = pgTable(
   "salary_structures",
   {
     id: text("id").primaryKey(),
@@ -537,15 +535,15 @@ export const salaryStructures = sqliteTable(
       .default(40),
     /** Default for a grade, applied to new joiners at that grade. */
     gradeId: text("grade_id").references(() => grades.id),
-    isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    isDefault: boolean("is_default").notNull().default(false),
+    active: boolean("active").notNull().default(true),
     effectiveFrom: text("effective_from").notNull(),
   },
   (t) => [index("salary_structures_company_idx").on(t.companyId)],
 );
 
 /** Which components a structure contains, and with what settings. */
-export const salaryStructureLines = sqliteTable(
+export const salaryStructureLines = pgTable(
   "salary_structure_lines",
   {
     id: text("id").primaryKey(),
@@ -558,7 +556,7 @@ export const salaryStructureLines = sqliteTable(
     /** Null means inherit the component's own definition. */
     calcMethodOverride: text("calc_method_override"),
     percentValueOverride: real("percent_value_override"),
-    fixedPaiseOverride: integer("fixed_paise_override"),
+    fixedPaiseOverride: bigint("fixed_paise_override", { mode: "number" }),
     sequence: integer("sequence").notNull().default(0),
   },
   (t) => [
@@ -573,7 +571,7 @@ export const salaryStructureLines = sqliteTable(
  * override (mirrors departmentPayrollOverrides' one-row-per-department
  * shape, but this table only ever has one field to set).
  */
-export const departmentSalaryStructureOverrides = sqliteTable(
+export const departmentSalaryStructureOverrides = pgTable(
   "department_salary_structure_overrides",
   {
     id: text("id").primaryKey(),
@@ -596,7 +594,7 @@ export const departmentSalaryStructureOverrides = sqliteTable(
 
 /* ---------------- flexible benefits (§3.8) ---------------- */
 
-export const flexiPlans = sqliteTable(
+export const flexiPlans = pgTable(
   "flexi_plans",
   {
     id: text("id").primaryKey(),
@@ -606,7 +604,7 @@ export const flexiPlans = sqliteTable(
     code: text("code").notNull(),
     name: text("name").notNull(),
     /** Total allocable across all heads, per year. */
-    totalAllocablePaise: integer("total_allocable_paise").notNull(),
+    totalAllocablePaise: bigint("total_allocable_paise", { mode: "number" }).notNull(),
     /** Null applies to every grade. */
     gradeId: text("grade_id").references(() => grades.id),
     financialYear: integer("financial_year").notNull(),
@@ -617,12 +615,12 @@ export const flexiPlans = sqliteTable(
     claimClosesOn: text("claim_closes_on").notNull(),
     /** Month unclaimed balances are paid out as taxable. */
     residualPayoutMonth: integer("residual_payout_month").notNull().default(2),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
   },
   (t) => [uniqueIndex("flexi_plan_idx").on(t.companyId, t.code, t.financialYear)],
 );
 
-export const flexiHeads = sqliteTable(
+export const flexiHeads = pgTable(
   "flexi_heads",
   {
     id: text("id").primaryKey(),
@@ -634,15 +632,15 @@ export const flexiHeads = sqliteTable(
     exemptionBasis: text("exemption_basis", {
       enum: ["actual_bills", "statutory_cap", "journey_based", "none"],
     }).notNull(),
-    annualCapPaise: integer("annual_cap_paise"),
+    annualCapPaise: bigint("annual_cap_paise", { mode: "number" }),
     /** Statutory ceiling, independent of what the plan allows. */
-    statutoryAnnualCapPaise: integer("statutory_annual_cap_paise"),
-    minAnnualPaise: integer("min_annual_paise").notNull().default(0),
+    statutoryAnnualCapPaise: bigint("statutory_annual_cap_paise", { mode: "number" }),
+    minAnnualPaise: bigint("min_annual_paise", { mode: "number" }).notNull().default(0),
     /** Most flexi exemptions do not survive the new regime. */
-    availableInNewRegime: integer("available_in_new_regime", { mode: "boolean" })
+    availableInNewRegime: boolean("available_in_new_regime")
       .notNull()
       .default(false),
-    requiresProof: integer("requires_proof", { mode: "boolean" })
+    requiresProof: boolean("requires_proof")
       .notNull()
       .default(true),
     sequence: integer("sequence").notNull().default(0),
@@ -650,7 +648,7 @@ export const flexiHeads = sqliteTable(
   (t) => [uniqueIndex("flexi_head_idx").on(t.planId, t.code)],
 );
 
-export const flexiDeclarations = sqliteTable(
+export const flexiDeclarations = pgTable(
   "flexi_declarations",
   {
     id: text("id").primaryKey(),
@@ -663,7 +661,7 @@ export const flexiDeclarations = sqliteTable(
     headId: text("head_id")
       .notNull()
       .references(() => flexiHeads.id),
-    annualPaise: integer("annual_paise").notNull(),
+    annualPaise: bigint("annual_paise", { mode: "number" }).notNull(),
     /** Regime in force when declared, so the advice can be reproduced. */
     declaredUnderRegime: text("declared_under_regime", { enum: ["old", "new"] })
       .notNull()
@@ -673,7 +671,7 @@ export const flexiDeclarations = sqliteTable(
   (t) => [uniqueIndex("flexi_decl_idx").on(t.employeeId, t.headId, t.planId)],
 );
 
-export const flexiClaims = sqliteTable(
+export const flexiClaims = pgTable(
   "flexi_claims",
   {
     id: text("id").primaryKey(),
@@ -686,9 +684,9 @@ export const flexiClaims = sqliteTable(
     headId: text("head_id")
       .notNull()
       .references(() => flexiHeads.id),
-    claimPaise: integer("claim_paise").notNull(),
+    claimPaise: bigint("claim_paise", { mode: "number" }).notNull(),
     /** Fare portion, for journey-based heads such as LTA. */
-    farePaise: integer("fare_paise"),
+    farePaise: bigint("fare_paise", { mode: "number" }),
     billRef: text("bill_ref"),
     billDate: text("bill_date"),
     status: text("status", {
@@ -697,7 +695,7 @@ export const flexiClaims = sqliteTable(
       .notNull()
       .default("pending"),
     /** What was actually admitted, which may be less than claimed. */
-    approvedPaise: integer("approved_paise").notNull().default(0),
+    approvedPaise: bigint("approved_paise", { mode: "number" }).notNull().default(0),
     decisionNote: text("decision_note"),
     decidedBy: text("decided_by"),
     decidedAt: text("decided_at"),
@@ -707,7 +705,7 @@ export const flexiClaims = sqliteTable(
 );
 
 /** Effective-dated minimum wages by state and skill category — FR-CMP-3. */
-export const minimumWages = sqliteTable(
+export const minimumWages = pgTable(
   "minimum_wages",
   {
     id: text("id").primaryKey(),
@@ -715,28 +713,28 @@ export const minimumWages = sqliteTable(
     skillCategory: text("skill_category", {
       enum: ["unskilled", "semi_skilled", "skilled", "highly_skilled"],
     }).notNull(),
-    monthlyPaise: integer("monthly_paise").notNull(),
+    monthlyPaise: bigint("monthly_paise", { mode: "number" }).notNull(),
     effectiveFrom: text("effective_from").notNull(),
     effectiveTo: text("effective_to"),
-    verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+    verified: boolean("verified").notNull().default(false),
     source: text("source"),
   },
   (t) => [index("minimum_wages_state_idx").on(t.stateCode, t.effectiveFrom)],
 );
 
 /* Effective-dated salary assignment — a revision is a new row, never an edit */
-export const employeeSalaries = sqliteTable(
+export const employeeSalaries = pgTable(
   "employee_salaries",
   {
     id: text("id").primaryKey(),
     employeeId: text("employee_id")
       .notNull()
       .references(() => employees.id),
-    monthlyGrossPaise: integer("monthly_gross_paise").notNull(),
+    monthlyGrossPaise: bigint("monthly_gross_paise", { mode: "number" }).notNull(),
     /** Structure in force for this assignment. Null falls back to default. */
     structureId: text("structure_id").references(() => salaryStructures.id),
     /** Annual CTC this gross was derived from, kept for the offer letter. */
-    annualCtcPaise: integer("annual_ctc_paise"),
+    annualCtcPaise: bigint("annual_ctc_paise", { mode: "number" }),
     effectiveFrom: text("effective_from").notNull(),
     effectiveTo: text("effective_to"),
     reason: text("reason"),
@@ -746,7 +744,7 @@ export const employeeSalaries = sqliteTable(
       .notNull()
       .default("initial"),
     /** Arrears already booked for this revision, so it is not paid twice. */
-    arrearsPaise: integer("arrears_paise").notNull().default(0),
+    arrearsPaise: bigint("arrears_paise", { mode: "number" }).notNull().default(0),
     approvedBy: text("approved_by"),
     createdBy: text("created_by"),
     createdAt: text("created_at").notNull(),
@@ -757,49 +755,49 @@ export const employeeSalaries = sqliteTable(
 /* ---------------- statutory configuration (effective-dated) ---------------- */
 
 /** Applicability map for all 28 states + 8 UTs. */
-export const jurisdictions = sqliteTable("jurisdictions", {
+export const jurisdictions = pgTable("jurisdictions", {
   stateCode: text("state_code").primaryKey(),
   name: text("name").notNull(),
   kind: text("kind", { enum: ["state", "ut"] }).notNull(),
-  ptApplicable: integer("pt_applicable", { mode: "boolean" }).notNull(),
-  lwfApplicable: integer("lwf_applicable", { mode: "boolean" }).notNull(),
+  ptApplicable: boolean("pt_applicable").notNull(),
+  lwfApplicable: boolean("lwf_applicable").notNull(),
   /** Set where the applicability itself is contested and needs legal review. */
   verificationNote: text("verification_note"),
 });
 
-export const ptSlabs = sqliteTable(
+export const ptSlabs = pgTable(
   "pt_slabs",
   {
     id: text("id").primaryKey(),
     stateCode: text("state_code").notNull(),
     /** Inclusive lower bound of monthly PT base, in paise. */
-    minPaise: integer("min_paise").notNull(),
+    minPaise: bigint("min_paise", { mode: "number" }).notNull(),
     /** Inclusive upper bound; null means unbounded. */
-    maxPaise: integer("max_paise"),
-    amountPaise: integer("amount_paise").notNull(),
+    maxPaise: bigint("max_paise", { mode: "number" }),
+    amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
     /** Some states (e.g. Maharashtra) deduct a different amount in one month. */
     overrideMonth: integer("override_month"),
-    overrideAmountPaise: integer("override_amount_paise"),
+    overrideAmountPaise: bigint("override_amount_paise", { mode: "number" }),
     /** Some states levy on gender-differentiated thresholds. */
     gender: text("gender", { enum: ["all", "female", "male"] })
       .notNull()
       .default("all"),
-    annualCapPaise: integer("annual_cap_paise").notNull().default(250000),
+    annualCapPaise: bigint("annual_cap_paise", { mode: "number" }).notNull().default(250000),
     effectiveFrom: text("effective_from").notNull(),
     effectiveTo: text("effective_to"),
-    verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+    verified: boolean("verified").notNull().default(false),
     source: text("source"),
   },
   (t) => [index("pt_slabs_state_idx").on(t.stateCode, t.effectiveFrom)],
 );
 
-export const lwfRates = sqliteTable(
+export const lwfRates = pgTable(
   "lwf_rates",
   {
     id: text("id").primaryKey(),
     stateCode: text("state_code").notNull(),
-    employeePaise: integer("employee_paise").notNull(),
-    employerPaise: integer("employer_paise").notNull(),
+    employeePaise: bigint("employee_paise", { mode: "number" }).notNull(),
+    employerPaise: bigint("employer_paise", { mode: "number" }).notNull(),
     frequency: text("frequency", {
       enum: ["monthly", "half_yearly", "annual"],
     }).notNull(),
@@ -807,14 +805,14 @@ export const lwfRates = sqliteTable(
     deductionMonths: text("deduction_months").notNull(),
     effectiveFrom: text("effective_from").notNull(),
     effectiveTo: text("effective_to"),
-    verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+    verified: boolean("verified").notNull().default(false),
     source: text("source"),
   },
   (t) => [index("lwf_rates_state_idx").on(t.stateCode, t.effectiveFrom)],
 );
 
 /** Scalar statutory parameters (EPF ceiling, ESIC threshold, rates…). */
-export const statutoryParams = sqliteTable(
+export const statutoryParams = pgTable(
   "statutory_params",
   {
     id: text("id").primaryKey(),
@@ -831,7 +829,7 @@ export const statutoryParams = sqliteTable(
 
 /* ---------------- payroll ---------------- */
 
-export const payrollRuns = sqliteTable(
+export const payrollRuns = pgTable(
   "payroll_runs",
   {
     id: text("id").primaryKey(),
@@ -880,7 +878,7 @@ export const payrollRuns = sqliteTable(
   ],
 );
 
-export const payrollLines = sqliteTable(
+export const payrollLines = pgTable(
   "payroll_lines",
   {
     id: text("id").primaryKey(),
@@ -904,7 +902,7 @@ export const payrollLines = sqliteTable(
     category: text("category", {
       enum: ["ot", "bonus", "incentive", "arrear", "deduction", "other"],
     }),
-    amountPaise: integer("amount_paise").notNull(),
+    amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
     /** How this figure was derived — powers the explainability requirement. */
     basis: text("basis"),
     sequence: integer("sequence").notNull().default(0),
@@ -912,7 +910,7 @@ export const payrollLines = sqliteTable(
   (t) => [index("payroll_lines_run_emp_idx").on(t.runId, t.employeeId)],
 );
 
-export const payrollEmployeeSummaries = sqliteTable(
+export const payrollEmployeeSummaries = pgTable(
   "payroll_employee_summaries",
   {
     id: text("id").primaryKey(),
@@ -925,10 +923,10 @@ export const payrollEmployeeSummaries = sqliteTable(
     paidDays: real("paid_days").notNull(),
     totalDays: real("total_days").notNull(),
     lopDays: real("lop_days").notNull().default(0),
-    grossPaise: integer("gross_paise").notNull(),
-    deductionsPaise: integer("deductions_paise").notNull(),
-    employerCostPaise: integer("employer_cost_paise").notNull(),
-    netPaise: integer("net_paise").notNull(),
+    grossPaise: bigint("gross_paise", { mode: "number" }).notNull(),
+    deductionsPaise: bigint("deductions_paise", { mode: "number" }).notNull(),
+    employerCostPaise: bigint("employer_cost_paise", { mode: "number" }).notNull(),
+    netPaise: bigint("net_paise", { mode: "number" }).notNull(),
   },
   (t) => [
     uniqueIndex("payroll_summaries_run_emp_idx").on(t.runId, t.employeeId),
@@ -949,7 +947,7 @@ export const payrollEmployeeSummaries = sqliteTable(
  * thing was typed three different ways across a month and nothing could
  * be reported by type. Same shape as the loan-scheme master next door.
  */
-export const variablePayTypes = sqliteTable(
+export const variablePayTypes = pgTable(
   "variable_pay_types",
   {
     id: text("id").primaryKey(),
@@ -963,20 +961,20 @@ export const variablePayTypes = sqliteTable(
       enum: ["ot", "bonus", "incentive", "arrear", "deduction", "other"],
     }).notNull(),
     /** Offered as the starting amount where one is usual. */
-    defaultAmountPaise: integer("default_amount_paise"),
+    defaultAmountPaise: bigint("default_amount_paise", { mode: "number" }),
     /* Raised by the system rather than chosen by a person — arrears come
        from a backdated revision. Hidden from the entry forms, shown in
        master data so the label on the payslip can still be changed. */
-    systemManaged: integer("system_managed", { mode: "boolean" })
+    systemManaged: boolean("system_managed")
       .notNull()
       .default(false),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
     createdAt: text("created_at").notNull(),
   },
   (t) => [uniqueIndex("variable_pay_type_idx").on(t.companyId, t.code)],
 );
 
-export const payrollAdjustments = sqliteTable(
+export const payrollAdjustments = pgTable(
   "payroll_adjustments",
   {
     id: text("id").primaryKey(),
@@ -1000,12 +998,12 @@ export const payrollAdjustments = sqliteTable(
     typeId: text("type_id").references(() => variablePayTypes.id),
     code: text("code").notNull(),
     label: text("label").notNull(),
-    amountPaise: integer("amount_paise").notNull(),
+    amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
     /* Overtime is entered as hours against a rate; the rate is copied in
        so a historical line still explains itself after the company rate
        changes. Null for everything that is entered as a plain amount. */
     hours: real("hours"),
-    ratePaisePerHour: integer("rate_paise_per_hour"),
+    ratePaisePerHour: bigint("rate_paise_per_hour", { mode: "number" }),
     reason: text("reason"),
     createdBy: text("created_by").notNull(),
     createdAt: text("created_at").notNull(),
@@ -1017,7 +1015,7 @@ export const payrollAdjustments = sqliteTable(
 
 /* ---------------- attendance & leave (§3.4) ---------------- */
 
-export const shifts = sqliteTable(
+export const shifts = pgTable(
   "shifts",
   {
     id: text("id").primaryKey(),
@@ -1034,13 +1032,13 @@ export const shifts = sqliteTable(
     halfDayMinutes: integer("half_day_minutes").notNull().default(240),
     /** Comma-separated 0-6, Sunday = 0. */
     weeklyOffDays: text("weekly_off_days").notNull().default("0"),
-    isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+    isDefault: boolean("is_default").notNull().default(false),
   },
   (t) => [uniqueIndex("shifts_company_code_idx").on(t.companyId, t.code)],
 );
 
 /** Per company, and optionally narrowed to one branch — FR-ATT-5. */
-export const holidays = sqliteTable(
+export const holidays = pgTable(
   "holidays",
   {
     id: text("id").primaryKey(),
@@ -1052,7 +1050,7 @@ export const holidays = sqliteTable(
     date: text("date").notNull(),
     name: text("name").notNull(),
     /** Restricted holidays are opted into by the employee, not automatic. */
-    restricted: integer("restricted", { mode: "boolean" }).notNull().default(false),
+    restricted: boolean("restricted").notNull().default(false),
   },
   (t) => [index("holidays_company_date_idx").on(t.companyId, t.date)],
 );
@@ -1061,7 +1059,7 @@ export const holidays = sqliteTable(
  * One row per employee per date. Holds both the raw punches and the derived
  * status, so a disputed day can be reconstructed rather than re-derived.
  */
-export const attendanceRecords = sqliteTable(
+export const attendanceRecords = pgTable(
   "attendance_records",
   {
     id: text("id").primaryKey(),
@@ -1082,7 +1080,7 @@ export const attendanceRecords = sqliteTable(
     lopUnits: real("lop_units").notNull().default(0),
     basis: text("basis"),
     /** Set when a regularisation replaced the original punches. */
-    regularised: integer("regularised", { mode: "boolean" }).notNull().default(false),
+    regularised: boolean("regularised").notNull().default(false),
     source: text("source", { enum: ["device", "web", "mobile", "manual", "derived"] })
       .notNull()
       .default("derived"),
@@ -1091,7 +1089,7 @@ export const attendanceRecords = sqliteTable(
 );
 
 /** The original is never overwritten — FR-ATT-4. */
-export const regularisationRequests = sqliteTable(
+export const regularisationRequests = pgTable(
   "regularisation_requests",
   {
     id: text("id").primaryKey(),
@@ -1115,7 +1113,7 @@ export const regularisationRequests = sqliteTable(
   (t) => [index("regularisation_emp_idx").on(t.employeeId, t.date)],
 );
 
-export const leaveTypes = sqliteTable(
+export const leaveTypes = pgTable(
   "leave_types",
   {
     id: text("id").primaryKey(),
@@ -1128,13 +1126,13 @@ export const leaveTypes = sqliteTable(
     frequency: text("frequency", { enum: ["monthly", "quarterly", "annually"] })
       .notNull()
       .default("monthly"),
-    paid: integer("paid", { mode: "boolean" }).notNull().default(true),
-    accruesDuringProbation: integer("accrues_during_probation", { mode: "boolean" })
+    paid: boolean("paid").notNull().default(true),
+    accruesDuringProbation: boolean("accrues_during_probation")
       .notNull()
       .default(true),
     carryForwardCap: real("carry_forward_cap").notNull().default(0),
-    encashable: integer("encashable", { mode: "boolean" }).notNull().default(false),
-    allowNegative: integer("allow_negative", { mode: "boolean" }).notNull().default(false),
+    encashable: boolean("encashable").notNull().default(false),
+    allowNegative: boolean("allow_negative").notNull().default(false),
     rounding: text("rounding", { enum: ["none", "half_up", "down"] })
       .notNull()
       .default("none"),
@@ -1145,14 +1143,14 @@ export const leaveTypes = sqliteTable(
      * payroll path is reused rather than rebuilt, and `annualDays` is
      * how many may be taken.
      */
-    restrictedHoliday: integer("restricted_holiday", { mode: "boolean" })
+    restrictedHoliday: boolean("restricted_holiday")
       .notNull()
       .default(false),
   },
   (t) => [uniqueIndex("leave_types_company_code_idx").on(t.companyId, t.code)],
 );
 
-export const leaveRequests = sqliteTable(
+export const leaveRequests = pgTable(
   "leave_requests",
   {
     id: text("id").primaryKey(),
@@ -1165,7 +1163,7 @@ export const leaveRequests = sqliteTable(
     fromDate: text("from_date").notNull(),
     toDate: text("to_date").notNull(),
     days: real("days").notNull(),
-    halfDay: integer("half_day", { mode: "boolean" }).notNull().default(false),
+    halfDay: boolean("half_day").notNull().default(false),
     reason: text("reason"),
     status: text("status", {
       enum: ["pending", "approved", "rejected", "cancelled"],
@@ -1184,7 +1182,7 @@ export const leaveRequests = sqliteTable(
 );
 
 /** Attendance input per employee per period — drives loss of pay. */
-export const attendanceInputs = sqliteTable(
+export const attendanceInputs = pgTable(
   "attendance_inputs",
   {
     id: text("id").primaryKey(),
@@ -1199,7 +1197,7 @@ export const attendanceInputs = sqliteTable(
      * manual correction made right before running payroll is silently
      * lost the moment anyone recomputes from punches again.
      */
-    overridden: integer("overridden", { mode: "boolean" }).notNull().default(false),
+    overridden: boolean("overridden").notNull().default(false),
     overriddenBy: text("overridden_by"),
     overriddenAt: text("overridden_at"),
     overrideReason: text("override_reason"),
@@ -1220,7 +1218,7 @@ export const attendanceInputs = sqliteTable(
  * everything the candidate submits, and converts in one transaction on the
  * date of joining. It consumes no licence and appears in no payroll.
  */
-export const joiners = sqliteTable(
+export const joiners = pgTable(
   "joiners",
   {
     id: text("id").primaryKey(),
@@ -1242,14 +1240,14 @@ export const joiners = sqliteTable(
     })
       .notNull()
       .default("permanent"),
-    offeredCtcPaise: integer("offered_ctc_paise"),
+    offeredCtcPaise: bigint("offered_ctc_paise", { mode: "number" }),
     /* The gross the offer actually resolves to — CTC carries employer PF,
        ESIC and gratuity on top, so it is never simply CTC ÷ 12. Solved
        when the offer is set, so conversion writes the agreed figure
        rather than re-deriving it against rates that may since have moved.
        Null on joiners offered before this was captured; conversion falls
        back to solving from the CTC. */
-    offeredMonthlyGrossPaise: integer("offered_monthly_gross_paise"),
+    offeredMonthlyGrossPaise: bigint("offered_monthly_gross_paise", { mode: "number" }),
     /* An explicit salary-structure pin for this joiner, carried onto the
        employee at conversion. Null means resolve from the department. */
     structureId: text("structure_id").references(() => salaryStructures.id),
@@ -1267,9 +1265,7 @@ export const joiners = sqliteTable(
     uan: text("uan"),
     bankAccount: text("bank_account"),
     ifsc: text("ifsc"),
-    hadPriorPfMembership: integer("had_prior_pf_membership", {
-      mode: "boolean",
-    })
+    hadPriorPfMembership: boolean("had_prior_pf_membership")
       .notNull()
       .default(false),
 
@@ -1315,7 +1311,7 @@ export const joiners = sqliteTable(
 );
 
 /** Checklist items — FR-ONB-4. Typed so format and expiry can be validated. */
-export const joinerDocuments = sqliteTable(
+export const joinerDocuments = pgTable(
   "joiner_documents",
   {
     id: text("id").primaryKey(),
@@ -1327,7 +1323,7 @@ export const joinerDocuments = sqliteTable(
     category: text("category", {
       enum: ["identity", "banking", "employment", "education", "personal"],
     }).notNull(),
-    mandatory: integer("mandatory", { mode: "boolean" }).notNull().default(true),
+    mandatory: boolean("mandatory").notNull().default(true),
     status: text("status", {
       enum: ["pending", "uploaded", "verified", "rejected"],
     })
@@ -1345,7 +1341,7 @@ export const joinerDocuments = sqliteTable(
 );
 
 /** Statutory declarations collected before day one — FR-ONB-5. */
-export const joinerDeclarations = sqliteTable(
+export const joinerDeclarations = pgTable(
   "joiner_declarations",
   {
     id: text("id").primaryKey(),
@@ -1366,7 +1362,7 @@ export const joinerDeclarations = sqliteTable(
 );
 
 /** Day-one provisioning fan-out — FR-ONB-10. */
-export const joinerTasks = sqliteTable(
+export const joinerTasks = pgTable(
   "joiner_tasks",
   {
     id: text("id").primaryKey(),
@@ -1394,7 +1390,7 @@ export const joinerTasks = sqliteTable(
  * Gapless employee-code sequences per company — FR-ONB-7.
  * A number is never reused, even if a joiner drops out after allocation.
  */
-export const idSequences = sqliteTable(
+export const idSequences = pgTable(
   "id_sequences",
   {
     id: text("id").primaryKey(),
@@ -1405,7 +1401,7 @@ export const idSequences = sqliteTable(
     width: integer("width").notNull().default(4),
     nextValue: integer("next_value").notNull().default(1),
     /** Optional branch-code segment between prefix and number. */
-    includeBranchCode: integer("include_branch_code", { mode: "boolean" })
+    includeBranchCode: boolean("include_branch_code")
       .notNull()
       .default(false),
   },
@@ -1414,7 +1410,7 @@ export const idSequences = sqliteTable(
 
 /* ---------------- exit & settlement ---------------- */
 
-export const exitCases = sqliteTable(
+export const exitCases = pgTable(
   "exit_cases",
   {
     id: text("id").primaryKey(),
@@ -1449,17 +1445,15 @@ export const exitCases = sqliteTable(
     })
       .notNull()
       .default("submitted"),
-    noticeWaived: integer("notice_waived", { mode: "boolean" })
+    noticeWaived: boolean("notice_waived")
       .notNull()
       .default(false),
     noticeWaiverReason: text("notice_waiver_reason"),
     noticeWaivedBy: text("notice_waived_by"),
-    employerPaysNoticeInLieu: integer("employer_pays_notice_in_lieu", {
-      mode: "boolean",
-    })
+    employerPaysNoticeInLieu: boolean("employer_pays_notice_in_lieu")
       .notNull()
       .default(false),
-    gratuityForfeited: integer("gratuity_forfeited", { mode: "boolean" })
+    gratuityForfeited: boolean("gratuity_forfeited")
       .notNull()
       .default(false),
     gratuityForfeitureReason: text("gratuity_forfeiture_reason"),
@@ -1481,7 +1475,7 @@ export const exitCases = sqliteTable(
 );
 
 /** Departments clear in parallel, not in series. */
-export const clearanceItems = sqliteTable(
+export const clearanceItems = pgTable(
   "clearance_items",
   {
     id: text("id").primaryKey(),
@@ -1497,7 +1491,7 @@ export const clearanceItems = sqliteTable(
     })
       .notNull()
       .default("pending"),
-    recoveryPaise: integer("recovery_paise").notNull().default(0),
+    recoveryPaise: bigint("recovery_paise", { mode: "number" }).notNull().default(0),
     note: text("note"),
     resolvedBy: text("resolved_by"),
     resolvedAt: text("resolved_at"),
@@ -1505,7 +1499,7 @@ export const clearanceItems = sqliteTable(
   (t) => [index("clearance_exit_idx").on(t.exitCaseId)],
 );
 
-export const loans = sqliteTable(
+export const loans = pgTable(
   "loans",
   {
     id: text("id").primaryKey(),
@@ -1513,9 +1507,9 @@ export const loans = sqliteTable(
       .notNull()
       .references(() => employees.id),
     scheme: text("scheme").notNull(),
-    principalPaise: integer("principal_paise").notNull(),
-    outstandingPaise: integer("outstanding_paise").notNull(),
-    instalmentPaise: integer("instalment_paise").notNull(),
+    principalPaise: bigint("principal_paise", { mode: "number" }).notNull(),
+    outstandingPaise: bigint("outstanding_paise", { mode: "number" }).notNull(),
+    instalmentPaise: bigint("instalment_paise", { mode: "number" }).notNull(),
     /** Basis points; 0 for an interest-free scheme. */
     interestBps: integer("interest_bps").notNull().default(0),
     status: text("status", { enum: ["active", "closed", "on_hold"] })
@@ -1532,7 +1526,7 @@ export const loans = sqliteTable(
       .notNull()
       .default("interest_free"),
     /** Instalments missed earlier that are still owed — never written off silently. */
-    arrearsPaise: integer("arrears_paise").notNull().default(0),
+    arrearsPaise: bigint("arrears_paise", { mode: "number" }).notNull().default(0),
     purpose: text("purpose"),
     guarantorName: text("guarantor_name"),
     disbursedOn: text("disbursed_on"),
@@ -1556,7 +1550,7 @@ export const loans = sqliteTable(
  * for new borrowers never disturbs a loan already running on the old one:
  * each loan carries its own method and rate.
  */
-export const loanSchemes = sqliteTable(
+export const loanSchemes = pgTable(
   "loan_schemes",
   {
     id: text("id").primaryKey(),
@@ -1575,23 +1569,23 @@ export const loanSchemes = sqliteTable(
       .notNull()
       .default("interest_free"),
     annualRateBps: integer("annual_rate_bps").notNull().default(0),
-    maxPrincipalPaise: integer("max_principal_paise").notNull(),
+    maxPrincipalPaise: bigint("max_principal_paise", { mode: "number" }).notNull(),
     maxTenureMonths: integer("max_tenure_months").notNull(),
     minServiceMonths: integer("min_service_months").notNull().default(0),
     /** Cap on the instalment as a share of monthly gross, basis points. */
     maxInstalmentOfGrossBps: integer("max_instalment_of_gross_bps")
       .notNull()
       .default(3000),
-    allowConcurrent: integer("allow_concurrent", { mode: "boolean" })
+    allowConcurrent: boolean("allow_concurrent")
       .notNull()
       .default(false),
-    requiresGuarantor: integer("requires_guarantor", { mode: "boolean" })
+    requiresGuarantor: boolean("requires_guarantor")
       .notNull()
       .default(false),
     /** Recovery must never take net pay below this. */
-    minNetPayPaise: integer("min_net_pay_paise").notNull().default(0),
+    minNetPayPaise: bigint("min_net_pay_paise", { mode: "number" }).notNull().default(0),
     foreclosureChargeBps: integer("foreclosure_charge_bps").notNull().default(0),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
     effectiveFrom: text("effective_from").notNull(),
   },
   (t) => [uniqueIndex("loan_scheme_idx").on(t.companyId, t.code)],
@@ -1602,7 +1596,7 @@ export const loanSchemes = sqliteTable(
  * an employee is a commitment; recomputing it later from changed scheme
  * terms would quietly rewrite what they signed.
  */
-export const loanSchedules = sqliteTable(
+export const loanSchedules = pgTable(
   "loan_schedules",
   {
     id: text("id").primaryKey(),
@@ -1612,15 +1606,15 @@ export const loanSchedules = sqliteTable(
     instalmentNo: integer("instalment_no").notNull(),
     dueYear: integer("due_year").notNull(),
     dueMonth: integer("due_month").notNull(),
-    openingPaise: integer("opening_paise").notNull(),
-    interestPaise: integer("interest_paise").notNull(),
-    principalPaise: integer("principal_paise").notNull(),
-    instalmentPaise: integer("instalment_paise").notNull(),
-    closingPaise: integer("closing_paise").notNull(),
+    openingPaise: bigint("opening_paise", { mode: "number" }).notNull(),
+    interestPaise: bigint("interest_paise", { mode: "number" }).notNull(),
+    principalPaise: bigint("principal_paise", { mode: "number" }).notNull(),
+    instalmentPaise: bigint("instalment_paise", { mode: "number" }).notNull(),
+    closingPaise: bigint("closing_paise", { mode: "number" }).notNull(),
     status: text("status", { enum: ["due", "recovered", "partial", "skipped"] })
       .notNull()
       .default("due"),
-    recoveredPaise: integer("recovered_paise").notNull().default(0),
+    recoveredPaise: bigint("recovered_paise", { mode: "number" }).notNull().default(0),
   },
   (t) => [
     uniqueIndex("loan_schedule_idx").on(t.loanId, t.instalmentNo),
@@ -1632,7 +1626,7 @@ export const loanSchedules = sqliteTable(
  * Every movement on a loan, append-only. The outstanding balance on the
  * loan row is a cache of this ledger, and the two must reconcile.
  */
-export const loanTransactions = sqliteTable(
+export const loanTransactions = pgTable(
   "loan_transactions",
   {
     id: text("id").primaryKey(),
@@ -1653,8 +1647,8 @@ export const loanTransactions = sqliteTable(
       ],
     }).notNull(),
     /** Positive increases the balance, negative reduces it. */
-    amountPaise: integer("amount_paise").notNull(),
-    balanceAfterPaise: integer("balance_after_paise").notNull(),
+    amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
+    balanceAfterPaise: bigint("balance_after_paise", { mode: "number" }).notNull(),
     periodYear: integer("period_year"),
     periodMonth: integer("period_month"),
     runId: text("run_id").references(() => payrollRuns.id),
@@ -1664,7 +1658,7 @@ export const loanTransactions = sqliteTable(
      * arrears sit outside the balance, so the ledger sum alone cannot
      * reconstruct them.
      */
-    arrearsBeforePaise: integer("arrears_before_paise"),
+    arrearsBeforePaise: bigint("arrears_before_paise", { mode: "number" }),
     basis: text("basis").notNull(),
     actor: text("actor").notNull(),
     at: text("at").notNull(),
@@ -1676,7 +1670,7 @@ export const loanTransactions = sqliteTable(
 );
 
 /** Leave balance carried for encashment at exit. */
-export const leaveBalances = sqliteTable(
+export const leaveBalances = pgTable(
   "leave_balances",
   {
     id: text("id").primaryKey(),
@@ -1685,7 +1679,7 @@ export const leaveBalances = sqliteTable(
       .references(() => employees.id),
     leaveType: text("leave_type").notNull(),
     balanceDays: real("balance_days").notNull().default(0),
-    encashable: integer("encashable", { mode: "boolean" })
+    encashable: boolean("encashable")
       .notNull()
       .default(true),
     asOf: text("as_of").notNull(),
@@ -1693,7 +1687,7 @@ export const leaveBalances = sqliteTable(
   (t) => [uniqueIndex("leave_balance_idx").on(t.employeeId, t.leaveType)],
 );
 
-export const fnfSettlements = sqliteTable(
+export const fnfSettlements = pgTable(
   "fnf_settlements",
   {
     id: text("id").primaryKey(),
@@ -1708,10 +1702,10 @@ export const fnfSettlements = sqliteTable(
     })
       .notNull()
       .default("draft"),
-    payablesPaise: integer("payables_paise").notNull(),
-    recoveriesPaise: integer("recoveries_paise").notNull(),
-    netPaise: integer("net_paise").notNull(),
-    exemptPaise: integer("exempt_paise").notNull().default(0),
+    payablesPaise: bigint("payables_paise", { mode: "number" }).notNull(),
+    recoveriesPaise: bigint("recoveries_paise", { mode: "number" }).notNull(),
+    netPaise: bigint("net_paise", { mode: "number" }).notNull(),
+    exemptPaise: bigint("exempt_paise", { mode: "number" }).notNull().default(0),
     /** Serialised settlement lines, so the statement is reproducible. */
     linesJson: text("lines_json").notNull(),
     preparedBy: text("prepared_by"),
@@ -1727,7 +1721,7 @@ export const fnfSettlements = sqliteTable(
     slaDays: integer("sla_days").notNull().default(45),
     releasedAt: text("released_at"),
     /** FR-PAY-20: a demand that is forgiven rather than collected. */
-    writtenOffPaise: integer("written_off_paise").notNull().default(0),
+    writtenOffPaise: bigint("written_off_paise", { mode: "number" }).notNull().default(0),
     writeOffReason: text("write_off_reason"),
     writtenOffBy: text("written_off_by"),
     /** FR-PAY-18: the settlement this one replaces. */
@@ -1745,14 +1739,14 @@ export const fnfSettlements = sqliteTable(
  * FR-PAY-20. Separate rows rather than a running total, because "we
  * recovered some of it" needs to say when, how much and how.
  */
-export const fnfRecoveries = sqliteTable(
+export const fnfRecoveries = pgTable(
   "fnf_recoveries",
   {
     id: text("id").primaryKey(),
     settlementId: text("settlement_id")
       .notNull()
       .references(() => fnfSettlements.id),
-    amountPaise: integer("amount_paise").notNull(),
+    amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
     method: text("method", {
       enum: ["bank_transfer", "cheque", "cash", "adjusted_against_dues"],
     }).notNull(),
@@ -1771,7 +1765,7 @@ export const fnfRecoveries = sqliteTable(
  * decision is what makes FR-STAT-3 correct across months rather than
  * re-derived (wrongly) from current wages each run.
  */
-export const esicCoverage = sqliteTable(
+export const esicCoverage = pgTable(
   "esic_coverage",
   {
     id: text("id").primaryKey(),
@@ -1781,9 +1775,9 @@ export const esicCoverage = sqliteTable(
     /** Financial year the period starts in, e.g. 2026 for Apr-26–Mar-27. */
     financialYear: integer("financial_year").notNull(),
     period: text("period", { enum: ["apr_sep", "oct_mar"] }).notNull(),
-    covered: integer("covered", { mode: "boolean" }).notNull(),
+    covered: boolean("covered").notNull(),
     /** Wage the decision was made on, kept for audit. */
-    decidedOnWagePaise: integer("decided_on_wage_paise").notNull(),
+    decidedOnWagePaise: bigint("decided_on_wage_paise", { mode: "number" }).notNull(),
     decidedAt: text("decided_at").notNull(),
   },
   (t) => [
@@ -1801,7 +1795,7 @@ export const esicCoverage = sqliteTable(
  * Roles carry a compensation-visibility scope of their own (PRD FR-SET-7),
  * separate from what they can otherwise reach.
  */
-export const users = sqliteTable(
+export const users = pgTable(
   "users",
   {
     id: text("id").primaryKey(),
@@ -1821,7 +1815,7 @@ export const users = sqliteTable(
     })
       .notNull()
       .default("none"),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
     lastLoginAt: text("last_login_at"),
     createdAt: text("created_at").notNull(),
   },
@@ -1829,7 +1823,7 @@ export const users = sqliteTable(
 );
 
 /** Server-side sessions, so a logout actually revokes access. */
-export const sessions = sqliteTable(
+export const sessions = pgTable(
   "sessions",
   {
     id: text("id").primaryKey(),
@@ -1844,7 +1838,7 @@ export const sessions = sqliteTable(
 );
 
 /** Append-only. PRD FR-AUD-1: no role may edit or delete these rows. */
-export const auditLog = sqliteTable(
+export const auditLog = pgTable(
   "audit_log",
   {
     id: text("id").primaryKey(),
@@ -1883,7 +1877,7 @@ export const auditLog = sqliteTable(
  * declared investments behind the projection. Amounts are what the
  * employee *claims*; what survives verification lives on taxProofs.
  */
-export const taxDeclarations = sqliteTable(
+export const taxDeclarations = pgTable(
   "tax_declarations",
   {
     id: text("id").primaryKey(),
@@ -1893,45 +1887,45 @@ export const taxDeclarations = sqliteTable(
     financialYear: integer("financial_year").notNull(),
     regime: text("regime", { enum: ["old", "new"] }).notNull().default("new"),
     /** Locked once the year's proof window closes — FR-TAX-2. */
-    regimeLocked: integer("regime_locked", { mode: "boolean" })
+    regimeLocked: boolean("regime_locked")
       .notNull()
       .default(false),
 
-    section80cPaise: integer("section_80c_paise").notNull().default(0),
-    section80ccd1bPaise: integer("section_80ccd1b_paise").notNull().default(0),
-    section80dSelfPaise: integer("section_80d_self_paise").notNull().default(0),
-    section80dParentsPaise: integer("section_80d_parents_paise").notNull().default(0),
-    selfOrFamilyIsSenior: integer("self_or_family_is_senior", { mode: "boolean" })
+    section80cPaise: bigint("section_80c_paise", { mode: "number" }).notNull().default(0),
+    section80ccd1bPaise: bigint("section_80ccd1b_paise", { mode: "number" }).notNull().default(0),
+    section80dSelfPaise: bigint("section_80d_self_paise", { mode: "number" }).notNull().default(0),
+    section80dParentsPaise: bigint("section_80d_parents_paise", { mode: "number" }).notNull().default(0),
+    selfOrFamilyIsSenior: boolean("self_or_family_is_senior")
       .notNull()
       .default(false),
-    parentsAreSenior: integer("parents_are_senior", { mode: "boolean" })
+    parentsAreSenior: boolean("parents_are_senior")
       .notNull()
       .default(false),
-    section80ePaise: integer("section_80e_paise").notNull().default(0),
-    section80gPaise: integer("section_80g_paise").notNull().default(0),
-    savingsInterestPaise: integer("savings_interest_paise").notNull().default(0),
-    taxpayerIsSenior: integer("taxpayer_is_senior", { mode: "boolean" })
+    section80ePaise: bigint("section_80e_paise", { mode: "number" }).notNull().default(0),
+    section80gPaise: bigint("section_80g_paise", { mode: "number" }).notNull().default(0),
+    savingsInterestPaise: bigint("savings_interest_paise", { mode: "number" }).notNull().default(0),
+    taxpayerIsSenior: boolean("taxpayer_is_senior")
       .notNull()
       .default(false),
-    homeLoanInterestPaise: integer("home_loan_interest_paise").notNull().default(0),
-    isSelfOccupied: integer("is_self_occupied", { mode: "boolean" })
+    homeLoanInterestPaise: bigint("home_loan_interest_paise", { mode: "number" }).notNull().default(0),
+    isSelfOccupied: boolean("is_self_occupied")
       .notNull()
       .default(true),
 
     /* House rent — FR-TAX-3. Rent is annual; the city decides 40 vs 50%. */
-    annualRentPaise: integer("annual_rent_paise").notNull().default(0),
+    annualRentPaise: bigint("annual_rent_paise", { mode: "number" }).notNull().default(0),
     rentCity: text("rent_city"),
     landlordName: text("landlord_name"),
     landlordPan: text("landlord_pan"),
 
     /* Previous employer — FR-TAX-5, from Form 12B. */
     previousEmployerName: text("previous_employer_name"),
-    previousSalaryPaise: integer("previous_salary_paise").notNull().default(0),
-    previousTdsPaise: integer("previous_tds_paise").notNull().default(0),
-    previousPtPaise: integer("previous_pt_paise").notNull().default(0),
+    previousSalaryPaise: bigint("previous_salary_paise", { mode: "number" }).notNull().default(0),
+    previousTdsPaise: bigint("previous_tds_paise", { mode: "number" }).notNull().default(0),
+    previousPtPaise: bigint("previous_pt_paise", { mode: "number" }).notNull().default(0),
 
     /** Extra tax the employee asks to have deducted each month. */
-    voluntaryMonthlyPaise: integer("voluntary_monthly_paise").notNull().default(0),
+    voluntaryMonthlyPaise: bigint("voluntary_monthly_paise", { mode: "number" }).notNull().default(0),
 
     status: text("status", {
       enum: ["draft", "submitted", "proofs_pending", "verified", "locked"],
@@ -1952,7 +1946,7 @@ export const taxDeclarations = sqliteTable(
  * declared, what was evidenced, and who decided. Anything unverified when
  * the window closes drops out of the projection.
  */
-export const taxProofs = sqliteTable(
+export const taxProofs = pgTable(
   "tax_proofs",
   {
     id: text("id").primaryKey(),
@@ -1960,8 +1954,8 @@ export const taxProofs = sqliteTable(
       .notNull()
       .references(() => taxDeclarations.id),
     section: text("section").notNull(),
-    declaredPaise: integer("declared_paise").notNull(),
-    verifiedPaise: integer("verified_paise").notNull().default(0),
+    declaredPaise: bigint("declared_paise", { mode: "number" }).notNull(),
+    verifiedPaise: bigint("verified_paise", { mode: "number" }).notNull().default(0),
     documentRef: text("document_ref"),
     status: text("status", {
       enum: ["pending", "verified", "partial", "rejected"],
@@ -1980,7 +1974,7 @@ export const taxProofs = sqliteTable(
 );
 
 /** Valued perquisites — FR-TAX-6. The basis string is kept for the worksheet. */
-export const taxPerquisites = sqliteTable(
+export const taxPerquisites = pgTable(
   "tax_perquisites",
   {
     id: text("id").primaryKey(),
@@ -1990,7 +1984,7 @@ export const taxPerquisites = sqliteTable(
     financialYear: integer("financial_year").notNull(),
     code: text("code").notNull(),
     label: text("label").notNull(),
-    valuePaise: integer("value_paise").notNull(),
+    valuePaise: bigint("value_paise", { mode: "number" }).notNull(),
     basis: text("basis").notNull(),
     /** Serialised inputs, so a valuation can be re-derived and audited. */
     inputs: text("inputs"),
@@ -2006,7 +2000,7 @@ export const taxPerquisites = sqliteTable(
  * payroll line so a recomputed projection can credit what has already
  * gone to the department without re-reading every payslip.
  */
-export const tdsLedger = sqliteTable(
+export const tdsLedger = pgTable(
   "tds_ledger",
   {
     id: text("id").primaryKey(),
@@ -2015,7 +2009,7 @@ export const tdsLedger = sqliteTable(
       .references(() => employees.id),
     financialYear: integer("financial_year").notNull(),
     month: integer("month").notNull(),
-    tdsPaise: integer("tds_paise").notNull(),
+    tdsPaise: bigint("tds_paise", { mode: "number" }).notNull(),
     /** Tax configuration set used, for FR-AUD-2 reproducibility. */
     configVersion: text("config_version").notNull(),
     runId: text("run_id").references(() => payrollRuns.id),
@@ -2036,7 +2030,7 @@ export const tdsLedger = sqliteTable(
  * derived, not stored — what is stored is only what a person did about
  * each item, keyed so the status survives the calendar being recomputed.
  */
-export const statutoryFilings = sqliteTable(
+export const statutoryFilings = pgTable(
   "statutory_filings",
   {
     id: text("id").primaryKey(),
@@ -2057,7 +2051,7 @@ export const statutoryFilings = sqliteTable(
     /** The acknowledgement number the portal returned. */
     filingReference: text("filing_reference"),
     owner: text("owner"),
-    amountPaise: integer("amount_paise"),
+    amountPaise: bigint("amount_paise", { mode: "number" }),
     filedAt: text("filed_at"),
     note: text("note"),
     updatedAt: text("updated_at").notNull(),
@@ -2078,7 +2072,7 @@ export const statutoryFilings = sqliteTable(
  * employee record because net pay can be split — FR-BANK-2 — and a split
  * needs somewhere to say how much goes where.
  */
-export const employeeBankAccounts = sqliteTable(
+export const employeeBankAccounts = pgTable(
   "employee_bank_accounts",
   {
     id: text("id").primaryKey(),
@@ -2095,15 +2089,15 @@ export const employeeBankAccounts = sqliteTable(
     })
       .notNull()
       .default("remainder"),
-    allocationValue: integer("allocation_value").notNull().default(0),
+    allocationValue: bigint("allocation_value", { mode: "number" }).notNull().default(0),
     sequence: integer("sequence").notNull().default(0),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
   },
   (t) => [index("emp_bank_accounts_idx").on(t.employeeId)],
 );
 
 /** Per-company chart of accounts — FR-BANK-5. */
-export const glAccounts = sqliteTable(
+export const glAccounts = pgTable(
   "gl_accounts",
   {
     id: text("id").primaryKey(),
@@ -2115,13 +2109,13 @@ export const glAccounts = sqliteTable(
     accountType: text("account_type", {
       enum: ["expense", "liability", "asset"],
     }).notNull(),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
   },
   (t) => [uniqueIndex("gl_account_idx").on(t.companyId, t.code)],
 );
 
 /** Which ledger accounts a payroll component posts to — FR-BANK-5. */
-export const glMappings = sqliteTable(
+export const glMappings = pgTable(
   "gl_mappings",
   {
     id: text("id").primaryKey(),
@@ -2141,7 +2135,7 @@ export const glMappings = sqliteTable(
  * FR-BANK-1 is explicit about this, and it is the difference between a
  * duplicate salary payment and none.
  */
-export const bankFiles = sqliteTable(
+export const bankFiles = pgTable(
   "bank_files",
   {
     id: text("id").primaryKey(),
@@ -2157,7 +2151,7 @@ export const bankFiles = sqliteTable(
     reference: text("reference").notNull(),
     valueDate: text("value_date").notNull(),
     lineCount: integer("line_count").notNull(),
-    totalPaise: integer("total_paise").notNull(),
+    totalPaise: bigint("total_paise", { mode: "number" }).notNull(),
     status: text("status", { enum: ["active", "superseded", "released"] })
       .notNull()
       .default("active"),
@@ -2173,7 +2167,7 @@ export const bankFiles = sqliteTable(
 );
 
 /** One instructed payment, so a bank response can be matched back to it. */
-export const paymentInstructions = sqliteTable(
+export const paymentInstructions = pgTable(
   "payment_instructions",
   {
     id: text("id").primaryKey(),
@@ -2185,8 +2179,8 @@ export const paymentInstructions = sqliteTable(
       .references(() => employees.id),
     accountNumber: text("account_number").notNull(),
     ifsc: text("ifsc").notNull(),
-    amountPaise: integer("amount_paise").notNull(),
-    sameBank: integer("same_bank", { mode: "boolean" }).notNull().default(false),
+    amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
+    sameBank: boolean("same_bank").notNull().default(false),
     status: text("status", {
       enum: ["pending", "paid", "returned", "failed"],
     })
@@ -2194,7 +2188,7 @@ export const paymentInstructions = sqliteTable(
       .default("pending"),
     failureReason: text("failure_reason"),
     /** A failed payment is re-queued rather than written off. */
-    requeued: integer("requeued", { mode: "boolean" }).notNull().default(false),
+    requeued: boolean("requeued").notNull().default(false),
     respondedAt: text("responded_at"),
   },
   (t) => [
@@ -2208,7 +2202,7 @@ export const paymentInstructions = sqliteTable(
  * that next month's opening balance is last month's closing, and the
  * charge that posts is the movement rather than the whole liability.
  */
-export const provisionBalances = sqliteTable(
+export const provisionBalances = pgTable(
   "provision_balances",
   {
     id: text("id").primaryKey(),
@@ -2223,9 +2217,9 @@ export const provisionBalances = sqliteTable(
     }).notNull(),
     periodYear: integer("period_year").notNull(),
     periodMonth: integer("period_month").notNull(),
-    openingPaise: integer("opening_paise").notNull(),
-    closingPaise: integer("closing_paise").notNull(),
-    chargePaise: integer("charge_paise").notNull(),
+    openingPaise: bigint("opening_paise", { mode: "number" }).notNull(),
+    closingPaise: bigint("closing_paise", { mode: "number" }).notNull(),
+    chargePaise: bigint("charge_paise", { mode: "number" }).notNull(),
     basis: text("basis").notNull(),
     computedAt: text("computed_at").notNull(),
   },
@@ -2240,7 +2234,7 @@ export const provisionBalances = sqliteTable(
 );
 
 /** What was exported to an accounting system, so a re-send is deliberate. */
-export const journalExports = sqliteTable(
+export const journalExports = pgTable(
   "journal_exports",
   {
     id: text("id").primaryKey(),
@@ -2252,8 +2246,8 @@ export const journalExports = sqliteTable(
       .references(() => payrollRuns.id),
     target: text("target", { enum: ["tally_xml", "journal_csv"] }).notNull(),
     dimension: text("dimension").notNull(),
-    totalDebitPaise: integer("total_debit_paise").notNull(),
-    totalCreditPaise: integer("total_credit_paise").notNull(),
+    totalDebitPaise: bigint("total_debit_paise", { mode: "number" }).notNull(),
+    totalCreditPaise: bigint("total_credit_paise", { mode: "number" }).notNull(),
     exportedBy: text("exported_by").notNull(),
     exportedAt: text("exported_at").notNull(),
   },
@@ -2270,7 +2264,7 @@ export const journalExports = sqliteTable(
  * the audit log; this is the other half, because who *looked* at whose
  * salary is its own question in an investigation.
  */
-export const accessLog = sqliteTable(
+export const accessLog = pgTable(
   "access_log",
   {
     id: text("id").primaryKey(),
@@ -2299,7 +2293,7 @@ export const accessLog = sqliteTable(
 );
 
 /** Sensitive-change alerts raised to a control owner — FR-AUD-5. */
-export const controlAlerts = sqliteTable(
+export const controlAlerts = pgTable(
   "control_alerts",
   {
     id: text("id").primaryKey(),
@@ -2323,7 +2317,7 @@ export const controlAlerts = sqliteTable(
 );
 
 /** Suspends deletion during a dispute — FR-AUD-8. */
-export const legalHolds = sqliteTable(
+export const legalHolds = pgTable(
   "legal_holds",
   {
     id: text("id").primaryKey(),
@@ -2348,7 +2342,7 @@ export const legalHolds = sqliteTable(
  * Segregation-of-duties policy per company — FR-AUD-4 says these are
  * configurable but on by default.
  */
-export const sodPolicies = sqliteTable(
+export const sodPolicies = pgTable(
   "sod_policies",
   {
     id: text("id").primaryKey(),
@@ -2356,7 +2350,7 @@ export const sodPolicies = sqliteTable(
       .notNull()
       .references(() => companies.id),
     rule: text("rule").notNull(),
-    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    enabled: boolean("enabled").notNull().default(true),
     coolingDays: integer("cooling_days"),
     updatedBy: text("updated_by"),
     updatedAt: text("updated_at").notNull(),
@@ -2373,7 +2367,7 @@ export const sodPolicies = sqliteTable(
  * as JSON rather than rows because a template is edited as one thing and
  * versioned as one thing — an instance records the version it ran on.
  */
-export const workflowTemplates = sqliteTable(
+export const workflowTemplates = pgTable(
   "workflow_templates",
   {
     id: text("id").primaryKey(),
@@ -2385,14 +2379,14 @@ export const workflowTemplates = sqliteTable(
     trigger: text("trigger").notNull(),
     stepsJson: text("steps_json").notNull(),
     version: integer("version").notNull().default(1),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
     updatedBy: text("updated_by"),
     updatedAt: text("updated_at").notNull(),
   },
   (t) => [uniqueIndex("workflow_template_idx").on(t.companyId, t.code)],
 );
 
-export const workflowInstances = sqliteTable(
+export const workflowInstances = pgTable(
   "workflow_instances",
   {
     id: text("id").primaryKey(),
@@ -2428,7 +2422,7 @@ export const workflowInstances = sqliteTable(
 );
 
 /** The execution log, append-only in spirit and in use. */
-export const workflowEvents = sqliteTable(
+export const workflowEvents = pgTable(
   "workflow_events",
   {
     id: text("id").primaryKey(),
@@ -2452,7 +2446,7 @@ export const workflowEvents = sqliteTable(
  * applies as much to a machine caller as a person. Only the hash is
  * stored; the plaintext key is shown once, at creation.
  */
-export const apiKeys = sqliteTable(
+export const apiKeys = pgTable(
   "api_keys",
   {
     id: text("id").primaryKey(),
@@ -2466,7 +2460,7 @@ export const apiKeys = sqliteTable(
     compensationScope: text("compensation_scope", { enum: ["none", "company"] })
       .notNull()
       .default("none"),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
     createdBy: text("created_by").notNull(),
     createdAt: text("created_at").notNull(),
     lastUsedAt: text("last_used_at"),
@@ -2480,7 +2474,7 @@ export const apiKeys = sqliteTable(
 );
 
 /** One subscriber endpoint, listening for a subset of the named event catalog. */
-export const webhookSubscriptions = sqliteTable(
+export const webhookSubscriptions = pgTable(
   "webhook_subscriptions",
   {
     id: text("id").primaryKey(),
@@ -2492,7 +2486,7 @@ export const webhookSubscriptions = sqliteTable(
     secret: text("secret").notNull(),
     /** Comma-separated subset of WEBHOOK_EVENTS. */
     events: text("events").notNull(),
-    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    active: boolean("active").notNull().default(true),
     createdBy: text("created_by").notNull(),
     createdAt: text("created_at").notNull(),
   },
@@ -2500,7 +2494,7 @@ export const webhookSubscriptions = sqliteTable(
 );
 
 /** One delivery attempt, kept whether it succeeded or not — the audit trail for outbound calls. */
-export const webhookDeliveries = sqliteTable(
+export const webhookDeliveries = pgTable(
   "webhook_deliveries",
   {
     id: text("id").primaryKey(),
@@ -2528,7 +2522,7 @@ export const webhookDeliveries = sqliteTable(
  * it, if anyone, is derived from the open row (returnedAt is null) in
  * assetAllocations below, never stored redundantly here.
  */
-export const assets = sqliteTable(
+export const assets = pgTable(
   "assets",
   {
     id: text("id").primaryKey(),
@@ -2543,7 +2537,7 @@ export const assets = sqliteTable(
     model: text("model"),
     serialNumber: text("serial_number"),
     purchaseDate: text("purchase_date"),
-    purchaseValuePaise: integer("purchase_value_paise"),
+    purchaseValuePaise: bigint("purchase_value_paise", { mode: "number" }),
     status: text("status", {
       enum: ["in_stock", "issued", "under_repair", "retired", "lost"],
     })
@@ -2564,7 +2558,7 @@ export const assets = sqliteTable(
  * is with this employee right now — that is the only place "who holds
  * what" lives, so it can never drift from the asset's own status.
  */
-export const assetAllocations = sqliteTable(
+export const assetAllocations = pgTable(
   "asset_allocations",
   {
     id: text("id").primaryKey(),

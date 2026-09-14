@@ -141,9 +141,8 @@ export async function issueAsset(_prev: AssetState, fd: FormData): Promise<Asset
         returnedBy: null,
         returnCondition: null,
         notes: null,
-      })
-      .run();
-    await tx.update(s.assets).set({ status: "issued" }).where(eq(s.assets.id, assetId)).run();
+      });
+    await tx.update(s.assets).set({ status: "issued" }).where(eq(s.assets.id, assetId));
   });
 
   await audit({
@@ -186,9 +185,8 @@ export async function revokeAsset(_prev: AssetState, fd: FormData): Promise<Asse
   await db.transaction(async (tx) => {
     await tx.update(s.assetAllocations)
       .set({ returnedAt: now, returnedBy: user.email, returnCondition, notes })
-      .where(eq(s.assetAllocations.id, allocationId))
-      .run();
-    await tx.update(s.assets).set({ status: nextStatus }).where(eq(s.assets.id, asset.id)).run();
+      .where(eq(s.assetAllocations.id, allocationId));
+    await tx.update(s.assets).set({ status: nextStatus }).where(eq(s.assets.id, asset.id));
   });
 
   await audit({

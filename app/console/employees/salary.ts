@@ -376,8 +376,7 @@ export async function reviseSalary(
         .slice(0, 10);
       await tx.update(s.employeeSalaries)
         .set({ effectiveTo: dayBefore })
-        .where(eq(s.employeeSalaries.id, current.id))
-        .run();
+        .where(eq(s.employeeSalaries.id, current.id));
     }
 
     await tx.insert(s.employeeSalaries)
@@ -402,8 +401,7 @@ export async function reviseSalary(
         arrearsPaise: 0,
         createdBy: user.email,
         createdAt: now,
-      })
-      .run();
+      });
 
     if (arrearPeriod && arrears.totalPaise !== 0) {
       await tx.insert(s.payrollAdjustments)
@@ -425,8 +423,7 @@ export async function reviseSalary(
           reason: `Salary revised to ₹${(monthlyGrossPaise / 100).toLocaleString("en-IN")} from ${effectiveFrom}; ${arrears.lines.length} month(s) already run at the old rate`,
           createdBy: user.email,
           createdAt: now,
-        })
-        .run();
+        });
     }
   });
 

@@ -272,12 +272,10 @@ export async function setDefaultCompany(
   await db.transaction(async (tx) => {
     await tx.update(s.companies)
       .set({ isDefault: false })
-      .where(ne(s.companies.id, companyId))
-      .run();
+      .where(ne(s.companies.id, companyId));
     await tx.update(s.companies)
       .set({ isDefault: true })
-      .where(eq(s.companies.id, companyId))
-      .run();
+      .where(eq(s.companies.id, companyId));
   });
 
   await audit({

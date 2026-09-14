@@ -41,8 +41,7 @@ export async function bookRecoveriesForRun(
   const lines = await tx
     .select()
     .from(s.payrollLines)
-    .where(eq(s.payrollLines.runId, args.runId))
-    .all();
+    .where(eq(s.payrollLines.runId, args.runId));
 
   const recoveries = new Map<string, number>();
   const arrears = new Map<string, number>();
@@ -63,7 +62,7 @@ export async function bookRecoveriesForRun(
   let arrearsTotal = 0;
 
   for (const loanId of touched) {
-    const [loan] = await tx.select().from(s.loans).where(eq(s.loans.id, loanId)).all();
+    const [loan] = await tx.select().from(s.loans).where(eq(s.loans.id, loanId));
     if (!loan) continue;
 
     const recovered = recoveries.get(loanId) ?? 0;
@@ -90,8 +89,7 @@ export async function bookRecoveriesForRun(
           ),
         )
         .orderBy(s.loanSchedules.instalmentNo)
-        .limit(1)
-        .all();
+        .limit(1);
 
       const interestDue = nextDue?.interestPaise ?? 0;
       const towardsInterest = Math.min(recovered, interestDue);
@@ -107,8 +105,7 @@ export async function bookRecoveriesForRun(
             status:
               totalRecovered >= nextDue.instalmentPaise ? "recovered" : "partial",
           })
-          .where(eq(s.loanSchedules.id, nextDue.id))
-          .run();
+          .where(eq(s.loanSchedules.id, nextDue.id));
       }
 
       await tx.insert(s.loanTransactions)
@@ -128,8 +125,7 @@ export async function bookRecoveriesForRun(
               : `Recovered ₹${(recovered / 100).toFixed(0)} through payroll`,
           actor: args.actor,
           at: new Date().toISOString(),
-        })
-        .run();
+        });
     }
 
     const closes = outstanding === 0 && newArrears === 0;
@@ -146,8 +142,7 @@ export async function bookRecoveriesForRun(
             }
           : {}),
       })
-      .where(eq(s.loans.id, loanId))
-      .run();
+      .where(eq(s.loans.id, loanId));
   }
 
   return {
@@ -174,15 +169,13 @@ export async function reverseRecoveriesForRun(
         eq(s.loanTransactions.runId, args.runId),
         eq(s.loanTransactions.kind, "recovery"),
       ),
-    )
-    .all();
+    );
 
   for (const booking of bookings) {
     const [loan] = await tx
       .select()
       .from(s.loans)
-      .where(eq(s.loans.id, booking.loanId))
-      .all();
+      .where(eq(s.loans.id, booking.loanId));
     if (!loan) continue;
 
     // amountPaise is negative on a recovery, so subtracting restores it.
@@ -205,8 +198,7 @@ export async function reverseRecoveriesForRun(
         basis: `Reversed: the payroll run that recovered this was reopened`,
         actor: args.actor,
         at: new Date().toISOString(),
-      })
-      .run();
+      });
 
     await tx.update(s.loans)
       .set({
@@ -215,8 +207,7 @@ export async function reverseRecoveriesForRun(
         status: loan.status === "closed" ? "active" : loan.status,
         closedOn: null,
       })
-      .where(eq(s.loans.id, booking.loanId))
-      .run();
+      .where(eq(s.loans.id, booking.loanId));
 
     await tx.update(s.loanSchedules)
       .set({ status: "due", recoveredPaise: 0 })
@@ -225,8 +216,7 @@ export async function reverseRecoveriesForRun(
           eq(s.loanSchedules.loanId, booking.loanId),
           eq(s.loanSchedules.status, "partial"),
         ),
-      )
-      .run();
+      );
   }
 
   return bookings.length;

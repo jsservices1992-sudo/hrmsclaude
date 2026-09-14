@@ -218,8 +218,7 @@ export async function bulkUploadAttendance(
             basis: values.basis,
             source: values.source,
           },
-        })
-        .run();
+        });
     }
   });
 
@@ -348,8 +347,7 @@ export async function bulkMarkDepartment(
               basis: "Bulk department mark",
               source: "manual" as const,
             },
-          })
-          .run();
+          });
       }
     }
   });
@@ -470,8 +468,7 @@ export async function markAttendanceDay(
           regularised: true,
           source: "manual" as const,
         },
-      })
-      .run();
+      });
   });
 
   await persistMonth({ companyId, year, month });
@@ -1105,8 +1102,7 @@ export async function addVariablePayBulk(
           reason: null,
           createdBy: user.email,
           createdAt: now,
-        })
-        .run();
+        });
     }
   });
 

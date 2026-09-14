@@ -219,8 +219,7 @@ export async function persistMonth(args: {
               eq(s.attendanceRecords.employeeId, m.employeeId),
               eq(s.attendanceRecords.date, d.date),
             ),
-          )
-          .all();
+          );
 
         const values = {
           dayType:
@@ -239,8 +238,7 @@ export async function persistMonth(args: {
         if (existing.length > 0) {
           await tx.update(s.attendanceRecords)
             .set(values)
-            .where(eq(s.attendanceRecords.id, existing[0].id))
-            .run();
+            .where(eq(s.attendanceRecords.id, existing[0].id));
         } else {
           await tx.insert(s.attendanceRecords)
             .values({
@@ -251,8 +249,7 @@ export async function persistMonth(args: {
               source: "derived",
               regularised: false,
               ...values,
-            })
-            .run();
+            });
         }
       }
 
@@ -267,8 +264,7 @@ export async function persistMonth(args: {
             eq(s.attendanceInputs.periodYear, args.year),
             eq(s.attendanceInputs.periodMonth, args.month),
           ),
-        )
-        .all();
+        );
 
       if (existingInput.length > 0) {
         // A hand override stands until someone explicitly clears it —
@@ -277,8 +273,7 @@ export async function persistMonth(args: {
         if (!existingInput[0].overridden) {
           await tx.update(s.attendanceInputs)
             .set({ lopDays: lop })
-            .where(eq(s.attendanceInputs.id, existingInput[0].id))
-            .run();
+            .where(eq(s.attendanceInputs.id, existingInput[0].id));
         }
       } else {
         await tx.insert(s.attendanceInputs)
@@ -288,8 +283,7 @@ export async function persistMonth(args: {
             periodYear: args.year,
             periodMonth: args.month,
             lopDays: lop,
-          })
-          .run();
+          });
       }
     }
   });

@@ -28,7 +28,6 @@ export async function GET() {
 
   checks.database = {
     configured: databaseUrl,
-    authToken: Boolean(process.env.DATABASE_AUTH_TOKEN),
     hint: databaseUrl
       ? undefined
       : isProduction
@@ -51,17 +50,18 @@ hint: blobToken
   let ok = false;
   if (databaseUrl || !isProduction) {
     try {
-      const result = await db.get<{ n: number }>(
-        sql`select count(*) as n from sqlite_master where type = 'table'`,
+      const result = await db.execute<{ n: number }>(
+        sql`select count(*)::int as n from information_schema.tables
+            where table_schema = 'public'`,
       );
-      const tables = Number(result?.n ?? 0);
+      const tables = Number(result[0]?.n ?? 0);
       ok = tables > 0;
       checks.schema = {
         reachable: true,
         tables,
         hint: ok
           ? undefined
-          : "The database is reachable but empty. Run: DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:push && npm run db:triggers",
+          : "The database is reachable but has no tables. Run: DATABASE_URL=… npm run db:push && npm run db:triggers",
       };
     } catch (error) {
       checks.schema = {
@@ -69,7 +69,7 @@ hint: blobToken
         /* The driver's message names the host and the failure mode and
            carries no credential. */
         error: error instanceof Error ? error.message : String(error),
-        hint: "The database could not be reached. Check DATABASE_URL and DATABASE_AUTH_TOKEN, and that the token has not expired.",
+        hint: "The database could not be reached. Check DATABASE_URL, and that the database allows connections from outside its own network.",
       };
     }
   }

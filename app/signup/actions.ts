@@ -130,8 +130,7 @@ export async function signup(
         retroLopTreatment: "adjust_next_period",
         financialYearStartMonth: 4,
         createdAt: now,
-      })
-      .run();
+      });
 
     await tx
       .insert(s.users)
@@ -146,8 +145,7 @@ export async function signup(
         compensationScope: "company",
         active: true,
         createdAt: now,
-      })
-      .run();
+      });
 
     await tx
       .insert(s.auditLog)
@@ -161,8 +159,7 @@ export async function signup(
         before: null,
         after: JSON.stringify({ company: companyName, admin: email, ip }),
         reason: "Self-serve registration",
-      })
-      .run();
+      });
   });
 
   await createSession(userId, hdrs.get("user-agent") ?? undefined);
