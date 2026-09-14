@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { signupEnabled } from "@/lib/auth/signup";
+import { storageConfigured, storageDriverName } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function GET() {
   const checks: Record<string, unknown> = {};
 
   const databaseUrl = Boolean(process.env.DATABASE_URL);
-  const blobToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  const storageOk = storageConfigured();
 
   /* In development a local file is the intended setup, so an unset
      DATABASE_URL there is not a fault to report as one. */
@@ -35,35 +36,31 @@ export async function GET() {
         : "Using a local file — expected in development.",
   };
 
-  /* Names only, never values. A Blob store connected under a custom
-     prefix exports something like MYSTORE_READ_WRITE_TOKEN, which this
-     application does not read — and from the outside that is
-     indistinguishable from no store at all. Listing the names that are
-     present turns "not configured" into something diagnosable without
-     anyone reading a secret aloud. */
-  const tokenVars = Object.keys(process.env)
-    .filter((k) => /BLOB|READ_WRITE_TOKEN/i.test(k))
-    .sort()
-    .map((name) => ({ name, empty: (process.env[name] ?? "") === "" }));
-
-  /* Declared but blank is its own failure, and the one that looks most
-     like a lie: the variable is right there in the project's settings,
-     so everything reads as configured, and the application sees an
-     empty string. */
-  const declaredButEmpty = tokenVars.some((v) => v.name === "BLOB_READ_WRITE_TOKEN" && v.empty);
+  /* Names only, never values. A store is often configured most of the
+     way — a variable declared but blank, or a Blob store connected
+     under a custom prefix — and from outside that is indistinguishable
+     from nothing at all. Listing which names are present, and whether
+     each carries a value, makes it diagnosable without anyone reading a
+     secret aloud. */
+  const storageVars = [
+    "S3_BUCKET",
+    "S3_ENDPOINT",
+    "S3_ACCESS_KEY_ID",
+    "S3_SECRET_ACCESS_KEY",
+    "BLOB_READ_WRITE_TOKEN",
+  ].map((name) => ({
+    name,
+    set: (process.env[name] ?? "") !== "",
+  }));
 
   checks.documentStorage = {
-    configured: blobToken,
-    /* Only worth showing when the expected one is missing. */
-    tokenVariables: blobToken ? undefined : tokenVars,
-hint: blobToken
+    configured: storageOk,
+    driver: storageOk ? storageDriverName() : undefined,
+    variables: storageOk ? undefined : storageVars,
+    hint: storageOk
       ? undefined
       : isProduction
-        ? declaredButEmpty
-          ? "BLOB_READ_WRITE_TOKEN exists on this deployment but its value is empty, which is why everything in the dashboard looks connected. Open the project's Environment Variables, delete the blank BLOB_READ_WRITE_TOKEN, reconnect the Blob store so it writes its own, and redeploy."
-          : tokenVars.length > 0
-            ? `BLOB_READ_WRITE_TOKEN is not set. These are: ${tokenVars.map((v) => v.name).join(", ")}. A Blob store connected under a custom prefix exports a different name, which this application does not read — reconnect it with the default prefix, then redeploy.`
-            : "BLOB_READ_WRITE_TOKEN is not set, and no similarly-named variable is either. Connect a Blob store to this project, check the variable is enabled for Production, then redeploy — environment variables are fixed at build time, so a store connected after the last deploy is not visible to it."
+        ? "No durable document store is configured, so uploads are refused rather than written to a filesystem that does not survive a deploy. Set S3_BUCKET, S3_ENDPOINT, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY for any S3-compatible bucket (Cloudflare R2, Backblaze B2, AWS S3), or connect a Vercel Blob store. Environment variables are fixed at build time, so redeploy after setting them."
         : "Using the local filesystem — expected in development.",
   };
 
@@ -99,7 +96,7 @@ hint: blobToken
 
   checks.registration = { open: signupEnabled() };
 
-  const healthy = ok && (isProduction ? databaseUrl && blobToken : true);
+  const healthy = ok && (isProduction ? databaseUrl && storageOk : true);
   return Response.json(
     { healthy, checks },
     { status: healthy ? 200 : 503, headers: { "cache-control": "no-store" } },

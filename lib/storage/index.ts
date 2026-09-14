@@ -1,13 +1,21 @@
 import "server-only";
 import * as disk from "./disk";
 import * as blob from "./blob";
+import * as s3 from "./s3";
 
 /**
  * Where documents are stored.
  *
- * Vercel Blob when the store is configured, the local filesystem
- * otherwise. The two implement the same narrow interface, so nothing
- * that saves or reads a document knows or cares which is in use.
+ * Any S3-compatible bucket when one is configured, Vercel Blob when
+ * that is, and the local filesystem otherwise. All three implement the
+ * same narrow interface, so nothing that saves or reads a document
+ * knows or cares which is in use.
+ *
+ * S3 is checked first deliberately. Choosing it is the more explicit
+ * act — a bucket, a key pair and an endpoint someone entered on
+ * purpose — whereas a Blob token can arrive merely by connecting a
+ * store in a dashboard. Whichever was configured on purpose should
+ * win.
  *
  * Production must not fall back to disk. A serverless filesystem is
  * ephemeral, so the fallback would appear to work — uploads succeed,
@@ -31,13 +39,14 @@ type Driver = {
 };
 
 function driver(): Driver {
-  const hasBlobStore = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-  if (!hasBlobStore && process.env.NODE_ENV === "production") {
+  if (s3.configured()) return s3;
+  if (process.env.BLOB_READ_WRITE_TOKEN) return blob;
+  if (process.env.NODE_ENV === "production") {
     throw new Error(
-      "BLOB_READ_WRITE_TOKEN is not set. Document storage would fall back to a local filesystem that does not survive a deploy, so uploaded documents would be silently lost.",
+      "No durable document store is configured. Document storage would fall back to a local filesystem that does not survive a deploy, so uploaded documents would be silently lost.",
     );
   }
-  return hasBlobStore ? blob : disk;
+  return disk;
 }
 
 /**
@@ -51,13 +60,18 @@ function driver(): Driver {
  * who can fix it.
  */
 export function storageUnavailable(): string | null {
-  if (process.env.BLOB_READ_WRITE_TOKEN) return null;
+  if (storageConfigured()) return null;
   if (process.env.NODE_ENV !== "production") return null;
-  return "Document storage is not configured for this deployment, so nothing can be uploaded yet. Add a Blob store in the Vercel project's Storage tab, set BLOB_READ_WRITE_TOKEN, and redeploy.";
+  return "Document storage is not configured for this deployment, so nothing can be uploaded yet. Point it at an S3-compatible bucket (S3_BUCKET, S3_ENDPOINT, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY) or connect a Vercel Blob store, then redeploy.";
+}
+
+export function storageConfigured(): boolean {
+  return s3.configured() || Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
 /** Which store is in use, so a settings screen can say so plainly. */
-export function storageDriverName(): "vercel-blob" | "local-disk" {
+export function storageDriverName(): "s3" | "vercel-blob" | "local-disk" {
+  if (s3.configured()) return "s3";
   return process.env.BLOB_READ_WRITE_TOKEN ? "vercel-blob" : "local-disk";
 }
 
