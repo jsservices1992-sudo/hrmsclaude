@@ -45,6 +45,7 @@ export async function GET(
       empCode: s.employees.empCode,
       firstName: s.employees.firstName,
       lastName: s.employees.lastName,
+      dateOfJoining: s.employees.dateOfJoining,
     })
     .from(s.employees)
     .where(and(eq(s.employees.companyId, companyId), eq(s.employees.status, "active")))
@@ -61,14 +62,24 @@ export async function GET(
 
     const lines = [
       SALARY_COLUMNS.join(","),
-      ...needing.map((e) => `${e.empCode},,,${today},Migrated from previous system`),
+      /* Dated to the day each person joined, not to the day the file was
+         downloaded. Somebody brought across from another system has been
+         on this salary since they joined; stamping today's date on it
+         means the record says their pay began the afternoon it was
+         imported, and the first thing anyone tries to do about that is
+         backdate a revision, which is refused for good reasons. */
+      ...needing.map(
+        (e) => `${e.empCode},,,${e.dateOfJoining || today},Salary on joining, migrated from previous system`,
+      ),
       "",
       "# ---- how to fill this in ----",
       `# amount:         the figure, e.g. 45000 or 1200000`,
       `# payMode:        what that figure is — ${PAY_MODES.join(" | ")}`,
       "#                 gross = monthly gross, annual_gross = a year of it,",
       "#                 ctc = annual cost to company, take_home = monthly in hand",
-      "# effectiveFrom:  when this salary started. YYYY-MM-DD",
+      "# effectiveFrom:  when this salary started — pre-filled with each",
+      "#                 person's joining date. Change it only where somebody",
+      "#                 has been on a different salary since some later date.",
       needing.length === 0
         ? "# every active employee already has a salary — nothing to import"
         : `# ${needing.length} employee(s) listed have no salary yet`,

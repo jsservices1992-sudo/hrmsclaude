@@ -82,6 +82,7 @@ export async function importSalaries(
       branchId: s.employees.branchId,
       departmentId: s.employees.departmentId,
       gender: s.employees.gender,
+      dateOfJoining: s.employees.dateOfJoining,
     })
     .from(s.employees)
     .where(eq(s.employees.companyId, companyId));
@@ -118,10 +119,22 @@ export async function importSalaries(
   /* Resolved before the transaction: turning a CTC into a monthly gross
      reads statutory configuration, and holding a transaction open
      across all of that would keep a connection busy for no reason. */
-  const resolved: { employeeId: string; monthlyGrossPaise: number; annualCtcPaise: number | null; row: (typeof rows)[number] }[] = [];
-  const defaultAsOf = new Date().toISOString().slice(0, 10);
+  const resolved: {
+    employeeId: string;
+    monthlyGrossPaise: number;
+    annualCtcPaise: number | null;
+    effectiveFrom: string;
+    row: (typeof rows)[number];
+  }[] = [];
+  const today = new Date().toISOString().slice(0, 10);
   for (const row of fresh) {
     const employee = byCode.get(row.empCode)!;
+    /* An unstated date means "since they joined", not "since today".
+       Somebody migrated across has been on this salary since their
+       joining date; dating it to the day of the import says their pay
+       began that afternoon, and the only way to put that right
+       afterwards is to backdate a revision, which is refused. */
+    const effectiveFrom = row.effectiveFrom || employee.dateOfJoining || today;
     try {
       /* Statutory rates are read as at the date the salary starts, so a
          migration dated to last April uses last April's rules. */
@@ -129,7 +142,7 @@ export async function importSalaries(
         companyId,
         amountPaise: row.amountPaise,
         mode: row.payMode,
-        asOf: row.effectiveFrom || defaultAsOf,
+        asOf: effectiveFrom,
         departmentId: employee.departmentId,
         branchId: employee.branchId,
         gender: employee.gender,
@@ -138,6 +151,7 @@ export async function importSalaries(
         employeeId: employee.id,
         monthlyGrossPaise: pay.monthlyGrossPaise,
         annualCtcPaise: row.payMode === "ctc" ? row.amountPaise : null,
+        effectiveFrom,
         row,
       });
     } catch (e) {
@@ -155,7 +169,6 @@ export async function importSalaries(
   }
 
   const now = new Date().toISOString();
-  const defaultFrom = now.slice(0, 10);
 
   await db.transaction(async (tx) => {
     for (const r of resolved) {
@@ -164,9 +177,9 @@ export async function importSalaries(
         employeeId: r.employeeId,
         monthlyGrossPaise: r.monthlyGrossPaise,
         annualCtcPaise: r.annualCtcPaise,
-        effectiveFrom: r.row.effectiveFrom || defaultFrom,
+        effectiveFrom: r.effectiveFrom,
         effectiveTo: null,
-        reason: r.row.reason ?? "Migrated from previous system",
+        reason: r.row.reason ?? "Salary on joining, migrated from previous system",
         revisionType: "initial",
         createdBy: user.email,
         createdAt: now,

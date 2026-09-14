@@ -126,10 +126,49 @@ export async function reviseSalary(
     .orderBy(desc(s.employeeSalaries.effectiveFrom))
     .limit(1);
 
+  /*
+   * Backdating past the current salary is refused, because a revision
+   * that starts before the one it replaces is not a revision — it is a
+   * rewrite of what somebody was already told they earn.
+   *
+   * With one exception, and it is the case a migration always hits. An
+   * employee brought across from another system has been on the same
+   * salary since they joined, years ago, but the row created for them
+   * starts on the day they were imported. Correcting that date is not
+   * editing history: there is no history yet. So when the only salary
+   * on record is the opening one and no payroll has ever paid against
+   * it, the row is corrected in place rather than revised.
+   */
+  let correctingOpening = false;
   if (current && effectiveFrom <= current.effectiveFrom) {
-    return {
-      error: `The current salary is effective from ${current.effectiveFrom}. A revision must start after that — backdating means editing history rather than adding to it.`,
-    };
+    const [rows, paid] = await Promise.all([
+      db
+        .select({ id: s.employeeSalaries.id })
+        .from(s.employeeSalaries)
+        .where(eq(s.employeeSalaries.employeeId, employeeId)),
+      db
+        .select({ id: s.payrollEmployeeSummaries.id })
+        .from(s.payrollEmployeeSummaries)
+        .where(eq(s.payrollEmployeeSummaries.employeeId, employeeId))
+        .limit(1),
+    ]);
+    correctingOpening =
+      current.revisionType === "initial" && rows.length === 1 && paid.length === 0;
+
+    if (!correctingOpening) {
+      return {
+        error:
+          paid.length > 0
+            ? `The current salary is effective from ${current.effectiveFrom} and payroll has already been run against it. A revision must start after that — backdating means restating a payslip somebody has already been given.`
+            : `The current salary is effective from ${current.effectiveFrom}. A revision must start after that — backdating means editing history rather than adding to it.`,
+      };
+    }
+
+    if (employee.dateOfJoining && effectiveFrom < employee.dateOfJoining) {
+      return {
+        error: `${employee.firstName} joined on ${employee.dateOfJoining}. An opening salary cannot start before that.`,
+      };
+    }
   }
 
   const structureCtx = await loadStructureResolutionContext(employee.companyId);
@@ -369,6 +408,27 @@ export async function reviseSalary(
       : "Arrears";
 
   await db.transaction(async (tx) => {
+    if (correctingOpening && current) {
+      /* Corrected, not revised: leaving the old row behind would put two
+         salaries on record for someone who has only ever had one. */
+      await tx
+        .update(s.employeeSalaries)
+        .set({
+          monthlyGrossPaise,
+          annualCtcPaise: mode === "ctc" ? amountPaise : evaluated.annualCtcPaise,
+          effectiveFrom,
+          reason: reason ?? "Opening salary corrected",
+          structureId:
+            structureIdRaw === undefined
+              ? (current.structureId ?? null)
+              : structureIdRaw === ""
+                ? null
+                : structureIdRaw,
+        })
+        .where(eq(s.employeeSalaries.id, current.id));
+      return;
+    }
+
     if (current) {
       // Close the old row rather than overwrite it.
       const dayBefore = new Date(Date.parse(effectiveFrom + "T00:00:00Z") - 86_400_000)
@@ -429,7 +489,7 @@ export async function reviseSalary(
 
   await recordAudit({
     user,
-    action: "salary.revised",
+    action: correctingOpening ? "salary.opening_corrected" : "salary.revised",
     entity: "employee_salary",
     entityId: employeeId,
     before: current ? { monthlyGrossPaise: current.monthlyGrossPaise } : null,
@@ -449,8 +509,10 @@ export async function reviseSalary(
 
   return {
     ok: [
-      `Revised to ₹${(monthlyGrossPaise / 100).toLocaleString("en-IN")} a month from ${effectiveFrom}`,
-      pct ? `(${change >= 0 ? "+" : ""}${pct}%)` : "",
+      correctingOpening
+        ? `Opening salary corrected to ₹${(monthlyGrossPaise / 100).toLocaleString("en-IN")} a month from ${effectiveFrom} — no payroll had run against it, so the existing row was fixed rather than a second one added`
+        : `Revised to ₹${(monthlyGrossPaise / 100).toLocaleString("en-IN")} a month from ${effectiveFrom}`,
+      !correctingOpening && pct ? `(${change >= 0 ? "+" : ""}${pct}%)` : "",
       `· ${derivation}.`,
       arrears.totalPaise !== 0 && arrearPeriod
         ? `₹${(Math.abs(arrears.totalPaise) / 100).toFixed(2)} of arrears ${arrears.totalPaise > 0 ? "is due" : "is recoverable"} for ${arrears.lines.length} month(s) already run — booked into ${arrearPeriod.year}-${String(arrearPeriod.month).padStart(2, "0")} payroll.`
