@@ -8,11 +8,21 @@ import * as s from "@/db/schema";
 import { getSessionUser, canMutate, canAccessCompany } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
 import { collapseProblems, type CsvProblem } from "@/lib/hris/csv";
-import { parseSalaryCsv, unknownEmployees, alreadyPaid } from "@/lib/hris/salary-bulk";
-import { parseLeaveBalanceCsv, unknownLeaveReferences } from "@/lib/hris/leave-bulk";
+import { parseSalaryCsv, unknownEmployees, splitAlreadyPaid } from "@/lib/hris/salary-bulk";
+import {
+  parseLeaveBalanceCsv,
+  unknownLeaveReferences,
+  missingLeaveTypes,
+} from "@/lib/hris/leave-bulk";
 import { resolvePay } from "@/lib/payroll/pay-resolution";
 
-export type ImportState = { error?: string; ok?: string; problems?: CsvProblem[] };
+export type ImportState = {
+  error?: string;
+  ok?: string;
+  problems?: CsvProblem[];
+  /** Leave types the file names that this company does not have yet. */
+  confirm?: { leaveTypes: string[] };
+};
 
 async function readUpload(formData: FormData) {
   const file = formData.get("file");
@@ -40,10 +50,11 @@ async function requireImporter(companyId: string) {
  *
  * Each row becomes an `initial` revision — the salary as it stood when
  * the company moved across, not a raise. Anyone who already has one is
- * refused rather than overwritten: a salary already on record changes
+ * skipped rather than overwritten: a salary already on record changes
  * through a revision, which is versioned and leaves the old figure
  * intact, and quietly replacing it would break every payslip already
- * issued against it.
+ * issued against it. Skipped rather than refused, too, so the same
+ * sheet can be uploaded again once three more people are on it.
  */
 export async function importSalaries(
   _prev: ImportState,
@@ -88,10 +99,7 @@ export async function importSalaries(
   const paidIds = new Set(withSalary.map((r) => r.employeeId));
   const paidCodes = employees.filter((e) => paidIds.has(e.id)).map((e) => e.empCode);
 
-  const unresolved = [
-    ...unknownEmployees(rows, employees.map((e) => e.empCode)),
-    ...alreadyPaid(rows, paidCodes),
-  ];
+  const unresolved = unknownEmployees(rows, employees.map((e) => e.empCode));
   if (unresolved.length > 0) {
     const collapsed = collapseProblems(unresolved);
     return {
@@ -100,12 +108,19 @@ export async function importSalaries(
     };
   }
 
+  const { fresh, skipped } = splitAlreadyPaid(rows, paidCodes);
+  if (fresh.length === 0) {
+    return {
+      ok: `All ${rows.length} employee(s) in this file already have a salary. Nothing was changed — change a salary from the employee's own record, where it is versioned.`,
+    };
+  }
+
   /* Resolved before the transaction: turning a CTC into a monthly gross
      reads statutory configuration, and holding a transaction open
      across all of that would keep a connection busy for no reason. */
   const resolved: { employeeId: string; monthlyGrossPaise: number; annualCtcPaise: number | null; row: (typeof rows)[number] }[] = [];
   const defaultAsOf = new Date().toISOString().slice(0, 10);
-  for (const row of rows) {
+  for (const row of fresh) {
     const employee = byCode.get(row.empCode)!;
     try {
       /* Statutory rates are read as at the date the salary starts, so a
@@ -164,12 +179,22 @@ export async function importSalaries(
     action: "salary.bulk_imported",
     entity: "company",
     entityId: companyId,
-    after: { count: resolved.length, codes: rows.slice(0, 20).map((r) => r.empCode) },
+    after: {
+      count: resolved.length,
+      skipped: skipped.length,
+      codes: fresh.slice(0, 20).map((r) => r.empCode),
+    },
   });
 
   revalidatePath("/console/employees");
   revalidatePath("/console/import");
-  return { ok: `Set the opening salary for ${resolved.length} employee(s).` };
+  return {
+    ok:
+      `Set the opening salary for ${resolved.length} employee(s).` +
+      (skipped.length > 0
+        ? ` ${skipped.length} already had one and were left untouched — revise those from their own record so the change is versioned.`
+        : ""),
+  };
 }
 
 /**
@@ -177,6 +202,12 @@ export async function importSalaries(
  *
  * The one thing a company cannot recreate by hand: how many days each
  * person has accrued exists only in the system being left behind.
+ *
+ * Leave types the file names and this company does not have are offered
+ * for creation on a second submit — the old system's EL and CL arrive
+ * with the balances and nowhere else. They are created with no accrual
+ * and no carry-forward, so nothing starts adding days to a balance that
+ * was imported as final until the policy is set deliberately.
  */
 export async function importLeaveBalances(
   _prev: ImportState,
@@ -213,10 +244,17 @@ export async function importLeaveBalances(
       .where(eq(s.leaveTypes.companyId, companyId)),
   ]);
 
-  const unresolved = unknownLeaveReferences(rows, {
-    empCodes: employees.map((e) => e.empCode),
-    leaveTypeNames: leaveTypes.map((t) => t.name),
-  });
+  const createMissing = formData.get("createMissing") === "yes";
+  const missing = missingLeaveTypes(rows, { leaveTypeNames: leaveTypes.map((t) => t.name) });
+
+  const unresolved = unknownLeaveReferences(
+    rows,
+    {
+      empCodes: employees.map((e) => e.empCode),
+      leaveTypeNames: leaveTypes.map((t) => t.name),
+    },
+    { createMissing },
+  );
   if (unresolved.length > 0) {
     const collapsed = collapseProblems(unresolved);
     return {
@@ -225,11 +263,35 @@ export async function importLeaveBalances(
     };
   }
 
+  /* Only once the employees check out — being told to create four leave
+     types and then that the file names nobody who exists is two errors
+     where there should have been one. */
+  if (missing.length > 0 && !createMissing) {
+    return {
+      confirm: { leaveTypes: missing },
+      error: "This file names leave types this company does not have yet.",
+    };
+  }
+
   const idByCode = new Map(employees.map((e) => [e.empCode.toUpperCase(), e.id]));
   const typeByName = new Map(leaveTypes.map((t) => [t.name.toLowerCase(), t]));
   const asOfDefault = new Date().toISOString().slice(0, 10);
 
+  const newTypes = missing.map((name) => ({
+    id: randomUUID(),
+    companyId,
+    /* The name doubles as the code: an old system's "EL" is both, and
+       inventing a separate code would only be something else to fix. */
+    code: name.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16) || "LEAVE",
+    name,
+    annualDays: 0,
+    carryForwardCap: 0,
+    encashable: false,
+  }));
+  for (const t of newTypes) typeByName.set(t.name.toLowerCase(), t);
+
   await db.transaction(async (tx) => {
+    if (newTypes.length > 0) await tx.insert(s.leaveTypes).values(newTypes);
     for (const r of rows) {
       const type = typeByName.get(r.leaveType.toLowerCase())!;
       await tx
@@ -258,5 +320,12 @@ export async function importLeaveBalances(
   });
 
   revalidatePath("/console/import");
-  return { ok: `Set ${rows.length} opening leave balance(s).` };
+  revalidatePath("/console/settings/master-data");
+  return {
+    ok:
+      `Set ${rows.length} opening leave balance(s).` +
+      (newTypes.length > 0
+        ? ` Created ${newTypes.length} leave type(s): ${missing.join(", ")}. They accrue nothing and carry nothing forward until you set their policy.`
+        : ""),
+  };
 }

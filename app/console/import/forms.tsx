@@ -62,16 +62,46 @@ function Uploader({
       <a href={templateHref} className="label text-brass hover:underline w-fit">
         Download template →
       </a>
-      <form action={formAction} className="flex flex-wrap items-end gap-3">
+      {/* The file input keeps its selection across the action, so the
+          confirm step lives in the same form and re-sends it. */}
+      <form action={formAction} className="flex flex-col gap-3">
         <input type="hidden" name="companyId" value={companyId} />
-        <input
-          name="file"
-          type="file"
-          accept=".csv,text/csv"
-          required
-          className="text-sm border border-line px-2 py-1.5 bg-surface"
-        />
-        <SubmitButton pendingText="Checking…">{label}</SubmitButton>
+        <div className="flex flex-wrap items-end gap-3">
+          <input
+            name="file"
+            type="file"
+            accept=".csv,text/csv"
+            required
+            className="text-sm border border-line px-2 py-1.5 bg-surface"
+          />
+          <SubmitButton pendingText="Checking…">{label}</SubmitButton>
+        </div>
+
+        {state.confirm && (
+          <div className="border border-brass/40 bg-brass-soft">
+            <div className="px-3 py-2 border-b border-brass/20">
+              <span className="label text-brass">
+                These leave types are not set up yet — create them?
+              </span>
+            </div>
+            <p className="px-3 py-2 font-mono text-xs text-ink">
+              {state.confirm.leaveTypes.join(", ")}
+            </p>
+            <div className="px-3 py-2.5 border-t border-brass/20 flex flex-col gap-2">
+              <p className="text-xs text-ink-2 max-w-[70ch]">
+                Each is created with the balance you are importing and nothing
+                else — no accrual, no carry-forward — so nothing starts adding
+                days until you set its policy. Check the spellings first: a typo
+                becomes a fourth kind of leave.
+              </p>
+              <div>
+                <SubmitButton name="createMissing" value="yes" pendingText="Importing…">
+                  Create these and import
+                </SubmitButton>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
       <Problems state={state} />
     </div>

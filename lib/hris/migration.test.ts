@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readCsv, collapseProblems, parseRupees, splitCsvLine } from "./csv";
-import { parseSalaryCsv, unknownEmployees, alreadyPaid } from "./salary-bulk";
+import { parseSalaryCsv, unknownEmployees, splitAlreadyPaid } from "./salary-bulk";
 import { parseLeaveBalanceCsv, unknownLeaveReferences } from "./leave-bulk";
 
 /* ---------------- the shared reader ---------------- */
@@ -89,10 +89,11 @@ test("an employee who does not exist is reported, with where to fix it", () => {
   assert.equal(p[0].fix?.href, "/console/employees");
 });
 
-test("importing over an existing salary is refused, not silently done", () => {
-  const { rows } = parseSalaryCsv(salaryCsv("E1,50000,gross,,"));
-  const p = alreadyPaid(rows, ["E1"]);
-  assert.match(p[0].message, /already has a salary[\s\S]*versioned/);
+test("someone who already has a salary is skipped, not imported over", () => {
+  const { rows } = parseSalaryCsv(salaryCsv("E1,50000,gross,,", "E2,60000,gross,,"));
+  const { fresh, skipped } = splitAlreadyPaid(rows, ["E1"]);
+  assert.deepEqual(fresh.map((r) => r.empCode), ["E2"]);
+  assert.deepEqual(skipped.map((r) => r.empCode), ["E1"]);
 });
 
 /* ---------------- leave balances ---------------- */

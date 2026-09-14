@@ -70,19 +70,74 @@ export function BulkEmployeeForm({
         ))}
       </dl>
 
-      <form action={action} className="flex flex-wrap items-end gap-3">
+      {/* The file input keeps its selection across the action, so the
+          confirm step lives inside the same form and re-sends it. */}
+      <form action={action} className="flex flex-col gap-3">
         <input type="hidden" name="companyId" value={companyId} />
-        <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">CSV file</span>
-          <input
-            name="file"
-            type="file"
-            accept=".csv,text/csv"
-            required
-            className="text-sm border border-line px-2 py-1.5 bg-surface"
-          />
-        </label>
-        <SubmitButton pendingText="Checking…">Import employees</SubmitButton>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="label text-ink-3">CSV file</span>
+            <input
+              name="file"
+              type="file"
+              accept=".csv,text/csv"
+              required
+              className="text-sm border border-line px-2 py-1.5 bg-surface"
+            />
+          </label>
+          <SubmitButton pendingText="Checking…">Import employees</SubmitButton>
+        </div>
+
+        {state.confirm && (
+          <div className="border border-brass/40 bg-brass-soft">
+            <div className="px-3 py-2 border-b border-brass/20">
+              <span className="label text-brass">
+                These are not in the system yet — create them?
+              </span>
+            </div>
+            <dl className="divide-y divide-brass/10 text-xs">
+              {[
+                { label: "Branches", values: state.confirm.branches },
+                { label: "Departments", values: state.confirm.departments },
+                { label: "Grades", values: state.confirm.grades },
+              ]
+                .filter((g) => g.values.length > 0)
+                .map((g) => (
+                  <div key={g.label} className="px-3 py-2 flex flex-wrap gap-x-3 gap-y-1">
+                    <dt className="text-ink-3 shrink-0 w-24">{g.label}</dt>
+                    <dd className="font-mono text-ink flex-1 min-w-[16rem]">
+                      {g.values.join(", ")}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+            <div className="px-3 py-2.5 border-t border-brass/20 flex flex-col gap-2">
+              <p className="text-xs text-ink-2 max-w-[70ch]">
+                Each is created with its code as its name and nothing else — fill in
+                the detail in Settings afterwards.
+                {state.confirm.branches.length > 0 && state.confirm.stateCode && (
+                  <>
+                    {" "}
+                    New branches go into{" "}
+                    <span className="font-mono text-ink">{state.confirm.stateCode}</span>;
+                    change any that are elsewhere, because professional tax follows
+                    the state.
+                  </>
+                )}{" "}
+                Check the spellings first: a typo becomes a real record.
+              </p>
+              <div>
+                <SubmitButton
+                  name="createMissing"
+                  value="yes"
+                  pendingText="Importing…"
+                >
+                  Create these and import
+                </SubmitButton>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
 
       {state.ok && <p className="text-sm text-teal max-w-[70ch]">{state.ok}</p>}
@@ -126,8 +181,10 @@ export function BulkEmployeeForm({
       <p className="text-xs text-ink-3 max-w-[80ch]">
         The whole file is checked before anything is written. If any row has a
         problem, none of them are imported — half an organisation is harder to
-        put right than a corrected spreadsheet. Imported people have no salary
-        yet; set one on each record before running payroll.
+        put right than a corrected spreadsheet. Anyone whose code is already
+        here is skipped and left exactly as they are, so the same file can be
+        uploaded again safely. Imported people have no salary yet; set one on
+        each record before running payroll.
       </p>
     </div>
   );

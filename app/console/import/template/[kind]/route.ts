@@ -13,8 +13,17 @@ import { getSessionUser, canAccessConsole, canAccessCompany } from "@/lib/auth/s
  * unknown one is the error the importer cannot do anything sensible
  * with. So the file arrives listing everyone who still needs the thing
  * being imported — a salary file lists only people who have none yet,
- * because those are the only rows that would be accepted.
+ * because a row for anyone else is skipped on the way in.
  */
+
+/**
+ * Suggested when a company has no leave types at all, so the file is
+ * usable from a cold start rather than a bare header. They are names to
+ * overwrite, not a policy: the import offers whatever this column ends
+ * up saying for creation.
+ */
+const STARTER_LEAVE_TYPES = ["Earned Leave", "Casual Leave", "Sick Leave"];
+
 export async function GET(
   request: Request,
   ctx: { params: Promise<{ kind: string }> },
@@ -63,6 +72,9 @@ export async function GET(
       needing.length === 0
         ? "# every active employee already has a salary — nothing to import"
         : `# ${needing.length} employee(s) listed have no salary yet`,
+      "# re-uploading:   safe — anyone who already has a salary is skipped, never",
+      "#                 overwritten. Change an existing salary from their record,",
+      "#                 where it is versioned and keeps the old figure.",
     ];
     return csv(lines.join("\n"), "salary-import-template.csv");
   }
@@ -74,10 +86,14 @@ export async function GET(
       .where(eq(s.leaveTypes.companyId, companyId))
       .orderBy(asc(s.leaveTypes.name));
     const accruing = types.filter((t) => t.code !== "LOP");
+    /* With no types configured, the sheet would otherwise be a header
+       and nothing else — and the import can now create what this column
+       names, so suggesting a set is more use than an empty file. */
+    const names = accruing.length ? accruing.map((t) => t.name) : STARTER_LEAVE_TYPES;
 
     const rows: string[] = [];
     for (const e of employees) {
-      for (const t of accruing) rows.push(`${e.empCode},${t.name},,${today}`);
+      for (const n of names) rows.push(`${e.empCode},${n},,${today}`);
     }
 
     const lines = [
@@ -88,7 +104,14 @@ export async function GET(
       "# balanceDays:  days carried over, e.g. 12 or 18.5. Negative is allowed",
       "#               where someone has taken leave in advance.",
       "# asOf:         the date the balance was true. YYYY-MM-DD",
-      `# leave types:  ${accruing.length ? accruing.map((t) => t.name).join(" | ") : "none yet — add leave types first"}`,
+      `# leave types:  ${names.join(" | ")}`,
+      ...(accruing.length
+        ? ["#               Anything else you type here is offered for creation on upload."]
+        : [
+            "#               This company has none yet, so these are suggestions —",
+            "#               rename them to whatever your old system called them and",
+            "#               they are created when you upload.",
+          ]),
       "# Delete any row you have no balance for; a blank balance is skipped.",
     ];
     return csv(lines.join("\n"), "leave-balance-template.csv");

@@ -301,10 +301,67 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
   return { rows, problems };
 }
 
+export type MissingReferences = {
+  branches: string[];
+  departments: string[];
+  grades: string[];
+};
+
 /**
- * Codes in the file that this company does not have. Resolved against
- * what actually exists rather than created on the fly: a typo'd branch
- * code should be a message, not a new branch.
+ * Codes in the file that this company does not have yet.
+ *
+ * A company arriving from another system has its structure inside the
+ * employee sheet and nowhere else — insisting every branch and
+ * department be typed into settings first means transcribing the
+ * spreadsheet by hand before being allowed to upload it. So these are
+ * offered for creation instead.
+ *
+ * Offered, not created silently: `GGN` and `Gurgaon` in the same column
+ * are one branch and one typo, and only the person with the file knows
+ * which. The caller shows this list and creates them on a second,
+ * deliberate submit.
+ */
+export function missingReferences(
+  rows: EmployeeRow[],
+  known: { branchCodes: string[]; departmentCodes: string[]; gradeNames: string[] },
+): MissingReferences {
+  const branches = new Set(known.branchCodes.map((c) => c.toUpperCase()));
+  const departments = new Set(known.departmentCodes.map((c) => c.toUpperCase()));
+  const grades = new Set(known.gradeNames.map((g) => g.toLowerCase()));
+
+  /* Keyed by the matched form, valued by the spelling in the file, so
+     the same code written twice creates one record. */
+  const newBranches = new Map<string, string>();
+  const newDepartments = new Map<string, string>();
+  const newGrades = new Map<string, string>();
+
+  for (const r of rows) {
+    if (r.branchCode && !branches.has(r.branchCode)) newBranches.set(r.branchCode, r.branchCode);
+    if (r.departmentCode && !departments.has(r.departmentCode)) {
+      newDepartments.set(r.departmentCode, r.departmentCode);
+    }
+    /* The first spelling wins, so "L9" and "l9" further down the file
+       are one grade rather than two that differ only in case. */
+    if (r.gradeName && !grades.has(r.gradeName.toLowerCase())) {
+      const key = r.gradeName.toLowerCase();
+      if (!newGrades.has(key)) newGrades.set(key, r.gradeName);
+    }
+  }
+
+  return {
+    branches: [...newBranches.values()],
+    departments: [...newDepartments.values()],
+    grades: [...newGrades.values()],
+  };
+}
+
+/**
+ * Problems a person has to go and fix themselves.
+ *
+ * With `createMissing`, unknown branch, department and grade codes are
+ * not problems — they are about to be created. What stays a problem
+ * either way is a manager who is nowhere to be found: that names a real
+ * person, and inventing one would be worse than the error.
  */
 export function unresolvedReferences(
   rows: EmployeeRow[],
@@ -314,6 +371,7 @@ export function unresolvedReferences(
     gradeNames: string[];
     empCodes: string[];
   },
+  opts: { createMissing?: boolean } = {},
 ): RowProblem[] {
   const problems: RowProblem[] = [];
   const branches = new Set(known.branchCodes.map((c) => c.toUpperCase()));
@@ -323,10 +381,7 @@ export function unresolvedReferences(
   const inFile = new Set(rows.map((r) => r.empCode));
 
   for (const r of rows) {
-    if (existing.has(r.empCode)) {
-      problems.push({ line: r.line, column: "empCode", message: `"${r.empCode}" already exists.` });
-    }
-    if (!branches.has(r.branchCode)) {
+    if (!opts.createMissing && !branches.has(r.branchCode)) {
       problems.push({
         line: r.line,
         column: "branchCode",
@@ -336,7 +391,7 @@ export function unresolvedReferences(
         fix: REFERENCE_FIXES.branch,
       });
     }
-    if (r.departmentCode && !departments.has(r.departmentCode)) {
+    if (!opts.createMissing && r.departmentCode && !departments.has(r.departmentCode)) {
       problems.push({
         line: r.line,
         column: "departmentCode",
@@ -346,7 +401,7 @@ export function unresolvedReferences(
         fix: REFERENCE_FIXES.department,
       });
     }
-    if (r.gradeName && !grades.has(r.gradeName.toLowerCase())) {
+    if (!opts.createMissing && r.gradeName && !grades.has(r.gradeName.toLowerCase())) {
       problems.push({
         line: r.line,
         column: "gradeName",

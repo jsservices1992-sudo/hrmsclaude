@@ -110,14 +110,23 @@ export function unknownEmployees(
 }
 
 /** Codes that already have a salary on record, which this would replace. */
-export function alreadyPaid(rows: SalaryRow[], withSalary: string[]): CsvProblem[] {
+/**
+ * Splits the file into rows to import and rows to leave alone.
+ *
+ * Someone who already has a salary is skipped rather than refused: a
+ * migration runs in passes, and the second upload of a sheet that has
+ * grown by three people must not be blocked by the eighty already done.
+ * Skipped, not overwritten — a salary on record changes through a
+ * revision, which is versioned and keeps the old figure, and quietly
+ * replacing it would break every payslip issued against it.
+ */
+export function splitAlreadyPaid(
+  rows: SalaryRow[],
+  withSalary: string[],
+): { fresh: SalaryRow[]; skipped: SalaryRow[] } {
   const has = new Set(withSalary.map((c) => c.toUpperCase()));
-  return rows
-    .filter((r) => has.has(r.empCode))
-    .map((r) => ({
-      line: r.line,
-      column: "empCode",
-      message: `"${r.empCode}" already has a salary. Revise it from their record so the change is versioned, rather than importing over it.`,
-      fix: { label: "Open employees", href: "/console/employees" },
-    }));
+  return {
+    fresh: rows.filter((r) => !has.has(r.empCode)),
+    skipped: rows.filter((r) => has.has(r.empCode)),
+  };
 }

@@ -17,6 +17,11 @@ import { getSessionUser, canAccessConsole, canAccessCompany } from "@/lib/auth/s
  * The example row is commented out with a leading #, so the file
  * imports cleanly if someone fills in their own rows and forgets to
  * delete it.
+ *
+ * The reference block lists what exists rather than what is allowed:
+ * a code that is not on the list is offered for creation on upload, so
+ * a company arriving from another system can put its own structure in
+ * this one sheet instead of typing it into settings first.
  */
 export async function GET(request: Request) {
   const user = await getSessionUser();
@@ -64,14 +69,18 @@ export async function GET(request: Request) {
     `#${example.join(",")}`,
     "",
     "# ---- valid values for this company ----",
-    `# branchCode:      ${branches.length ? branches.map((b) => `${b.code} (${b.name})`).join(" | ") : "none yet — add a branch first"}`,
+    `# branchCode:      ${branches.length ? branches.map((b) => `${b.code} (${b.name})`).join(" | ") : "none yet"}`,
     `# departmentCode:  ${departments.length ? departments.map((d) => `${d.code} (${d.name})`).join(" | ") : "none yet — optional"}`,
     `# gradeName:       ${grades.length ? grades.map((g) => g.name).join(" | ") : "none yet — optional"}`,
+    "#                  Use your own codes if these are not yours — anything not",
+    "#                  listed above is offered for creation when you upload.",
     `# gender:          ${GENDERS.join(" | ")}`,
     `# employmentType:  ${EMPLOYMENT_TYPES.join(" | ")}`,
     "# dates:           YYYY-MM-DD",
     "# required:        empCode, firstName, lastName, dateOfJoining, branchCode",
     "# managerEmpCode:  an existing employee, or another row in this file",
+    "# re-uploading:    safe — an empCode already on the books is skipped, never",
+    "#                  overwritten, so fill this in once and upload as you go.",
   ];
 
   return new Response(lines.join("\n"), {

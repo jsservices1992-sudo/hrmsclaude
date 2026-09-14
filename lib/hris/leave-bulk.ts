@@ -9,9 +9,11 @@ import { readCsv, ISO_DATE, type CsvProblem } from "./csv";
  * system being left behind, and an employee notices the day it is
  * wrong.
  *
- * Balances are named by leave type, not by id, and the type must
- * already exist — a typo should be a message, not a fourth kind of
- * leave nobody meant to create.
+ * Balances are named by leave type, not by id. A type the file names
+ * and this company does not have is offered for creation — the old
+ * system's EL, CL and SL arrive with the balances and nowhere else —
+ * but only on a deliberate second submit, because a typo would
+ * otherwise become a fourth kind of leave nobody meant to create.
  */
 
 export const LEAVE_BALANCE_COLUMNS = ["empCode", "leaveType", "balanceDays", "asOf"] as const;
@@ -99,9 +101,23 @@ export function parseLeaveBalanceCsv(text: string): LeaveParseResult {
   return { rows: out, problems: found };
 }
 
+/** Leave types the file names that this company does not have yet. */
+export function missingLeaveTypes(
+  rows: LeaveBalanceRow[],
+  known: { leaveTypeNames: string[] },
+): string[] {
+  const types = new Set(known.leaveTypeNames.map((n) => n.toLowerCase()));
+  const found = new Map<string, string>();
+  for (const r of rows) {
+    if (!types.has(r.leaveType.toLowerCase())) found.set(r.leaveType.toLowerCase(), r.leaveType);
+  }
+  return [...found.values()];
+}
+
 export function unknownLeaveReferences(
   rows: LeaveBalanceRow[],
   known: { empCodes: string[]; leaveTypeNames: string[] },
+  opts: { createMissing?: boolean } = {},
 ): CsvProblem[] {
   const employees = new Set(known.empCodes.map((c) => c.toUpperCase()));
   const types = new Map(known.leaveTypeNames.map((n) => [n.toLowerCase(), n]));
@@ -116,7 +132,7 @@ export function unknownLeaveReferences(
         fix: { label: "Import employees first", href: "/console/employees" },
       });
     }
-    if (!types.has(r.leaveType.toLowerCase())) {
+    if (!opts.createMissing && !types.has(r.leaveType.toLowerCase())) {
       problems.push({
         line: r.line,
         column: "leaveType",

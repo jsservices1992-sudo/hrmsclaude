@@ -15,7 +15,11 @@ import {
 import { recordAuditAs } from "@/lib/audit/log";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
-import { parseEmployeeCsv, unresolvedReferences } from "@/lib/hris/employee-bulk";
+import {
+  parseEmployeeCsv,
+  unresolvedReferences,
+  missingReferences,
+} from "@/lib/hris/employee-bulk";
 
 export type EmployeeFormState = { error?: string; ok?: string; fieldErrors?: Record<string, string> };
 
@@ -580,6 +584,17 @@ export type BulkEmployeeState = {
     /** How many rows share this problem. */
     rows?: number;
   }[];
+  /**
+   * Codes the file names that this company does not have. Shown for
+   * confirmation rather than created on the spot — see below.
+   */
+  confirm?: {
+    branches: string[];
+    departments: string[];
+    grades: string[];
+    /** The state new branches will inherit; professional tax follows it. */
+    stateCode: string | null;
+  };
 };
 
 /**
@@ -588,8 +603,22 @@ export type BulkEmployeeState = {
  * Nothing is written unless the whole file can be. The attendance
  * import deliberately skips a bad row and carries on, because a missing
  * day is recoverable; half an organisation is not. So the file is
- * parsed, its references resolved against what this company actually
- * has, and only then — inside one transaction — is anyone created.
+ * parsed, its references resolved, and only then — inside one
+ * transaction — is anyone created.
+ *
+ * Two things make this survivable for a company arriving from another
+ * system, where the whole structure lives inside the employee sheet:
+ *
+ * Branches, departments and grades the file names but this company does
+ * not have are offered for creation, and created on a second submit.
+ * Not on the first: `GGN` and `Gurgaon` in one column are a branch and
+ * a typo, and only the person holding the file can tell them apart.
+ *
+ * And an employee code already on the books is skipped, not refused.
+ * The same sheet uploaded twice must not duplicate anyone or overwrite
+ * what has happened since — a record edited here for three months is
+ * worth more than the spreadsheet it started from. Changes to someone
+ * already here go through their own record, where they are audited.
  */
 export async function bulkUploadEmployees(
   _prev: BulkEmployeeState,
@@ -603,6 +632,8 @@ export async function bulkUploadEmployees(
 
   const companyId = String(formData.get("companyId") ?? "");
   if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+
+  const createMissing = formData.get("createMissing") === "yes";
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -620,9 +651,9 @@ export async function bulkUploadEmployees(
     };
   }
 
-  const [branches, departments, grades, existing] = await Promise.all([
+  const [branches, departments, grades, existing, company] = await Promise.all([
     db
-      .select({ id: s.branches.id, code: s.branches.code })
+      .select({ id: s.branches.id, code: s.branches.code, stateCode: s.branches.stateCode })
       .from(s.branches)
       .where(eq(s.branches.companyId, companyId)),
     db
@@ -630,25 +661,72 @@ export async function bulkUploadEmployees(
       .from(s.departments)
       .where(eq(s.departments.companyId, companyId)),
     db
-      .select({ id: s.grades.id, name: s.grades.name })
+      .select({ id: s.grades.id, name: s.grades.name, level: s.grades.level })
       .from(s.grades)
       .where(eq(s.grades.companyId, companyId)),
     db
       .select({ id: s.employees.id, empCode: s.employees.empCode })
       .from(s.employees)
       .where(eq(s.employees.companyId, companyId)),
+    db
+      .select({ stateCode: s.companies.registeredStateCode })
+      .from(s.companies)
+      .where(eq(s.companies.id, companyId))
+      .limit(1),
   ]);
 
-  const unresolved = unresolvedReferences(rows, {
+  /* Anyone already on the books is left exactly as they are. */
+  const onBooks = new Set(existing.map((e) => e.empCode.toUpperCase()));
+  const fresh = rows.filter((r) => !onBooks.has(r.empCode));
+  const skipped = rows.length - fresh.length;
+  if (fresh.length === 0) {
+    return {
+      ok: `All ${rows.length} employee(s) in this file are already here. Nothing was changed — upload the same file as often as you like.`,
+    };
+  }
+
+  const known = {
     branchCodes: branches.map((b) => b.code ?? "").filter(Boolean),
     departmentCodes: departments.map((d) => d.code ?? "").filter(Boolean),
     gradeNames: grades.map((g) => g.name),
     empCodes: existing.map((e) => e.empCode),
-  });
+  };
+
+  const missing = missingReferences(fresh, known);
+  const anyMissing =
+    missing.branches.length + missing.departments.length + missing.grades.length > 0;
+
+  /* A branch carries a state, and professional tax is a state tax — so
+     a new branch inherits the company's registered state, or the state
+     the existing branches are in. With neither there is nothing to
+     inherit, and guessing one would quietly mis-price PT. */
+  const stateCode = company[0]?.stateCode ?? branches[0]?.stateCode ?? null;
+  if (missing.branches.length > 0 && !stateCode) {
+    return {
+      error: "New branches cannot be created until this company has a registered state.",
+      problems: [
+        {
+          line: 1,
+          column: "branchCode",
+          message: `The file names ${missing.branches.join(", ")}, which this company does not have. A branch needs a state, because professional tax is a state tax, and there is none to inherit yet.`,
+          fix: { label: "Set the registered state", href: "/console/settings" },
+        },
+      ],
+    };
+  }
+
+  if (anyMissing && !createMissing) {
+    return {
+      confirm: { ...missing, stateCode },
+      error: "This file names things this company does not have yet.",
+    };
+  }
+
+  const unresolved = unresolvedReferences(fresh, known, { createMissing });
   if (unresolved.length > 0) {
-    /* A single wrong branch code on 82 rows is one problem, not 82.
-       Collapse by column and message, keeping the first line it appears
-       on, so the list names what to fix rather than how often. */
+    /* A single wrong code on 82 rows is one problem, not 82. Collapse
+       by column and message, keeping the first line it appears on, so
+       the list names what to fix rather than how often. */
     const seen = new Map<string, (typeof unresolved)[number] & { rows: number }>();
     for (const p of unresolved) {
       const key = `${p.column}::${p.message}`;
@@ -671,12 +749,41 @@ export async function bulkUploadEmployees(
   /* Ids are allocated before the insert so a manager named further down
      the same file can be pointed at. */
   const newId = new Map<string, string>();
-  for (const r of rows) newId.set(r.empCode, randomUUID());
+  for (const r of fresh) newId.set(r.empCode, randomUUID());
 
-  const now = new Date().toISOString();
+  /* Created stubs carry the code as their name; the rest of the detail
+     is filled in afterwards in settings, where it belongs. */
+  const newBranches = missing.branches.map((code) => ({
+    id: randomUUID(),
+    companyId,
+    name: code,
+    code,
+    stateCode: stateCode!,
+  }));
+  const newDepartments = missing.departments.map((code) => ({
+    id: randomUUID(),
+    companyId,
+    name: code,
+    code,
+  }));
+  const topLevel = grades.reduce((m, g) => Math.max(m, g.level), 0);
+  const newGrades = missing.grades.map((name, i) => ({
+    id: randomUUID(),
+    companyId,
+    name,
+    level: topLevel + i + 1,
+  }));
+
+  for (const b of newBranches) branchByCode.set(b.code.toUpperCase(), b.id);
+  for (const d of newDepartments) deptByCode.set(d.code.toUpperCase(), d.id);
+  for (const g of newGrades) gradeByName.set(g.name.toLowerCase(), g.id);
 
   await db.transaction(async (tx) => {
-    for (const r of rows) {
+    if (newBranches.length > 0) await tx.insert(s.branches).values(newBranches);
+    if (newDepartments.length > 0) await tx.insert(s.departments).values(newDepartments);
+    if (newGrades.length > 0) await tx.insert(s.grades).values(newGrades);
+
+    for (const r of fresh) {
       await tx.insert(s.employees).values({
         id: newId.get(r.empCode)!,
         companyId,
@@ -710,12 +817,38 @@ export async function bulkUploadEmployees(
     actor: user.email,
     action: "employee.bulk_imported",
     entityId: companyId,
-    after: { count: rows.length, codes: rows.slice(0, 20).map((r) => r.empCode) },
+    after: {
+      count: fresh.length,
+      skipped,
+      created: {
+        branches: missing.branches,
+        departments: missing.departments,
+        grades: missing.grades,
+      },
+      codes: fresh.slice(0, 20).map((r) => r.empCode),
+    },
   });
 
   revalidatePath("/console/employees");
   revalidatePath("/console/org");
-  return {
-    ok: `Imported ${rows.length} employee(s). They have no salary yet — set one from each record before the first payroll.`,
-  };
+  revalidatePath("/console/settings");
+  revalidatePath("/console/settings/master-data");
+
+  const notes: string[] = [];
+  if (skipped > 0) {
+    notes.push(`${skipped} were already here and were left untouched.`);
+  }
+  const created = [
+    missing.branches.length && `${missing.branches.length} branch(es)`,
+    missing.departments.length && `${missing.departments.length} department(s)`,
+    missing.grades.length && `${missing.grades.length} grade(s)`,
+  ].filter(Boolean);
+  if (created.length > 0) {
+    notes.push(
+      `Created ${created.join(", ")} from the file — they carry only a name so far, so fill in the rest in Settings. New branches were put in ${stateCode}; change any that are elsewhere, because professional tax follows the state.`,
+    );
+  }
+  notes.push("Nobody has a salary yet — set one before the first payroll.");
+
+  return { ok: `Imported ${fresh.length} employee(s). ${notes.join(" ")}` };
 }

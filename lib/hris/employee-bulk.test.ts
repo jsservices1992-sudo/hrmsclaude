@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   parseEmployeeCsv,
   unresolvedReferences,
+  missingReferences,
   splitCsvLine,
   EMPLOYEE_COLUMNS,
 } from "./employee-bulk";
@@ -109,16 +110,55 @@ test("an invalid row is excluded from rows, not half-imported", () => {
   assert.equal(r.rows[0].empCode, "BLR001");
 });
 
-test("unknown branch, department and grade codes are reported, not created", () => {
+test("unknown branch, department and grade codes are reported by default", () => {
   const { rows } = parseEmployeeCsv(csv(row({ branchCode: "XXX", departmentCode: "ZZZ", gradeName: "L9" })));
   const problems = unresolvedReferences(rows, known);
   assert.deepEqual(problems.map((p) => p.column).sort(), ["branchCode", "departmentCode", "gradeName"]);
 });
 
-test("an employee code that already exists is refused", () => {
-  const { rows } = parseEmployeeCsv(csv(row({ empCode: "BLR900" })));
-  const problems = unresolvedReferences(rows, known);
-  assert.match(problems[0].message, /already exists/);
+test("with createMissing they stop being problems, since they are about to exist", () => {
+  const { rows } = parseEmployeeCsv(csv(row({ branchCode: "XXX", departmentCode: "ZZZ", gradeName: "L9" })));
+  assert.deepEqual(unresolvedReferences(rows, known, { createMissing: true }), []);
+});
+
+test("a missing manager stays a problem even with createMissing", () => {
+  const { rows } = parseEmployeeCsv(csv(row({ managerEmpCode: "GHOST" })));
+  const problems = unresolvedReferences(rows, known, { createMissing: true });
+  assert.equal(problems.length, 1);
+  assert.equal(problems[0].column, "managerEmpCode");
+});
+
+test("missingReferences names what the file has and the company does not", () => {
+  const { rows } = parseEmployeeCsv(
+    csv(row({ branchCode: "GGN", departmentCode: "HR", gradeName: "L9" })),
+  );
+  assert.deepEqual(missingReferences(rows, known), {
+    branches: ["GGN"],
+    departments: ["HR"],
+    grades: ["L9"],
+  });
+});
+
+test("the same new code on eighty rows is one record to create, not eighty", () => {
+  const { rows } = parseEmployeeCsv(
+    csv(
+      row({ empCode: "A1", branchCode: "GGN", gradeName: "L9" }),
+      row({ empCode: "A2", branchCode: "GGN", gradeName: "l9" }),
+      row({ empCode: "A3", branchCode: "BLR" }),
+    ),
+  );
+  const missing = missingReferences(rows, known);
+  assert.deepEqual(missing.branches, ["GGN"]);
+  assert.deepEqual(missing.grades, ["L9"], "case does not make a second grade");
+});
+
+test("a code the company already has is not offered for creation", () => {
+  const { rows } = parseEmployeeCsv(csv(row({ branchCode: "BLR", departmentCode: "ENG" })));
+  assert.deepEqual(missingReferences(rows, known), {
+    branches: [],
+    departments: [],
+    grades: [],
+  });
 });
 
 test("a manager may be in the same file, so a team imports in one pass", () => {
