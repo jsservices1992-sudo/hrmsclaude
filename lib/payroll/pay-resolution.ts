@@ -19,13 +19,8 @@ import { loadStatutoryConfig, loadStructureResolutionContext, resolveEmployeeStr
  * How a pay figure was entered. Everything is normalised to a monthly
  * gross, because that is the one number payroll actually runs on.
  */
-export type PayMode = "gross" | "annual_gross" | "ctc" | "take_home";
-
-export const PAY_MODES: PayMode[] = ["gross", "annual_gross", "ctc", "take_home"];
-
-export function isPayMode(v: string): v is PayMode {
-  return (PAY_MODES as string[]).includes(v);
-}
+import { type PayMode, PAY_MODES, isPayMode } from "./pay-mode";
+export { type PayMode, PAY_MODES, isPayMode };
 
 /**
  * 15 days' wages a year over 26 working days, spread monthly — the

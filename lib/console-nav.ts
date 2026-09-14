@@ -170,6 +170,7 @@ export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
             alsoMatches: ["/console/settings/companies"],
           },
           { href: "/console/setup", label: "Set up", icon: "check" },
+          { href: "/console/import", label: "Migrate", icon: "box" },
           { href: "/console/settings/payroll", label: "Payroll settings", icon: "sliders" },
           { href: "/console/settings/master-data", label: "Master data", icon: "table" },
         ],
