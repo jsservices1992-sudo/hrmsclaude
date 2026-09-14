@@ -17,7 +17,13 @@ import {
   type ReceivableState,
 } from "./settlement-tax";
 import { regimeConfig } from "../tax/config";
-import { loadStructure } from "../payroll/load";
+import { loadStructure, loadConventions } from "../payroll/load";
+import {
+  computeProration,
+  paidDaysForPeriod,
+  periodDivisor,
+  prorate,
+} from "../payroll/proration";
 import { evaluateStructure } from "../payroll/compensation";
 import type { Regime } from "../tax/engine";
 
@@ -140,7 +146,34 @@ export async function loadFnfCase(
   );
 
   /* ---- the settlement itself ---- */
-  const perDay = Math.round(monthlyGross / 30);
+
+  /* A settlement divides by whatever the last payslip divided by. It
+     used to assume a thirty-day month, which paid 31/30 of a salary to
+     someone leaving on the 31st of May and 28/30 to someone who worked
+     the whole of February. */
+  const conventions = await loadConventions(employee.companyId, employee.departmentId);
+  const lastWorkingDay = exitCase.lastWorkingDay;
+  const exitYear = Number(lastWorkingDay.slice(0, 4));
+  const exitMonth = Number(lastWorkingDay.slice(5, 7));
+  const prorationArgs = {
+    basis: conventions.prorationBasis,
+    year: exitYear,
+    month: exitMonth,
+    standardDays: conventions.standardDays,
+  };
+
+  const perDay = Math.round(monthlyGross / periodDivisor(prorationArgs));
+
+  /* Joining is passed too, so somebody who both joined and left inside
+     the final month is paid for the days between, not from the 1st. */
+  const finalMonth = computeProration({
+    ...prorationArgs,
+    paidDays: paidDaysForPeriod({
+      ...prorationArgs,
+      dateOfJoining: employee.dateOfJoining,
+      dateOfExit: lastWorkingDay,
+    }),
+  });
 
   const settlement = computeSettlement({
     employeeId: employee.id,
@@ -149,10 +182,8 @@ export async function loadFnfCase(
     dateOfJoining: employee.dateOfJoining,
     lastWorkingDay: exitCase.lastWorkingDay,
     resignationDate: exitCase.resignationDate,
-    finalMonthSalaryPaise: Math.round(
-      (monthlyGross * Number(exitCase.lastWorkingDay.slice(8, 10))) / 30,
-    ),
-    finalMonthBasis: `${Number(exitCase.lastWorkingDay.slice(8, 10))} day(s) worked in the final month`,
+    finalMonthSalaryPaise: prorate(monthlyGross, finalMonth),
+    finalMonthBasis: `${finalMonth.basisLabel} in the final month`,
     finalMonthDeductionsPaise: 0,
     monthlyBasicPaise: monthlyBasic,
     perDayPaise: perDay,

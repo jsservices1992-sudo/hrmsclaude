@@ -15,7 +15,11 @@ import {
 } from "./engine";
 import type { ProrationBasis } from "./proration";
 import type { RoundingMode } from "./money";
-import { resolveDepartmentConventions, type DepartmentOverride } from "./settings";
+import {
+  resolveDepartmentConventions,
+  type DepartmentOverride,
+  type PayrollConventions,
+} from "./settings";
 import type { PtSlab, LwfRate } from "./statutory";
 import type { ComponentSpec } from "./compensation";
 import {
@@ -899,4 +903,63 @@ export async function loadPeriodFigures(args: {
       calculatedAt: run.calculatedAt,
     },
   };
+}
+
+/**
+ * The proration and rounding conventions in force for one employee.
+ *
+ * `previewRun` resolves these for a whole company at once, which is the
+ * right shape for a payroll run and the wrong one for a single
+ * settlement. A leaver's final month has to be divided by the same
+ * number their last payslip used — a settlement that quietly assumes a
+ * thirty-day month pays 31/30 of a salary to someone who leaves on the
+ * 31st of May, and 28/30 to someone who works the whole of February.
+ */
+export async function loadConventions(
+  companyId: string,
+  departmentId: string | null,
+): Promise<PayrollConventions> {
+  const [company] = await db
+    .select({
+      prorationBasis: s.companies.prorationBasis,
+      standardDays: s.companies.standardDays,
+      roundingMode: s.companies.roundingMode,
+      roundComponents: s.companies.roundComponents,
+      roundGross: s.companies.roundGross,
+      roundNet: s.companies.roundNet,
+    })
+    .from(s.companies)
+    .where(eq(s.companies.id, companyId))
+    .limit(1);
+
+  const base: PayrollConventions = {
+    prorationBasis: (company?.prorationBasis as ProrationBasis) ?? "calendar_days",
+    standardDays: company?.standardDays ?? 26,
+    roundingMode: (company?.roundingMode as RoundingMode) ?? "nearest_rupee",
+    roundComponents: company?.roundComponents ?? false,
+    roundGross: company?.roundGross ?? false,
+    roundNet: company?.roundNet ?? true,
+  };
+
+  if (!departmentId) return base;
+
+  const [override] = await db
+    .select()
+    .from(s.departmentPayrollOverrides)
+    .where(
+      and(
+        eq(s.departmentPayrollOverrides.companyId, companyId),
+        eq(s.departmentPayrollOverrides.departmentId, departmentId),
+      ),
+    )
+    .limit(1);
+
+  return resolveDepartmentConventions(base, {
+    prorationBasis: (override?.prorationBasis as ProrationBasis) ?? undefined,
+    standardDays: override?.standardDays ?? undefined,
+    roundingMode: (override?.roundingMode as RoundingMode) ?? undefined,
+    roundComponents: override?.roundComponents ?? undefined,
+    roundGross: override?.roundGross ?? undefined,
+    roundNet: override?.roundNet ?? undefined,
+  });
 }
