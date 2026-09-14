@@ -41,20 +41,29 @@ export async function GET() {
      indistinguishable from no store at all. Listing the names that are
      present turns "not configured" into something diagnosable without
      anyone reading a secret aloud. */
-  const tokenNames = Object.keys(process.env)
+  const tokenVars = Object.keys(process.env)
     .filter((k) => /BLOB|READ_WRITE_TOKEN/i.test(k))
-    .sort();
+    .sort()
+    .map((name) => ({ name, empty: (process.env[name] ?? "") === "" }));
+
+  /* Declared but blank is its own failure, and the one that looks most
+     like a lie: the variable is right there in the project's settings,
+     so everything reads as configured, and the application sees an
+     empty string. */
+  const declaredButEmpty = tokenVars.some((v) => v.name === "BLOB_READ_WRITE_TOKEN" && v.empty);
 
   checks.documentStorage = {
     configured: blobToken,
     /* Only worth showing when the expected one is missing. */
-    tokenVariablesPresent: blobToken ? undefined : tokenNames,
+    tokenVariables: blobToken ? undefined : tokenVars,
 hint: blobToken
       ? undefined
       : isProduction
-        ? tokenNames.length > 0
-          ? `BLOB_READ_WRITE_TOKEN is not set, but ${tokenNames.join(", ")} is. A Blob store connected under a custom prefix exports that name instead; either reconnect it with the default prefix or copy its value into BLOB_READ_WRITE_TOKEN, then redeploy.`
-          : "BLOB_READ_WRITE_TOKEN is not set, and no similarly-named variable is either. Connect a Blob store to this project, check the variable is enabled for Production, then redeploy — environment variables are fixed at build time, so a store connected after the last deploy is not visible to it."
+        ? declaredButEmpty
+          ? "BLOB_READ_WRITE_TOKEN exists on this deployment but its value is empty, which is why everything in the dashboard looks connected. Open the project's Environment Variables, delete the blank BLOB_READ_WRITE_TOKEN, reconnect the Blob store so it writes its own, and redeploy."
+          : tokenVars.length > 0
+            ? `BLOB_READ_WRITE_TOKEN is not set. These are: ${tokenVars.map((v) => v.name).join(", ")}. A Blob store connected under a custom prefix exports a different name, which this application does not read — reconnect it with the default prefix, then redeploy.`
+            : "BLOB_READ_WRITE_TOKEN is not set, and no similarly-named variable is either. Connect a Blob store to this project, check the variable is enabled for Production, then redeploy — environment variables are fixed at build time, so a store connected after the last deploy is not visible to it."
         : "Using the local filesystem — expected in development.",
   };
 
