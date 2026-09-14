@@ -25,8 +25,6 @@ export default async function NewCompanyPage() {
       <CompanyForm
         mode="create"
         values={{
-          prorationBasis: "calendar_days",
-          standardDays: 26,
           roundingMode: "nearest",
           sandwichRule: false,
           epfOnActualBasic: false,

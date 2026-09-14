@@ -152,8 +152,6 @@ export default async function CompanySettingsPage(
                 registeredCity: company.registeredCity,
                 registeredStateCode: company.registeredStateCode,
                 registeredPincode: company.registeredPincode,
-                prorationBasis: company.prorationBasis,
-                standardDays: company.standardDays,
                 roundingMode: company.roundingMode,
                 sandwichRule: company.sandwichRule,
                 epfOnActualBasic: company.epfOnActualBasic,

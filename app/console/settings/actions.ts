@@ -89,13 +89,6 @@ const CompanySchema = z.object({
     .string()
     .regex(/^[0-9]{6}$/, "Pincode must be 6 digits")
     .nullable(),
-  prorationBasis: z.enum([
-    "calendar_days",
-    "fixed_30",
-    "working_days",
-    "standard_days",
-  ]),
-  standardDays: z.coerce.number().int().min(1).max(31),
   roundingMode: z.enum(["nearest", "up", "down"]),
   sandwichRule: z.boolean(),
   epfOnActualBasic: z.boolean(),
@@ -121,8 +114,6 @@ function parseCompany(fd: FormData) {
     registeredCity: nullable(fd.get("registeredCity")),
     registeredStateCode: nullable(fd.get("registeredStateCode")),
     registeredPincode: nullable(fd.get("registeredPincode")),
-    prorationBasis: String(fd.get("prorationBasis") ?? "calendar_days"),
-    standardDays: fd.get("standardDays") ?? 26,
     roundingMode: String(fd.get("roundingMode") ?? "nearest"),
     sandwichRule: fd.get("sandwichRule") !== null,
     epfOnActualBasic: fd.get("epfOnActualBasic") !== null,
@@ -181,8 +172,6 @@ const AUDITED_COMPANY_FIELDS = [
   "tan",
   "pfCode",
   "esicCode",
-  "prorationBasis",
-  "standardDays",
   "roundingMode",
   "sandwichRule",
   "epfOnActualBasic",
@@ -225,7 +214,7 @@ export async function updateCompany(
     .where(eq(s.payrollRuns.companyId, companyId))
     .limit(1);
 
-  const conventionChanged = ["prorationBasis", "standardDays", "roundingMode", "sandwichRule", "epfOnActualBasic"].some(
+  const conventionChanged = ["roundingMode", "sandwichRule", "epfOnActualBasic"].some(
     (k) => k in changes,
   );
   const reason = nullable(fd.get("changeReason"));

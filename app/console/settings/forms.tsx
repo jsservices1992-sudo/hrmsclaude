@@ -28,7 +28,7 @@ export type CompanyValues = Partial<{
   logoUrl: string | null;
   registeredAddress: string | null; registeredCity: string | null;
   registeredStateCode: string | null; registeredPincode: string | null;
-  prorationBasis: string; standardDays: number; roundingMode: string;
+  roundingMode: string;
   otRatePaisePerHour: number | null;
   sandwichRule: boolean; epfOnActualBasic: boolean;
 }>;
@@ -110,17 +110,6 @@ export function CompanyForm({
             defaultValue={values.otRatePaisePerHour != null ? values.otRatePaisePerHour / 100 : ""}
             invalid={!!err("otRatePaisePerHour")}
           />
-        </FormField>
-        <FormField label="Proration basis" error={err("prorationBasis")}>
-          <Select name="prorationBasis" defaultValue={values.prorationBasis ?? "calendar_days"} invalid={!!err("prorationBasis")}>
-            <option value="calendar_days">Calendar days in month</option>
-            <option value="fixed_30">Fixed 30 days</option>
-            <option value="working_days">Working days</option>
-            <option value="standard_days">Standard days</option>
-          </Select>
-        </FormField>
-        <FormField label="Standard days" error={err("standardDays")} hint="Used only for standard-days basis">
-          <Input name="standardDays" type="number" defaultValue={values.standardDays ?? 26} invalid={!!err("standardDays")} />
         </FormField>
         <FormField label="Rounding" error={err("roundingMode")}>
           <Select name="roundingMode" defaultValue={values.roundingMode ?? "nearest"} invalid={!!err("roundingMode")}>

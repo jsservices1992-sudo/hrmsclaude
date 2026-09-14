@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   updatePayrollSettings,
   updateStatutoryParam,
@@ -24,14 +24,20 @@ function Group({ title, hint, children }: { title: string; hint?: string; childr
   );
 }
 
-function Select({ label, name, defaultValue, options, hint, disabled }: {
+function Select({ label, name, defaultValue, options, hint, disabled, onChange }: {
   label: string; name: string; defaultValue?: string | null;
   options: { id: string; label: string }[]; hint?: string; disabled?: boolean;
+  onChange?: (value: string) => void;
 }) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="label text-ink-3">{label}</span>
-      <UiSelect name={name} defaultValue={defaultValue ?? ""} disabled={disabled}>
+      <UiSelect
+        name={name}
+        defaultValue={defaultValue ?? ""}
+        disabled={disabled}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+      >
         {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
       </UiSelect>
       {hint && <span className="text-xs text-ink-3">{hint}</span>}
@@ -92,6 +98,7 @@ export function PayrollSettingsForm({
     updatePayrollSettings, {},
   );
   const d = readOnly;
+  const [basis, setBasis] = useState(values.prorationBasis);
 
   return (
     <form action={action} className="flex flex-col gap-5">
@@ -127,6 +134,12 @@ export function PayrollSettingsForm({
           >
             <Select
               label="Basis" name="prorationBasis" defaultValue={values.prorationBasis} disabled={d}
+              onChange={setBasis}
+              hint={
+                basis === "calendar_days"
+                  ? "A full month always pays a full salary; only part months are divided, by the days that month actually has."
+                  : undefined
+              }
               options={[
                 { id: "calendar_days", label: "Calendar days in month" },
                 { id: "fixed_30", label: "Fixed 30 days" },
@@ -134,7 +147,16 @@ export function PayrollSettingsForm({
                 { id: "standard_days", label: "Standard days" },
               ]}
             />
-            <Num label="Standard days" name="standardDays" defaultValue={values.standardDays} disabled={d} hint="Used only for the standard-days basis" />
+            {/* Only this basis has a number to ask for. On any other it is
+                an inert box that reads as though it were in force — which
+                is how a calendar-days company comes to believe its months
+                are twenty-six days long. The value is still carried, so
+                switching back does not lose it. */}
+            {basis === "standard_days" ? (
+              <Num label="Standard days" name="standardDays" defaultValue={values.standardDays} disabled={d} />
+            ) : (
+              <input type="hidden" name="standardDays" value={values.standardDays} />
+            )}
             <Select
               label="Retrospective loss of pay" name="retroLopTreatment" defaultValue={values.retroLopTreatment} disabled={d}
               options={[
