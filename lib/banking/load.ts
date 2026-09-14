@@ -3,6 +3,8 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { loadRegister, APPROVED_STATUSES } from "../statutory/load";
+import { loadConventions } from "../payroll/load";
+import { periodDivisor } from "../payroll/proration";
 import {
   buildPaymentRun,
   reconcilePaymentRun,
@@ -448,7 +450,12 @@ export async function loadProvisions(args: {
     priorRows.find((r) => r.employeeId === employeeId && r.kind === kind)
       ?.closingPaise ?? 0;
 
-  const balances = await db.select().from(s.leaveBalances);
+  /* Scoped to this company's own people. It used to read every leave
+     balance on the instance and discard all but one company's. */
+  const employeeIds = [...register.employees.keys()];
+  const balances = employeeIds.length
+    ? await db.select().from(s.leaveBalances).where(inArray(s.leaveBalances.employeeId, employeeIds))
+    : [];
   const balanceByEmployee = new Map<string, number>();
   for (const b of balances) {
     if (!b.encashable) continue;
@@ -457,6 +464,14 @@ export async function loadProvisions(args: {
       (balanceByEmployee.get(b.employeeId) ?? 0) + b.balanceDays,
     );
   }
+
+  const conventions = await loadConventions(args.companyId, null);
+  const provisionDivisor = periodDivisor({
+    basis: conventions.prorationBasis,
+    year: args.year,
+    month: args.month,
+    standardDays: conventions.standardDays,
+  });
 
   const gratuityInputs = [];
   const leaveInputs = [];
@@ -481,8 +496,10 @@ export async function loadProvisions(args: {
       employeeId: emp.id,
       empCode: emp.empCode,
       encashableDays: days,
-      // Encashment is conventionally valued on basic over a 30-day month.
-      perDayPaise: basic > 0 ? Math.round(basic / 30) : 0,
+      /* Valued on the same day the settlement would pay it on, so the
+         provision and the eventual payout do not disagree by the
+         difference between thirty days and the month's own length. */
+      perDayPaise: basic > 0 ? Math.round(basic / provisionDivisor) : 0,
       openingProvisionPaise: openingOf(emp.id, "leave_encashment"),
       encashmentCapDays: 45,
     });

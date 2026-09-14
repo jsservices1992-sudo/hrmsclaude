@@ -3,7 +3,8 @@ import { and, eq, isNull, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { computeSettlement, type SettlementResult } from "@/lib/payroll/settlement";
-import { previewRun } from "@/lib/payroll/load";
+import { previewRun, loadConventions } from "@/lib/payroll/load";
+import { periodDivisor } from "@/lib/payroll/proration";
 import { DEFAULT_STRUCTURE } from "@/lib/payroll/engine";
 import { evaluateStructure } from "@/lib/payroll/compensation";
 
@@ -123,9 +124,20 @@ export async function loadExitCase(
     salary.monthlyGrossPaise,
   ).gratuityBasePaise;
 
-  // Per-day value on the company's own proration basis.
-  const divisor = row.company.prorationBasis === "fixed_30" ? 30 : 30;
-  const perDay = Math.round(monthlyBasic / divisor);
+  /* Per-day value on the company's own proration basis — which this
+     used to claim to do while both arms of the ternary returned 30, so
+     notice pay and leave encashment were priced on a thirty-day month
+     whatever the company had chosen and whatever month it was. */
+  const conventions = await loadConventions(row.company.id, row.employee.departmentId);
+  const perDay = Math.round(
+    monthlyBasic /
+      periodDivisor({
+        basis: conventions.prorationBasis,
+        year,
+        month,
+        standardDays: conventions.standardDays,
+      }),
+  );
 
   const settlement = computeSettlement({
     employeeId: row.employee.id,
