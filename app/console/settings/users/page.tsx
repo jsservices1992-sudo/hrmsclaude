@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { getSessionUser, scopeCompanies } from "@/lib/auth/session";
+import { getSessionUser, scopeCompanies, isTenantWide } from "@/lib/auth/session";
 import { canManageUsers, ASSIGNABLE_ROLES } from "@/lib/auth/user-admin";
 import { listCompanies } from "@/lib/payroll/load";
 import {
@@ -56,7 +56,17 @@ export default async function UsersPage(
   const companies = scopeCompanies(user, await listCompanies());
   const companyIds = companies.map((c) => c.id);
 
-  const rows = await db.select().from(s.users).orderBy(asc(s.users.email));
+  /* Scoped, not "every user in the database".
+     An administrator confined to one company must not see another
+     company's people — which is exactly what self-serve registration
+     creates, several companies sharing one instance. A tenant-wide
+     administrator (a self-hosted install bootstrapped from the command
+     line) still sees everyone, including accounts not yet attached to a
+     company. */
+  const allUsers = await db.select().from(s.users).orderBy(asc(s.users.email));
+  const rows = isTenantWide(user)
+    ? allUsers
+    : allUsers.filter((u) => u.companyId === user.companyId);
 
   const employees = companyIds.length
     ? await db

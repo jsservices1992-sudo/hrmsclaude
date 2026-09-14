@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
+import { signupEnabled } from "@/lib/auth/signup";
 import LoginForm from "./login-form";
 
 export const metadata = { title: "Sign in" };
@@ -45,10 +46,20 @@ export default async function LoginPage() {
 
         <LoginForm />
 
-        <p className="text-xs text-ink-3">
-          Trouble signing in? Contact your payroll administrator — password
-          reset is not yet built.
-        </p>
+        <div className="flex flex-col gap-2">
+          {signupEnabled() && (
+            <p className="text-sm text-ink-2">
+              New here?{" "}
+              <Link href="/signup" className="text-brass hover:underline">
+                Create your company
+              </Link>
+            </p>
+          )}
+          <p className="text-xs text-ink-3">
+            Trouble signing in? Contact your payroll administrator — password
+            reset is not yet built.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -23,6 +23,11 @@ npm run dev
 `db:bootstrap` creates the first company and administrator and prints a
 generated password once. There is no demo data and no default account.
 
+Alternatively, visit `/signup` and register a company through the browser.
+Registration is open unless `SIGNUP_ENABLED=false` is set — switch it off on a
+single-company install, where a public page that mints administrators is not
+something you want.
+
 ## Configuration
 
 Copy `.env.example` and fill it in. In production `DATABASE_URL` is required —
@@ -36,6 +41,7 @@ filesystem does not survive a redeploy.
 | `DATABASE_PATH` | Development only, when `DATABASE_URL` is unset. |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob store. Required in production. |
 | `UPLOAD_ROOT` | Development only, when the Blob store is unset. |
+| `SIGNUP_ENABLED` | Set to `false` to close self-serve registration. |
 
 ## Deploying to Vercel
 
@@ -45,6 +51,8 @@ filesystem does not survive a redeploy.
    `BLOB_READ_WRITE_TOKEN` for you.
 3. Push the schema at it, from your machine:
    `DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:push`
+   then `npm run db:triggers` with the same variables — `db:push` creates
+   tables but not the triggers that keep the audit log append-only.
    (`drizzle.config.ts` switches to the Turso dialect when `DATABASE_URL`
    is set, and uses a local file otherwise.)
 4. Deploy.

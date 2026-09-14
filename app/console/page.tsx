@@ -1,3 +1,5 @@
+import { setupProgress } from "@/lib/onboarding/setup";
+import { loadSetupFacts } from "@/lib/onboarding/setup-load";
 import { today, currentPeriod } from "@/lib/clock";
 import Link from "next/link";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -174,8 +176,29 @@ export default async function DashboardPage(props: PageProps<"/console">) {
     ] as const
   ).filter((s) => s.value > 0);
 
+  /* A company that has just registered has nothing to show on a
+     dashboard, so point it at the list that gets it working instead of
+     at a wall of zeros. */
+  const setup = companyIds[0] ? setupProgress(await loadSetupFacts(companyIds[0])) : null;
+
   return (
     <div className="flex flex-col gap-6 max-w-[80rem]">
+      {setup && !setup.complete && (
+        <Link
+          href="/console/setup"
+          className="border-2 border-indigo bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-surface-2"
+        >
+          <div>
+            <p className="label text-indigo">Finish setting up</p>
+            <p className="text-sm text-ink-2 mt-1">
+              {setup.done} of {setup.total} done
+              {setup.next && <> · next: {setup.next.title.toLowerCase()}</>}
+            </p>
+          </div>
+          <span className="label text-indigo whitespace-nowrap">Continue →</span>
+        </Link>
+      )}
+
       <PageHeader
         eyebrow={PERIOD.label}
         title={`Welcome back, ${user.name.split(" ")[0]}`}

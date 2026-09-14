@@ -169,6 +169,7 @@ export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
             exact: true,
             alsoMatches: ["/console/settings/companies"],
           },
+          { href: "/console/setup", label: "Set up", icon: "check" },
           { href: "/console/settings/payroll", label: "Payroll settings", icon: "sliders" },
           { href: "/console/settings/master-data", label: "Master data", icon: "table" },
         ],
@@ -177,10 +178,11 @@ export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
         label: "Governance",
         items: [
           {
+            /* Not tenant-wide: a company administrator manages their own
+               company's logins. The page scopes what it lists. */
             href: "/console/settings/users",
             label: "Accounts",
             icon: "users",
-            needsTenantWide: true,
           },
           {
             href: "/console/audit",

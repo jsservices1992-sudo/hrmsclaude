@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "test": "tsx --test lib/**/*.test.ts",
-    "db:bootstrap": "tsx db/bootstrap.mts"
+    "db:bootstrap": "tsx db/bootstrap.mts",
+    "db:triggers": "tsx db/ensure-triggers.mts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

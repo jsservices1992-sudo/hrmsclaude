@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser, isTenantWide } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { recordAudit } from "@/lib/audit/log";
 import {
@@ -35,6 +35,14 @@ async function requireAdmin() {
 /** A generated password, shown once. Nobody types a password into this form. */
 function newPassword() {
   return randomBytes(18).toString("base64url");
+}
+
+/** Whether the actor may act on this account at all. */
+function mayActOn(
+  actor: { companyId: string | null },
+  target: { companyId: string | null },
+): boolean {
+  return actor.companyId === null || actor.companyId === target.companyId;
 }
 
 async function activeAdminIds(): Promise<string[]> {
@@ -72,6 +80,16 @@ export async function createUser(
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const draft = draftFrom(fd);
+
+  /* An administrator confined to one company creates accounts in that
+     company, whatever the form says. The company is a select on a page
+     they control, so it is a suggestion, and trusting it would let one
+     tenant plant an account inside another. */
+  if (!isTenantWide(user)) {
+    draft.companyId = user.companyId;
+    if (draft.compensationScope === "all") draft.compensationScope = "company";
+  }
+
   const issues = checkUserDraft(draft);
   if (issues.length > 0) return { error: issues.join(" ") };
 
@@ -140,8 +158,13 @@ export async function updateUser(
     .where(eq(s.users.id, userId))
     .limit(1);
   if (!existing) return { error: "Account not found." };
+  if (!mayActOn(user, existing)) return { error: "Account not found." };
 
   const draft = draftFrom(fd);
+  if (!isTenantWide(user)) {
+    draft.companyId = user.companyId;
+    if (draft.compensationScope === "all") draft.compensationScope = "company";
+  }
   /* The email is the identity and is not edited here — changing it
      would silently move the account rather than correct it. */
   draft.email = existing.email;
@@ -221,6 +244,7 @@ export async function resetUserPassword(
     .where(eq(s.users.id, userId))
     .limit(1);
   if (!existing) return { error: "Account not found." };
+  if (!mayActOn(user, existing)) return { error: "Account not found." };
 
   const password = newPassword();
   await db
@@ -254,11 +278,12 @@ export async function endUserSessions(
 
   const userId = String(fd.get("userId") ?? "");
   const [existing] = await db
-    .select({ email: s.users.email })
+    .select({ email: s.users.email, companyId: s.users.companyId })
     .from(s.users)
     .where(eq(s.users.id, userId))
     .limit(1);
   if (!existing) return { error: "Account not found." };
+  if (!mayActOn(user, existing)) return { error: "Account not found." };
 
   const removed = await db
     .delete(s.sessions)
