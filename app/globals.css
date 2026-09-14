@@ -7,6 +7,13 @@
    --------------------------------------------------------------- */
 
 :root {
+  /* Native controls — the date picker's calendar glyph, its popup, the
+     select menu, scrollbars — are painted by the browser, not by these
+     tokens. Without this they stay light on a dark page, which leaves
+     the calendar button a dark glyph on a dark field: still there,
+     still clickable, and invisible. */
+  color-scheme: light;
+
   --paper: #f7f5f0;
   --surface: #ffffff;
   --surface-2: #efece4;
@@ -58,6 +65,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
     --paper: #0f1119;
     --surface: #171a24;
     --surface-2: #1f2330;
@@ -94,6 +103,8 @@
 }
 
 :root[data-theme="dark"] {
+  color-scheme: dark;
+
   --paper: #0f1119;
   --surface: #171a24;
   --surface-2: #1f2330;
@@ -363,3 +374,46 @@ dialog::backdrop {
     content: "";
   }
 }
+
+/* ---------------------------------------------------------------
+   Date and time fields
+   Both ways in: the segments are typed into directly, and the button
+   at the end opens the calendar. The button ships at a size that reads
+   as decoration, so it is given a real hit area and a pointer.
+   --------------------------------------------------------------- */
+input[type="date"],
+input[type="month"],
+input[type="time"],
+input[type="datetime-local"] {
+  min-height: 2.5rem;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 0.35rem;
+  margin-inline-start: 0.25rem;
+  margin-inline-end: -0.15rem;
+  border-radius: 3px;
+  opacity: 0.65;
+  transition: opacity var(--duration-fast) ease, background-color var(--duration-fast) ease;
+}
+
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="month"]:hover::-webkit-calendar-picker-indicator,
+input[type="time"]:hover::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  background-color: var(--surface-2);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 1px;
+  opacity: 1;
+}
+
+/* Firefox has no picker button on a date field at all, so the whole
+   control is the affordance there and the typed segments are the way in. */
