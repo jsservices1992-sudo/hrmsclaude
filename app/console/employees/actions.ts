@@ -16,6 +16,19 @@ import { recordAuditAs } from "@/lib/audit/log";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
 import {
+  normaliseMobile,
+  normalisePan,
+  normaliseUan,
+  normaliseIfsc,
+  normaliseBankAccount,
+  MOBILE_RE,
+  PAN_RE,
+  UAN_RE,
+  IFSC_RE,
+  BANK_ACCOUNT_RE,
+  IDENTIFIER_MESSAGES as MSG,
+} from "@/lib/hris/identifiers";
+import {
   parseEmployeeCsv,
   unresolvedReferences,
   missingReferences,
@@ -56,24 +69,14 @@ const EmployeeSchema = z.object({
   lastName: z.string().min(1, "Last name is required").max(80),
   email: z.string().email("Enter a valid work email").nullable(),
   personalEmail: z.string().email("Enter a valid personal email").nullable(),
-  mobile: z
-    .string()
-    .regex(/^[0-9]{10}$/, "Mobile must be 10 digits")
-    .nullable(),
-  // PAN format is fixed: five letters, four digits, one letter.
-  pan: z
-    .string()
-    .regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "PAN must look like ABCDE1234F")
-    .nullable(),
-  uan: z
-    .string()
-    .regex(/^[0-9]{12}$/, "UAN must be 12 digits")
-    .nullable(),
-  ifsc: z
-    .string()
-    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "IFSC must look like HDFC0000123")
-    .nullable(),
-  bankAccount: z.string().max(32).nullable(),
+  /* Every one of these is normalised before it reaches the schema, so
+     what is judged here is the digits, never the spacing they were
+     written with. */
+  mobile: z.string().regex(MOBILE_RE, MSG.mobile).nullable(),
+  pan: z.string().regex(PAN_RE, MSG.pan).nullable(),
+  uan: z.string().regex(UAN_RE, MSG.uan).nullable(),
+  ifsc: z.string().regex(IFSC_RE, MSG.ifsc).nullable(),
+  bankAccount: z.string().regex(BANK_ACCOUNT_RE, MSG.bankAccount).nullable(),
   designation: z.string().max(80).nullable(),
   branchId: z.string().min(1, "Branch is required"),
   departmentId: z.string().nullable(),
@@ -104,11 +107,11 @@ function parseForm(formData: FormData) {
     lastName: String(formData.get("lastName") ?? "").trim(),
     email: nullable(formData.get("email")),
     personalEmail: nullable(formData.get("personalEmail")),
-    mobile: nullable(formData.get("mobile")),
-    pan: nullable(formData.get("pan"))?.toUpperCase() ?? null,
-    uan: nullable(formData.get("uan")),
-    ifsc: nullable(formData.get("ifsc"))?.toUpperCase() ?? null,
-    bankAccount: nullable(formData.get("bankAccount")),
+    mobile: normaliseMobile(nullable(formData.get("mobile"))),
+    pan: normalisePan(nullable(formData.get("pan"))),
+    uan: normaliseUan(nullable(formData.get("uan"))),
+    ifsc: normaliseIfsc(nullable(formData.get("ifsc"))),
+    bankAccount: normaliseBankAccount(nullable(formData.get("bankAccount"))),
     designation: nullable(formData.get("designation")),
     branchId: String(formData.get("branchId") ?? ""),
     departmentId: nullable(formData.get("departmentId")),

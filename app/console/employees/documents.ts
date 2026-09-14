@@ -18,7 +18,7 @@ import {
   EXIT_DOCUMENT_TYPES,
   MAX_FILE_BYTES,
 } from "@/lib/storage/rules";
-import { save, remove, headHex } from "@/lib/storage";
+import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
 
 export type DocumentState = { error?: string; ok?: string };
 
@@ -106,6 +106,9 @@ export async function uploadDocument(
     documentId,
     extension: check.extension!,
   });
+
+  const unavailable = storageUnavailable();
+  if (unavailable) return { error: unavailable };
 
   await save(key, bytes);
 
@@ -306,6 +309,9 @@ export async function uploadExitDocument(
 
   const documentId = randomUUID();
   const key = storageKeyFor({ employeeId, documentId, extension: check.extension! });
+  const unavailable = storageUnavailable();
+  if (unavailable) return { error: unavailable };
+
   await save(key, bytes);
 
   try {

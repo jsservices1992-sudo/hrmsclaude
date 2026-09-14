@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { IDENTIFIER_INPUT } from "@/lib/hris/identifiers";
 import {
   createEmployee,
   updateEmployee,
@@ -56,6 +57,7 @@ function Field({
   error,
   placeholder,
   hint,
+  ...rest
 }: {
   label: string;
   name: string;
@@ -65,7 +67,7 @@ function Field({
   error?: string;
   placeholder?: string;
   hint?: string;
-}) {
+} & Omit<React.ComponentProps<"input">, "name" | "type" | "defaultValue">) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="label text-ink-3">
@@ -78,6 +80,7 @@ function Field({
         defaultValue={defaultValue ?? ""}
         placeholder={placeholder}
         invalid={Boolean(error)}
+        {...rest}
       />
       {error ? (
         <span className="text-xs text-rust">{error}</span>
@@ -189,7 +192,7 @@ export default function EmployeeForm({
       <Section title="Contact">
         <Field label="Work email" name="email" type="email" defaultValue={values.email} error={err("email")} />
         <Field label="Personal email" name="personalEmail" type="email" defaultValue={values.personalEmail} error={err("personalEmail")} />
-        <Field label="Mobile" name="mobile" defaultValue={values.mobile} error={err("mobile")} hint="10 digits" />
+        <Field label="Mobile" name="mobile" {...IDENTIFIER_INPUT.mobile} defaultValue={values.mobile} error={err("mobile")} hint="10 digits" />
         <Field label="Address" name="addressLine" defaultValue={values.addressLine} error={err("addressLine")} />
         <Field label="City" name="city" defaultValue={values.city} error={err("city")} />
         <Field label="Pincode" name="pincode" defaultValue={values.pincode} error={err("pincode")} />
@@ -250,10 +253,10 @@ export default function EmployeeForm({
       </Section>
 
       <Section title="Statutory & banking">
-        <Field label="PAN" name="pan" defaultValue={values.pan} error={err("pan")} hint="ABCDE1234F" />
-        <Field label="UAN" name="uan" defaultValue={values.uan} error={err("uan")} hint="12 digits" />
-        <Field label="Bank account" name="bankAccount" defaultValue={values.bankAccount} error={err("bankAccount")} />
-        <Field label="IFSC" name="ifsc" defaultValue={values.ifsc} error={err("ifsc")} hint="HDFC0000123" />
+        <Field label="PAN" name="pan" {...IDENTIFIER_INPUT.pan} defaultValue={values.pan} error={err("pan")} hint="ABCDE1234F" />
+        <Field label="UAN" name="uan" {...IDENTIFIER_INPUT.uan} defaultValue={values.uan} error={err("uan")} hint="12 digits" />
+        <Field label="Bank account" name="bankAccount" {...IDENTIFIER_INPUT.bankAccount} defaultValue={values.bankAccount} error={err("bankAccount")} />
+        <Field label="IFSC" name="ifsc" {...IDENTIFIER_INPUT.ifsc} defaultValue={values.ifsc} error={err("ifsc")} hint="HDFC0000123" />
         <label className="flex items-center gap-2.5 self-end pb-2">
           <input
             type="checkbox"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { IDENTIFIER_INPUT } from "@/lib/hris/identifiers";
 import { useFormStatus } from "react-dom";
 import {
   submitJoinerProfile,
@@ -89,7 +90,7 @@ export function ProfileForm({
               <option value="other">Prefer not to say</option>
             </select>
           </label>
-          <Field label="Mobile" name="mobile" defaultValue={values.mobile} error={err("mobile")} hint="10 digits" />
+          <Field label="Mobile" name="mobile" {...IDENTIFIER_INPUT.mobile} defaultValue={values.mobile} error={err("mobile")} hint="10 digits" />
           <Field label="Address" name="addressLine" defaultValue={values.addressLine} error={err("addressLine")} />
           <Field label="City" name="city" defaultValue={values.city} error={err("city")} />
           <Field label="Pincode" name="pincode" defaultValue={values.pincode} error={err("pincode")} />
@@ -106,8 +107,8 @@ export function ProfileForm({
           provident fund rather than starting a new account.
         </p>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="PAN" name="pan" defaultValue={values.pan} error={err("pan")} hint="ABCDE1234F" required />
-          <Field label="UAN (if you have one)" name="uan" defaultValue={values.uan} error={err("uan")} hint="12 digits" />
+          <Field label="PAN" name="pan" {...IDENTIFIER_INPUT.pan} defaultValue={values.pan} error={err("pan")} hint="ABCDE1234F" required />
+          <Field label="UAN (if you have one)" name="uan" {...IDENTIFIER_INPUT.uan} defaultValue={values.uan} error={err("uan")} hint="12 digits" />
         </div>
         <label className="flex items-start gap-2.5 text-sm">
           <input type="checkbox" name="hadPriorPfMembership" defaultChecked={values.hadPriorPfMembership} className="h-4 w-4 mt-0.5" />
@@ -128,8 +129,8 @@ export function ProfileForm({
           the most common cause of a failed first payment.
         </p>
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field label="Account number" name="bankAccount" defaultValue={values.bankAccount} error={err("bankAccount")} required />
-          <Field label="IFSC" name="ifsc" defaultValue={values.ifsc} error={err("ifsc")} hint="HDFC0000123" required />
+          <Field label="Account number" name="bankAccount" {...IDENTIFIER_INPUT.bankAccount} defaultValue={values.bankAccount} error={err("bankAccount")} required />
+          <Field label="IFSC" name="ifsc" {...IDENTIFIER_INPUT.ifsc} defaultValue={values.ifsc} error={err("ifsc")} hint="HDFC0000123" required />
         </div>
       </section>
 

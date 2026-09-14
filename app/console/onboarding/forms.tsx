@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { IDENTIFIER_INPUT } from "@/lib/hris/identifiers";
 import {
   createJoiner,
   sendOffer,
@@ -65,7 +66,7 @@ export function NewJoinerForm({
           <Field label="First name" name="firstName" error={err("firstName")} />
           <Field label="Last name" name="lastName" error={err("lastName")} />
           <Field label="Personal email" name="personalEmail" type="email" error={err("personalEmail")} hint="The portal link goes here" />
-          <Field label="Mobile" name="mobile" error={err("mobile")} hint="10 digits" />
+          <Field label="Mobile" name="mobile" {...IDENTIFIER_INPUT.mobile} error={err("mobile")} hint="10 digits" />
           <Field label="Designation" name="designation" error={err("designation")} />
           <Select label="Employment type" name="employmentType" defaultValue="permanent"
             options={[

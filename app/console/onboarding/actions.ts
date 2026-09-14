@@ -6,6 +6,19 @@ import { redirect } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
+import {
+  normaliseMobile,
+  normalisePan,
+  normaliseUan,
+  normaliseIfsc,
+  normaliseBankAccount,
+  MOBILE_RE,
+  PAN_RE,
+  UAN_RE,
+  IFSC_RE,
+  BANK_ACCOUNT_RE,
+  IDENTIFIER_MESSAGES as MSG,
+} from "@/lib/hris/identifiers";
 import * as s from "@/db/schema";
 import {
   getSessionUser,
@@ -22,7 +35,7 @@ import { formatEmployeeCode } from "@/lib/onboarding/rules";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { checkUpload, storageKeyFor, MAX_FILE_BYTES } from "@/lib/storage/rules";
 import { resolvePay, isPayMode, type ResolvedPay } from "@/lib/payroll/pay-resolution";
-import { save, remove, headHex } from "@/lib/storage";
+import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
 
 export type OnboardState = {
   error?: string;
@@ -105,7 +118,7 @@ export async function createJoiner(
     firstName: String(fd.get("firstName") ?? "").trim(),
     lastName: String(fd.get("lastName") ?? "").trim(),
     personalEmail: String(fd.get("personalEmail") ?? "").trim().toLowerCase(),
-    mobile: nullable(fd.get("mobile")),
+    mobile: normaliseMobile(nullable(fd.get("mobile"))),
     designation: nullable(fd.get("designation")),
     branchId: String(fd.get("branchId") ?? ""),
     departmentId: nullable(fd.get("departmentId")),
@@ -352,6 +365,9 @@ export async function uploadJoinerDocument(
 
   const key = storageKeyFor({ employeeId: doc.joinerId, documentId: doc.id, extension: check.extension! });
   const previousRef = doc.storageRef;
+  const unavailable = storageUnavailable();
+  if (unavailable) return { error: unavailable };
+
   await save(key, bytes);
 
   try {
@@ -450,11 +466,11 @@ export async function submitJoinerProfile(
     pincode: nullable(fd.get("pincode")),
     emergencyContactName: nullable(fd.get("emergencyContactName")),
     emergencyContactPhone: nullable(fd.get("emergencyContactPhone")),
-    pan: nullable(fd.get("pan"))?.toUpperCase() ?? null,
-    uan: nullable(fd.get("uan")),
-    bankAccount: nullable(fd.get("bankAccount")),
-    ifsc: nullable(fd.get("ifsc"))?.toUpperCase() ?? null,
-    mobile: nullable(fd.get("mobile")),
+    pan: normalisePan(nullable(fd.get("pan"))),
+    uan: normaliseUan(nullable(fd.get("uan"))),
+    bankAccount: normaliseBankAccount(nullable(fd.get("bankAccount"))),
+    ifsc: normaliseIfsc(nullable(fd.get("ifsc"))),
+    mobile: normaliseMobile(nullable(fd.get("mobile"))),
   });
 
   if (!parsed.success) {

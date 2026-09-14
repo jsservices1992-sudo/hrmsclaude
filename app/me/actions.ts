@@ -18,7 +18,7 @@ import {
   DOCUMENT_REQUIREMENTS,
   MAX_FILE_BYTES,
 } from "@/lib/storage/rules";
-import { save, remove, headHex } from "@/lib/storage";
+import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { publishedRunFor } from "@/lib/ess/load";
 import { validateRegularisation } from "@/lib/ess/regularisation";
@@ -362,6 +362,9 @@ export async function uploadOwnDocument(_prev: SelfState, fd: FormData): Promise
 
   const documentId = randomUUID();
   const key = storageKeyFor({ employeeId: employee.id, documentId, extension: check.extension! });
+  const unavailable = storageUnavailable();
+  if (unavailable) return { error: unavailable };
+
   await save(key, bytes);
 
   try {

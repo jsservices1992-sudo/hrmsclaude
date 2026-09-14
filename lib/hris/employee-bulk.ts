@@ -1,3 +1,17 @@
+import {
+  normaliseMobile,
+  normalisePan,
+  normaliseUan,
+  normaliseIfsc,
+  normaliseBankAccount,
+  MOBILE_RE,
+  PAN_RE,
+  UAN_RE,
+  IFSC_RE,
+  BANK_ACCOUNT_RE,
+  IDENTIFIER_MESSAGES as MSG,
+} from "./identifiers";
+
 /**
  * Bulk employee import from a spreadsheet.
  *
@@ -91,8 +105,6 @@ export type EmployeeParseResult = {
 };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 
 /** Splits a CSV line, honouring double quotes around commas. */
 export function splitCsvLine(line: string): string[] {
@@ -240,33 +252,25 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
       problem("email", `"${email}" is not an email address.`);
     }
 
-    const mobile = get("mobile")?.replace(/[\s-]/g, "").replace(/^\+91/, "") ?? null;
-    if (mobile && !/^[0-9]{10}$/.test(mobile)) {
-      problem("mobile", `"${mobile}" is not a 10-digit mobile number.`);
-    }
+    /* Normalised the same way the console forms normalise them, so a
+       number is held to one standard whichever door it came through. */
+    const mobile = normaliseMobile(get("mobile"));
+    if (mobile && !MOBILE_RE.test(mobile)) problem("mobile", `"${mobile}" — ${MSG.mobile}`);
 
-    const pan = get("pan")?.toUpperCase() ?? null;
-    if (pan && !PAN_RE.test(pan)) {
-      problem("pan", `"${pan}" is not a PAN. It looks like ABCDE1234F.`);
-    }
+    const pan = normalisePan(get("pan"));
+    if (pan && !PAN_RE.test(pan)) problem("pan", `"${pan}" — ${MSG.pan}`);
 
-    const uan = get("uan");
-    if (uan && !/^[0-9]{12}$/.test(uan)) {
-      problem("uan", `"${uan}" is not a 12-digit UAN.`);
-    }
+    const uan = normaliseUan(get("uan"));
+    if (uan && !UAN_RE.test(uan)) problem("uan", `"${uan}" — ${MSG.uan}`);
 
-    const ifsc = get("ifsc")?.toUpperCase() ?? null;
-    if (ifsc && !IFSC_RE.test(ifsc)) {
-      problem("ifsc", `"${ifsc}" is not an IFSC. It looks like HDFC0000123.`);
-    }
+    const ifsc = normaliseIfsc(get("ifsc"));
+    if (ifsc && !IFSC_RE.test(ifsc)) problem("ifsc", `"${ifsc}" — ${MSG.ifsc}`);
 
-    const bankAccount = get("bankAccount")?.replace(/\s/g, "") ?? null;
-    if (bankAccount && !/^\d{9,18}$/.test(bankAccount)) {
-      problem("bankAccount", "A bank account number is 9 to 18 digits.");
+    const bankAccount = normaliseBankAccount(get("bankAccount"));
+    if (bankAccount && !BANK_ACCOUNT_RE.test(bankAccount)) {
+      problem("bankAccount", MSG.bankAccount);
     }
-    if (bankAccount && !ifsc) {
-      problem("ifsc", "An account number without an IFSC cannot be paid into.");
-    }
+    if (bankAccount && !ifsc) problem("ifsc", MSG.ifscMissing);
 
     if (!empCode || !firstName || !lastName || !gender || !employmentType || !branchCode) continue;
     if (!dateOfJoining || !DATE_RE.test(dateOfJoining)) continue;

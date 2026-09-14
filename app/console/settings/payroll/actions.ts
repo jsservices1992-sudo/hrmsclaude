@@ -5,6 +5,13 @@ import { revalidatePath } from "next/cache";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
+import {
+  normaliseIfsc,
+  normaliseBankAccount,
+  IFSC_RE,
+  BANK_ACCOUNT_RE,
+  IDENTIFIER_MESSAGES as MSG,
+} from "@/lib/hris/identifiers";
 import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany } from "@/lib/auth/session";
 
@@ -315,15 +322,20 @@ export async function createBankAccount(
   const companyId = String(fd.get("companyId") ?? "");
   if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
 
-  const ifsc = String(fd.get("ifsc") ?? "").trim().toUpperCase();
-  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
-    return { error: "IFSC must look like HDFC0000123.", fieldErrors: { ifsc: "Invalid IFSC" } };
+  const ifsc = normaliseIfsc(String(fd.get("ifsc") ?? "")) ?? "";
+  if (!IFSC_RE.test(ifsc)) {
+    return { error: MSG.ifsc, fieldErrors: { ifsc: "Invalid IFSC" } };
   }
 
-  const accountNumber = String(fd.get("accountNumber") ?? "").trim();
+  const accountNumber = normaliseBankAccount(String(fd.get("accountNumber") ?? "")) ?? "";
   const bankName = String(fd.get("bankName") ?? "").trim();
   if (!accountNumber || !bankName) {
     return { error: "Bank name and account number are required." };
+  }
+  /* This is the account the salary file is drawn on. A wrong one is not
+     a form error, it is a failed batch discovered on payday. */
+  if (!BANK_ACCOUNT_RE.test(accountNumber)) {
+    return { error: MSG.bankAccount, fieldErrors: { accountNumber: "Invalid account number" } };
   }
 
   const id = randomUUID();

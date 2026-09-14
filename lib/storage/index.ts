@@ -40,6 +40,22 @@ function driver(): Driver {
   return hasBlobStore ? blob : disk;
 }
 
+/**
+ * Why an upload cannot proceed, or null when it can.
+ *
+ * `driver()` throws when production has no store configured, which is
+ * the right thing to do but the wrong thing to show: thrown out of a
+ * server action it becomes an opaque 500 with a digest, and the person
+ * uploading a PAN card is told only that a server error occurred. The
+ * actions ask this first and say what is actually wrong, to somebody
+ * who can fix it.
+ */
+export function storageUnavailable(): string | null {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return null;
+  if (process.env.NODE_ENV !== "production") return null;
+  return "Document storage is not configured for this deployment, so nothing can be uploaded yet. Add a Blob store in the Vercel project's Storage tab, set BLOB_READ_WRITE_TOKEN, and redeploy.";
+}
+
 /** Which store is in use, so a settings screen can say so plainly. */
 export function storageDriverName(): "vercel-blob" | "local-disk" {
   return process.env.BLOB_READ_WRITE_TOKEN ? "vercel-blob" : "local-disk";
