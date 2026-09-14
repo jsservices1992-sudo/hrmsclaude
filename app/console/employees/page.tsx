@@ -62,6 +62,19 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
         .orderBy(asc(s.profileChangeRequests.createdAt))
     : [];
 
+  /* The codes the bulk import resolves against, shown on the page so
+     nobody has to guess one and read the error to find out. */
+  const [bulkBranches, bulkDepartments, bulkGrades] = companyIds.length
+    ? await Promise.all([
+        db.select({ code: s.branches.code }).from(s.branches).where(inArray(s.branches.companyId, companyIds)),
+        db.select({ code: s.departments.code }).from(s.departments).where(inArray(s.departments.companyId, companyIds)),
+        db.select({ name: s.grades.name }).from(s.grades).where(inArray(s.grades.companyId, companyIds)),
+      ])
+    : [[], [], []];
+  const bulkBranchCodes = bulkBranches.map((b) => b.code).filter(Boolean) as string[];
+  const bulkDepartmentCodes = bulkDepartments.map((d) => d.code).filter(Boolean) as string[];
+  const bulkGradeNames = bulkGrades.map((g) => g.name);
+
   const q = (typeof sp.q === "string" ? sp.q : "").trim().toLowerCase();
   const statusFilter = typeof sp.status === "string" ? sp.status : "";
   const deptFilter = typeof sp.department === "string" ? sp.department : "";
@@ -179,7 +192,12 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
           <p className="text-sm text-ink-2 mb-3 max-w-[70ch]">
             For a first import, or whenever a batch joins at once.
           </p>
-          <BulkEmployeeForm companyId={companyIds[0]} />
+          <BulkEmployeeForm
+            companyId={companyIds[0]}
+            branchCodes={bulkBranchCodes}
+            departmentCodes={bulkDepartmentCodes}
+            gradeNames={bulkGradeNames}
+          />
         </Card>
       )}
 

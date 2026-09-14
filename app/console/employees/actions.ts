@@ -572,7 +572,14 @@ export type BulkEmployeeState = {
   error?: string;
   ok?: string;
   /** Every problem in the file, so the spreadsheet is fixed in one pass. */
-  problems?: { line: number; column: string; message: string }[];
+  problems?: {
+    line: number;
+    column: string;
+    message: string;
+    fix?: { label: string; href: string };
+    /** How many rows share this problem. */
+    rows?: number;
+  }[];
 };
 
 /**
@@ -639,9 +646,20 @@ export async function bulkUploadEmployees(
     empCodes: existing.map((e) => e.empCode),
   });
   if (unresolved.length > 0) {
+    /* A single wrong branch code on 82 rows is one problem, not 82.
+       Collapse by column and message, keeping the first line it appears
+       on, so the list names what to fix rather than how often. */
+    const seen = new Map<string, (typeof unresolved)[number] & { rows: number }>();
+    for (const p of unresolved) {
+      const key = `${p.column}::${p.message}`;
+      const hit = seen.get(key);
+      if (hit) hit.rows += 1;
+      else seen.set(key, { ...p, rows: 1 });
+    }
+    const collapsed = [...seen.values()].sort((a, b) => a.line - b.line);
     return {
-      error: `${unresolved.length} problem(s) in the file. Nothing has been imported.`,
-      problems: unresolved.slice(0, 50),
+      error: `${collapsed.length} problem(s) in the file. Nothing has been imported.`,
+      problems: collapsed.slice(0, 50),
     };
   }
 

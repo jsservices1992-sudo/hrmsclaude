@@ -9,7 +9,17 @@ import { SubmitButton } from "@/components/console/ui";
  * resolves against are the company's own, and a person cannot guess
  * them — so the file they start from already contains the right ones.
  */
-export function BulkEmployeeForm({ companyId }: { companyId: string }) {
+export function BulkEmployeeForm({
+  companyId,
+  branchCodes,
+  departmentCodes,
+  gradeNames,
+}: {
+  companyId: string;
+  branchCodes: string[];
+  departmentCodes: string[];
+  gradeNames: string[];
+}) {
   const [state, action] = useActionState<BulkEmployeeState, FormData>(
     bulkUploadEmployees,
     {},
@@ -25,9 +35,40 @@ export function BulkEmployeeForm({ companyId }: { companyId: string }) {
           Download template →
         </a>
         <span className="text-xs text-ink-3">
-          It comes filled with your own branch, department and grade codes.
+          It comes filled with the codes below.
         </span>
       </div>
+
+      {/* The codes the file is checked against, in front of the person
+          filling it in. Without this the only way to learn a branch code
+          is to guess one and read the error. */}
+      <dl className="grid sm:grid-cols-3 gap-px bg-line border border-line text-xs">
+        {[
+          { label: "branchCode", values: branchCodes, required: true, href: "/console/settings", add: "Add a branch" },
+          { label: "departmentCode", values: departmentCodes, required: false, href: "/console/settings/master-data?tab=org", add: "Add departments" },
+          { label: "gradeName", values: gradeNames, required: false, href: "/console/settings/master-data?tab=org", add: "Add grades" },
+        ].map((f) => (
+          <div key={f.label} className="bg-surface px-3 py-2.5">
+            <dt className="font-mono text-ink-3">
+              {f.label}
+              {f.required && <span className="text-rust ml-1">required</span>}
+            </dt>
+            <dd className="mt-1">
+              {f.values.length > 0 ? (
+                <span className="font-mono text-ink">{f.values.join(", ")}</span>
+              ) : (
+                <span className="text-ink-2">
+                  none yet —{" "}
+                  <a href={f.href} className="text-brass hover:underline">
+                    {f.add} →
+                  </a>
+                  {!f.required && <span className="text-ink-3"> (or leave blank)</span>}
+                </span>
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
 
       <form action={action} className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="companyId" value={companyId} />
@@ -56,16 +97,26 @@ export function BulkEmployeeForm({ companyId }: { companyId: string }) {
           </div>
           <ul className="divide-y divide-rust/10 max-h-72 overflow-y-auto">
             {state.problems.map((p, i) => (
-              <li key={i} className="px-3 py-1.5 text-xs flex gap-3">
-                <span className="font-mono text-ink-3 shrink-0 w-16">
-                  line {p.line}
+              <li key={i} className="px-3 py-1.5 text-xs flex flex-wrap gap-x-3 gap-y-1">
+                <span className="font-mono text-ink-3 shrink-0 w-20">
+                  {p.rows && p.rows > 1 ? `${p.rows} rows` : `line ${p.line}`}
                 </span>
                 {p.column && (
                   <span className="font-mono text-rust shrink-0 w-36 truncate">
                     {p.column}
                   </span>
                 )}
-                <span className="text-ink-2">{p.message}</span>
+                <span className="text-ink-2 flex-1 min-w-[16rem]">
+                  {p.message}
+                  {p.fix && (
+                    <>
+                      {" "}
+                      <a href={p.fix.href} className="text-brass hover:underline whitespace-nowrap">
+                        {p.fix.label} →
+                      </a>
+                    </>
+                  )}
+                </span>
               </li>
             ))}
           </ul>

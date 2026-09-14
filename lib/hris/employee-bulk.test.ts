@@ -160,3 +160,32 @@ test("the template's commented example and notes are ignored", () => {
   assert.equal(r.rows.length, 1, "only the real row is imported");
   assert.equal(r.rows[0].empCode, "BLR001");
 });
+
+test("an unknown code says what the company does have", () => {
+  const { rows } = parseEmployeeCsv(csv(row({ branchCode: "GGN", departmentCode: "HR" })));
+  const problems = unresolvedReferences(rows, known);
+  const branch = problems.find((p) => p.column === "branchCode")!;
+  assert.match(branch.message, /BLR, MUM/, "names the codes that exist");
+  assert.equal(branch.fix?.href, "/console/settings", "says where to add one");
+
+  const dept = problems.find((p) => p.column === "departmentCode")!;
+  assert.match(dept.message, /ENG, FIN/);
+  assert.match(dept.message, /Leave the column blank|is not a department of this/);
+});
+
+test("a company with nothing configured says so, not 'it has: '", () => {
+  const { rows } = parseEmployeeCsv(csv(row({ branchCode: "GGN", departmentCode: "HR", gradeName: "L9" })));
+  const problems = unresolvedReferences(rows, {
+    branchCodes: [], departmentCodes: [], gradeNames: [], empCodes: [],
+  });
+  assert.match(problems.find((p) => p.column === "branchCode")!.message, /has none yet/);
+  assert.match(problems.find((p) => p.column === "departmentCode")!.message, /Leave the column blank/);
+});
+
+test("every unresolved reference carries a link to where it is created", () => {
+  const { rows } = parseEmployeeCsv(csv(row({ branchCode: "GGN", departmentCode: "HR", gradeName: "L9" })));
+  const problems = unresolvedReferences(rows, known);
+  for (const p of problems) {
+    assert.ok(p.fix?.href.startsWith("/console"), `${p.column} has no fix link`);
+  }
+});

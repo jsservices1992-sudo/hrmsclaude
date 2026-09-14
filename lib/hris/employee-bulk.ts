@@ -70,7 +70,20 @@ export type EmployeeRow = {
   ifsc: string | null;
 };
 
-export type RowProblem = { line: number; column: string; message: string };
+export type RowProblem = {
+  line: number;
+  column: string;
+  message: string;
+  /** Where to go and fix it, when the fix is elsewhere in the product. */
+  fix?: { label: string; href: string };
+};
+
+/** Where each kind of reference is created. */
+export const REFERENCE_FIXES = {
+  branch: { label: "Add branches", href: "/console/settings" },
+  department: { label: "Add departments", href: "/console/settings/master-data?tab=org" },
+  grade: { label: "Add grades", href: "/console/settings/master-data?tab=org" },
+} as const;
 
 export type EmployeeParseResult = {
   rows: EmployeeRow[];
@@ -317,21 +330,30 @@ export function unresolvedReferences(
       problems.push({
         line: r.line,
         column: "branchCode",
-        message: `"${r.branchCode}" is not a branch of this company.`,
+        message: known.branchCodes.length
+          ? `"${r.branchCode}" is not a branch of this company. It has: ${known.branchCodes.join(", ")}.`
+          : `"${r.branchCode}" is not a branch — this company has none yet.`,
+        fix: REFERENCE_FIXES.branch,
       });
     }
     if (r.departmentCode && !departments.has(r.departmentCode)) {
       problems.push({
         line: r.line,
         column: "departmentCode",
-        message: `"${r.departmentCode}" is not a department of this company.`,
+        message: known.departmentCodes.length
+          ? `"${r.departmentCode}" is not a department of this company. It has: ${known.departmentCodes.join(", ")}.`
+          : `"${r.departmentCode}" is not a department — this company has none yet. Leave the column blank to skip it.`,
+        fix: REFERENCE_FIXES.department,
       });
     }
     if (r.gradeName && !grades.has(r.gradeName.toLowerCase())) {
       problems.push({
         line: r.line,
         column: "gradeName",
-        message: `"${r.gradeName}" is not a grade of this company.`,
+        message: known.gradeNames.length
+          ? `"${r.gradeName}" is not a grade of this company. It has: ${known.gradeNames.join(", ")}.`
+          : `"${r.gradeName}" is not a grade — this company has none yet. Leave the column blank to skip it.`,
+        fix: REFERENCE_FIXES.grade,
       });
     }
     /* A manager may be someone already on the books or someone further
