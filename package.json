@@ -10,8 +10,9 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "test": "tsx --test lib/**/*.test.ts",
-    "db:bootstrap": "tsx db/bootstrap.mts",
-    "db:triggers": "tsx db/ensure-triggers.mts"
+    "db:bootstrap": "node --env-file-if-exists=.env.local --import tsx db/bootstrap.mts",
+    "db:triggers": "node --env-file-if-exists=.env.local --import tsx db/ensure-triggers.mts",
+    "db:migrate": "node --env-file-if-exists=.env.local --import tsx db/migrate.mts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0",
