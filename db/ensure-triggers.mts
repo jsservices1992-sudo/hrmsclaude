@@ -25,7 +25,23 @@ const sql = postgres(url, {
   prepare: false,
 });
 
-await createAuditTriggers(sql);
+try {
+  await createAuditTriggers(sql);
+} catch (error) {
+  const code = (error as { code?: string }).code;
+  /* 42P01: the table is not there. That means the schema was never
+     pushed, which is a different problem with a different fix, and
+     saying so beats a stack trace about a missing relation. */
+  if (code === "42P01") {
+    console.error(
+      "\n  The audit tables do not exist yet — the schema has not been pushed" +
+        "\n  at this database. Run `npm run db:push` first, with the same" +
+        "\n  DATABASE_URL, and check that it finishes rather than hanging.\n",
+    );
+    process.exit(1);
+  }
+  throw error;
+}
 
 if (!(await auditTriggersPresent(sql))) {
   console.error("\n  Triggers could not be created. The audit log is editable.\n");
