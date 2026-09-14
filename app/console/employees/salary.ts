@@ -152,8 +152,11 @@ export async function reviseSalary(
         .where(eq(s.payrollEmployeeSummaries.employeeId, employeeId))
         .limit(1),
     ]);
-    correctingOpening =
-      current.revisionType === "initial" && rows.length === 1 && paid.length === 0;
+    /* Not gated on the revision type. That is a label somebody picked
+       from a dropdown, and the first salary on record routinely carries
+       the wrong one; what makes this safe is that it is the only salary
+       there is and nothing has ever been paid against it. */
+    correctingOpening = rows.length === 1 && paid.length === 0;
 
     if (!correctingOpening) {
       return {
@@ -177,6 +180,18 @@ export async function reviseSalary(
     employeeDepartmentId: employee.departmentId,
   });
   const structure = resolution.components;
+
+  /* A structure with no components in it evaluates every part of the pay
+     to zero, so the salary stored is zero and every payslip drawn from it
+     is blank. It used to save without complaint, which is how an employee
+     ends up on record at ₹0 with no indication of why. */
+  if (structure.length === 0) {
+    return {
+      error:
+        "This company's salary structure has no components in it, so any amount entered here would be stored as zero. Add components to the structure first — Settings → Payroll → Salary structures.",
+    };
+  }
+
   const amountPaise = Math.round(amountRupees * 100);
 
   // The same statutory rates payroll itself runs on, as at the date this
@@ -276,6 +291,12 @@ export async function reviseSalary(
     components: structure,
     employer: employerParams,
   });
+  if (monthlyGrossPaise <= 0) {
+    return {
+      error:
+        "That works out to a monthly gross of zero. Check the amount and the basis — a salary of nothing would pay nothing, every month, without further warning.",
+    };
+  }
   if (evaluated.warnings.length > 0) {
     // A structure that cannot express this gross would silently produce a
     // wrong break-up, so it is refused rather than stored.

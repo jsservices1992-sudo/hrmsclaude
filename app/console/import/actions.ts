@@ -147,6 +147,23 @@ export async function importSalaries(
         branchId: employee.branchId,
         gender: employee.gender,
       });
+      /* Zero is never a salary somebody meant to import. It means the
+         company's structure has no components, so everything evaluated
+         to nothing — and a file of zeroes imports silently otherwise. */
+      if (pay.monthlyGrossPaise <= 0) {
+        return {
+          error: "Nothing has been imported.",
+          problems: [
+            {
+              line: row.line,
+              column: "amount",
+              message: `${row.empCode} works out to a monthly gross of zero. This usually means the salary structure has no components in it, so every amount evaluates to nothing.`,
+              fix: { label: "Open salary structures", href: "/console/settings/payroll" },
+            },
+          ],
+        };
+      }
+
       resolved.push({
         employeeId: employee.id,
         monthlyGrossPaise: pay.monthlyGrossPaise,

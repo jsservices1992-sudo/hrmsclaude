@@ -75,7 +75,7 @@ export function setupSteps(f: SetupFacts): SetupStep[] {
     {
       id: "structure",
       title: "Salary structure",
-      why: "How a CTC is split across those components. Every employee's pay is derived from one.",
+      why: "How a CTC is split across those components. Every employee's pay is derived from one, so a structure with no components in it pays nothing.",
       href: "/console/settings/payroll",
       done: f.salaryStructures > 0,
       blocking: true,

@@ -19,7 +19,18 @@ export async function loadSetupFacts(companyId: string): Promise<SetupFacts> {
       db.select({ id: s.departments.id }).from(s.departments).where(eq(s.departments.companyId, companyId)).then(size),
       db.select({ id: s.grades.id }).from(s.grades).where(eq(s.grades.companyId, companyId)).then(size),
       db.select({ id: s.payComponents.id }).from(s.payComponents).where(eq(s.payComponents.companyId, companyId)).then(size),
-      db.select({ id: s.salaryStructures.id }).from(s.salaryStructures).where(eq(s.salaryStructures.companyId, companyId)).then(size),
+      /* Counted by their lines, not their names. An empty structure
+         satisfies nothing: every component evaluates to zero, so a
+         salary saved against it is zero and payroll pays nothing. */
+      db
+        .selectDistinct({ id: s.salaryStructures.id })
+        .from(s.salaryStructures)
+        .innerJoin(
+          s.salaryStructureLines,
+          eq(s.salaryStructureLines.structureId, s.salaryStructures.id),
+        )
+        .where(eq(s.salaryStructures.companyId, companyId))
+        .then(size),
       db.select({ id: s.leaveTypes.id }).from(s.leaveTypes).where(eq(s.leaveTypes.companyId, companyId)).then(size),
       db.select({ id: s.shifts.id }).from(s.shifts).where(eq(s.shifts.companyId, companyId)).then(size),
       db.select({ id: s.employees.id }).from(s.employees).where(eq(s.employees.companyId, companyId)).then(size),
