@@ -6,7 +6,7 @@ import {
   canOpenEmployeeDocument,
 } from "@/lib/auth/session";
 import { recordAccess } from "@/lib/audit/log";
-import { read } from "@/lib/storage/disk";
+import { read } from "@/lib/storage";
 import { downloadNameFor, ALLOWED_TYPES } from "@/lib/storage/rules";
 
 /**

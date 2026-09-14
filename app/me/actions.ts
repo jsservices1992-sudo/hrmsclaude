@@ -18,7 +18,7 @@ import {
   DOCUMENT_REQUIREMENTS,
   MAX_FILE_BYTES,
 } from "@/lib/storage/rules";
-import { save, remove, headHex } from "@/lib/storage/disk";
+import { save, remove, headHex } from "@/lib/storage";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { publishedRunFor } from "@/lib/ess/load";
 import { validateRegularisation } from "@/lib/ess/regularisation";

@@ -18,7 +18,7 @@ import {
   EXIT_DOCUMENT_TYPES,
   MAX_FILE_BYTES,
 } from "@/lib/storage/rules";
-import { save, remove, headHex } from "@/lib/storage/disk";
+import { save, remove, headHex } from "@/lib/storage";
 
 export type DocumentState = { error?: string; ok?: string };
 

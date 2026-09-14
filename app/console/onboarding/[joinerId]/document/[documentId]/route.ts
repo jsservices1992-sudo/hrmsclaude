@@ -3,7 +3,7 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, canAccessConsole, canAccessCompany } from "@/lib/auth/session";
 import { recordAccess } from "@/lib/audit/log";
-import { read } from "@/lib/storage/disk";
+import { read } from "@/lib/storage";
 import { downloadNameFor, ALLOWED_TYPES } from "@/lib/storage/rules";
 
 /**

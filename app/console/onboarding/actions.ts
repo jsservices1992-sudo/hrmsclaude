@@ -22,7 +22,7 @@ import { formatEmployeeCode } from "@/lib/onboarding/rules";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { checkUpload, storageKeyFor, MAX_FILE_BYTES } from "@/lib/storage/rules";
 import { resolvePay, isPayMode, type ResolvedPay } from "@/lib/payroll/pay-resolution";
-import { save, remove, headHex } from "@/lib/storage/disk";
+import { save, remove, headHex } from "@/lib/storage";
 
 export type OnboardState = {
   error?: string;

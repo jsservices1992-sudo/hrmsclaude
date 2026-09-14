@@ -34,15 +34,18 @@ filesystem does not survive a redeploy.
 | `DATABASE_URL` | libSQL/Turso URL. Required in production. |
 | `DATABASE_AUTH_TOKEN` | Turso auth token. |
 | `DATABASE_PATH` | Development only, when `DATABASE_URL` is unset. |
-| `UPLOAD_ROOT` | Where uploaded documents are written. |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob store. Required in production. |
+| `UPLOAD_ROOT` | Development only, when the Blob store is unset. |
 
 ## Deploying to Vercel
 
 1. Create a Turso database and set `DATABASE_URL` and `DATABASE_AUTH_TOKEN`
    in the Vercel project's environment variables.
-2. Push the schema at it: `DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:push`
-3. Deploy.
-4. Bootstrap the first administrator against the same database:
+2. Connect a Vercel Blob store to the project; it sets
+   `BLOB_READ_WRITE_TOKEN` for you.
+3. Push the schema at it: `DATABASE_URL=… DATABASE_AUTH_TOKEN=… npm run db:push`
+4. Deploy.
+5. Bootstrap the first administrator against the same database:
    `DATABASE_URL=… DATABASE_AUTH_TOKEN=… ADMIN_EMAIL=… ADMIN_NAME=… COMPANY_NAME=… npm run db:bootstrap`
 
 ### Known blockers before real use
@@ -50,10 +53,6 @@ filesystem does not survive a redeploy.
 These are deliberate, documented gaps rather than oversights. Read them before
 putting anyone's payroll in here.
 
-- **Document storage is on the local filesystem.** `lib/storage/disk.ts` writes
-  uploads to disk. On Vercel that disk is ephemeral, so every PAN card,
-  cancelled cheque and investment proof is lost on the next deploy. This must
-  move to object storage before documents are uploaded in production.
 - **No email.** There is no password reset, no invitation and no notification.
   An administrator issues passwords from Settings → Accounts and hands them
   over directly.
