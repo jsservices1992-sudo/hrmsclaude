@@ -194,6 +194,10 @@ export function BranchForm({
         </FormField>
         <FormField label="State / UT" error={err("stateCode")}>
           <Select name="stateCode" defaultValue={values.stateCode ?? ""} invalid={!!err("stateCode")}>
+            {/* Professional tax, LWF and ESIC all follow this, so it is
+                picked deliberately rather than inherited from whichever
+                state happens to sort first. */}
+            <option value="">Select a state or UT…</option>
             {states.map((o) => (
               <option key={o.id} value={o.id}>{o.label}</option>
             ))}
