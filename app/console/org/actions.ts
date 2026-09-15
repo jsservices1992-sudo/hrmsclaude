@@ -8,6 +8,7 @@ import {
   getSessionUser,
   canMutate,
   canAccessCompany,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { recordAuditAs } from "@/lib/audit/log";
 import { wouldCycle, type OrgPerson } from "@/lib/hris/org";
@@ -17,7 +18,7 @@ export type OrgState = { error?: string; ok?: string };
 async function requireHr() {
   const user = await getSessionUser();
   if (!user) return { user: null, error: "Not authorised." as const };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { user, error: "Your role is read-only." as const };
   }
   return { user, error: null };

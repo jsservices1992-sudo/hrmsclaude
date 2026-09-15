@@ -6,6 +6,7 @@ import {
   getSessionUser,
   canMutate,
   scopeCompanies,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import EmployeeForm from "../employee-form";
 import { PageHeader, Select, FilterBar, FilterField } from "@/components/console/ui";
@@ -16,7 +17,7 @@ export default async function NewEmployeePage(
   props: PageProps<"/console/employees/new">,
 ) {
   const user = (await getSessionUser())!;
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     redirect("/console/employees?denied=create");
   }
 

@@ -6,6 +6,7 @@ import {
   getSessionUser,
   canMutate,
   scopeCompanies,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { NewJoinerForm } from "../forms";
 import { PageHeader, Select, FilterBar, FilterField } from "@/components/console/ui";
@@ -16,7 +17,7 @@ export default async function NewJoinerPage(
   props: PageProps<"/console/onboarding/new">,
 ) {
   const user = (await getSessionUser())!;
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     redirect("/console/onboarding");
   }
 

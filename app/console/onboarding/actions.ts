@@ -24,6 +24,7 @@ import {
   getSessionUser,
   canMutate,
   canAccessCompany,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import {
   DOC_CHECKLIST,
@@ -75,7 +76,7 @@ async function audit(e: {
 async function requireHr() {
   const user = await getSessionUser();
   if (!user) return { user: null, error: "Not authorised." as const };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { user, error: "Your role is read-only." as const };
   }
   return { user, error: null };

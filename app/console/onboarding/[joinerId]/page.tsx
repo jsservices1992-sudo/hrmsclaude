@@ -13,6 +13,7 @@ import {
   canAccessCompany,
   canMutate,
   canSeeCompensation,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import {
   SendOfferForm,
@@ -46,7 +47,7 @@ export default async function JoinerDetailPage(
   if (!canAccessCompany(user, view.company.id)) redirect("/console/onboarding");
 
   const { joiner: j, branch, department, grade, documents, declarations, tasks, readiness, enrolment, duplicates } = view;
-  const canAct = canMutate(user) || user.role === "hr_manager";
+  const canAct = canActOnPeople(user);
   const daysToJoin = daysBetween(today(), j.proposedDoj);
   const portalUrl = `/join/${j.portalToken}`;
   const strongDup = duplicates.find((d) => d.confidence === "strong");

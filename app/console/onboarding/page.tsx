@@ -7,6 +7,7 @@ import {
   getSessionUser,
   scopeCompanies,
   canMutate,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import {
   PageHeader,
@@ -47,7 +48,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
 
   const inFlight = allJoiners.filter((j) => j.joiner.status !== "joined" && j.joiner.status !== "dropped");
   const blocked = inFlight.filter((j) => !j.readiness.canConvert);
-  const canAdd = canMutate(user) || user.role === "hr_manager";
+  const canAdd = canActOnPeople(user);
 
   const q = (typeof sp.q === "string" ? sp.q : "").trim().toLowerCase();
   const statusFilter = typeof sp.status === "string" ? sp.status : "";

@@ -11,6 +11,7 @@ import {
   scopeCompanies,
   canAccessCompany,
   canMutate,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import {
   RecomputeForm,
@@ -68,7 +69,7 @@ export default async function AttendancePage(
 
   const months = await deriveMonth({ companyId, year, month });
   const total = daysInMonth(year, month);
-  const canAct = canMutate(user) || user.role === "hr_manager";
+  const canAct = canActOnPeople(user);
   const canMutateMoney = canMutate(user);
 
   const from = `${year}-${String(month).padStart(2, "0")}-01`;

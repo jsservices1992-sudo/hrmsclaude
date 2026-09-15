@@ -14,6 +14,7 @@ import {
   canSeeCompensation,
   canMutate,
   maskIfNeeded,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { DOCUMENT_REQUIREMENTS, buildChecklist } from "@/lib/storage/rules";
 import {
@@ -72,7 +73,7 @@ export default async function EmployeeDetailPage(
     (d) => d.expiresOn && d.expiresOn <= "2026-12-31",
   );
 
-  const canAct = canMutate(user) || user.role === "hr_manager";
+  const canAct = canActOnPeople(user);
 
   /* Their own sign-in. Loaded here because this is the page somebody is
      on when they discover the person cannot open their payslip. */
@@ -537,7 +538,7 @@ export default async function EmployeeDetailPage(
                     </span>
                   </div>
                   {!h.alloc.returnedAt ? (
-                    canMutate(user) || user.role === "hr_manager" ? (
+                    canActOnPeople(user) ? (
                       <RevokeAssetForm allocationId={h.alloc.id} />
                     ) : (
                       <span className="label text-indigo">Currently held</span>

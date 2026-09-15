@@ -10,6 +10,7 @@ import {
   canMutate,
   canAccessCompany,
   canSeeCompensation,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { persistMonth } from "@/lib/attendance/service";
 import { parseAttendanceCsv, punchesForBulkStatus, type BulkStatus, BULK_STATUSES } from "@/lib/attendance/bulk";
@@ -49,7 +50,7 @@ async function audit(e: {
 async function requireHr() {
   const user = await getSessionUser();
   if (!user) return { user: null, error: "Not authorised." as const };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { user, error: "Your role is read-only." as const };
   }
   return { user, error: null };
@@ -720,7 +721,7 @@ export async function decideRegularisation(
      the check is the reporting line — and it has to be, because the
      person who knows whether someone was at the client site is not
      usually in HR. */
-  const isHr = canMutate(user) || user.role === "hr_manager";
+  const isHr = canActOnPeople(user);
   if (!isHr) {
     const [subject] = await db
       .select({ managerId: s.employees.managerId })

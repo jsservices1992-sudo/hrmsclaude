@@ -82,52 +82,42 @@ export type TaxWorksheet = {
   warnings: string[];
 };
 
-/** One employee's complete tax position, computed from live payroll data. */
-export async function loadWorksheet(
-  employeeId: string,
-  financialYear = CURRENT_FY,
+/**
+ * Everything one worksheet needs, already loaded.
+ *
+ * Splitting the loading from the computing is what lets a payroll run
+ * ask for a hundred of these without issuing seven hundred queries. The
+ * arithmetic below has one home either way: `loadWorksheet` is the same
+ * path as the batch, asked for a single employee.
+ */
+type WorksheetInputs = {
+  emp: typeof s.employees.$inferSelect;
+  decl: typeof s.taxDeclarations.$inferSelect | null;
+  salary: typeof s.employeeSalaries.$inferSelect | null;
+  structure: Awaited<ReturnType<typeof loadStructure>>;
+  flexiApprovedPaise: number;
+  perqRows: (typeof s.taxPerquisites.$inferSelect)[];
+  ledger: (typeof s.tdsLedger.$inferSelect)[];
+  proofs: (typeof s.taxProofs.$inferSelect)[];
+};
+
+function composeWorksheet(
+  input: WorksheetInputs,
+  financialYear: number,
   overrideRegime?: Regime,
-): Promise<TaxWorksheet | null> {
-  const [emp] = await db
-    .select()
-    .from(s.employees)
-    .where(eq(s.employees.id, employeeId))
-    .limit(1);
-  if (!emp) return null;
+): TaxWorksheet {
+  const { emp, decl, salary, structure, flexiApprovedPaise, perqRows, ledger, proofs } = input;
 
-  /* A year with no dated configuration cannot be computed. Returning
-     null lets the screen say so; throwing would give a 500 on the first
-     of April. */
-  if (!hasTaxConfig(financialYear)) return null;
-
-  const [decl] = await db
-    .select()
-    .from(s.taxDeclarations)
-    .where(
-      and(
-        eq(s.taxDeclarations.employeeId, employeeId),
-        eq(s.taxDeclarations.financialYear, financialYear),
-      ),
-    )
-    .limit(1);
-
-  const regime: Regime = overrideRegime ?? (decl?.regime ?? emp.taxRegime) as Regime;
+  const regime: Regime = overrideRegime ?? ((decl?.regime ?? emp.taxRegime) as Regime);
   const config = regimeConfig(regime, financialYear);
   const warnings: string[] = [];
 
   /* ---- salary ---- */
-  const [salary] = await db
-    .select()
-    .from(s.employeeSalaries)
-    .where(eq(s.employeeSalaries.employeeId, employeeId))
-    .orderBy(asc(s.employeeSalaries.effectiveFrom));
-
   const monthlyGross = salary?.monthlyGrossPaise ?? 0;
   if (!salary) {
     warnings.push("No salary is on record, so the projection is nil");
   }
 
-  const structure = await loadStructure(emp.companyId);
   const evaluated = evaluateStructure(structure, monthlyGross);
   const monthlyBasic = evaluated.epfBasePaise;
   const monthlyHra =
@@ -152,28 +142,8 @@ export async function loadWorksheet(
     warnings.push(...hra.warnings);
   }
 
-  /* ---- flexi exemptions already substantiated ---- */
-  const flexiApproved = await db
-    .select({ approved: s.flexiClaims.approvedPaise })
-    .from(s.flexiClaims)
-    .where(
-      and(
-        eq(s.flexiClaims.employeeId, employeeId),
-        inArray(s.flexiClaims.status, ["approved", "partial"]),
-      ),
-    );
-  const flexiExempt = flexiApproved.reduce((a, c) => a + c.approved, 0);
+  const flexiExempt = flexiApprovedPaise;
 
-  /* ---- perquisites ---- */
-  const perqRows = await db
-    .select()
-    .from(s.taxPerquisites)
-    .where(
-      and(
-        eq(s.taxPerquisites.employeeId, employeeId),
-        eq(s.taxPerquisites.financialYear, financialYear),
-      ),
-    );
   const perquisites = summarisePerquisites(
     perqRows.map((p) => ({
       code: p.code,
@@ -209,16 +179,6 @@ export async function loadWorksheet(
     config,
   });
 
-  /* ---- TDS already deducted ---- */
-  const ledger = await db
-    .select()
-    .from(s.tdsLedger)
-    .where(
-      and(
-        eq(s.tdsLedger.employeeId, employeeId),
-        eq(s.tdsLedger.financialYear, financialYear),
-      ),
-    );
   const tdsToDate = ledger.reduce((a, r) => a + r.tdsPaise, 0);
 
   // Months left is a calendar fact, not a count of payroll runs. If runs
@@ -243,13 +203,6 @@ export async function loadWorksheet(
   warnings.push(...projection.warnings);
 
   /* ---- what happens if the proofs never arrive ---- */
-  const proofs = decl
-    ? await db
-        .select()
-        .from(s.taxProofs)
-        .where(eq(s.taxProofs.declarationId, decl.id))
-    : [];
-
   let ifNothingProved: ReturnType<typeof closeProofWindow> | null = null;
   if (decl && deductions.totalAllowedPaise > 0) {
     const verifiedBySection: Record<string, number> = {};
@@ -292,6 +245,149 @@ export async function loadWorksheet(
     pan,
     warnings,
   };
+}
+
+/**
+ * Worksheets for many employees, in a fixed number of queries.
+ *
+ * A payroll run needs one number out of each of these, and asking for
+ * them one at a time issued about seven round trips per employee — seven
+ * hundred for a hundred people, which is minutes against a hosted
+ * database and grows with headcount. The same seven queries answer for
+ * everybody at once.
+ */
+export async function loadWorksheetsFor(
+  employeeIds: string[],
+  financialYear = CURRENT_FY,
+  overrideRegime?: Regime,
+): Promise<Map<string, TaxWorksheet>> {
+  const out = new Map<string, TaxWorksheet>();
+  if (employeeIds.length === 0 || !hasTaxConfig(financialYear)) return out;
+
+  const [emps, decls, salaries, flexi, perqs, ledgers] = await Promise.all([
+    db.select().from(s.employees).where(inArray(s.employees.id, employeeIds)),
+    db
+      .select()
+      .from(s.taxDeclarations)
+      .where(
+        and(
+          inArray(s.taxDeclarations.employeeId, employeeIds),
+          eq(s.taxDeclarations.financialYear, financialYear),
+        ),
+      ),
+    db
+      .select()
+      .from(s.employeeSalaries)
+      .where(inArray(s.employeeSalaries.employeeId, employeeIds))
+      .orderBy(asc(s.employeeSalaries.effectiveFrom)),
+    db
+      .select({ employeeId: s.flexiClaims.employeeId, approved: s.flexiClaims.approvedPaise })
+      .from(s.flexiClaims)
+      .where(
+        and(
+          inArray(s.flexiClaims.employeeId, employeeIds),
+          inArray(s.flexiClaims.status, ["approved", "partial"]),
+        ),
+      ),
+    db
+      .select()
+      .from(s.taxPerquisites)
+      .where(
+        and(
+          inArray(s.taxPerquisites.employeeId, employeeIds),
+          eq(s.taxPerquisites.financialYear, financialYear),
+        ),
+      ),
+    db
+      .select()
+      .from(s.tdsLedger)
+      .where(
+        and(
+          inArray(s.tdsLedger.employeeId, employeeIds),
+          eq(s.tdsLedger.financialYear, financialYear),
+        ),
+      ),
+  ]);
+
+  const declByEmployee = new Map(decls.map((d) => [d.employeeId, d]));
+
+  /* Proofs hang off the declaration, so they are only worth a query when
+     somebody has declared something. */
+  const declIds = decls.map((d) => d.id);
+  const proofs = declIds.length
+    ? await db.select().from(s.taxProofs).where(inArray(s.taxProofs.declarationId, declIds))
+    : [];
+  const proofsByDecl = new Map<string, (typeof proofs)[number][]>();
+  for (const p of proofs) {
+    const list = proofsByDecl.get(p.declarationId) ?? [];
+    list.push(p);
+    proofsByDecl.set(p.declarationId, list);
+  }
+
+  /* The earliest salary row, matching what the single-employee version
+     took: the first of an ascending order. */
+  const salaryByEmployee = new Map<string, (typeof salaries)[number]>();
+  for (const row of salaries) {
+    if (!salaryByEmployee.has(row.employeeId)) salaryByEmployee.set(row.employeeId, row);
+  }
+
+  const flexiByEmployee = new Map<string, number>();
+  for (const f of flexi) {
+    flexiByEmployee.set(f.employeeId, (flexiByEmployee.get(f.employeeId) ?? 0) + f.approved);
+  }
+
+  const perqByEmployee = new Map<string, (typeof perqs)[number][]>();
+  for (const p of perqs) {
+    const list = perqByEmployee.get(p.employeeId) ?? [];
+    list.push(p);
+    perqByEmployee.set(p.employeeId, list);
+  }
+
+  const ledgerByEmployee = new Map<string, (typeof ledgers)[number][]>();
+  for (const l of ledgers) {
+    const list = ledgerByEmployee.get(l.employeeId) ?? [];
+    list.push(l);
+    ledgerByEmployee.set(l.employeeId, list);
+  }
+
+  /* One structure query per company, not per employee. */
+  const structures = new Map<string, Awaited<ReturnType<typeof loadStructure>>>();
+  for (const companyId of new Set(emps.map((e) => e.companyId))) {
+    structures.set(companyId, await loadStructure(companyId));
+  }
+
+  for (const emp of emps) {
+    const decl = declByEmployee.get(emp.id) ?? null;
+    out.set(
+      emp.id,
+      composeWorksheet(
+        {
+          emp,
+          decl,
+          salary: salaryByEmployee.get(emp.id) ?? null,
+          structure: structures.get(emp.companyId)!,
+          flexiApprovedPaise: flexiByEmployee.get(emp.id) ?? 0,
+          perqRows: perqByEmployee.get(emp.id) ?? [],
+          ledger: ledgerByEmployee.get(emp.id) ?? [],
+          proofs: decl ? (proofsByDecl.get(decl.id) ?? []) : [],
+        },
+        financialYear,
+        overrideRegime,
+      ),
+    );
+  }
+
+  return out;
+}
+
+/** One employee's complete tax position, computed from live payroll data. */
+export async function loadWorksheet(
+  employeeId: string,
+  financialYear = CURRENT_FY,
+  overrideRegime?: Regime,
+): Promise<TaxWorksheet | null> {
+  const all = await loadWorksheetsFor([employeeId], financialYear, overrideRegime);
+  return all.get(employeeId) ?? null;
 }
 
 /**

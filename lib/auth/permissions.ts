@@ -35,6 +35,21 @@ export function canMutate(p: Pick<Principal, "role">): boolean {
 }
 
 /**
+ * Decisions about a person's employment rather than their pay: hiring
+ * them, recording an exit, accepting a resignation, closing clearance.
+ *
+ * HR belongs here and not in `canMutate`, which is the payroll-money
+ * permission — an HR manager should be able to accept a resignation
+ * without being able to change what anybody is paid. The rule had been
+ * spelled out as `canMutate(user) || user.role === "hr_manager"` at each
+ * call site, which is the same rule written six times and six chances
+ * for one of them to drift.
+ */
+export function canActOnPeople(p: Pick<Principal, "role">): boolean {
+  return p.role === "admin" || p.role === "payroll_manager" || p.role === "hr_manager";
+}
+
+/**
  * Company-wide compensation data: registers, exports, other people's pay.
  *
  * Scope "own" does NOT qualify. It means "your own payslip", which is

@@ -6,6 +6,7 @@ import {
   withdrawExit,
   resolveClearanceItem,
   setNoticeTreatment,
+  acceptExit,
   type ExitState,
 } from "./actions";
 import { NOTICE_TREATMENTS } from "@/lib/exit/kinds";
@@ -283,5 +284,62 @@ export function NoticeTreatmentForm({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Accepting the exit. Shown only while it is still to be accepted,
+ * because afterwards the last working day is the date every recovery is
+ * measured against and changing it belongs in a reopened settlement.
+ */
+export function AcceptExitForm({
+  exitId,
+  lastWorkingDay,
+  acceptedBy,
+  acceptedAt,
+  status,
+}: {
+  exitId: string;
+  lastWorkingDay: string;
+  acceptedBy: string | null;
+  acceptedAt: string | null;
+  status: string;
+}) {
+  const [state, action] = useActionState<ExitState, FormData>(acceptExit, {});
+
+  if (acceptedBy) {
+    return (
+      <p className="text-sm text-ink-2">
+        Accepted by {acceptedBy}
+        {acceptedAt ? ` on ${acceptedAt.slice(0, 10)}` : ""} · last working day{" "}
+        <span className="font-mono">{lastWorkingDay}</span>
+      </p>
+    );
+  }
+
+  if (status === "withdrawn") {
+    return <p className="text-sm text-ink-3">This exit was withdrawn.</p>;
+  }
+
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="exitId" value={exitId} />
+      <label className="flex flex-col gap-1.5">
+        <span className="label text-ink-3">Agreed last working day</span>
+        <Input
+          name="lastWorkingDay"
+          type="date"
+          defaultValue={lastWorkingDay}
+          className="font-mono"
+        />
+        <span className="text-xs text-ink-3">
+          Change it here if a different date was agreed. After this it is what
+          notice and the final month are measured from.
+        </span>
+      </label>
+      <SubmitButton pendingText="Accepting…">Accept the exit</SubmitButton>
+      {state.error && <p className="text-sm text-rust w-full">{state.error}</p>}
+      {state.ok && <p className="text-sm text-teal w-full">{state.ok}</p>}
+    </form>
   );
 }

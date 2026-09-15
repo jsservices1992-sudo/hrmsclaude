@@ -10,6 +10,7 @@ import {
   canAccessConsole,
   canAccessCompany,
   canMutate,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { IssueAssetForm, RevokeAssetForm, RetireAssetForm } from "../forms";
 import { Card, Badge, type BadgeTone } from "@/components/console/ui";
@@ -51,7 +52,7 @@ export default async function AssetDetailPage(
   if (!view) notFound();
   if (!canAccessCompany(user, view.asset.companyId)) redirect("/console/assets");
 
-  const canAct = canMutate(user) || user.role === "hr_manager";
+  const canAct = canActOnPeople(user);
   const isAdmin = user.role === "admin";
 
   const employees = canAct

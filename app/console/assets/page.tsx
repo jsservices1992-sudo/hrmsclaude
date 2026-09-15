@@ -9,6 +9,7 @@ import {
   canAccessCompany,
   scopeCompanies,
   canMutate,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { CreateAssetForm } from "./forms";
 import { PageHeader, Card, Input, Select, FilterBar, FilterField, Badge, StatCard, EmptyState, Table, THead, TH, TBody, TR, TD, type BadgeTone } from "@/components/console/ui";
@@ -45,7 +46,7 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
   const company = companies.find((c) => c.id === companyId)!;
 
   const allRows = await listAssets(companyId);
-  const canAct = canMutate(user) || user.role === "hr_manager";
+  const canAct = canActOnPeople(user);
 
   const categoryFilter = typeof sp.category === "string" ? sp.category : "";
   const statusFilter = typeof sp.status === "string" ? sp.status : "";

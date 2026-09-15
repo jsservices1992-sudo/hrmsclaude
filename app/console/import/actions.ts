@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { getSessionUser, canMutate, canAccessCompany } from "@/lib/auth/session";
+import { getSessionUser, canMutate, canAccessCompany,
+  canActOnPeople,
+} from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
 import { collapseProblems, type CsvProblem } from "@/lib/hris/csv";
 import { parseSalaryCsv, unknownEmployees, splitAlreadyPaid } from "@/lib/hris/salary-bulk";
@@ -246,7 +248,7 @@ export async function importLeaveBalances(
   const companyId = String(formData.get("companyId") ?? "");
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { error: "Your role is read-only." };
   }
   if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };

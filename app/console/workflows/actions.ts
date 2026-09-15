@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { getSessionUser, canAccessCompany, canMutate } from "@/lib/auth/session";
+import { getSessionUser, canAccessCompany, canMutate,
+  canActOnPeople,
+} from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
 import { decideStep, startWorkflow } from "@/lib/workflow/service";
 import { validateTemplate, type WorkflowStep } from "@/lib/workflow/engine";
@@ -21,7 +23,7 @@ export async function startExitWorkflow(
   fd: FormData,
 ): Promise<WorkflowState> {
   const user = await getSessionUser();
-  if (!user || (!canMutate(user) && user.role !== "hr_manager")) {
+  if (!user || (!canActOnPeople(user))) {
     return { error: "Only HR or payroll may start a workflow." };
   }
 
@@ -76,7 +78,7 @@ export async function startPendingExitWorkflows(
   fd: FormData,
 ): Promise<WorkflowState> {
   const user = await getSessionUser();
-  if (!user || (!canMutate(user) && user.role !== "hr_manager")) {
+  if (!user || (!canActOnPeople(user))) {
     return { error: "Only HR or payroll may start a workflow." };
   }
   const companyId = String(fd.get("companyId") ?? "");

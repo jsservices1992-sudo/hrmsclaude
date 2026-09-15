@@ -8,6 +8,7 @@ import {
   canSeeCompensation,
   canAccessCompany,
   canMutate,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { recordAccess } from "@/lib/audit/log";
 import { ProofDecisionForm, RegimeForm, CloseWindowForm } from "../forms";
@@ -72,7 +73,7 @@ export default async function TaxWorksheetPage(
   });
 
   const comparison = await compareForEmployee(employeeId);
-  const canAct = canMutate(user) || user.role === "hr_manager";
+  const canAct = canActOnPeople(user);
   const emp = w.employee;
   const a = w.annual;
 

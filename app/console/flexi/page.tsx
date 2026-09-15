@@ -9,6 +9,7 @@ import {
   canAccessCompany,
   scopeCompanies,
   canMutate,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { ClaimDecisionForm } from "./forms";
 import { PageHeader, Card, Select, FilterBar, FilterField, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
@@ -28,7 +29,7 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
 
   const { plan, employees } = await loadCompanyFlexi(companyId);
   const pending = await listPendingClaims([companyId]);
-  const canAct = canMutate(user) || user.role === "hr_manager";
+  const canAct = canActOnPeople(user);
   const company = companies.find((c) => c.id === companyId)!;
 
   if (!plan) {

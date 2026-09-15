@@ -11,6 +11,7 @@ import {
   getSessionUser,
   canMutate,
   canAccessCompany,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { recordAuditAs } from "@/lib/audit/log";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
@@ -171,7 +172,7 @@ export async function createEmployee(
 ): Promise<EmployeeFormState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { error: "Your role cannot create employees." };
   }
 
@@ -281,7 +282,7 @@ export async function updateEmployee(
 ): Promise<EmployeeFormState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     await audit({
       actor: user.email,
       action: "employee.update.denied",
@@ -405,7 +406,7 @@ export async function saveCustomFields(
 ): Promise<EmployeeFormState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { error: "Your role is read-only." };
   }
 
@@ -505,7 +506,7 @@ export async function decideProfileChange(
 ): Promise<EmployeeFormState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { error: "Your role is read-only." };
   }
 
@@ -655,7 +656,7 @@ export async function bulkUploadEmployees(
 ): Promise<BulkEmployeeState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { error: "Your role is read-only and cannot add employees." };
   }
 
@@ -929,7 +930,7 @@ export async function inviteEmployee(
 ): Promise<InviteAdminState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { error: "Your role is read-only." };
   }
 

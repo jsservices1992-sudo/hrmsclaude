@@ -10,6 +10,7 @@ import {
   canAccessCompany,
   scopeCompanies,
   canMutate,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { ProofDecisionForm } from "./forms";
 import { PageHeader, Card, Select, FilterBar, FilterField, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
@@ -39,7 +40,7 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
   const company = companies.find((c) => c.id === companyId)!;
   const { rows, configVersion, configVerified } = await loadCompanyTax(companyId);
   const pending = await listPendingProofs([companyId]);
-  const canAct = canMutate(user) || user.role === "hr_manager";
+  const canAct = canActOnPeople(user);
 
   const totals = rows.reduce(
     (a, r) => ({

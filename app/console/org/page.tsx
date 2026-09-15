@@ -6,7 +6,9 @@ import { loadOrg } from "@/lib/hris/org-load";
 import { loadHiring } from "@/lib/hris/hiring-load";
 import type { OrgNode } from "@/lib/hris/org";
 import { listCompanies } from "@/lib/payroll/load";
-import { getSessionUser, scopeCompanies, canMutate } from "@/lib/auth/session";
+import { getSessionUser, scopeCompanies, canMutate,
+  canActOnPeople,
+} from "@/lib/auth/session";
 import {
   PageHeader,
   Card,
@@ -247,7 +249,7 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
     .where(eq(s.departments.companyId, companyId))
     .orderBy(asc(s.departments.code));
 
-  const canAct = canMutate(user) || user.role === "hr_manager";
+  const canAct = canActOnPeople(user);
 
   const ctx: Ctx = {
     canAct,

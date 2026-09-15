@@ -450,22 +450,18 @@ export async function previewRun(args: {
    * either way would close the cycle. By the time a run is previewed both
    * modules are fully initialised.
    */
-  const { loadWorksheet } = await import("../tax/load");
+  /* Every worksheet in a fixed number of queries rather than seven per
+     employee. Measured before the change: 3.6s per employee against a
+     hosted database, so a hundred people was several minutes — and
+     running them in parallel did not help, because the queries inside
+     one worksheet are a sequential chain the driver does not pipeline.
+     Fewer queries was the fix, not overlapping them. */
+  const { loadWorksheetsFor } = await import("../tax/load");
+  const worksheets = await loadWorksheetsFor(rows.map(({ emp }) => emp.id));
   const tdsByEmployee = new Map<string, { paise: number; basis: string }>();
-
-  /* One worksheet per employee, and each is about seven round trips —
-     measured at 3.6s per employee against a hosted database, so a
-     hundred people is several minutes. Running them together was tried
-     and measured: ten in parallel took as long as ten in series,
-     because the queries inside one worksheet are a sequential chain
-     that the driver does not pipeline. The fix is to stop issuing
-     seven hundred queries, not to overlap them, and that means batching
-     the loads inside loadWorksheet itself.
-     TODO: batch — see lib/tax/load.ts. */
-  for (const { emp } of rows) {
-    const worksheet = await loadWorksheet(emp.id);
-    if (worksheet && worksheet.projection.monthlyTdsPaise > 0) {
-      tdsByEmployee.set(emp.id, {
+  for (const [employeeId, worksheet] of worksheets) {
+    if (worksheet.projection.monthlyTdsPaise > 0) {
+      tdsByEmployee.set(employeeId, {
         paise: worksheet.projection.monthlyTdsPaise,
         basis: worksheet.projection.basis,
       });

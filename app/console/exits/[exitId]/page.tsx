@@ -12,9 +12,10 @@ import {
   canSeeCompensation,
   canMutate,
   canAccessCompany,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { UploadExitDocumentForm } from "./forms";
-import { ClearanceItemForm } from "../start-form";
+import { ClearanceItemForm, AcceptExitForm } from "../start-form";
 import { PageHeader, Card, Badge } from "@/components/console/ui";
 
 export const metadata = { title: "Settlement" };
@@ -43,8 +44,8 @@ export default async function ExitDetailPage(
   // documented here elsewhere is HR's to see and act on, without seeing
   // what the company owes or is owed.
   const seesComp = canSeeCompensation(user);
-  const canResolveClearance = canMutate(user) || user.role === "hr_manager";
-  const canUploadDocs = canMutate(user) || user.role === "hr_manager";
+  const canResolveClearance = canActOnPeople(user);
+  const canUploadDocs = canActOnPeople(user);
 
   const documents = await db
     .select()
@@ -88,6 +89,23 @@ export default async function ExitDetailPage(
             : `Clearance is open: ${clearance.filter((c) => c.status === "pending").length} of ${clearance.length} items pending. Settlement release is blocked until they close or are waived by an authorised approver.`}
         </span>
       </div>
+
+      {canResolveClearance && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">Acceptance</span>
+          </div>
+          <div className="p-4">
+            <AcceptExitForm
+              exitId={exit.id}
+              lastWorkingDay={exit.lastWorkingDay}
+              acceptedBy={exit.acceptedBy}
+              acceptedAt={exit.acceptedAt}
+              status={exit.status}
+            />
+          </div>
+        </Card>
+      )}
 
       <Card padded={false}>
         <div className="px-4 py-2.5 border-b border-line bg-surface-2">

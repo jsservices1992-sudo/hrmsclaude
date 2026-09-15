@@ -10,6 +10,7 @@ import {
   canAccessCompany,
   canMutate,
   scopeCompanies,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import {
   ensureTemplates,
@@ -117,7 +118,7 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
       <Card padded={false} className="overflow-x-auto">
         <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
           <span className="label text-ink-2">All workflows</span>
-          {(canMutate(user) || user.role === "hr_manager") && (
+          {(canActOnPeople(user)) && (
             <StartPendingForm companyId={companyId} />
           )}
         </div>

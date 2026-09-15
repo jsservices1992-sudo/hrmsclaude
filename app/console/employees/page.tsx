@@ -8,6 +8,7 @@ import {
   maskIfNeeded,
   canMutate,
   scopeCompanies,
+  canActOnPeople,
 } from "@/lib/auth/session";
 import { listCompanies } from "@/lib/payroll/load";
 import { PageHeader, Card, StatCard, Button, Input, Select, FilterBar, FilterField, Badge, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
@@ -147,7 +148,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
           </>
         }
         actions={
-          (canMutate(user) || user.role === "hr_manager") && (
+          (canActOnPeople(user)) && (
             <Button href="/console/employees/new" variant="primary">
               New employee
             </Button>
@@ -193,7 +194,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
         </Card>
       )}
 
-      {(canMutate(user) || user.role === "hr_manager") && companyIds[0] && (
+      {(canActOnPeople(user)) && companyIds[0] && (
         <Card>
           <h2 className="font-display text-lg font-semibold mb-1">Add people in bulk</h2>
           <p className="text-sm text-ink-2 mb-3 max-w-[70ch]">

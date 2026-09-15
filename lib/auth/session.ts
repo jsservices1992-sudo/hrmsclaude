@@ -95,6 +95,7 @@ export async function destroySession() {
 export {
   canAccessConsole,
   canMutate,
+  canActOnPeople,
   canSeeCompensation,
   isTenantWide,
   canAccessCompany,

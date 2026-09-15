@@ -5,7 +5,12 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { getSessionUser, canMutate, canAccessCompany } from "@/lib/auth/session";
+import {
+  getSessionUser,
+  canMutate,
+  canActOnPeople,
+  canAccessCompany,
+} from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
 import {
   isExitType,
@@ -51,7 +56,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export async function startExit(_prev: ExitState, fd: FormData): Promise<ExitState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { error: "Your role is read-only and cannot record an exit." };
   }
 
@@ -169,7 +174,7 @@ export async function startExit(_prev: ExitState, fd: FormData): Promise<ExitSta
 export async function withdrawExit(_prev: ExitState, fd: FormData): Promise<ExitState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { error: "Your role is read-only." };
   }
 
@@ -252,7 +257,7 @@ export async function withdrawExit(_prev: ExitState, fd: FormData): Promise<Exit
 export async function resolveClearanceItem(_prev: ExitState, fd: FormData): Promise<ExitState> {
   const user = await getSessionUser();
   if (!user) return { error: "Not authorised." };
-  if (!canMutate(user) && user.role !== "hr_manager") {
+  if (!canActOnPeople(user)) {
     return { error: "Your role is read-only." };
   }
 
@@ -341,16 +346,15 @@ export async function resolveClearanceItem(_prev: ExitState, fd: FormData): Prom
       ),
     );
 
-  /* The case moves with its checklist. It used to sit at `submitted`
-     however much work had been done on it, so nothing on a dashboard
-     could tell an exit nobody has touched from one waiting only on the
-     settlement. Left alone once settled or withdrawn — those are ends,
-     not stages. */
-  const stage = left.length === 0 ? "clearance" : "accepted";
-  if (!["settled", "withdrawn"].includes(row.exitCase.status)) {
+  /* Clearance finishing moves an accepted exit on, and nothing else.
+     It used to stamp `accepted` itself, which quietly made acceptance a
+     side effect of ticking a checklist rather than somebody agreeing to
+     the exit — and left `acceptedBy` empty while the case claimed to be
+     accepted. Settled and withdrawn are ends, not stages. */
+  if (left.length === 0 && row.exitCase.status === "accepted") {
     await db
       .update(s.exitCases)
-      .set({ status: stage })
+      .set({ status: "clearance" })
       .where(eq(s.exitCases.id, item.exitCaseId));
   }
 
@@ -463,5 +467,97 @@ export async function setNoticeTreatment(_prev: ExitState, fd: FormData): Promis
         waive: "Notice shortfall waived — nothing will be recovered.",
         employer_pays: "The employer will pay the notice period rather than recover it.",
       }[treatment] + (settlement ? " Recompute the settlement to see the new figures." : ""),
+  };
+}
+
+/**
+ * Accepts the exit.
+ *
+ * The case carried `acceptedBy` and `acceptedAt` and a status of
+ * `accepted`, and nothing in the application ever set them: an exit was
+ * recorded and then went straight to clearance, so there was no point at
+ * which anybody was on record as having agreed to it. Acceptance is what
+ * freezes the last working day — every notice recovery and settlement
+ * figure is measured from it — so it is worth being an act rather than
+ * an implication.
+ *
+ * Open to administrators, payroll and HR. Accepting a resignation is an
+ * employment decision, not a payroll one, and an HR manager who cannot
+ * change what anybody is paid should still be able to make it.
+ */
+export async function acceptExit(_prev: ExitState, fd: FormData): Promise<ExitState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Not authorised." };
+  if (!canActOnPeople(user)) {
+    return { error: "Your role cannot accept an exit." };
+  }
+
+  const exitId = String(fd.get("exitId") ?? "");
+  const [row] = await db
+    .select({ exitCase: s.exitCases, employee: s.employees })
+    .from(s.exitCases)
+    .innerJoin(s.employees, eq(s.employees.id, s.exitCases.employeeId))
+    .where(eq(s.exitCases.id, exitId))
+    .limit(1);
+  if (!row) return { error: "Exit not found." };
+  if (!canAccessCompany(user, row.employee.companyId)) return { error: "Not authorised." };
+
+  if (row.exitCase.status === "withdrawn") {
+    return { error: "This exit was withdrawn. Start a new one if they are leaving after all." };
+  }
+  if (row.exitCase.status !== "submitted" && row.exitCase.status !== "manager_approved") {
+    return {
+      error: `This exit is already ${row.exitCase.status.replace(/_/g, " ")}.`,
+    };
+  }
+
+  /* The last working day can still be corrected here, because accepting
+     is often the moment it is actually agreed — and after this it is the
+     date every recovery is measured against. */
+  const lastWorkingDay = String(fd.get("lastWorkingDay") ?? "").trim();
+  if (lastWorkingDay && !ISO_DATE.test(lastWorkingDay)) {
+    return { error: "Enter the last working day as YYYY-MM-DD." };
+  }
+  if (lastWorkingDay && lastWorkingDay < row.exitCase.resignationDate) {
+    return { error: "The last working day cannot be before notice was given." };
+  }
+  const agreedLwd = lastWorkingDay || row.exitCase.lastWorkingDay;
+
+  const now = new Date().toISOString();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(s.exitCases)
+      .set({
+        status: "accepted",
+        lastWorkingDay: agreedLwd,
+        acceptedBy: user.email,
+        acceptedAt: now,
+      })
+      .where(eq(s.exitCases.id, exitId));
+
+    /* The leaving date drives proration of the final month, so it
+       follows the agreed one rather than the one first written down. */
+    if (agreedLwd !== row.exitCase.lastWorkingDay) {
+      await tx
+        .update(s.employees)
+        .set({ dateOfExit: agreedLwd })
+        .where(eq(s.employees.id, row.employee.id));
+    }
+  });
+
+  await recordAudit({
+    user,
+    action: "exit.accepted",
+    entity: "exit_case",
+    entityId: exitId,
+    before: { status: row.exitCase.status, lastWorkingDay: row.exitCase.lastWorkingDay },
+    after: { status: "accepted", lastWorkingDay: agreedLwd },
+  });
+
+  revalidatePath(`/console/exits/${exitId}`);
+  revalidatePath("/console/exits");
+  revalidatePath(`/console/employees/${row.employee.id}`);
+  return {
+    ok: `Accepted, last working day ${agreedLwd}. Clearance can now be closed and the settlement prepared.`,
   };
 }
