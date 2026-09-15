@@ -213,11 +213,17 @@ export const DOCUMENT_REQUIREMENTS: DocumentRequirement[] = [
   { docType: "UAN", label: "UAN or previous PF member ID", category: "identity", mandatoryFor: [], expires: false, note: "Only where previously employed" },
   { docType: "ESIC_CARD", label: "ESIC insurance number", category: "identity", mandatoryFor: [], expires: false, note: "Only where previously covered" },
   { docType: "BANK_PROOF", label: "Cancelled cheque or statement header", category: "banking", mandatoryFor: ["permanent", "probation", "contract", "intern", "consultant"], expires: false, note: "Cross-checked against the account on file" },
-  { docType: "RELIEVING", label: "Relieving letter", category: "employment", mandatoryFor: ["permanent", "probation"], expires: false, note: "From the previous employer" },
+  /* Not mandatory: a first job has no previous employer to be relieved
+     from, and making it compulsory for every permanent hire blocks every
+     fresher on their first day. Still tracked, because where somebody
+     did have a previous employer it is worth having. */
+  { docType: "RELIEVING", label: "Relieving letter", category: "employment", mandatoryFor: [], expires: false, note: "From the previous employer, where there was one" },
   { docType: "EXPERIENCE", label: "Experience letter", category: "employment", mandatoryFor: [], expires: false, note: "Where prior experience is claimed" },
   { docType: "PAYSLIP", label: "Last three payslips", category: "employment", mandatoryFor: [], expires: false, note: "Supports the previous-employer salary declaration" },
   { docType: "FORM16", label: "Previous employer Form 16", category: "employment", mandatoryFor: [], expires: false, note: "Needed for mid-year TDS continuity" },
-  { docType: "QUALIFICATION", label: "Highest qualification certificate", category: "education", mandatoryFor: ["permanent", "probation", "intern"], expires: false, note: "Certificate and marksheet" },
+  /* Not mandatory either: the original is often with the university, or
+     the result is not out. Holding up day one for it helps nobody. */
+  { docType: "QUALIFICATION", label: "Highest qualification certificate", category: "education", mandatoryFor: [], expires: false, note: "Certificate and marksheet, when available" },
   { docType: "PHOTO", label: "Photograph", category: "personal", mandatoryFor: ["permanent", "probation", "contract", "intern"], expires: false, note: "" },
   { docType: "ADDRESS_PROOF", label: "Address proof", category: "personal", mandatoryFor: ["permanent", "probation"], expires: false, note: "" },
   { docType: "INVESTMENT_PROOF", label: "Investment proof (80C, 80D, NPS and the rest)", category: "employment", mandatoryFor: [], expires: false, note: "Evidence for what you declared; HR verifies it against the declaration" },

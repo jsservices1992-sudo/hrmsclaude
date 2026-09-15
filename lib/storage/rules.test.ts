@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  DOCUMENT_REQUIREMENTS,
   checkUpload,
   storageKeyFor,
   isSafeKey,
@@ -312,4 +313,31 @@ test("completion counts only mandatory items, not optional extras", () => {
     today: "2026-09-11",
   });
   assert.equal(r.completionBps, 0, "two optional documents move nothing");
+});
+
+test("a fresher is not held up for documents they cannot have", () => {
+  /* A first job has no previous employer, so a relieving letter cannot
+     exist; a qualification certificate is often still with the
+     university. Neither may block day one. */
+  const byType = Object.fromEntries(
+    DOCUMENT_REQUIREMENTS.map((r) => [r.docType, r]),
+  );
+  for (const docType of ["RELIEVING", "QUALIFICATION"]) {
+    assert.deepEqual(
+      byType[docType].mandatoryFor,
+      [],
+      `${docType} must not be mandatory for any employment type`,
+    );
+  }
+});
+
+test("the documents that genuinely gate payroll are still mandatory", () => {
+  const byType = Object.fromEntries(
+    DOCUMENT_REQUIREMENTS.map((r) => [r.docType, r]),
+  );
+  /* PAN drives TDS and its absence triggers section 206AA; without bank
+     proof there is nowhere to pay. Those are different in kind from a
+     certificate somebody will bring next week. */
+  assert.ok(byType.PAN.mandatoryFor.includes("permanent"));
+  assert.ok(byType.BANK_PROOF.mandatoryFor.includes("permanent"));
 });
