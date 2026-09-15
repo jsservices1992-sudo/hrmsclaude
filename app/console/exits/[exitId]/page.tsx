@@ -14,6 +14,7 @@ import {
   canAccessCompany,
 } from "@/lib/auth/session";
 import { UploadExitDocumentForm } from "./forms";
+import { ClearanceItemForm } from "../start-form";
 import { PageHeader, Card, Badge } from "@/components/console/ui";
 
 export const metadata = { title: "Settlement" };
@@ -42,6 +43,7 @@ export default async function ExitDetailPage(
   // documented here elsewhere is HR's to see and act on, without seeing
   // what the company owes or is owed.
   const seesComp = canSeeCompensation(user);
+  const canResolveClearance = canMutate(user) || user.role === "hr_manager";
   const canUploadDocs = canMutate(user) || user.role === "hr_manager";
 
   const documents = await db
@@ -93,26 +95,41 @@ export default async function ExitDetailPage(
         </div>
         <ul className="divide-y divide-line-2">
           {clearance.map((c) => (
-            <li
-              key={c.id}
-              className="px-4 py-2.5 flex items-center justify-between gap-4"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="label text-ink-3 w-16 shrink-0">
-                  {DEPT_LABEL[c.department]}
-                </span>
-                <span className="text-sm truncate">{c.label}</span>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                {seesComp && c.recoveryPaise > 0 && (
-                  <span className="font-mono text-xs tnum text-rust">
-                    {formatINR(c.recoveryPaise)}
+            <li key={c.id} className="px-4 py-2.5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="label text-ink-3 w-16 shrink-0">
+                    {DEPT_LABEL[c.department]}
                   </span>
-                )}
-                <Badge tone={c.status === "pending" ? "neutral" : "teal"}>
-                  {c.status.replace(/_/g, " ")}
-                </Badge>
+                  <span className="text-sm truncate">{c.label}</span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {seesComp && c.recoveryPaise > 0 && (
+                    <span className="font-mono text-xs tnum text-rust">
+                      {formatINR(c.recoveryPaise)}
+                    </span>
+                  )}
+                  <Badge tone={c.status === "pending" ? "neutral" : "teal"}>
+                    {c.status.replace(/_/g, " ")}
+                  </Badge>
+                </div>
               </div>
+              {c.resolvedBy && (
+                <p className="text-xs text-ink-3 mt-1">
+                  {c.status.replace(/_/g, " ")} by {c.resolvedBy}
+                  {c.note ? ` — ${c.note}` : ""}
+                </p>
+              )}
+              <ClearanceItemForm
+                item={{
+                  id: c.id,
+                  status: c.status,
+                  recoveryPaise: c.recoveryPaise,
+                  note: c.note,
+                  resolvedBy: c.resolvedBy,
+                }}
+                canEdit={canResolveClearance}
+              />
             </li>
           ))}
         </ul>

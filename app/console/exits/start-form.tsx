@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { startExit, withdrawExit, type ExitState } from "./actions";
+import { startExit, withdrawExit, resolveClearanceItem, type ExitState } from "./actions";
 import { EXIT_TYPES } from "@/lib/exit/kinds";
 import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
 
@@ -97,6 +97,68 @@ export function WithdrawExitForm({ exitId }: { exitId: string }) {
         Withdraw
       </SubmitButton>
       <FormFeedback state={state} />
+    </form>
+  );
+}
+
+const CLEARANCE_OUTCOMES = [
+  { id: "pending", label: "Still pending" },
+  { id: "cleared", label: "Cleared" },
+  { id: "cleared_with_recovery", label: "Cleared, with a recovery" },
+  { id: "waived", label: "Waived" },
+] as const;
+
+/**
+ * One row of the clearance checklist, with the thing that was missing:
+ * a way to close it. Recovery is only asked for on the outcome that
+ * means it, so the ordinary case is two clicks.
+ */
+export function ClearanceItemForm({
+  item,
+  canEdit,
+}: {
+  item: {
+    id: string;
+    status: string;
+    recoveryPaise: number;
+    note: string | null;
+    resolvedBy: string | null;
+  };
+  canEdit: boolean;
+}) {
+  const [state, action] = useActionState<ExitState, FormData>(resolveClearanceItem, {});
+
+  if (!canEdit) return null;
+
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2 mt-2">
+      <input type="hidden" name="itemId" value={item.id} />
+      <label className="flex flex-col gap-1">
+        <span className="label text-ink-3">Outcome</span>
+        <Select name="status" defaultValue={item.status} className="w-52">
+          {CLEARANCE_OUTCOMES.map((o) => (
+            <option key={o.id} value={o.id}>{o.label}</option>
+          ))}
+        </Select>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="label text-ink-3">Recovery (₹)</span>
+        <Input
+          name="recoveryRupees"
+          type="number"
+          min="0"
+          step="0.01"
+          defaultValue={item.recoveryPaise ? item.recoveryPaise / 100 : ""}
+          className="w-32 tnum"
+        />
+      </label>
+      <label className="flex flex-col gap-1 flex-1 min-w-[16rem]">
+        <span className="label text-ink-3">Note</span>
+        <Input name="note" defaultValue={item.note ?? ""} placeholder="Required when waiving" />
+      </label>
+      <SubmitButton variant="ghost" size="sm" pendingText="Saving…">Save</SubmitButton>
+      {state.error && <span className="text-xs text-rust w-full">{state.error}</span>}
+      {state.ok && <span className="text-xs text-teal w-full">{state.ok}</span>}
     </form>
   );
 }

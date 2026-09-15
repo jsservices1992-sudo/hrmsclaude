@@ -1817,9 +1817,26 @@ export const users = pgTable(
       .default("none"),
     active: boolean("active").notNull().default(true),
     lastLoginAt: text("last_login_at"),
+    /**
+     * A single-use link that lets somebody set their own first password.
+     *
+     * An account created for an employee has no password anybody knows:
+     * it is seeded with an unusable hash and can only be opened through
+     * this token. That is deliberately different from generating a
+     * password and telling the administrator it — which leaves the
+     * administrator knowing how to sign in as an employee, and leaves
+     * the password sitting in whatever chat it was pasted into.
+     */
+    inviteToken: text("invite_token"),
+    inviteTokenExpiresAt: text("invite_token_expires_at"),
+    /** Null until they have chosen a password of their own. */
+    passwordSetAt: text("password_set_at"),
     createdAt: text("created_at").notNull(),
   },
-  (t) => [uniqueIndex("users_email_idx").on(t.email)],
+  (t) => [
+    uniqueIndex("users_email_idx").on(t.email),
+    uniqueIndex("users_invite_token_idx").on(t.inviteToken),
+  ],
 );
 
 /** Server-side sessions, so a logout actually revokes access. */

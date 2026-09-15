@@ -8,6 +8,13 @@
       "when": 1789391577941,
       "tag": "0000_rapid_lorna_dane",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789460329719,
+      "tag": "0001_slimy_polaris",
+      "breakpoints": true
     }
   ]
 }

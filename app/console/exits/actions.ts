@@ -229,3 +229,116 @@ export async function withdrawExit(_prev: ExitState, fd: FormData): Promise<Exit
   revalidatePath(`/console/employees/${exitCase.employeeId}`);
   return { ok: `Withdrawn. ${employee.firstName} is active again.` };
 }
+
+/**
+ * Closes one item on the clearance checklist.
+ *
+ * The checklist was drawn and had no way to tick anything off: every
+ * item sat pending for good, and the only route past it was the blanket
+ * override, which exists for the case where an asset genuinely will not
+ * come back — not for ordinary clearance. Using an override as the
+ * normal path would empty the control of meaning, which is the point of
+ * having it at all.
+ *
+ * Any of the four outcomes can be reversed back to pending while the
+ * settlement is still open, because somebody ticking the wrong row
+ * should not need a settlement override to undo it.
+ */
+export async function resolveClearanceItem(_prev: ExitState, fd: FormData): Promise<ExitState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Not authorised." };
+  if (!canMutate(user) && user.role !== "hr_manager") {
+    return { error: "Your role is read-only." };
+  }
+
+  const itemId = String(fd.get("itemId") ?? "");
+  const [item] = await db
+    .select()
+    .from(s.clearanceItems)
+    .where(eq(s.clearanceItems.id, itemId))
+    .limit(1);
+  if (!item) return { error: "Clearance item not found." };
+
+  const [row] = await db
+    .select({ employee: s.employees, exitCase: s.exitCases })
+    .from(s.exitCases)
+    .innerJoin(s.employees, eq(s.employees.id, s.exitCases.employeeId))
+    .where(eq(s.exitCases.id, item.exitCaseId))
+    .limit(1);
+  if (!row || !canAccessCompany(user, row.employee.companyId)) {
+    return { error: "Not authorised." };
+  }
+
+  const status = String(fd.get("status") ?? "");
+  const allowed = ["pending", "cleared", "cleared_with_recovery", "waived"] as const;
+  if (!(allowed as readonly string[]).includes(status)) return { error: "Choose an outcome." };
+
+  const note = String(fd.get("note") ?? "").trim() || null;
+  const recoveryRupees = Number(String(fd.get("recoveryRupees") ?? "0").replace(/[,\s₹]/g, ""));
+  if (!Number.isFinite(recoveryRupees) || recoveryRupees < 0) {
+    return { error: "Enter the recovery as a number of rupees, or leave it blank." };
+  }
+  const recoveryPaise = Math.round(recoveryRupees * 100);
+
+  /* The two that ask for something in writing: money coming out of
+     somebody's settlement, and an obligation being let go. Both are
+     read back later by whoever asks why the figure was what it was. */
+  if (status === "cleared_with_recovery" && recoveryPaise <= 0) {
+    return { error: "A recovery of nothing is just cleared — enter the amount, or mark it cleared." };
+  }
+  if (status === "waived" && !note) {
+    return { error: "Say why this is being waived. It is the record of who let it go and on what grounds." };
+  }
+
+  const settled = await db
+    .select({ id: s.fnfSettlements.id, releasedAt: s.fnfSettlements.releasedAt })
+    .from(s.fnfSettlements)
+    .where(eq(s.fnfSettlements.exitCaseId, item.exitCaseId))
+    .limit(1);
+  if (settled[0]?.releasedAt) {
+    return {
+      error: "The settlement has already been released, so clearance cannot be changed — the figures it produced have been paid.",
+    };
+  }
+
+  const now = new Date().toISOString();
+  await db
+    .update(s.clearanceItems)
+    .set({
+      status: status as "pending" | "cleared" | "cleared_with_recovery" | "waived",
+      recoveryPaise: status === "cleared_with_recovery" ? recoveryPaise : 0,
+      note,
+      resolvedBy: status === "pending" ? null : user.email,
+      resolvedAt: status === "pending" ? null : now,
+    })
+    .where(eq(s.clearanceItems.id, itemId));
+
+  await recordAudit({
+    user,
+    action: "clearance.resolved",
+    entity: "clearance_item",
+    entityId: itemId,
+    before: { status: item.status, recoveryPaise: item.recoveryPaise },
+    after: { status, recoveryPaise: status === "cleared_with_recovery" ? recoveryPaise : 0 },
+    reason: note,
+  });
+
+  revalidatePath(`/console/exits/${item.exitCaseId}`);
+  revalidatePath("/console/exits");
+
+  const left = await db
+    .select({ id: s.clearanceItems.id })
+    .from(s.clearanceItems)
+    .where(
+      and(
+        eq(s.clearanceItems.exitCaseId, item.exitCaseId),
+        eq(s.clearanceItems.status, "pending"),
+      ),
+    );
+  return {
+    ok:
+      left.length === 0
+        ? "Clearance is complete — the settlement can be released."
+        : `Saved. ${left.length} item(s) still pending.`,
+  };
+}
