@@ -111,7 +111,7 @@ export function LeaveTypeForm({
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Code</span>
-          <Input name="code" required defaultValue={editing?.code} className="w-24" disabled={!!editing} />
+          <Input name="code" required defaultValue={editing?.code} className="w-24" readOnly={!!editing} />
           <span className="text-xs text-ink-3">Your own short label for this leave type — EL, CL, SL. Used on payslips and in the balance import.</span>
         </label>
         <label className="flex flex-col gap-1">
@@ -258,7 +258,7 @@ export function ShiftForm({
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Code</span>
-          <Input name="code" required defaultValue={editing?.code} className="w-24" disabled={!!editing} />
+          <Input name="code" required defaultValue={editing?.code} className="w-24" readOnly={!!editing} />
           <span className="text-xs text-ink-3">Your own short label for this shift — GEN, NIGHT, SHIFT-A.</span>
         </label>
         <label className="flex flex-col gap-1">
@@ -331,7 +331,7 @@ export function PayComponentForm({
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Code</span>
-          <Input name="code" required defaultValue={editing?.code} className="w-28" disabled={!!editing} />
+          <Input name="code" required defaultValue={editing?.code} className="w-28" readOnly={!!editing} />
           <span className="text-xs text-ink-3">Your own short label for this component — BASIC, HRA, SPL. It appears on the payslip and cannot be changed later.</span>
         </label>
         <label className="flex flex-col gap-1">
@@ -418,7 +418,7 @@ export function LoanSchemeForm({
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Code</span>
-          <Input name="code" required defaultValue={editing?.code} className="w-24" disabled={!!editing} />
+          <Input name="code" required defaultValue={editing?.code} className="w-24" readOnly={!!editing} />
           <span className="text-xs text-ink-3">Your own short label for this scheme — ADVANCE, VEHICLE, EMERGENCY.</span>
         </label>
         <label className="flex flex-col gap-1">

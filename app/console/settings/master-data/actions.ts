@@ -137,6 +137,10 @@ export async function saveLeaveType(_prev: MasterState, fd: FormData): Promise<M
   const rounding = String(fd.get("rounding") ?? "none") as "none" | "half_up" | "down";
   const restrictedHoliday = bool(fd.get("restrictedHoliday"));
 
+  /* The code cannot be changed once a record exists, so the form shows it
+     read-only and the check below is about a new record. It used to be
+     `disabled`, which submits nothing at all, and every edit came back
+     asking for a code that was plainly on the screen. */
   if (!code || !name) return { error: "Code and name are both required." };
   if (!["monthly", "quarterly", "annually"].includes(frequency)) {
     return { error: "Choose a valid accrual frequency." };

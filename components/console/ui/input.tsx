@@ -1,7 +1,14 @@
 "use client";
 
+/**
+ * `read-only:` styling matters more than it looks. A field that cannot be
+ * changed has to be `readOnly` rather than `disabled`, because a disabled
+ * input is not submitted with the form at all — which is how every "edit"
+ * of a record keyed by an unchangeable code came back with "code is
+ * required". Read-only submits, so it needs to look locked instead.
+ */
 const fieldBase =
-  "rounded-md border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-3 transition-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-indigo-soft";
+  "rounded-md border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-3 transition-base focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-indigo-soft read-only:bg-surface-2 read-only:text-ink-2 read-only:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 disabled:cursor-not-allowed";
 
 function borderClass(invalid?: boolean) {
   return invalid ? "border-rust" : "border-line";
