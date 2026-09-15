@@ -823,6 +823,16 @@ export const statutoryParams = pgTable(
     effectiveFrom: text("effective_from").notNull(),
     effectiveTo: text("effective_to"),
     note: text("note"),
+    /**
+     * The notification or section this figure comes from.
+     *
+     * The page these appear on is titled for their provenance, and the
+     * central parameters were the only rows with none — so a rate could
+     * be changed by anybody and nothing recorded what it was changed on
+     * the authority of. Required to mark a figure verified.
+     */
+    source: text("source"),
+    verified: boolean("verified").notNull().default(false),
   },
   (t) => [index("statutory_params_key_idx").on(t.key, t.effectiveFrom)],
 );

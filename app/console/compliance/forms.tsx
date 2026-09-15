@@ -61,7 +61,7 @@ export function VerifyPtSlabForm({ id }: { id: string }) {
   return (
     <form action={action} className="flex items-center gap-2">
       <input type="hidden" name="id" value={id} />
-      <Input name="source" placeholder="Source (Act / notification)" className="w-40" />
+      <Input name="source" required placeholder="G.O. / notification / section" className="w-56" />
       <SubmitButton size="sm" className="hover:border-teal hover:text-teal" pendingText="Saving…">
         Mark verified
       </SubmitButton>
@@ -75,7 +75,7 @@ export function VerifyLwfRateForm({ id }: { id: string }) {
   return (
     <form action={action} className="flex items-center gap-2">
       <input type="hidden" name="id" value={id} />
-      <Input name="source" placeholder="Source" className="w-32" />
+      <Input name="source" required placeholder="Notification / rule" className="w-48" />
       <SubmitButton size="sm" className="hover:border-teal hover:text-teal" pendingText="Saving…">
         Mark verified
       </SubmitButton>
@@ -207,6 +207,16 @@ export function AddStatutoryParamForm({ paramKeys }: { paramKeys: string[] }) {
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Note</span>
         <Input name="note" className="w-48" />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="label text-ink-3">Source</span>
+        <Input
+          name="source"
+          required
+          placeholder="EPFO circular / section"
+          className="w-56"
+        />
+        <span className="text-xs text-ink-3">Required — where this figure comes from.</span>
       </label>
       <SubmitButton size="sm" pendingText="Saving…">Save version</SubmitButton>
       <FormFeedback state={state} />

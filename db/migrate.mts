@@ -73,9 +73,19 @@ for (const file of files) {
       created += 1;
     } catch (error) {
       const code = (error as { code?: string }).code;
-      /* 42P07 duplicate table, 42710 duplicate object: already there,
-         which is the normal case on a re-run. */
-      if (code === "42P07" || code === "42710") {
+      /* Already there, which is the normal case on a re-run. Duplicate
+         column matters as much as duplicate table: ALTER TABLE ADD
+         COLUMN is the commonest migration there is, and without this
+         the second run of any of them stops the whole migration — after
+         the statements before it have already applied. */
+      const alreadyThere = new Set([
+        "42P07", // duplicate table
+        "42710", // duplicate object (index, constraint, trigger)
+        "42701", // duplicate column
+        "42P06", // duplicate schema
+        "42723", // duplicate function
+      ]);
+      if (code && alreadyThere.has(code)) {
         existed += 1;
         continue;
       }

@@ -81,9 +81,20 @@ export async function verifyPtSlab(_prev: ComplianceState, fd: FormData): Promis
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const id = String(fd.get("id") ?? "");
-  const source = String(fd.get("source") ?? "").trim() || null;
+  const source = String(fd.get("source") ?? "").trim();
   const [row] = await db.select().from(s.ptSlabs).where(eq(s.ptSlabs.id, id)).limit(1);
   if (!row) return { error: "Slab not found." };
+
+  /* Verified means somebody read the Act and can say where. Without a
+     reference the tick records only that a button was pressed, which is
+     worse than leaving it unverified — it turns the warning off and
+     replaces it with nothing. */
+  if (source.length < 6) {
+    return {
+      error:
+        "Name the notification or section this was checked against — a G.O. number, a circular, or the section of the state Act. Without it the tick says nothing.",
+    };
+  }
 
   await db.update(s.ptSlabs).set({ verified: true, source }).where(eq(s.ptSlabs.id, id));
   await audit({
@@ -178,9 +189,16 @@ export async function verifyLwfRate(_prev: ComplianceState, fd: FormData): Promi
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const id = String(fd.get("id") ?? "");
-  const source = String(fd.get("source") ?? "").trim() || null;
+  const source = String(fd.get("source") ?? "").trim();
   const [row] = await db.select().from(s.lwfRates).where(eq(s.lwfRates.id, id)).limit(1);
   if (!row) return { error: "Rate not found." };
+
+  if (source.length < 6) {
+    return {
+      error:
+        "Name the notification or rule this was checked against. Without a reference the tick only records that a button was pressed.",
+    };
+  }
 
   await db.update(s.lwfRates).set({ verified: true, source }).where(eq(s.lwfRates.id, id));
   await audit({
@@ -262,8 +280,18 @@ export async function addStatutoryParam(_prev: ComplianceState, fd: FormData): P
   const rawValue = Number(fd.get("value"));
   const effectiveFrom = String(fd.get("effectiveFrom") ?? "");
   const note = String(fd.get("note") ?? "").trim() || null;
+  const source = String(fd.get("source") ?? "").trim();
 
   if (!key) return { error: "Choose which parameter this is." };
+  /* These are the EPF and ESIC figures every payslip is built on. A new
+     one arrives by notification, and recording which one is the whole
+     point of the page these sit on. */
+  if (source.length < 6) {
+    return {
+      error:
+        "Name the notification this figure comes from — the EPFO or ESIC circular, or the section. A statutory rate changed on nobody's authority is not one anybody can defend later.",
+    };
+  }
   if (!dateRe.test(effectiveFrom)) return { error: "Enter the effective date as YYYY-MM-DD." };
   if (!Number.isFinite(rawValue)) return { error: "Enter a valid value." };
 
@@ -292,6 +320,10 @@ export async function addStatutoryParam(_prev: ComplianceState, fd: FormData): P
         effectiveFrom,
         effectiveTo: null,
         note,
+        source,
+        /* Entered by a person who named the notification, which is what
+           the seeded rows have never had. */
+        verified: true,
       });
   });
 
@@ -300,7 +332,7 @@ export async function addStatutoryParam(_prev: ComplianceState, fd: FormData): P
     action: "statutory_param.added",
     entity: "statutory_param",
     entityId: key,
-    after: { key, value, unit, effectiveFrom },
+    after: { key, value, unit, effectiveFrom, source },
   });
 
   revalidate();

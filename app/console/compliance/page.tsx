@@ -107,12 +107,26 @@ export default async function ComplianceConfigPage() {
                 <td className="px-4 py-2 font-mono text-xs text-ink-3 whitespace-nowrap">
                   from {p.effectiveFrom}
                 </td>
+                <td className="px-4 py-2 text-xs whitespace-nowrap">
+                  {p.verified ? (
+                    <span className="text-teal" title={p.source ?? undefined}>
+                      verified
+                    </span>
+                  ) : (
+                    <span className="text-ink-3">seeded, unverified</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         {isAdmin && (
-          <div className="p-4 border-t border-line-2">
+          <div className="p-4 border-t border-line-2 flex flex-col gap-2">
+            <p className="text-sm text-ink-2 max-w-[80ch]">
+              Change a figure by adding the version that replaces it. The row
+              above is closed the day before the new one starts, so a period
+              already run still reproduces what it was actually paid on.
+            </p>
             <AddStatutoryParamForm paramKeys={[...new Set(params.map((p) => p.key))]} />
           </div>
         )}
