@@ -383,6 +383,37 @@ export const employees = pgTable(
     taxRegime: text("tax_regime", { enum: ["old", "new"] })
       .notNull()
       .default("new"),
+    /**
+     * Whether this person is paid a salary or a professional fee.
+     *
+     * Separate from `employmentType`, and deliberately so: a fixed-term
+     * contract employee is still an employee, with PF, ESI and a Form 16.
+     * A consultant on a retainer is not, and everything statutory turns
+     * on that — 26Q instead of 24Q, Form 16A instead of Form 16, and no
+     * place in the EPF or ESIC return. Guessing it from employmentType
+     * would put genuine fixed-term staff outside PF.
+     */
+    paymentBasis: text("payment_basis", {
+      enum: ["salary", "professional_fee"],
+    })
+      .notNull()
+      .default("salary"),
+    /** Which section and rate the fee is deducted under — lib/tax/tds-nonsalary.ts. */
+    tdsNature: text("tds_nature", {
+      enum: [
+        "194J_professional",
+        "194J_technical",
+        "194C_individual",
+        "194C_other",
+        "194H_commission",
+      ],
+    }),
+    /**
+     * True when the agreed figure is what the payee must receive, so the
+     * fee is grossed up and the company bears the tax. Both arrangements
+     * are real and they are not the same number.
+     */
+    feeIsNetOfTds: boolean("fee_is_net_of_tds").notNull().default(false),
     bankAccount: text("bank_account"),
     ifsc: text("ifsc"),
     /** Who created the record — FR-AUD-4 separates this from approval. */
@@ -1551,6 +1582,44 @@ export const exitCases = pgTable(
     createdAt: text("created_at").notNull(),
   },
   (t) => [index("exit_cases_employee_idx").on(t.employeeId)],
+);
+
+/**
+ * Somebody coming back.
+ *
+ * The employee row is reused rather than a second one created, because
+ * PAN, UAN and the year's tax are all continuous for the person and the
+ * employer: a fresh row would issue a second Form 16 for one PAN at one
+ * company in one financial year, and would lose the earlier stint's
+ * payslips out of the worksheet. What a reused row would otherwise lose
+ * is the record of the first stint, so it is written here before the
+ * dates are overwritten.
+ */
+export const rehires = pgTable(
+  "rehires",
+  {
+    id: text("id").primaryKey(),
+    employeeId: text("employee_id")
+      .notNull()
+      .references(() => employees.id),
+    companyId: text("company_id")
+      .notNull()
+      .references(() => companies.id),
+    /** The stint that ended. */
+    previousDateOfJoining: text("previous_date_of_joining").notNull(),
+    previousDateOfExit: text("previous_date_of_exit"),
+    previousExitId: text("previous_exit_id").references(() => exitCases.id),
+    /** What the exit said about taking them back, at the time. */
+    previousRehireEligible: text("previous_rehire_eligible"),
+    /** The stint that starts now. */
+    newDateOfJoining: text("new_date_of_joining").notNull(),
+    /** The joiner record they came back through, where there was one. */
+    joinerId: text("joiner_id").references(() => joiners.id),
+    reason: text("reason"),
+    decidedBy: text("decided_by").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [index("rehires_employee_idx").on(t.employeeId)],
 );
 
 /** Departments clear in parallel, not in series. */

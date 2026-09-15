@@ -36,6 +36,8 @@ export type MatchCandidate = {
   status: string;
   dateOfExit: string | null;
   rehireEligible: string | null;
+  /** Why, where the exit gave one. Shown with the verdict, never alone. */
+  rehireNote?: string | null;
 };
 
 export type DuplicateMatch = {

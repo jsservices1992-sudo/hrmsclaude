@@ -571,3 +571,77 @@ export async function acceptExit(_prev: ExitState, fd: FormData): Promise<ExitSt
     ok: `Accepted, last working day ${agreedLwd}. Clearance can now be closed and the settlement prepared.`,
   };
 }
+
+/**
+ * Whether this person would be taken back.
+ *
+ * Asked at the exit, while the reasons are fresh and the manager is
+ * still there to ask. Left unanswered it is not a silent yes: onboarding
+ * shows what was recorded, and shows "never decided" as exactly that.
+ */
+export async function setRehireEligibility(
+  _prev: ExitState,
+  fd: FormData,
+): Promise<ExitState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Not authorised." };
+  if (!canActOnPeople(user)) {
+    return { error: "Only HR, payroll or an administrator may record this." };
+  }
+
+  const exitId = String(fd.get("exitId") ?? "");
+  const [row] = await db
+    .select({ exitCase: s.exitCases, employee: s.employees })
+    .from(s.exitCases)
+    .innerJoin(s.employees, eq(s.exitCases.employeeId, s.employees.id))
+    .where(eq(s.exitCases.id, exitId))
+    .limit(1);
+  if (!row) return { error: "Exit not found." };
+  if (!canAccessCompany(user, row.employee.companyId)) {
+    return { error: "Not authorised." };
+  }
+
+  const verdict = String(fd.get("rehireEligible") ?? "");
+  if (!["eligible", "review", "not_eligible"].includes(verdict)) {
+    return { error: "Choose whether this person would be taken back." };
+  }
+  const note = String(fd.get("rehireNote") ?? "").trim();
+
+  /* Refusing somebody future employment is a decision that follows them,
+     so it carries a reason the way a gratuity forfeiture does. */
+  if (verdict === "not_eligible" && note.length < 10) {
+    return {
+      error:
+        "Marking somebody not eligible for rehire needs a reason. It is shown to whoever considers their application years from now, over your name.",
+    };
+  }
+
+  await db
+    .update(s.exitCases)
+    .set({
+      rehireEligible: verdict as "eligible" | "review" | "not_eligible",
+      rehireNote: note || null,
+    })
+    .where(eq(s.exitCases.id, exitId));
+
+  await recordAudit({
+    user,
+    action: "exit.rehire_eligibility_set",
+    entity: "exit_case",
+    entityId: exitId,
+    before: {
+      rehireEligible: row.exitCase.rehireEligible,
+      rehireNote: row.exitCase.rehireNote,
+    },
+    after: { rehireEligible: verdict, rehireNote: note || null },
+  });
+
+  revalidatePath(`/console/exits/${exitId}`);
+  return {
+    ok: {
+      eligible: "Recorded — they would be taken back.",
+      review: "Recorded — a rehire would need to be looked at first.",
+      not_eligible: "Recorded — they would not be taken back, and onboarding will say so.",
+    }[verdict as "eligible" | "review" | "not_eligible"],
+  };
+}

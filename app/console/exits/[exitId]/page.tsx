@@ -15,7 +15,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { UploadExitDocumentForm } from "./forms";
-import { ClearanceItemForm, AcceptExitForm } from "../start-form";
+import { ClearanceItemForm, AcceptExitForm, RehireEligibilityForm } from "../start-form";
 import { PageHeader, Card, Badge } from "@/components/console/ui";
 
 export const metadata = { title: "Settlement" };
@@ -195,6 +195,42 @@ export default async function ExitDetailPage(
         </p>
       ) : (
         <>
+          {/* Would we take them back? Asked here because the people who
+              know are here, and onboarding has nothing to check without
+              an answer. */}
+          <Card padded={false}>
+            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="label text-ink-2">Rehire</span>
+              {exit.rehireEligible && (
+                <Badge
+                  tone={
+                    exit.rehireEligible === "eligible"
+                      ? "teal"
+                      : exit.rehireEligible === "not_eligible"
+                        ? "rust"
+                        : "brass"
+                  }
+                >
+                  {exit.rehireEligible.replace(/_/g, " ")}
+                </Badge>
+              )}
+            </div>
+            <div className="px-4 py-4">
+              <RehireEligibilityForm
+                exitId={exit.id}
+                current={{
+                  rehireEligible: exit.rehireEligible,
+                  rehireNote: exit.rehireNote,
+                }}
+                locked={
+                  canActOnPeople(user)
+                    ? undefined
+                    : "Only HR, payroll or an administrator may record this."
+                }
+              />
+            </div>
+          </Card>
+
           {/* Notice */}
           <Card padded={false}>
             <div className="px-4 py-2.5 border-b border-line bg-surface-2">

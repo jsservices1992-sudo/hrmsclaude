@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   startExit,
   withdrawExit,
   resolveClearanceItem,
   setNoticeTreatment,
+  setRehireEligibility,
   acceptExit,
   type ExitState,
 } from "./actions";
@@ -340,6 +341,73 @@ export function AcceptExitForm({
       <SubmitButton pendingText="Accepting…">Accept the exit</SubmitButton>
       {state.error && <p className="text-sm text-rust w-full">{state.error}</p>}
       {state.ok && <p className="text-sm text-teal w-full">{state.ok}</p>}
+    </form>
+  );
+}
+
+/**
+ * Would you take them back?
+ *
+ * Recorded at the exit, where the people who know the answer are. The
+ * field existed on the exit record and was shown nowhere, which meant
+ * onboarding's rehire check had nothing to check against — a former
+ * employee who left under a cloud came back through the front door with
+ * no one the wiser.
+ */
+export function RehireEligibilityForm({
+  exitId,
+  current,
+  locked,
+}: {
+  exitId: string;
+  current: { rehireEligible: string | null; rehireNote: string | null };
+  locked?: string;
+}) {
+  const [state, action] = useActionState<ExitState, FormData>(setRehireEligibility, {});
+  const [verdict, setVerdict] = useState(current.rehireEligible ?? "");
+
+  if (locked) {
+    return <p className="text-sm text-ink-3">{locked}</p>;
+  }
+
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <input type="hidden" name="exitId" value={exitId} />
+      {current.rehireEligible === null && (
+        <p className="text-sm text-ink-2 max-w-[75ch]">
+          Not answered yet. Onboarding will show it as unanswered rather
+          than treat it as a yes, so a decision here is worth making while
+          the reasons are fresh.
+        </p>
+      )}
+      <label className="flex flex-col gap-1 max-w-sm">
+        <span className="label text-ink-3">Would this person be taken back?</span>
+        <Select
+          name="rehireEligible"
+          value={verdict}
+          onChange={(e) => setVerdict(e.target.value)}
+        >
+          <option value="">Choose…</option>
+          <option value="eligible">Yes — would rehire</option>
+          <option value="review">Only after somebody looks at it</option>
+          <option value="not_eligible">No</option>
+        </Select>
+      </label>
+      <label className="flex flex-col gap-1 max-w-xl">
+        <span className="label text-ink-3">
+          Note {verdict === "not_eligible" ? "(required)" : "(optional)"}
+        </span>
+        <Input
+          name="rehireNote"
+          defaultValue={current.rehireNote ?? ""}
+          placeholder="Shown to whoever considers their application later"
+        />
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <SubmitButton variant="default" pendingText="Saving…">Save</SubmitButton>
+        <span className="text-xs text-ink-3">Recorded against your name.</span>
+      </div>
+      <FormFeedback state={state} />
     </form>
   );
 }

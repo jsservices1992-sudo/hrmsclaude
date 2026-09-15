@@ -152,6 +152,7 @@ try {
       effectiveFrom: EFFECTIVE_FROM,
       effectiveTo: null,
       note: p.note,
+      source: "source" in p ? p.source : null,
     })),
   );
   console.log(`  statutory params   ${STATUTORY_PARAMS.length}`);

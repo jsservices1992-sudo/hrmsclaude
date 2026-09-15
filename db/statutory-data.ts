@@ -188,4 +188,20 @@ export const STATUTORY_PARAMS = [
   { key: "esic.employee_bps", value: 75, unit: "bps" as const, note: "0.75% employee share" },
   { key: "esic.employer_bps", value: 325, unit: "bps" as const, note: "3.25% employer share" },
   { key: "pt.default_annual_cap", value: R(2500), unit: "paise" as const, note: "Constitutional ceiling on PT" },
+
+  /* TDS on payments that are not salary — consultants and contractors.
+     Rates are per section; thresholds are per financial year, and the
+     one on 194C applies to a single payment as well as to the year's
+     total. Every figure here is unverified like the rest: check it
+     against the section before paying anybody on it. */
+  { key: "tds.194J.professional", value: 1000, unit: "bps" as const, note: "10% — professional fees", source: "Section 194J(1)(a)" },
+  { key: "tds.194J.technical", value: 200, unit: "bps" as const, note: "2% — fees for technical services and call centres", source: "Section 194J proviso" },
+  { key: "tds.194J.threshold_fy", value: R(50000), unit: "paise" as const, note: "Per financial year, per nature of payment", source: "Section 194J second proviso" },
+  { key: "tds.194C.individual", value: 100, unit: "bps" as const, note: "1% — contractor is an individual or HUF", source: "Section 194C(3)" },
+  { key: "tds.194C.other", value: 200, unit: "bps" as const, note: "2% — contractor is a firm, company or LLP", source: "Section 194C(3)" },
+  { key: "tds.194C.threshold_single", value: R(30000), unit: "paise" as const, note: "A single payment above this is liable on its own", source: "Section 194C(5)" },
+  { key: "tds.194C.threshold_fy", value: R(100000), unit: "paise" as const, note: "The year's payments taken together", source: "Section 194C(5)" },
+  { key: "tds.194H.commission", value: 200, unit: "bps" as const, note: "2% — commission or brokerage", source: "Section 194H" },
+  { key: "tds.194H.threshold_fy", value: R(20000), unit: "paise" as const, note: "Per financial year", source: "Section 194H proviso" },
+  { key: "tds.206AA.rate", value: 2000, unit: "bps" as const, note: "20% where the payee has given no PAN — a floor, not a replacement", source: "Section 206AA" },
 ];

@@ -11,6 +11,7 @@ import {
   uploadJoinerDocument,
   completeTask,
   convertJoiner,
+  rehireJoiner,
   type OnboardState,
 } from "./actions";
 import { SubmitButton, FormFeedback, Input, Textarea, Select as UiSelect, Button } from "@/components/console/ui";
@@ -272,6 +273,96 @@ export function ConvertForm({
       <div>
         <Button type="submit" variant="primary" disabled={!canConvert} className="px-5 py-2.5">
           Convert to employee
+        </Button>
+      </div>
+      <FormFeedback state={state} />
+    </form>
+  );
+}
+
+/**
+ * Taking a former employee back onto the record they already have.
+ *
+ * Offered instead of a plain conversion when a strong match is somebody
+ * who used to work here, because creating a second record for the same
+ * PAN at the same company splits their year's tax in two and issues two
+ * Form 16s for it.
+ */
+export function RehireForm({
+  joinerId,
+  candidate,
+  canConvert,
+  blockers,
+}: {
+  joinerId: string;
+  candidate: {
+    id: string;
+    empCode: string;
+    name: string;
+    dateOfExit: string | null;
+    rehireEligible: string | null;
+    rehireNote?: string | null;
+  };
+  canConvert: boolean;
+  blockers: string[];
+}) {
+  const [state, action] = useActionState<OnboardState, FormData>(rehireJoiner, {});
+  const blocked = candidate.rehireEligible === "not_eligible";
+
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <input type="hidden" name="joinerId" value={joinerId} />
+      <input type="hidden" name="employeeId" value={candidate.id} />
+
+      <p className="text-sm text-ink-2 max-w-[78ch]">
+        {candidate.empCode} — {candidate.name} left on{" "}
+        {candidate.dateOfExit ?? "a date not recorded"}. Rehiring puts this
+        joining onto that same record, so their PAN, UAN and this year&apos;s
+        tax stay in one place and they keep the code they had. Service for
+        gratuity and leave starts again from the new joining date.
+      </p>
+
+      <div
+        className={`border px-3 py-2 text-sm ${
+          blocked
+            ? "border-rust/40 bg-rust-soft text-rust"
+            : candidate.rehireEligible === "eligible"
+              ? "border-teal/40 bg-teal-soft text-ink-2"
+              : "border-brass/40 bg-brass-soft text-ink-2"
+        }`}
+      >
+        {candidate.rehireEligible === null
+          ? "Their exit recorded no view on rehiring them. That is not a yes — ask before you go on."
+          : `Their exit recorded them as ${candidate.rehireEligible.replace(/_/g, " ")}.`}
+        {candidate.rehireNote ? ` ${candidate.rehireNote}` : ""}
+      </div>
+
+      {candidate.rehireEligible === "review" && (
+        <label className="flex items-start gap-2.5 text-sm">
+          <input type="checkbox" name="acknowledgeReview" className="h-4 w-4 mt-0.5" />
+          <span>I have looked at why, and this rehire should go ahead.</span>
+        </label>
+      )}
+
+      <label className="flex flex-col gap-1 max-w-xl">
+        <span className="label text-ink-3">Why they are coming back (optional)</span>
+        <Input name="reason" placeholder="Kept on the record with the rehire" />
+      </label>
+
+      {!canConvert && (
+        <p className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2">
+          Blocked: {blockers.join("; ")}.
+        </p>
+      )}
+
+      <div>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={!canConvert || blocked}
+          className="px-5 py-2.5"
+        >
+          Rehire onto {candidate.empCode}
         </Button>
       </div>
       <FormFeedback state={state} />

@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import {
@@ -11,6 +11,7 @@ import {
   canAccessCompany,
 } from "@/lib/auth/session";
 import { recordAudit, loadSodPolicies } from "@/lib/audit/log";
+import { TDS_NATURE_BY_KEY } from "@/lib/tax/tds-nonsalary";
 import { checkSalaryApproval } from "@/lib/audit/controls";
 import {
   loadStructureResolutionContext,
@@ -617,4 +618,109 @@ export async function setPayrollOverrides(
 
   revalidatePath(`/console/employees/${employeeId}`);
   return { ok: "Saved. The next payroll run picks these up." };
+}
+
+/**
+ * Whether this person is paid a salary or a professional fee.
+ *
+ * It is the most consequential switch on the record: it decides PF, ESI,
+ * professional tax, which quarterly return they appear in, and whether
+ * they get a Form 16 or a Form 16A. Changing it mid-year on somebody who
+ * has already been paid is refused — the returns for the quarters
+ * already filed would no longer match the record.
+ */
+export async function setPaymentBasis(
+  _prev: SalaryState,
+  fd: FormData,
+): Promise<SalaryState> {
+  const user = await getSessionUser();
+  if (!user || !canMutate(user)) {
+    return { error: "Only payroll may change this." };
+  }
+
+  const employeeId = String(fd.get("employeeId") ?? "");
+  const [employee] = await db
+    .select()
+    .from(s.employees)
+    .where(eq(s.employees.id, employeeId))
+    .limit(1);
+  if (!employee) return { error: "Employee not found." };
+  if (!canAccessCompany(user, employee.companyId)) {
+    return { error: "Not authorised." };
+  }
+
+  const paymentBasis = String(fd.get("paymentBasis") ?? "");
+  if (paymentBasis !== "salary" && paymentBasis !== "professional_fee") {
+    return { error: "Choose how this person is paid." };
+  }
+
+  const natureRaw = String(fd.get("tdsNature") ?? "");
+  const tdsNature = natureRaw === "" ? null : natureRaw;
+  const feeIsNetOfTds = fd.get("feeIsNetOfTds") === "on";
+
+  if (paymentBasis === "professional_fee") {
+    if (!tdsNature || !TDS_NATURE_BY_KEY[tdsNature]) {
+      return {
+        error:
+          "Choose the section the fee is deducted under — 194J for professional or technical fees, 194C for contract work, 194H for commission.",
+      };
+    }
+    /* A missing PAN is not refused — section 206AA covers it at 20% —
+       but the confirmation below says so, because a 20% deduction
+       nobody expected is how this is usually discovered. */
+  }
+
+  if (paymentBasis !== employee.paymentBasis) {
+    const [paid] = await db
+      .select({ id: s.payrollLines.id })
+      .from(s.payrollLines)
+      .innerJoin(s.payrollRuns, eq(s.payrollLines.runId, s.payrollRuns.id))
+      .where(
+        and(
+          eq(s.payrollLines.employeeId, employeeId),
+          inArray(s.payrollRuns.status, ["finalised", "disbursed", "closed"]),
+        ),
+      )
+      .limit(1);
+    if (paid) {
+      return {
+        error:
+          "This person has already been paid under the current arrangement. Switching between salary and a professional fee would contradict the returns already filed — end this engagement and start a new record instead.",
+      };
+    }
+  }
+
+  const before = {
+    paymentBasis: employee.paymentBasis,
+    tdsNature: employee.tdsNature,
+    feeIsNetOfTds: employee.feeIsNetOfTds,
+  };
+  const after = {
+    paymentBasis,
+    tdsNature: paymentBasis === "professional_fee" ? tdsNature : null,
+    feeIsNetOfTds: paymentBasis === "professional_fee" ? feeIsNetOfTds : false,
+  };
+
+  await db
+    .update(s.employees)
+    .set(after as Partial<typeof s.employees.$inferInsert>)
+    .where(eq(s.employees.id, employeeId));
+
+  await recordAudit({
+    user,
+    action: "employee.payment_basis_changed",
+    entity: "employee",
+    entityId: employeeId,
+    before,
+    after,
+  });
+
+  revalidatePath(`/console/employees/${employeeId}`);
+  return {
+    ok:
+      paymentBasis === "professional_fee"
+        ? `Saved. Paid as a fee under ${TDS_NATURE_BY_KEY[tdsNature!].section} — no PF, no ESI, no professional tax, and reported in 26Q.` +
+          (employee.pan ? "" : " No PAN on record, so section 206AA applies at 20%.")
+        : "Saved. Paid as salary, with the full statutory treatment.",
+  };
 }

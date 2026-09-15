@@ -440,7 +440,14 @@ export async function loadCompanyTax(
     .select()
     .from(s.employees)
     .where(
-      and(eq(s.employees.companyId, companyId), eq(s.employees.status, "active")),
+      and(
+        eq(s.employees.companyId, companyId),
+        eq(s.employees.status, "active"),
+        /* Salary only. A consultant's fee is deducted under 194J or
+           194C and reported in 26Q; there is no slab, no regime and no
+           Form 16 for them, so a salary worksheet would be fiction. */
+        eq(s.employees.paymentBasis, "salary"),
+      ),
     )
     .orderBy(asc(s.employees.empCode));
 
@@ -508,7 +515,13 @@ export async function quarterlyReturn(
   const employees = await db
     .select({ id: s.employees.id, empCode: s.employees.empCode, pan: s.employees.pan, firstName: s.employees.firstName, lastName: s.employees.lastName })
     .from(s.employees)
-    .where(eq(s.employees.companyId, companyId));
+    .where(
+      and(
+        eq(s.employees.companyId, companyId),
+        /* 24Q is the salary return. Non-salary TDS belongs in 26Q. */
+        eq(s.employees.paymentBasis, "salary"),
+      ),
+    );
 
   const ids = employees.map((e) => e.id);
   if (ids.length === 0) return { lines: [], totalPaise: 0, calendarMonths };

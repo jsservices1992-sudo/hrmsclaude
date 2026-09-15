@@ -138,6 +138,13 @@ export type EmployeePayResult = {
   employeeId: string;
   name: string;
   empCode: string;
+  /**
+   * An employee by default. A professional is paid a fee under 194J,
+   * 194C or 194H rather than a salary, and every statutory return filters
+   * on this — they belong in 26Q, never in 24Q, the EPF ECR or the ESIC
+   * return. See lib/payroll/professional.ts.
+   */
+  payeeClass?: "employee" | "professional";
   paidDays: number;
   totalDays: number;
   lopDays: number;

@@ -22,6 +22,7 @@ import {
   UploadJoinerDocumentForm,
   TaskForm,
   ConvertForm,
+  RehireForm,
   JoinerPayForm,
 } from "../forms";
 import { SalaryBreakupTable } from "@/components/console/salary-breakup-table";
@@ -51,6 +52,8 @@ export default async function JoinerDetailPage(
   const daysToJoin = daysBetween(today(), j.proposedDoj);
   const portalUrl = `/join/${j.portalToken}`;
   const strongDup = duplicates.find((d) => d.confidence === "strong");
+  const formerMatch =
+    duplicates.find((d) => d.confidence === "strong" && d.isFormerEmployee) ?? null;
 
   const declLabel = Object.fromEntries(DECLARATIONS.map((d) => [d.form, d.label]));
 
@@ -124,7 +127,12 @@ export default async function JoinerDetailPage(
                   {d.candidate.empCode} — {d.candidate.name}
                 </Link>{" "}
                 matched on {d.matchedOn.join(", ")} ({d.confidence})
-                {d.isFormerEmployee && " · former employee, check rehire eligibility"}
+                {d.isFormerEmployee &&
+                  ` · former employee, ${
+                    d.candidate.rehireEligible
+                      ? `exit recorded them as ${d.candidate.rehireEligible.replace(/_/g, " ")}`
+                      : "no rehire decision was recorded at their exit"
+                  }`}
               </li>
             ))}
           </ul>
@@ -390,6 +398,27 @@ export default async function JoinerDetailPage(
             </div>
           )}
         </Card>
+      )}
+
+      {/* Rehire — offered ahead of a plain conversion, because for a
+          former employee the plain conversion is the wrong one. */}
+      {canAct && j.status !== "joined" && formerMatch && (
+        <div className="border-2 border-brass bg-surface p-5">
+          <p className="label text-brass mb-2">They have worked here before</p>
+          <RehireForm
+            joinerId={j.id}
+            candidate={{
+              id: formerMatch.candidate.id,
+              empCode: formerMatch.candidate.empCode,
+              name: formerMatch.candidate.name,
+              dateOfExit: formerMatch.candidate.dateOfExit,
+              rehireEligible: formerMatch.candidate.rehireEligible,
+              rehireNote: formerMatch.candidate.rehireNote,
+            }}
+            canConvert={readiness.canConvert}
+            blockers={readiness.blockers}
+          />
+        </div>
       )}
 
       {/* Convert */}

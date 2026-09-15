@@ -3,7 +3,7 @@
 import { randomUUID, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -827,6 +827,251 @@ export async function convertJoiner(
     joinerId,
     employeeId,
     empCode: allocatedCode,
+  });
+
+  revalidatePath("/console/onboarding");
+  revalidatePath("/console/employees");
+  redirect(`/console/employees/${employeeId}`);
+}
+
+/**
+ * Somebody coming back to a company they already worked for.
+ *
+ * The employee row is reused rather than a second one created. PAN and
+ * UAN belong to the person, not the stint, and the financial year's tax
+ * is computed per PAN per employer — a second row would issue a second
+ * Form 16 for one person at one company in one year, and would leave the
+ * earlier months' payslips out of the worksheet that decides their TDS.
+ * Reusing it costs the record of the first stint, so that is written to
+ * `rehires` before the dates are overwritten.
+ *
+ * Service starts again: gratuity and leave accrual run from the new
+ * joining date, because the break is real and the earlier service was
+ * settled at the earlier exit.
+ */
+export async function rehireJoiner(
+  _prev: OnboardState,
+  fd: FormData,
+): Promise<OnboardState> {
+  const { user, error } = await requireHr();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const joinerId = String(fd.get("joinerId") ?? "");
+  const employeeId = String(fd.get("employeeId") ?? "");
+  const view = await loadJoiner(joinerId);
+  if (!view) return { error: "Joiner not found." };
+  if (!canAccessCompany(user, view.company.id)) return { error: "Not authorised." };
+
+  const j = view.joiner;
+  if (j.status === "joined") return { error: "This joiner has already been converted." };
+  if (!view.readiness.canConvert) {
+    return { error: `Cannot convert: ${view.readiness.blockers.join("; ")}.` };
+  }
+  if (!j.branchId) return { error: "A branch is required before conversion." };
+
+  const [existing] = await db
+    .select()
+    .from(s.employees)
+    .where(eq(s.employees.id, employeeId))
+    .limit(1);
+  if (!existing) return { error: "That former employee no longer exists." };
+  if (existing.companyId !== j.companyId) return { error: "Not authorised." };
+  if (existing.status === "active") {
+    return {
+      error: `${existing.empCode} is currently employed. Somebody who never left cannot be rehired — check this is the right person.`,
+    };
+  }
+
+  /* The exit's verdict governs. An unanswered one does not: it is shown
+     as unanswered and HR decides in front of it, rather than the absence
+     of a decision reading as approval. */
+  const [lastExit] = await db
+    .select()
+    .from(s.exitCases)
+    .where(eq(s.exitCases.employeeId, employeeId))
+    .orderBy(desc(s.exitCases.lastWorkingDay))
+    .limit(1);
+
+  if (lastExit?.rehireEligible === "not_eligible") {
+    return {
+      error:
+        `${existing.empCode} was marked not eligible for rehire when they left` +
+        (lastExit.rehireNote ? `: ${lastExit.rehireNote}` : "") +
+        ". Change that decision on the exit record first, over somebody's name.",
+    };
+  }
+  if (lastExit?.rehireEligible === "review" && fd.get("acknowledgeReview") === null) {
+    return {
+      error:
+        `${existing.empCode}'s exit said a rehire should be looked at first` +
+        (lastExit.rehireNote ? `: ${lastExit.rehireNote}` : "") +
+        ". Confirm you have, and this will go through.",
+    };
+  }
+  if (j.proposedDoj <= (existing.dateOfExit ?? "")) {
+    return {
+      error: `They are recorded as having left on ${existing.dateOfExit}. The new joining date has to be after that.`,
+    };
+  }
+
+  let pay: ResolvedPay | null = null;
+  if (j.offeredMonthlyGrossPaise || j.offeredCtcPaise) {
+    pay = await resolvePay({
+      companyId: j.companyId,
+      structureId: j.structureId,
+      departmentId: j.departmentId,
+      mode: j.offeredMonthlyGrossPaise ? "gross" : "ctc",
+      amountPaise: j.offeredMonthlyGrossPaise ?? j.offeredCtcPaise!,
+      asOf: j.proposedDoj,
+      branchId: j.branchId,
+      gender: j.gender,
+    });
+    if (pay.warnings.length > 0) {
+      return {
+        error: `The salary structure cannot express this pay: ${pay.warnings.join("; ")}`,
+      };
+    }
+  }
+
+  const now = new Date().toISOString();
+  const [branch] = await db
+    .select()
+    .from(s.branches)
+    .where(eq(s.branches.id, j.branchId))
+    .limit(1);
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(s.rehires).values({
+        id: randomUUID(),
+        employeeId,
+        companyId: j.companyId,
+        previousDateOfJoining: existing.dateOfJoining,
+        previousDateOfExit: existing.dateOfExit,
+        previousExitId: lastExit?.id ?? null,
+        previousRehireEligible: lastExit?.rehireEligible ?? null,
+        newDateOfJoining: j.proposedDoj,
+        joinerId,
+        reason: String(fd.get("reason") ?? "").trim() || null,
+        decidedBy: user.email,
+        createdAt: now,
+      });
+
+      await tx
+        .update(s.employees)
+        .set({
+          branchId: j.branchId!,
+          personalEmail: j.personalEmail,
+          mobile: j.mobile,
+          emergencyContactName: j.emergencyContactName,
+          emergencyContactPhone: j.emergencyContactPhone,
+          addressLine: j.addressLine,
+          city: j.city,
+          stateCode: branch?.stateCode ?? existing.stateCode,
+          pincode: j.pincode,
+          designation: j.designation,
+          departmentId: j.departmentId,
+          gradeId: j.gradeId,
+          managerId: j.managerId,
+          employmentType: j.employmentType,
+          dateOfJoining: j.proposedDoj,
+          dateOfExit: null,
+          status: "active",
+          /* PAN and UAN stay as they are unless the joiner brought one —
+             they belong to the person, and a blank form must not wipe
+             the number their old PF account is under. */
+          pan: j.pan ?? existing.pan,
+          uan: j.uan ?? existing.uan,
+          hadPriorPfMembership: true,
+          bankAccount: j.bankAccount ?? existing.bankAccount,
+          ifsc: j.ifsc ?? existing.ifsc,
+        })
+        .where(eq(s.employees.id, employeeId));
+
+      if (pay) {
+        /* Close whatever the old stint ended on, so the new salary is the
+           only open one — two open rows is how an employee ends up paid
+           twice by a join. */
+        await tx
+          .update(s.employeeSalaries)
+          .set({ effectiveTo: existing.dateOfExit ?? j.proposedDoj })
+          .where(
+            and(
+              eq(s.employeeSalaries.employeeId, employeeId),
+              isNull(s.employeeSalaries.effectiveTo),
+            ),
+          );
+
+        await tx.insert(s.employeeSalaries).values({
+          id: randomUUID(),
+          employeeId,
+          monthlyGrossPaise: pay.monthlyGrossPaise,
+          annualCtcPaise: pay.breakdown.annualCtcPaise,
+          structureId: j.structureId,
+          effectiveFrom: j.proposedDoj,
+          effectiveTo: null,
+          reason: `Rehired ${j.proposedDoj}, previously ${existing.dateOfJoining} to ${existing.dateOfExit ?? "—"}`,
+          revisionType: "initial",
+          createdBy: user.email,
+          createdAt: now,
+        });
+      }
+
+      await tx
+        .update(s.joiners)
+        .set({
+          status: "joined",
+          convertedEmployeeId: employeeId,
+          convertedAt: now,
+          portalTokenExpiresAt: now,
+        })
+        .where(eq(s.joiners.id, joinerId));
+    });
+  } catch (e) {
+    return { error: `Rehire failed and nothing was written: ${(e as Error).message}` };
+  }
+
+  const [company] = await db
+    .select({ name: s.companies.name })
+    .from(s.companies)
+    .where(eq(s.companies.id, j.companyId))
+    .limit(1);
+  await ensureEmployeeAccount({
+    employeeId,
+    companyId: j.companyId,
+    name: `${j.firstName} ${j.lastName}`,
+    email: j.personalEmail,
+    companyName: company?.name ?? "your employer",
+    origin: await currentOrigin(),
+  });
+
+  await audit({
+    actor: user.email,
+    action: "employee.rehired",
+    entity: "employee",
+    entityId: employeeId,
+    before: {
+      status: existing.status,
+      dateOfJoining: existing.dateOfJoining,
+      dateOfExit: existing.dateOfExit,
+    },
+    after: { status: "active", dateOfJoining: j.proposedDoj, joinerId },
+    reason: lastExit?.rehireEligible
+      ? `Exit recorded them as ${lastExit.rehireEligible}`
+      : "No rehire decision was recorded at their exit",
+  });
+
+  await dispatchEvent(j.companyId, "employee_created", {
+    employeeId,
+    empCode: existing.empCode,
+    name: `${j.firstName} ${j.lastName}`,
+    dateOfJoining: j.proposedDoj,
+    source: "rehire",
+  });
+  await dispatchEvent(j.companyId, "onboarding_completed", {
+    joinerId,
+    employeeId,
+    empCode: existing.empCode,
   });
 
   revalidatePath("/console/onboarding");

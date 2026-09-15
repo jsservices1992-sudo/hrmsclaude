@@ -8,7 +8,8 @@ import {
   type DocumentState,
 } from "../documents";
 import Link from "next/link";
-import { reviseSalary, setPayrollOverrides, type SalaryState } from "../salary";
+import { reviseSalary, setPayrollOverrides, setPaymentBasis, type SalaryState } from "../salary";
+import { TDS_NATURES } from "@/lib/tax/tds-nonsalary";
 import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
 import { SalaryBreakupTable } from "@/components/console/salary-breakup-table";
 import { inviteEmployee, type InviteAdminState } from "../actions";
@@ -355,6 +356,112 @@ export function PayrollOverridesForm({
         <SubmitButton variant="default" pendingText="Saving…">Save</SubmitButton>
         <span className="text-xs text-ink-3">
           These override the company defaults for this employee only.
+        </span>
+      </div>
+      <FormFeedback state={state} />
+    </form>
+  );
+}
+
+/**
+ * Salary, or a fee.
+ *
+ * The switch that decides whether somebody is an employee for statutory
+ * purposes. It sits on its own with its consequences spelled out,
+ * because "contract" in the employment type above means something else
+ * entirely — a fixed-term employee still has PF, ESI and a Form 16.
+ */
+export function PaymentBasisForm({
+  employeeId,
+  paymentBasis,
+  tdsNature,
+  feeIsNetOfTds,
+  hasPan,
+}: {
+  employeeId: string;
+  paymentBasis: string;
+  tdsNature: string | null;
+  feeIsNetOfTds: boolean;
+  hasPan: boolean;
+}) {
+  const [state, action] = useActionState<SalaryState, FormData>(setPaymentBasis, {});
+  const [basis, setBasis] = useState(paymentBasis);
+
+  return (
+    <form action={action} className="flex flex-col gap-3">
+      <input type="hidden" name="employeeId" value={employeeId} />
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="label text-ink-3">Paid as</span>
+          <Select
+            name="paymentBasis"
+            value={basis}
+            onChange={(e) => setBasis(e.target.value)}
+          >
+            <option value="salary">Salary — an employee</option>
+            <option value="professional_fee">
+              Professional or contract fee — not an employee
+            </option>
+          </Select>
+        </label>
+
+        {basis === "professional_fee" && (
+          <label className="flex flex-col gap-1">
+            <span className="label text-ink-3">TDS section</span>
+            <Select name="tdsNature" defaultValue={tdsNature ?? ""}>
+              <option value="">Choose the nature of the payment…</option>
+              {TDS_NATURES.map((n) => (
+                <option key={n.nature} value={n.nature}>
+                  {n.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+        )}
+      </div>
+
+      {basis === "professional_fee" && (
+        <>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="feeIsNetOfTds"
+              defaultChecked={feeIsNetOfTds}
+              className="mt-1"
+            />
+            <span>
+              The agreed amount is what they receive in hand
+              <span className="block text-xs text-ink-3 max-w-[60ch]">
+                The fee is grossed up and the company bears the tax. Leave
+                this off when the agreed amount is the fee and TDS comes
+                out of it — the two are different numbers.
+              </span>
+            </span>
+          </label>
+
+          <div className="rounded-md border border-line bg-surface-2 px-3 py-2.5 text-xs text-ink-2 max-w-[70ch] flex flex-col gap-1">
+            <p className="font-medium text-ink">What changes for them</p>
+            <p>
+              No provident fund, no ESI, no professional tax, no gratuity
+              and no bonus — none of those apply to somebody who is not an
+              employee. They are reported in the quarterly 26Q rather than
+              24Q, and are issued a Form 16A instead of a Form 16.
+            </p>
+            {!hasPan && (
+              <p className="text-rust">
+                No PAN on record. Section 206AA applies at 20% until one is
+                added, and 26Q cannot be filed without it.
+              </p>
+            )}
+          </div>
+        </>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <SubmitButton variant="default" pendingText="Saving…">Save</SubmitButton>
+        <span className="text-xs text-ink-3">
+          Cannot be switched once they have been paid.
         </span>
       </div>
       <FormFeedback state={state} />

@@ -369,6 +369,18 @@ export async function previewRun(args: {
       ),
     );
 
+  /*
+   * Consultants and contractors are paid a fee, not a salary, and share
+   * almost nothing with the engine below: no structure, no PF, no ESI,
+   * no professional tax, no tax worksheet. They are separated here and
+   * computed on their own so that none of that has to be defended
+   * against inside the salary path.
+   */
+  const professionalRows = rows.filter(
+    (r) => r.emp.paymentBasis === "professional_fee",
+  );
+  const rowsSalary = rows.filter((r) => r.emp.paymentBasis !== "professional_fee");
+
   const attendance = await db
     .select()
     .from(s.attendanceInputs)
@@ -461,7 +473,7 @@ export async function previewRun(args: {
      one worksheet are a sequential chain the driver does not pipeline.
      Fewer queries was the fix, not overlapping them. */
   const { loadWorksheetsFor } = await import("../tax/load");
-  const worksheets = await loadWorksheetsFor(rows.map(({ emp }) => emp.id));
+  const worksheets = await loadWorksheetsFor(rowsSalary.map(({ emp }) => emp.id));
   const tdsByEmployee = new Map<string, { paise: number; basis: string }>();
   for (const [employeeId, worksheet] of worksheets) {
     if (worksheet.projection.monthlyTdsPaise > 0) {
@@ -554,10 +566,55 @@ export async function previewRun(args: {
     adjustmentsByEmployee.set(adj.employeeId, list);
   }
 
-  const departmentByEmployee = new Map(rows.map((r) => [r.emp.id, r.emp.departmentId]));
-  const structureIdByEmployee = new Map(rows.map((r) => [r.emp.id, r.salary.structureId]));
+  const departmentByEmployee = new Map(rowsSalary.map((r) => [r.emp.id, r.emp.departmentId]));
+  const structureIdByEmployee = new Map(rowsSalary.map((r) => [r.emp.id, r.salary.structureId]));
 
-  const results = rows
+  /* The professionals, computed on their own terms and merged in. */
+  const { loadTdsRateConfig, loadFyToDate } = await import("./professional-load");
+  const { computeProfessionalPay } = await import("./professional");
+  const professionalResults: EmployeePayResult[] = [];
+  if (professionalRows.length > 0) {
+    const tdsRates = await loadTdsRateConfig(asOf);
+    const fyStart = args.month >= 4 ? args.year : args.year - 1;
+    const fyToDate = await loadFyToDate({
+      companyId: args.companyId,
+      employeeIds: professionalRows.map((r) => r.emp.id),
+      financialYear: fyStart,
+    });
+    for (const { emp, salary } of professionalRows) {
+      const ytd = fyToDate.get(emp.id) ?? { paidPaise: 0, tdsPaise: 0 };
+      professionalResults.push(
+        computeProfessionalPay({
+          payee: {
+            id: emp.id,
+            name: `${emp.firstName} ${emp.lastName}`,
+            empCode: emp.empCode,
+            agreedMonthlyPaise: salary.monthlyGrossPaise,
+            agreedIs: emp.feeIsNetOfTds ? "net_of_tds" : "gross",
+            /* Nothing is assumed about the nature of the payment: without
+               it there is no rate, and the payslip says so. */
+            nature: emp.tdsNature ?? "194J_professional",
+            hasPan: Boolean(emp.pan),
+            dateOfJoining: emp.dateOfJoining,
+            dateOfExit: emp.dateOfExit,
+            fyPaidBeforePaise: ytd.paidPaise,
+            fyTdsBeforePaise: ytd.tdsPaise,
+            oneOffLines: adjustmentsByEmployee.get(emp.id),
+          },
+          rates: tdsRates,
+          year: args.year,
+          month: args.month,
+        }),
+      );
+      if (!emp.tdsNature) {
+        professionalResults[professionalResults.length - 1].warnings.push(
+          "No TDS section is set for this payee. Set one on their record — 194J for professional fees, 194C for contract work.",
+        );
+      }
+    }
+  }
+
+  const results = rowsSalary
     .map(({ emp, branch, salary }): EmployeeInput => {
       const gross = salary.monthlyGrossPaise;
       return {
@@ -605,6 +662,7 @@ export async function previewRun(args: {
         month: args.month,
       });
     })
+    .concat(professionalResults)
     .sort((a, b) => b.grossPaise - a.grossPaise);
 
   /* Everybody the join dropped. Read separately rather than made into a

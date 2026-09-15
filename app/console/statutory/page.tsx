@@ -16,6 +16,8 @@ import {
   scopeCompanies,
   canMutate,
 } from "@/lib/auth/session";
+import { loadForm26q } from "@/lib/statutory/form26q-load";
+import { QUARTER_MONTHS, type Q } from "@/lib/statutory/form26q";
 import { RecordFilingForm } from "./forms";
 import { PageHeader, Card, Badge, type BadgeTone, Select, Input, FilterBar, FilterField, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 
@@ -102,6 +104,18 @@ export default async function StatutoryPage(
   const esic = register ? buildEsicReturn(register) : null;
   const summaries = register ? await buildSummaries(register, month) : null;
   const halfYearly = await loadHalfYearly(companyId, year, month);
+
+  /* 26Q covers the quarter the chosen month falls in. The financial year
+     it belongs to is not the calendar year: January to March sits in the
+     financial year that began the previous April. */
+  const quarter = (
+    Object.keys(QUARTER_MONTHS) as Q[]
+  ).find((q) => QUARTER_MONTHS[q].includes(month))!;
+  const form26q = await loadForm26q({
+    companyId,
+    financialYear: month >= 4 ? year : year - 1,
+    quarter,
+  });
 
   const query = `company=${companyId}&year=${year}&month=${month}`;
 
@@ -385,6 +399,81 @@ export default async function StatutoryPage(
             </p>
           </Panel>
         </>
+      )}
+
+      {/* 26Q — consultants and contractors */}
+      {form26q.payees.length > 0 && (
+        <Panel
+          title={`26Q — non-salary TDS · ${form26q.quarter} ${month >= 4 ? year : year - 1}-${String((month >= 4 ? year + 1 : year) % 100).padStart(2, "0")}`}
+          right={
+            <span className="label text-ink-3">
+              return due {form26q.returnDueOn}
+            </span>
+          }
+        >
+          <Table>
+            <THead>
+              {["Payee", "PAN", "Section", "Paid", "TDS"].map((h) => (
+                <TH key={h}>{h}</TH>
+              ))}
+            </THead>
+            <TBody>
+              {form26q.payees.map((p) => (
+                <TR key={`${p.employeeId}-${p.section}`}>
+                  <TD>
+                    <span className="font-mono text-ink-3">{p.empCode}</span>{" "}
+                    {p.name}
+                  </TD>
+                  <TD className="font-mono text-ink-2">
+                    {p.pan ?? <span className="text-rust">missing</span>}
+                  </TD>
+                  <TD className="text-ink-2">{p.section}</TD>
+                  <TD className="font-mono tnum text-ink-2">
+                    {formatINR(p.grossPaise)}
+                  </TD>
+                  <TD className="font-mono tnum">
+                    {p.tdsPaise > 0 ? formatINR(p.tdsPaise) : "nil"}
+                  </TD>
+                </TR>
+              ))}
+              <TR className="bg-surface-2">
+                <TD className="font-medium">Total</TD>
+                <TD />
+                <TD />
+                <TD className="font-mono tnum">
+                  {formatINR(form26q.totalGrossPaise)}
+                </TD>
+                <TD className="font-mono tnum font-semibold">
+                  {formatINR(form26q.totalTdsPaise)}
+                </TD>
+              </TR>
+            </TBody>
+          </Table>
+
+          <div className="border-t border-line-2 px-4 py-3">
+            <p className="label text-ink-3 mb-2">
+              Deposit by challan, before the return
+            </p>
+            <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+              {form26q.monthly.map((m) => (
+                <li key={m.month} className="text-ink-2">
+                  {MONTHS[m.month - 1]}{" "}
+                  <span className="font-mono tnum text-ink">
+                    {formatINR(m.tdsPaise)}
+                  </span>{" "}
+                  <span className="text-ink-3">by {m.dueOn}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-ink-3 mt-2 max-w-[78ch]">
+              These are not in 24Q and carry no Form 16 — a payee here is
+              issued a Form 16A. Tax deducted in March is payable by 30
+              April, not the 7th.
+            </p>
+          </div>
+
+          <Warnings items={form26q.warnings} tone="rust" />
+        </Panel>
       )}
 
       {/* half-yearly */}

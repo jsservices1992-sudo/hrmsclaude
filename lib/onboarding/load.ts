@@ -190,6 +190,29 @@ export async function loadJoiner(joinerId: string): Promise<JoinerView | null> {
     .from(s.employees)
     .where(eq(s.employees.companyId, j.companyId));
 
+  /* What each former employee's exit said about taking them back. Read
+     here rather than defaulted to null, which is what it used to be —
+     the field was on the exit, shown nowhere, and so the check that
+     depends on it silently passed everybody. */
+  const exitedIds = existing.filter((e) => e.dateOfExit || e.status === "exited").map((e) => e.id);
+  const exitVerdicts = new Map<string, { verdict: string | null; note: string | null }>();
+  if (exitedIds.length > 0) {
+    const exitRows = await db
+      .select({
+        employeeId: s.exitCases.employeeId,
+        rehireEligible: s.exitCases.rehireEligible,
+        rehireNote: s.exitCases.rehireNote,
+        lastWorkingDay: s.exitCases.lastWorkingDay,
+      })
+      .from(s.exitCases)
+      .where(inArray(s.exitCases.employeeId, exitedIds))
+      .orderBy(asc(s.exitCases.lastWorkingDay));
+    // Ordered ascending, so the last write per employee is the latest exit.
+    for (const r of exitRows) {
+      exitVerdicts.set(r.employeeId, { verdict: r.rehireEligible, note: r.rehireNote });
+    }
+  }
+
   const candidates: MatchCandidate[] = existing.map((e) => ({
     id: e.id,
     empCode: e.empCode,
@@ -201,7 +224,8 @@ export async function loadJoiner(joinerId: string): Promise<JoinerView | null> {
     mobile: e.mobile,
     status: e.status,
     dateOfExit: e.dateOfExit,
-    rehireEligible: null,
+    rehireEligible: exitVerdicts.get(e.id)?.verdict ?? null,
+    rehireNote: exitVerdicts.get(e.id)?.note ?? null,
   }));
 
   const duplicates = findDuplicates(

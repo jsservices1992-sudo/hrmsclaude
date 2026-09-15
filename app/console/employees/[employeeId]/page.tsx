@@ -26,6 +26,7 @@ import {
   DeleteDocumentForm,
   ReviseSalaryForm,
   PayrollOverridesForm,
+  PaymentBasisForm,
   EmployeeSignInCard,
 } from "./employee-forms";
 import EmployeeForm from "../employee-form";
@@ -112,6 +113,7 @@ export default async function EmployeeDetailPage(
   // same resolver and statutory rates payroll itself uses, so this always
   // matches what a run would actually compute for this employee.
   const currentSalary = salaryHistory.find((r) => r.effectiveTo === null) ?? null;
+  const isProfessional = detail.employee.paymentBasis === "professional_fee";
   let currentCtc: CtcBreakdown | null = null;
   let currentBreakupStructureId: string | null = null;
   let currentTakeHome: {
@@ -346,7 +348,15 @@ export default async function EmployeeDetailPage(
             <Row k="ESIC IP" v={e.esicIp ? <span className="font-mono">{e.esicIp}</span> : <span className="text-ink-3">Not covered</span>} />
             <Row k="Prior PF member" v={e.hadPriorPfMembership ? "Yes" : "No"} />
             <Row k="VPF" v={e.vpfPercent > 0 ? `${e.vpfPercent}%` : null} />
-            <Row k="Tax regime" v={e.taxRegime} />
+            <Row
+              k="Paid as"
+              v={
+                e.paymentBasis === "professional_fee"
+                  ? `Professional fee${e.tdsNature ? ` · ${e.tdsNature.replace("_", " ")}` : ""}`
+                  : "Salary"
+              }
+            />
+            {e.paymentBasis === "salary" && <Row k="Tax regime" v={e.taxRegime} />}
             <Row
               k="Monthly gross"
               v={
@@ -654,7 +664,25 @@ export default async function EmployeeDetailPage(
             </p>
           </Card>
 
-          {currentSalary && currentCtc && (
+          {/* A fee has no breakup. Showing a Basic, an HRA and a PF
+              contribution for somebody who has none of them is worse than
+              showing nothing — it is the number somebody would quote. */}
+          {currentSalary && currentCtc && isProfessional && (
+            <Card padded={false}>
+              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+                <span className="label text-ink-2">Fee, not salary</span>
+              </div>
+              <p className="px-4 py-3 text-sm text-ink-2 max-w-[78ch]">
+                The whole of the agreed amount is the fee. There is no Basic,
+                no HRA and no employer contribution behind it, and the cost to
+                the company is the fee itself. Tax is deducted under section{" "}
+                {detail.employee.tdsNature?.slice(0, 4) ?? "—"} and reported in
+                26Q.
+              </p>
+            </Card>
+          )}
+
+          {currentSalary && currentCtc && !isProfessional && (
             <Card padded={false}>
               <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between gap-3">
                 <span className="label text-ink-2">Current breakup — gross to CTC</span>
@@ -674,7 +702,9 @@ export default async function EmployeeDetailPage(
           {canMutate(user) && (
             <Card padded={false}>
               <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Revise salary</span>
+                <span className="label text-ink-2">
+                  {isProfessional ? "Revise the fee" : "Revise salary"}
+                </span>
               </div>
               <div className="px-4 py-4">
                 <ReviseSalaryForm
@@ -688,6 +718,23 @@ export default async function EmployeeDetailPage(
           )}
 
           {canMutate(user) && (
+            <Card padded={false}>
+              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+                <span className="label text-ink-2">How this person is paid</span>
+              </div>
+              <div className="px-4 py-4">
+                <PaymentBasisForm
+                  employeeId={detail.employee.id}
+                  paymentBasis={detail.employee.paymentBasis}
+                  tdsNature={detail.employee.tdsNature}
+                  feeIsNetOfTds={detail.employee.feeIsNetOfTds}
+                  hasPan={Boolean(detail.employee.pan)}
+                />
+              </div>
+            </Card>
+          )}
+
+          {canMutate(user) && detail.employee.paymentBasis === "salary" && (
             <Card padded={false}>
               <div className="px-4 py-2.5 border-b border-line bg-surface-2">
                 <span className="label text-ink-2">Payroll settings for this employee</span>
