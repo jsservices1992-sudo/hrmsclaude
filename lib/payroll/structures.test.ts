@@ -107,3 +107,39 @@ describe("resolveStructureId", () => {
     assert.equal(result.source, "company_default");
   });
 });
+
+describe("choosing between two company defaults", () => {
+  /* Mirrors loadStructureResolutionContext: with more than one row marked
+     default — which older data can carry — the one that actually has
+     components wins. Picking by row order is how an employee resolves to
+     an empty structure and is paid nothing. */
+  const pickDefault = (rows: { id: string; isDefault: boolean }[], components: Record<string, number>) => {
+    const defaults = rows.filter((r) => r.isDefault);
+    return defaults.find((r) => (components[r.id] ?? 0) > 0)?.id ?? defaults[0]?.id ?? null;
+  };
+
+  test("prefers the default that has components over the empty one", () => {
+    const rows = [
+      { id: "empty", isDefault: true },
+      { id: "filled", isDefault: true },
+    ];
+    assert.equal(pickDefault(rows, { empty: 0, filled: 4 }), "filled");
+  });
+
+  test("is not decided by row order", () => {
+    const rows = [
+      { id: "filled", isDefault: true },
+      { id: "empty", isDefault: true },
+    ];
+    assert.equal(pickDefault(rows, { empty: 0, filled: 4 }), "filled");
+  });
+
+  test("still returns something when every default is empty", () => {
+    const rows = [{ id: "empty", isDefault: true }];
+    assert.equal(pickDefault(rows, { empty: 0 }), "empty");
+  });
+
+  test("returns null when nothing is marked default", () => {
+    assert.equal(pickDefault([{ id: "a", isDefault: false }], { a: 4 }), null);
+  });
+});

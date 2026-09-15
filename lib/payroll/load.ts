@@ -210,7 +210,16 @@ export async function loadStructureResolutionContext(
     structureRows.map((st) => [st.id, buildComponentSpecs(linesByStructure.get(st.id) ?? [])]),
   );
   const deptOverrideByDept = new Map(deptOverrideRows.map((r) => [r.departmentId, r.structureId]));
-  const defaultStructureId = structureRows.find((st) => st.isDefault)?.id ?? null;
+  /* There should be exactly one default, and every write path now
+     enforces that. Older data can still carry two — and picking the
+     first row was picking by query order, which is how an employee ends
+     up resolving to an empty structure and being paid nothing. A default
+     with components in it wins over one without. */
+  const defaults = structureRows.filter((st) => st.isDefault);
+  const defaultStructureId =
+    defaults.find((st) => (structuresById.get(st.id)?.length ?? 0) > 0)?.id ??
+    defaults[0]?.id ??
+    null;
 
   return { structuresById, deptOverrideByDept, defaultStructureId, fallback };
 }

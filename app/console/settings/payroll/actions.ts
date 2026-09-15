@@ -524,23 +524,63 @@ export async function createStarterStructure(
     };
   }
 
+  /* An empty structure already lying about is the thing that needed
+     filling, not a reason to create a second one beside it. Two
+     structures where one was meant is confusing on its own; two of them
+     both marked default is worse, because which one an employee
+     resolves to is then down to row order. */
+  const structures = await db
+    .select({ id: s.salaryStructures.id, name: s.salaryStructures.name })
+    .from(s.salaryStructures)
+    .where(eq(s.salaryStructures.companyId, companyId));
+  const lineCounts = await Promise.all(
+    structures.map((st) =>
+      db
+        .select({ id: s.salaryStructureLines.id })
+        .from(s.salaryStructureLines)
+        .where(eq(s.salaryStructureLines.structureId, st.id))
+        .then((r) => r.length),
+    ),
+  );
+  const emptyExisting = structures.find((_, i) => lineCounts[i] === 0) ?? null;
+
   const components = starterComponents();
-  const structureId = randomUUID();
+  const structureId = emptyExisting?.id ?? randomUUID();
   const today = new Date().toISOString().slice(0, 10);
 
   await db.transaction(async (tx) => {
     await tx.insert(s.payComponents).values(components.map((c) => ({ ...c, companyId })));
-    await tx.insert(s.salaryStructures).values({
-      id: structureId,
-      companyId,
-      name: STARTER_STRUCTURE_NAME,
-      description: STARTER_STRUCTURE_DESCRIPTION,
-      minBasicPercentOfGross: 40,
-      gradeId: null,
-      isDefault: true,
-      active: true,
-      effectiveFrom: today,
-    });
+
+    /* Exactly one default, always. */
+    await tx
+      .update(s.salaryStructures)
+      .set({ isDefault: false })
+      .where(eq(s.salaryStructures.companyId, companyId));
+
+    if (emptyExisting) {
+      await tx
+        .update(s.salaryStructures)
+        .set({
+          description: STARTER_STRUCTURE_DESCRIPTION,
+          minBasicPercentOfGross: 40,
+          isDefault: true,
+          active: true,
+        })
+        .where(eq(s.salaryStructures.id, structureId));
+    } else {
+      await tx.insert(s.salaryStructures).values({
+        id: structureId,
+        companyId,
+        name: STARTER_STRUCTURE_NAME,
+        description: STARTER_STRUCTURE_DESCRIPTION,
+        minBasicPercentOfGross: 40,
+        gradeId: null,
+        isDefault: true,
+        active: true,
+        effectiveFrom: today,
+      });
+    }
+
     await tx.insert(s.salaryStructureLines).values(
       components.map((c) => ({
         id: randomUUID(),
@@ -566,6 +606,11 @@ export async function createStarterStructure(
   revalidatePath("/console/settings/master-data");
   revalidatePath("/console/setup");
   return {
-    ok: `Created ${components.map((c) => c.code).join(", ")} and a default "${STARTER_STRUCTURE_NAME}" structure. Basic is half of gross and special allowance takes the balance — edit either if this company pays differently.`,
+    ok:
+      `Created ${components.map((c) => c.code).join(", ")} and put them into ` +
+      (emptyExisting
+        ? `the existing "${emptyExisting.name}" structure, which had none`
+        : `a new default "${STARTER_STRUCTURE_NAME}" structure`) +
+      ". Basic is half of gross and special allowance takes the balance — edit either if this company pays differently.",
   };
 }
