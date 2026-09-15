@@ -11,6 +11,7 @@ import Link from "next/link";
 import { reviseSalary, setPayrollOverrides, type SalaryState } from "../salary";
 import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
 import { SalaryBreakupTable } from "@/components/console/salary-breakup-table";
+import { inviteEmployee, type InviteAdminState } from "../actions";
 
 /* ==================================================================
    Documents
@@ -358,5 +359,49 @@ export function PayrollOverridesForm({
       </div>
       <FormFeedback state={state} />
     </form>
+  );
+}
+
+/**
+ * The state of this employee's own sign-in, and the one action that
+ * moves it. Shown on their record because that is where somebody is
+ * standing when they realise the person cannot see their payslip.
+ */
+export function EmployeeSignInCard({
+  employeeId,
+  account,
+}: {
+  employeeId: string;
+  account: { email: string; passwordSetAt: string | null; invitePending: boolean } | null;
+}) {
+  const [state, action] = useActionState<InviteAdminState, FormData>(inviteEmployee, {});
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm text-ink-2">
+        {!account
+          ? "No sign-in yet — they cannot see their own payslips, leave or documents."
+          : account.passwordSetAt
+            ? `Signs in as ${account.email}.`
+            : `Invited as ${account.email} — waiting for them to choose a password.`}
+      </p>
+
+      {(!account || !account.passwordSetAt) && (
+        <form action={action} className="flex items-center gap-2">
+          <input type="hidden" name="employeeId" value={employeeId} />
+          <SubmitButton variant="ghost" size="sm" pendingText="Working…">
+            {account ? "Send a fresh invitation" : "Create their sign-in"}
+          </SubmitButton>
+        </form>
+      )}
+
+      {state.error && <p className="text-xs text-rust">{state.error}</p>}
+      {state.ok && <p className="text-xs text-teal max-w-[70ch]">{state.ok}</p>}
+      {state.link && (
+        <code className="text-xs font-mono bg-surface-2 border border-line px-2 py-1.5 break-all select-all">
+          {state.link}
+        </code>
+      )}
+    </div>
   );
 }

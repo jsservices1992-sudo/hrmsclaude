@@ -36,6 +36,8 @@ import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { checkUpload, storageKeyFor, MAX_FILE_BYTES } from "@/lib/storage/rules";
 import { resolvePay, isPayMode, type ResolvedPay } from "@/lib/payroll/pay-resolution";
 import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
+import { ensureEmployeeAccount } from "@/lib/auth/employee-account";
+import { currentOrigin } from "@/lib/http/origin";
 
 export type OnboardState = {
   error?: string;
@@ -781,6 +783,24 @@ export async function convertJoiner(
       error: `Conversion failed and nothing was written: ${(e as Error).message}`,
     };
   }
+
+  /* A joiner's whole purpose is to become an employee with a login on
+     day one, so the invitation goes out as part of converting them. */
+  const [convCompany] = await db
+    .select({ name: s.companies.name })
+    .from(s.companies)
+    .where(eq(s.companies.id, j.companyId))
+    .limit(1);
+  await ensureEmployeeAccount({
+    employeeId,
+    companyId: j.companyId,
+    name: `${j.firstName} ${j.lastName}`,
+    /* A joiner has only the address they applied with; the work one is
+       issued later, so the invitation goes to the personal address. */
+    email: j.personalEmail,
+    companyName: convCompany?.name ?? "your employer",
+    origin: await currentOrigin(),
+  });
 
   await audit({
     actor: user.email,

@@ -22,6 +22,7 @@ import {
   DeleteDocumentForm,
   ReviseSalaryForm,
   PayrollOverridesForm,
+  EmployeeSignInCard,
 } from "./employee-forms";
 import EmployeeForm from "../employee-form";
 import CustomFieldsForm from "../custom-fields-form";
@@ -72,6 +73,18 @@ export default async function EmployeeDetailPage(
   );
 
   const canAct = canMutate(user) || user.role === "hr_manager";
+
+  /* Their own sign-in. Loaded here because this is the page somebody is
+     on when they discover the person cannot open their payslip. */
+  const [signIn] = await db
+    .select({
+      email: s.users.email,
+      passwordSetAt: s.users.passwordSetAt,
+      inviteToken: s.users.inviteToken,
+    })
+    .from(s.users)
+    .where(eq(s.users.employeeId, employeeId))
+    .limit(1);
 
   // Every revision, current and superseded, newest first.
   const salaryHistory = canSeeCompensation(user)
@@ -217,6 +230,28 @@ export default async function EmployeeDetailPage(
           </TabLink>
         ))}
       </Tabs>
+
+      {tab === "profile" && canAct && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">Their sign-in</span>
+          </div>
+          <div className="p-4">
+            <EmployeeSignInCard
+              employeeId={employeeId}
+              account={
+                signIn
+                  ? {
+                      email: signIn.email,
+                      passwordSetAt: signIn.passwordSetAt,
+                      invitePending: Boolean(signIn.inviteToken),
+                    }
+                  : null
+              }
+            />
+          </div>
+        </Card>
+      )}
 
       {tab === "profile" && (
         <div className="grid lg:grid-cols-2 gap-5">

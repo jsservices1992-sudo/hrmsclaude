@@ -28,6 +28,15 @@ import {
   BANK_ACCOUNT_RE,
   IDENTIFIER_MESSAGES as MSG,
 } from "@/lib/hris/identifiers";
+import { ensureEmployeeAccount } from "@/lib/auth/employee-account";
+import {
+  newInviteToken,
+  inviteExpiry,
+  inviteUrl,
+  INVITE_TTL_DAYS,
+} from "@/lib/auth/invite";
+import { sendMail, inviteEmail, mailConfigured } from "@/lib/mail/send";
+import { currentOrigin } from "@/lib/http/origin";
 import {
   parseEmployeeCsv,
   unresolvedReferences,
@@ -236,6 +245,23 @@ export async function createEmployee(
     action: "employee.created",
     entityId: id,
     after: { empCode: data.empCode, name: `${data.firstName} ${data.lastName}` },
+  });
+
+  /* The sign-in comes with the record rather than being a second errand
+     somebody has to remember. See lib/auth/employee-account.ts. */
+  const [companyRow] = await db
+    .select({ name: s.companies.name })
+    .from(s.companies)
+    .where(eq(s.companies.id, companyId))
+    .limit(1);
+  await ensureEmployeeAccount({
+    employeeId: id,
+    companyId,
+    name: `${data.firstName} ${data.lastName}`,
+    email: data.email,
+    personalEmail: data.personalEmail,
+    companyName: companyRow?.name ?? "your employer",
+    origin: await currentOrigin(),
   });
 
   await dispatchEvent(companyId, "employee_created", {
@@ -816,6 +842,28 @@ export async function bulkUploadEmployees(
     }
   });
 
+  /* Same account, same invitation, for everybody the file brought in. */
+  const [bulkCompany] = await db
+    .select({ name: s.companies.name })
+    .from(s.companies)
+    .where(eq(s.companies.id, companyId))
+    .limit(1);
+  const origin = await currentOrigin();
+  let invited = 0;
+  let withoutEmail = 0;
+  for (const r of fresh) {
+    const outcome = await ensureEmployeeAccount({
+      employeeId: newId.get(r.empCode)!,
+      companyId,
+      name: `${r.firstName} ${r.lastName}`,
+      email: r.email,
+      companyName: bulkCompany?.name ?? "your employer",
+      origin,
+    });
+    if (outcome.created) invited += 1;
+    else if (outcome.reason === "no_email") withoutEmail += 1;
+  }
+
   await audit({
     actor: user.email,
     action: "employee.bulk_imported",
@@ -851,7 +899,130 @@ export async function bulkUploadEmployees(
       `Created ${created.join(", ")} from the file — they carry only a name so far, so fill in the rest in Settings. New branches were put in ${stateCode}; change any that are elsewhere, because professional tax follows the state.`,
     );
   }
+  if (invited > 0) {
+    notes.push(`${invited} sign-in(s) created and invited.`);
+  }
+  if (withoutEmail > 0) {
+    notes.push(
+      `${withoutEmail} have no email address, so they have no sign-in — add one to their record and invite them from there.`,
+    );
+  }
   notes.push("Nobody has a salary yet — set one before the first payroll.");
 
   return { ok: `Imported ${fresh.length} employee(s). ${notes.join(" ")}` };
+}
+
+/* ==================== self-service sign-in ==================== */
+
+export type InviteAdminState = { error?: string; ok?: string; link?: string };
+
+/**
+ * Creates or re-issues the employee's own sign-in.
+ *
+ * Re-issuing replaces the token rather than resending the old one, so a
+ * link that has been sitting in a forwarded email stops working the
+ * moment a new one is asked for.
+ */
+export async function inviteEmployee(
+  _prev: InviteAdminState,
+  fd: FormData,
+): Promise<InviteAdminState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Not authorised." };
+  if (!canMutate(user) && user.role !== "hr_manager") {
+    return { error: "Your role is read-only." };
+  }
+
+  const employeeId = String(fd.get("employeeId") ?? "");
+  const [employee] = await db
+    .select()
+    .from(s.employees)
+    .where(eq(s.employees.id, employeeId))
+    .limit(1);
+  if (!employee) return { error: "Employee not found." };
+  if (!canAccessCompany(user, employee.companyId)) return { error: "Not authorised." };
+
+  const [company] = await db
+    .select({ name: s.companies.name })
+    .from(s.companies)
+    .where(eq(s.companies.id, employee.companyId))
+    .limit(1);
+  const origin = await currentOrigin();
+
+  const [existing] = await db
+    .select()
+    .from(s.users)
+    .where(eq(s.users.employeeId, employeeId))
+    .limit(1);
+
+  if (existing) {
+    if (existing.passwordSetAt) {
+      return {
+        error: `${employee.firstName} has already set a password. Reset it from Accounts if they cannot get in.`,
+      };
+    }
+    const token = newInviteToken();
+    await db
+      .update(s.users)
+      .set({ inviteToken: token, inviteTokenExpiresAt: inviteExpiry(), active: true })
+      .where(eq(s.users.id, existing.id));
+    await audit({
+      actor: user.email,
+      action: "user.invite_reissued",
+      entityId: existing.id,
+      after: { email: existing.email },
+    });
+
+    let emailed = false;
+    if (mailConfigured()) {
+      const mail = inviteEmail({
+        name: existing.name,
+        companyName: company?.name ?? "your employer",
+        url: inviteUrl(token, origin),
+        expiresInDays: INVITE_TTL_DAYS,
+      });
+      emailed = (await sendMail({ to: existing.email, ...mail })).sent;
+    }
+    revalidatePath(`/console/employees/${employeeId}`);
+    return {
+      ok: emailed
+        ? `A fresh invitation has been emailed to ${existing.email}. The previous link no longer works.`
+        : `New link created — the previous one no longer works. Send it to ${existing.email}:`,
+      link: emailed ? undefined : inviteUrl(token, origin),
+    };
+  }
+
+  const outcome = await ensureEmployeeAccount({
+    employeeId,
+    companyId: employee.companyId,
+    name: `${employee.firstName} ${employee.lastName}`,
+    email: employee.email,
+    personalEmail: employee.personalEmail,
+    companyName: company?.name ?? "your employer",
+    origin,
+  });
+
+  if (!outcome.created) {
+    return {
+      error: {
+        no_email: "This record has no email address, so there is nowhere to send an invitation. Add one first.",
+        already_linked: "This employee already has a sign-in.",
+        email_taken: "That email address already has an account on this instance.",
+      }[outcome.reason],
+    };
+  }
+
+  await audit({
+    actor: user.email,
+    action: "user.invited",
+    entityId: employeeId,
+    after: { email: outcome.to },
+  });
+  revalidatePath(`/console/employees/${employeeId}`);
+  return {
+    ok: outcome.emailed
+      ? `An invitation has been emailed to ${outcome.to}.`
+      : `Sign-in created. Email is not configured here, so send this link to ${outcome.to} — it works once and expires in ${INVITE_TTL_DAYS} days:`,
+    link: outcome.emailed ? undefined : inviteUrl(outcome.inviteToken, origin),
+  };
 }
