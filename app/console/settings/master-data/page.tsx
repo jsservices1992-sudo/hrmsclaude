@@ -7,6 +7,7 @@ import { listCompanies } from "@/lib/payroll/load";
 import { getSessionUser, canAccessCompany, scopeCompanies, canMutate } from "@/lib/auth/session";
 import {
   DepartmentForm, GradeForm, LeaveTypeForm, HolidayForm, DeleteHolidayForm,
+  IndiaHolidaysForm,
   DeletePayComponentForm,
   ShiftForm, PayComponentForm, LoanSchemeForm, GlAccountForm, GlMappingForm,
   VariablePayTypeForm,
@@ -216,6 +217,11 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
               <div className="p-4 border-t border-line-2">
                 {editHoliday && <p className="label text-brass mb-2">Editing {editHoliday.name}</p>}
                 <HolidayForm companyId={companyId} branches={branches} editing={editHoliday ?? undefined} />
+              </div>
+            )}
+            {canEdit && !editHoliday && (
+              <div className="p-4 border-t border-line-2">
+                <IndiaHolidaysForm companyId={companyId} />
               </div>
             )}
           </Card>

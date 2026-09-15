@@ -7,6 +7,7 @@ import {
   saveLeaveType,
   saveHoliday,
   deleteHoliday,
+  seedIndiaHolidays,
   deletePayComponent,
   saveShift,
   savePayComponent,
@@ -17,6 +18,7 @@ import {
   type MasterState,
 } from "./actions";
 import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
+import { MOVABLE_HOLIDAYS } from "@/lib/hris/holidays-india";
 
 const check = "flex items-center gap-1.5 text-xs";
 
@@ -635,5 +637,52 @@ export function VariablePayTypeForm({
       </div>
       <FormFeedback state={state} />
     </form>
+  );
+}
+
+/**
+ * The Indian calendar, in the two halves it actually comes in: the dates
+ * that can be filled in without asking anybody, and the names of the ones
+ * that cannot.
+ */
+export function IndiaHolidaysForm({ companyId }: { companyId: string }) {
+  const [state, action] = useActionState<MasterState, FormData>(seedIndiaHolidays, {});
+  const thisYear = new Date().getUTCFullYear();
+
+  return (
+    <div className="flex flex-col gap-3">
+      <form action={action} className="flex flex-wrap items-end gap-2">
+        <input type="hidden" name="companyId" value={companyId} />
+        <label className="flex flex-col gap-1">
+          <span className="label text-ink-3">Year</span>
+          <Select name="year" defaultValue={String(thisYear)} className="w-28">
+            {[thisYear, thisYear + 1].map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </Select>
+        </label>
+        <SubmitButton size="sm" pendingText="Adding…">Add India&apos;s fixed holidays</SubmitButton>
+      </form>
+
+      <p className="text-xs text-ink-3 max-w-[80ch]">
+        Adds Republic Day, Good Friday, Independence Day, Gandhi Jayanti and
+        Christmas — the five whose dates are certain. Anything already on the
+        calendar is left alone.
+      </p>
+
+      <div className="border border-line bg-surface-2 px-3 py-2.5">
+        <span className="label text-ink-3">Still to add, with this year&apos;s dates</span>
+        <p className="text-xs text-ink-3 mt-1 max-w-[80ch]">
+          These move with the lunar calendar or a state notification, so their
+          dates have to come from this year&apos;s gazette rather than from here.
+          A holiday entered on the wrong day is worse than one missing —
+          attendance treats the real day as ordinary working time and cuts the
+          pay of everybody who took it.
+        </p>
+        <p className="text-xs text-ink-2 mt-2">{MOVABLE_HOLIDAYS.join(" · ")}</p>
+      </div>
+
+      <FormFeedback state={state} />
+    </div>
   );
 }

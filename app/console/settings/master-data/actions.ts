@@ -2,11 +2,12 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, canMutate, canAccessCompany } from "@/lib/auth/session";
 import { recordAuditAs } from "@/lib/audit/log";
+import { certainHolidays } from "@/lib/hris/holidays-india";
 
 export type MasterState = { error?: string; ok?: string };
 
@@ -592,4 +593,71 @@ export async function saveGlMapping(_prev: MasterState, fd: FormData): Promise<M
 
   revalidate();
   return { ok: "Mapping saved. It applies to the next journal export, not runs already exported." };
+}
+
+/**
+ * Fills in the Indian holidays whose dates are certain.
+ *
+ * Only the ones that can be stated without guessing: the three national
+ * holidays, Christmas, and Good Friday, which follows Easter and is
+ * arithmetic. The lunar and notified ones are offered as a checklist in
+ * the interface instead — a holiday entered on the wrong day is worse
+ * than one missing, because attendance treats the real day as ordinary
+ * working time and cuts the pay of everyone who took it.
+ *
+ * Skips dates already present, so it is safe to run for a year twice or
+ * after somebody has entered a few by hand.
+ */
+export async function seedIndiaHolidays(_prev: MasterState, fd: FormData): Promise<MasterState> {
+  const companyId = String(fd.get("companyId") ?? "");
+  const { user, error } = await requireMutator(companyId);
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const year = Number(fd.get("year"));
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    return { error: "Choose a year." };
+  }
+
+  const existing = await db
+    .select({ date: s.holidays.date })
+    .from(s.holidays)
+    .where(
+      and(
+        eq(s.holidays.companyId, companyId),
+        gte(s.holidays.date, `${year}-01-01`),
+        lte(s.holidays.date, `${year}-12-31`),
+      ),
+    );
+  const taken = new Set(existing.map((h) => h.date));
+
+  const toAdd = certainHolidays(year).filter((h) => !taken.has(h.date));
+  if (toAdd.length === 0) {
+    return { ok: `${year} already has all of them.` };
+  }
+
+  await db.insert(s.holidays).values(
+    toAdd.map((h) => ({
+      id: randomUUID(),
+      companyId,
+      /* Every branch. A state-specific holiday is added against its own
+         branch by hand; these five apply everywhere in India. */
+      branchId: null,
+      date: h.date,
+      name: h.name,
+      restricted: h.restricted,
+    })),
+  );
+
+  await audit({
+    actor: user.email,
+    action: "holidays.seeded",
+    entity: "holiday",
+    entityId: companyId,
+    after: { year, added: toAdd.map((h) => `${h.date} ${h.name}`) },
+  });
+
+  revalidate();
+  return {
+    ok: `Added ${toAdd.length} holiday(s) for ${year}: ${toAdd.map((h) => h.name).join(", ")}. The ones that move with the lunar calendar still need this year's dates.`,
+  };
 }
