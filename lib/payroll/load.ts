@@ -279,6 +279,18 @@ export type PreviewResult = {
   results: EmployeePayResult[];
   totals: RunTotals;
   asOf: string;
+  /**
+   * People who should have been in this run and are not.
+   *
+   * The query below joins to a current salary, so anyone without one
+   * drops out of the result set — and used to drop out of payroll
+   * entirely, unannounced. Nobody is told on the 30th that four of
+   * thirty employees are missing; they simply are not paid, and the
+   * totals look like a complete run because every row in them is
+   * correct. Naming them is the difference between a payroll that is
+   * short and a payroll that is wrong.
+   */
+  excluded: { employeeId: string; empCode: string; name: string; reason: string }[];
 };
 
 /**
@@ -553,7 +565,37 @@ export async function previewRun(args: {
     })
     .sort((a, b) => b.grossPaise - a.grossPaise);
 
-  return { company, results, totals: summariseRun(results), asOf };
+  /* Everybody the join dropped. Read separately rather than made into a
+     left join: the engine wants a salary, and giving it a null one to
+     carry through every calculation trades a visible gap for a silent
+     zero. */
+  const paidIds = new Set(rows.map((r) => r.emp.id));
+  const shouldBePaid = await db
+    .select({
+      id: s.employees.id,
+      empCode: s.employees.empCode,
+      firstName: s.employees.firstName,
+      lastName: s.employees.lastName,
+    })
+    .from(s.employees)
+    .where(
+      and(
+        eq(s.employees.companyId, args.companyId),
+        eq(s.employees.status, "active"),
+        lte(s.employees.dateOfJoining, asOf),
+      ),
+    );
+
+  const excluded = shouldBePaid
+    .filter((e) => !paidIds.has(e.id))
+    .map((e) => ({
+      employeeId: e.id,
+      empCode: e.empCode,
+      name: `${e.firstName} ${e.lastName}`,
+      reason: "No salary on record as at this period — set one before running payroll.",
+    }));
+
+  return { company, results, totals: summariseRun(results), asOf, excluded };
 }
 
 export async function listCompanies() {

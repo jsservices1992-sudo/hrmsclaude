@@ -25,6 +25,11 @@ export type SetupFacts = {
   leaveTypes: number;
   shifts: number;
   employees: number;
+  /** Declared holidays for the current calendar year. */
+  holidays: number;
+  bankAccounts: number;
+  /** Active people payroll would silently leave out. */
+  employeesWithoutSalary: number;
 };
 
 export type SetupStep = {
@@ -105,11 +110,35 @@ export function setupSteps(f: SetupFacts): SetupStep[] {
       blocking: false,
     },
     {
+      id: "holidays",
+      title: "Holiday calendar",
+      why: "A holiday nobody has declared is an ordinary working day to attendance, which turns it into loss of pay for everyone who took it.",
+      href: "/console/settings/master-data?tab=holidays",
+      done: f.holidays > 0,
+      blocking: false,
+    },
+    {
       id: "employees",
       title: "Add your people",
       why: "Onboard a joiner or add an employee directly. Payroll has nothing to run until someone is on the books.",
       href: "/console/employees/new",
       done: f.employees > 0,
+      blocking: false,
+    },
+    {
+      id: "salaries",
+      title: "Everyone has a salary",
+      why: "Payroll only includes people with a salary on record. Someone without one is not paid less — they are left out of the run entirely.",
+      href: "/console/import",
+      done: f.employees > 0 && f.employeesWithoutSalary === 0,
+      blocking: false,
+    },
+    {
+      id: "bank-account",
+      title: "Salary bank account",
+      why: "The account the salary file is drawn on. Payroll can be calculated and approved without it, and then there is nothing to pay anybody from.",
+      href: "/console/settings/payroll?tab=bank",
+      done: f.bankAccounts > 0,
       blocking: false,
     },
   ];

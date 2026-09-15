@@ -195,12 +195,28 @@ export async function calculateRun(
       version,
       headcount: preview.totals.headcount,
       netPaise: preview.totals.netPaise,
+      excluded: preview.excluded.map((e) => e.empCode),
     },
   });
 
   revalidatePath("/console/payroll");
   revalidatePath("/console/runs");
-  return { ok: `Version ${version} calculated and saved.` };
+
+  /* Anyone the run could not include is named here rather than left to
+     be noticed on payday. The totals are correct either way, which is
+     precisely the problem: a run that is short looks exactly like a run
+     that is complete. */
+  const missing = preview.excluded;
+  return {
+    ok:
+      `Version ${version} calculated and saved for ${preview.totals.headcount} employee(s).` +
+      (missing.length > 0
+        ? ` ${missing.length} active employee(s) are NOT in this run and will not be paid: ${missing
+            .slice(0, 8)
+            .map((e) => `${e.empCode} (${e.name})`)
+            .join(", ")}${missing.length > 8 ? `, and ${missing.length - 8} more` : ""}. Each has no salary on record — set one, then recalculate.`
+        : ""),
+  };
 }
 
 /** Maker–checker: the preparer of a run may not approve it. FR-AUD-4. */

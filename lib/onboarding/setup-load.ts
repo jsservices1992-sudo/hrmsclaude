@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gte, isNull, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import type { SetupFacts } from "./setup";
@@ -13,8 +13,12 @@ export async function loadSetupFacts(companyId: string): Promise<SetupFacts> {
 
   const size = (rows: { id: string }[]) => rows.length;
 
-  const [branches, departments, grades, payComponents, structures, leaveTypes, shifts, employees] =
-    await Promise.all([
+  const currentYear = new Date().getUTCFullYear();
+
+  const [
+    branches, departments, grades, payComponents, structures, leaveTypes, shifts, employees,
+    holidays, bankAccounts, employeesWithoutSalary,
+  ] = await Promise.all([
       db.select({ id: s.branches.id }).from(s.branches).where(eq(s.branches.companyId, companyId)).then(size),
       db.select({ id: s.departments.id }).from(s.departments).where(eq(s.departments.companyId, companyId)).then(size),
       db.select({ id: s.grades.id }).from(s.grades).where(eq(s.grades.companyId, companyId)).then(size),
@@ -34,6 +38,44 @@ export async function loadSetupFacts(companyId: string): Promise<SetupFacts> {
       db.select({ id: s.leaveTypes.id }).from(s.leaveTypes).where(eq(s.leaveTypes.companyId, companyId)).then(size),
       db.select({ id: s.shifts.id }).from(s.shifts).where(eq(s.shifts.companyId, companyId)).then(size),
       db.select({ id: s.employees.id }).from(s.employees).where(eq(s.employees.companyId, companyId)).then(size),
+      /* This year's calendar. A holiday nobody declared is an ordinary
+         working day to attendance, which turns it into loss of pay. */
+      db
+        .select({ id: s.holidays.id })
+        .from(s.holidays)
+        .where(
+          and(
+            eq(s.holidays.companyId, companyId),
+            gte(s.holidays.date, `${currentYear}-01-01`),
+            lte(s.holidays.date, `${currentYear}-12-31`),
+          ),
+        )
+        .then(size),
+      db
+        .select({ id: s.bankAccounts.id })
+        .from(s.bankAccounts)
+        .where(eq(s.bankAccounts.companyId, companyId))
+        .then(size),
+      /* Payroll joins to a current salary, so anyone without one is not
+         short-paid — they are not paid at all, and nothing says so. */
+      db
+        .select({ id: s.employees.id })
+        .from(s.employees)
+        .leftJoin(
+          s.employeeSalaries,
+          and(
+            eq(s.employeeSalaries.employeeId, s.employees.id),
+            isNull(s.employeeSalaries.effectiveTo),
+          ),
+        )
+        .where(
+          and(
+            eq(s.employees.companyId, companyId),
+            eq(s.employees.status, "active"),
+            isNull(s.employeeSalaries.id),
+          ),
+        )
+        .then(size),
     ]);
 
   return {
@@ -47,5 +89,8 @@ export async function loadSetupFacts(companyId: string): Promise<SetupFacts> {
     leaveTypes,
     shifts,
     employees,
+    holidays,
+    bankAccounts,
+    employeesWithoutSalary,
   };
 }

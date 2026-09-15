@@ -5,11 +5,13 @@ import { setupSteps, setupProgress, canRunPayroll, type SetupFacts } from "./set
 const empty: SetupFacts = {
   hasPan: false, hasTan: false, branches: 0, departments: 0, grades: 0,
   payComponents: 0, salaryStructures: 0, leaveTypes: 0, shifts: 0, employees: 0,
+  holidays: 0, bankAccounts: 0, employeesWithoutSalary: 0,
 };
 
 const full: SetupFacts = {
   hasPan: true, hasTan: true, branches: 1, departments: 2, grades: 3,
   payComponents: 5, salaryStructures: 1, leaveTypes: 3, shifts: 1, employees: 4,
+  holidays: 12, bankAccounts: 1, employeesWithoutSalary: 0,
 };
 
 test("a company that has just registered has everything to do", () => {
@@ -87,4 +89,28 @@ test("every step names why it exists and where to go", () => {
     assert.match(step.href, /^\/console/, `${step.id} has no destination`);
     assert.ok(step.title.length > 0);
   }
+});
+
+
+test("an employee with no salary is surfaced, because payroll leaves them out", () => {
+  const p = setupProgress({ ...full, employeesWithoutSalary: 3 });
+  const step = p.steps.find((x) => x.id === "salaries")!;
+  assert.equal(step.done, false, "not done while somebody has no salary");
+  assert.equal(p.complete, false);
+});
+
+test("a company with no bank account can still run payroll, but is told", () => {
+  const p = setupProgress({ ...full, bankAccounts: 0 });
+  assert.equal(p.steps.find((x) => x.id === "bank-account")!.done, false);
+  assert.equal(
+    canRunPayroll({ ...full, bankAccounts: 0 }),
+    true,
+    "paying is a separate step from calculating, so this must not block",
+  );
+});
+
+test("no holiday calendar is flagged without blocking the first run", () => {
+  const facts = { ...full, holidays: 0 };
+  assert.equal(setupProgress(facts).steps.find((x) => x.id === "holidays")!.done, false);
+  assert.equal(canRunPayroll(facts), true);
 });
