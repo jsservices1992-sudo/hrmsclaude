@@ -10,6 +10,11 @@ import {
   scopeCompanies,
 } from "@/lib/auth/session";
 import { loadFnfQueue } from "@/lib/exit/fnf-load";
+import { db } from "@/db";
+import * as s2 from "@/db/schema";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
+import { canMutate } from "@/lib/auth/session";
+import { StartExitForm } from "./start-form";
 import {
   PageHeader,
   Card,
@@ -74,6 +79,35 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
 
   const today = clockToday();
 
+  /* Anyone who could be exited: on the books, and not already partway
+     through one. An exit list with no way to start an exit was the whole
+     module's missing front door. */
+  const companyIds = companies.map((c) => c.id);
+  const openExitEmployeeIds = new Set(
+    allCases.filter(({ exit }) => exit.status !== "withdrawn").map(({ exit }) => exit.employeeId),
+  );
+  const exitable = companyIds.length
+    ? (
+        await db
+          .select({
+            id: s2.employees.id,
+            empCode: s2.employees.empCode,
+            firstName: s2.employees.firstName,
+            lastName: s2.employees.lastName,
+          })
+          .from(s2.employees)
+          .where(
+            and(
+              inArray(s2.employees.companyId, companyIds),
+              ne(s2.employees.status, "exited"),
+            ),
+          )
+          .orderBy(asc(s2.employees.empCode))
+      )
+        .filter((e) => !openExitEmployeeIds.has(e.id))
+        .map((e) => ({ id: e.id, empCode: e.empCode, name: `${e.firstName} ${e.lastName}` }))
+    : [];
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -86,6 +120,21 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
         }
         description="Settlement cannot be released until clearance closes. Ageing is measured from the last working day, which is the number an HR head is actually judged on."
       />
+
+      {canMutate(user) && companies.length > 0 && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">Record an exit</span>
+          </div>
+          <div className="p-4">
+            <StartExitForm
+              companyId={companies[0].id}
+              employees={exitable}
+              defaultEmployeeId={typeof sp.employee === "string" ? sp.employee : undefined}
+            />
+          </div>
+        </Card>
+      )}
 
       {needingAttention.length > 0 && (
         <div className="border-2 border-rust bg-rust-soft px-5 py-4">

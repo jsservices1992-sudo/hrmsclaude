@@ -167,6 +167,20 @@ export default async function EmployeeDetailPage(
         </p>
       </div>
 
+      {/* Without this the exit module had no entrance from the one page
+          somebody is actually looking at when they need it. */}
+      {!detail.exitCase && e.status === "active" && canMutate(user) && (
+        <div className="rounded-md border border-line bg-surface-2 px-4 py-3 text-sm flex flex-wrap items-center gap-2">
+          <span className="text-ink-2">Leaving the company?</span>
+          <Link
+            href={`/console/exits?employee=${e.id}`}
+            className="text-brass hover:underline"
+          >
+            Record an exit →
+          </Link>
+        </div>
+      )}
+
       {detail.exitCase && (
         <div className="rounded-md border border-brass/40 bg-brass-soft px-4 py-3 text-sm">
           <span className="label text-brass">Exit in progress</span>{" "}
