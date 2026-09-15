@@ -110,7 +110,23 @@ export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig
  * The company's configured components. Falls back to DEFAULT_STRUCTURE only
  * when a company has none, so a fresh tenant still computes something.
  */
+/**
+ * The flat component list, memoised for the life of one request.
+ *
+ * Every tax worksheet loads it, and a payroll run loads a worksheet per
+ * employee — so a hundred people meant a hundred identical queries for
+ * a list that cannot change while the run is being computed. The cache
+ * is per server instance and short-lived on purpose: payroll is
+ * recomputed often enough that a stale structure would be noticed, and
+ * editing one revalidates the pages that read it.
+ */
+const structureCache = new Map<string, { at: number; value: ComponentSpec[] }>();
+const STRUCTURE_TTL_MS = 5_000;
+
 export async function loadStructure(companyId: string): Promise<ComponentSpec[]> {
+  const cached = structureCache.get(companyId);
+  if (cached && Date.now() - cached.at < STRUCTURE_TTL_MS) return cached.value;
+
   const rows = await db
     .select()
     .from(s.payComponents)
@@ -119,9 +135,12 @@ export async function loadStructure(companyId: string): Promise<ComponentSpec[]>
     )
     .orderBy(asc(s.payComponents.sequence));
 
-  if (rows.length === 0) return DEFAULT_STRUCTURE;
+  if (rows.length === 0) {
+    structureCache.set(companyId, { at: Date.now(), value: DEFAULT_STRUCTURE });
+    return DEFAULT_STRUCTURE;
+  }
 
-  return rows.map((r) => ({
+  const specs = rows.map((r) => ({
     code: r.code,
     label: r.name,
     kind: r.kind,
@@ -138,6 +157,9 @@ export async function loadStructure(companyId: string): Promise<ComponentSpec[]>
     prorates: r.prorates,
     sequence: r.sequence,
   }));
+
+  structureCache.set(companyId, { at: Date.now(), value: specs });
+  return specs;
 }
 
 export type StructureResolution = {
@@ -430,6 +452,16 @@ export async function previewRun(args: {
    */
   const { loadWorksheet } = await import("../tax/load");
   const tdsByEmployee = new Map<string, { paise: number; basis: string }>();
+
+  /* One worksheet per employee, and each is about seven round trips —
+     measured at 3.6s per employee against a hosted database, so a
+     hundred people is several minutes. Running them together was tried
+     and measured: ten in parallel took as long as ten in series,
+     because the queries inside one worksheet are a sequential chain
+     that the driver does not pipeline. The fix is to stop issuing
+     seven hundred queries, not to overlap them, and that means batching
+     the loads inside loadWorksheet itself.
+     TODO: batch — see lib/tax/load.ts. */
   for (const { emp } of rows) {
     const worksheet = await loadWorksheet(emp.id);
     if (worksheet && worksheet.projection.monthlyTdsPaise > 0) {
