@@ -128,7 +128,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             {canEdit && (
               <div className="p-4 border-t border-line-2">
                 {editDept && <p className="label text-brass mb-2">Editing {editDept.name}</p>}
-                <DepartmentForm companyId={companyId} editing={editDept ? { id: editDept.id, name: editDept.name, code: editDept.code, costCentre: editDept.costCentre } : undefined} />
+                <DepartmentForm key={editDept?.id ?? "new"} companyId={companyId} editing={editDept ? { id: editDept.id, name: editDept.name, code: editDept.code, costCentre: editDept.costCentre } : undefined} />
               </div>
             )}
           </Card>
@@ -154,7 +154,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             {canEdit && (
               <div className="p-4 border-t border-line-2">
                 {editGrade && <p className="label text-brass mb-2">Editing {editGrade.name}</p>}
-                <GradeForm companyId={companyId} editing={editGrade ?? undefined} />
+                <GradeForm key={editGrade?.id ?? "new"} companyId={companyId} editing={editGrade ?? undefined} />
               </div>
             )}
           </Card>
@@ -185,7 +185,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             {canEdit && (
               <div className="p-4 border-t border-line-2">
                 {editLeaveType && <p className="label text-brass mb-2">Editing {editLeaveType.name}</p>}
-                <LeaveTypeForm companyId={companyId} editing={editLeaveType ?? undefined} />
+                <LeaveTypeForm key={editLeaveType?.id ?? "new"} companyId={companyId} editing={editLeaveType ?? undefined} />
               </div>
             )}
           </Card>
@@ -216,7 +216,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             {canEdit && (
               <div className="p-4 border-t border-line-2">
                 {editHoliday && <p className="label text-brass mb-2">Editing {editHoliday.name}</p>}
-                <HolidayForm companyId={companyId} branches={branches} editing={editHoliday ?? undefined} />
+                <HolidayForm key={editHoliday?.id ?? "new"} companyId={companyId} branches={branches} editing={editHoliday ?? undefined} />
               </div>
             )}
             {canEdit && !editHoliday && (
@@ -251,7 +251,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           {canEdit && (
             <div className="p-4 border-t border-line-2">
               {editShift && <p className="label text-brass mb-2">Editing {editShift.name}</p>}
-              <ShiftForm companyId={companyId} editing={editShift ?? undefined} />
+              <ShiftForm key={editShift?.id ?? "new"} companyId={companyId} editing={editShift ?? undefined} />
             </div>
           )}
         </Card>
@@ -286,6 +286,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             <div className="p-4 border-t border-line-2">
               {editComponent && <p className="label text-brass mb-2">Editing {editComponent.name}</p>}
               <PayComponentForm
+                key={editComponent?.id ?? "new"}
                 companyId={companyId}
                 otherComponents={payComponents.filter((c) => c.id !== editComponent?.id).map((c) => ({ code: c.code, name: c.name }))}
                 editing={editComponent ?? undefined}
@@ -340,7 +341,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           )}
           {canEdit && (
             <div className="p-4 border-t border-line">
-              <VariablePayTypeForm companyId={companyId} editing={editPayType} />
+              <VariablePayTypeForm key={editPayType?.id ?? "new"} companyId={companyId} editing={editPayType} />
             </div>
           )}
         </Card>
@@ -377,7 +378,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           {canEdit && (
             <div className="p-4 border-t border-line-2">
               {editScheme && <p className="label text-brass mb-2">Editing {editScheme.label}</p>}
-              <LoanSchemeForm companyId={companyId} editing={editScheme ?? undefined} />
+              <LoanSchemeForm key={editScheme?.id ?? "new"} companyId={companyId} editing={editScheme ?? undefined} />
             </div>
           )}
         </Card>
@@ -406,7 +407,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             {canEdit && (
               <div className="p-4 border-t border-line-2">
                 {editAccount && <p className="label text-brass mb-2">Editing {editAccount.name}</p>}
-                <GlAccountForm companyId={companyId} editing={editAccount ?? undefined} />
+                <GlAccountForm key={editAccount?.id ?? "new"} companyId={companyId} editing={editAccount ?? undefined} />
               </div>
             )}
           </Card>

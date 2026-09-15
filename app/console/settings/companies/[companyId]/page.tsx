@@ -269,6 +269,7 @@ export default async function CompanySettingsPage(
               </div>
               <div className="p-4">
                 <BranchForm
+                  key={editBranch ?? "new"}
                   companyId={companyId}
                   states={jurisdictions.map((j) => ({
                     id: j.stateCode,
