@@ -505,9 +505,15 @@ export async function acceptExit(_prev: ExitState, fd: FormData): Promise<ExitSt
   if (row.exitCase.status === "withdrawn") {
     return { error: "This exit was withdrawn. Start a new one if they are leaving after all." };
   }
-  if (row.exitCase.status !== "submitted" && row.exitCase.status !== "manager_approved") {
+  if (row.exitCase.status === "settled") {
+    return { error: "This exit is settled — the money has been paid against it." };
+  }
+  /* Somebody has already put their name to it. */
+  if (row.exitCase.acceptedBy) {
     return {
-      error: `This exit is already ${row.exitCase.status.replace(/_/g, " ")}.`,
+      error: `Already accepted by ${row.exitCase.acceptedBy}${
+        row.exitCase.acceptedAt ? ` on ${row.exitCase.acceptedAt.slice(0, 10)}` : ""
+      }.`,
     };
   }
 
@@ -528,7 +534,11 @@ export async function acceptExit(_prev: ExitState, fd: FormData): Promise<ExitSt
     await tx
       .update(s.exitCases)
       .set({
-        status: "accepted",
+        /* Cases opened before acceptance existed reached clearance
+           without anybody agreeing to them on the record. Accepting one
+           now records who, and must not drag it backwards through a
+           stage it has already finished. */
+        status: row.exitCase.status === "clearance" ? "clearance" : "accepted",
         lastWorkingDay: agreedLwd,
         acceptedBy: user.email,
         acceptedAt: now,

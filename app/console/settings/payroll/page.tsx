@@ -48,6 +48,8 @@ import {
   Badge,
   Tooltip,
 } from "@/components/console/ui";
+import { loadSodPolicies } from "@/lib/audit/log";
+import { SodToggle } from "../../audit/forms";
 
 export const metadata = { title: "Payroll settings" };
 
@@ -104,6 +106,13 @@ export default async function PayrollSettingsPage(
     .select()
     .from(s.departmentPayrollOverrides)
     .where(eq(s.departmentPayrollOverrides.companyId, companyId));
+
+  /* Segregation of duties lived only on the audit page, which is
+     tenant-wide and so unreachable by an administrator scoped to one
+     company — which is every administrator created by signing up. The
+     rules are per company, so they belong here, where the rest of the
+     payroll controls are. */
+  const sodPolicies = await loadSodPolicies(companyId);
 
   const componentCount = await db
     .select({ id: s.payComponents.id })
@@ -176,6 +185,7 @@ export default async function PayrollSettingsPage(
     { id: "conventions", label: "Conventions & rounding" },
     { id: "departments", label: `Department overrides (${deptOverrides.length})` },
     { id: "structures", label: `Salary structures (${structures.length})` },
+    { id: "controls", label: "Approval controls" },
     { id: "calendar", label: "Calendar & cut-offs" },
     { id: "statutory", label: `Statutory rates (${params.length})` },
     { id: "groups", label: `Groups (${groups.length})` },
@@ -336,6 +346,39 @@ export default async function PayrollSettingsPage(
               </Card>
             );
           })()}
+        </div>
+      )}
+
+      {tab === "controls" && (
+        <div className="flex flex-col gap-5">
+          <p className="text-sm text-ink-2 max-w-[76ch]">
+            These are the rules that stop one person doing both halves of a
+            payment. Turning one off needs a reason, which is recorded against
+            your name — a company with a single administrator may genuinely
+            need to, and the record is what makes that defensible later.
+          </p>
+          <Card padded={false}>
+            <ul className="divide-y divide-line-2">
+              {sodPolicies.map((p) => (
+                <li key={p.rule} className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-sm">{SOD_LABEL[p.rule] ?? p.rule}</span>
+                    <span className="block text-xs text-ink-3">
+                      {SOD_WHY[p.rule] ?? ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <Badge tone={p.enabled ? "teal" : "rust"}>
+                      {p.enabled ? "On" : "Off"}
+                    </Badge>
+                    {isAdmin && (
+                      <SodToggle companyId={companyId} rule={p.rule} enabled={p.enabled} />
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
         </div>
       )}
 
@@ -713,3 +756,19 @@ export default async function PayrollSettingsPage(
     </div>
   );
 }
+
+/** Plain-English names for the rules, and why each one exists. */
+const SOD_LABEL: Record<string, string> = {
+  preparer_cannot_approve: "The person who prepares a payment may not approve it",
+  bank_changer_cannot_approve: "Whoever changed a bank account may not approve the run that pays into it",
+  employee_creator_cannot_approve_salary: "Whoever created an employee may not approve their salary",
+};
+
+const SOD_WHY: Record<string, string> = {
+  preparer_cannot_approve:
+    "Applies to payroll runs and to full-and-final settlements. Off, one person can pay money out alone.",
+  bank_changer_cannot_approve:
+    "The highest-value fraud is a bank account changed days before disbursement.",
+  employee_creator_cannot_approve_salary:
+    "Otherwise one person can invent an employee and pay them.",
+};

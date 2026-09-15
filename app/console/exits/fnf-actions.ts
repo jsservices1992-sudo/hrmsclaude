@@ -10,7 +10,7 @@ import {
   canMutate,
   canAccessCompany,
 } from "@/lib/auth/session";
-import { recordAudit } from "@/lib/audit/log";
+import { recordAudit, loadSodPolicies } from "@/lib/audit/log";
 import { loadFnfCase } from "@/lib/exit/fnf-load";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 
@@ -173,8 +173,15 @@ export async function releaseSettlement(
   if (fnf.stored.status !== "draft") {
     return { error: `This settlement is already ${fnf.stored.status}.` };
   }
-  if (fnf.stored.preparedBy === user.email) {
-    // Same separation of duties the payroll run enforces.
+  /* The company's own rule, not a hardcoded one. Every other place that
+     enforces separation of duties reads sodPolicies; this did not, so
+     turning the rule off in settings left the settlement still blocked
+     and no screen explained why. A company of one administrator has to
+     be able to disable it deliberately — with a reason, on the record —
+     rather than be unable to pay anybody. */
+  const policies = await loadSodPolicies(fnf.employee.companyId);
+  const preparerRule = policies.find((p) => p.rule === "preparer_cannot_approve");
+  if (preparerRule?.enabled !== false && fnf.stored.preparedBy === user.email) {
     await recordAudit({
       user,
       action: "fnf.release.denied",
@@ -184,7 +191,7 @@ export async function releaseSettlement(
     });
     return {
       error:
-        "You prepared this settlement, so you cannot also release it. A second person must approve a payment.",
+        "You prepared this settlement, so you cannot also release it — a second person must approve a payment. If this company has only one administrator, an admin can turn that rule off under Settings → Payroll, with a reason that is recorded.",
     };
   }
   if (!fnf.gate.canRelease) {
