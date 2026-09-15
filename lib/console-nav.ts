@@ -28,11 +28,16 @@ export type ConsoleNavSection = {
 
 export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
   {
+    /* Always visible, never a section to open: the two things everybody
+       lands on. */
     label: null,
     groups: [
       {
         label: null,
-        items: [{ href: "/console", label: "Dashboard", icon: "home", exact: true }],
+        items: [
+          { href: "/console", label: "Dashboard", icon: "home", exact: true },
+          { href: "/console/reports", label: "Reports", icon: "table" },
+        ],
       },
     ],
   },
@@ -48,15 +53,11 @@ export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
           { href: "/console/exits", label: "Exits & settlement", icon: "userMinus" },
         ],
       },
-    ],
-  },
-  {
-    // Its own section rather than a group under Workforce: attendance is a
-    // daily job with its own rhythm, not an attribute of the people list.
-    label: "Time & assets",
-    groups: [
       {
-        label: null,
+        /* Attendance and assets keep their own heading — a different daily
+           job — but they are still about the same people, so they no longer
+           sit in a section of their own. */
+        label: "Day to day",
         items: [
           { href: "/console/attendance", label: "Attendance & leave", icon: "calendar" },
           { href: "/console/assets", label: "Assets", icon: "box" },
@@ -136,28 +137,27 @@ export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
         label: null,
         items: [
           { href: "/console/compliance", label: "Statutory rules", icon: "shield" },
-          { href: "/console/workflows", label: "Workflows", icon: "flow" },
           {
             href: "/console/statutory",
             label: "Returns & filings",
             icon: "stamp",
             needsCompensation: true,
           },
+          { href: "/console/workflows", label: "Workflows", icon: "flow" },
+          {
+            href: "/console/audit",
+            label: "Audit & controls",
+            icon: "history",
+            needsTenantWide: true,
+          },
         ],
       },
     ],
   },
   {
-    label: "Insights",
-    groups: [
-      {
-        label: null,
-        items: [{ href: "/console/reports", label: "Reports", icon: "table" }],
-      },
-    ],
-  },
-  {
-    label: "Administration",
+    /* Administration and Governance were two headings over eight items
+       nobody visits twice a week. One section, two groups. */
+    label: "Settings",
     groups: [
       {
         label: "Organisation",
@@ -176,7 +176,7 @@ export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
         ],
       },
       {
-        label: "Governance",
+        label: "Access",
         items: [
           {
             /* Not tenant-wide: a company administrator manages their own
@@ -185,12 +185,7 @@ export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
             label: "Accounts",
             icon: "users",
           },
-          {
-            href: "/console/audit",
-            label: "Audit & controls",
-            icon: "history",
-            needsTenantWide: true,
-          },
+          { href: "/console/account", label: "My account", icon: "userPlus" },
           { href: "/console/settings/api", label: "API & webhooks", icon: "flow" },
         ],
       },
@@ -233,6 +228,7 @@ export const SEGMENT_LABELS: Record<string, string> = {
   inputs: "Variable pay",
   run: "Run payroll",
   "master-data": "Master data",
+  account: "My account",
   new: "New",
 };
 

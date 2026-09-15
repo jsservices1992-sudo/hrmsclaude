@@ -41,6 +41,98 @@ function Brand({ collapsed }: { collapsed: boolean }) {
   );
 }
 
+const OPEN_KEY = "lekha.sidebar.open";
+
+/**
+ * One section's worth of nav, openable.
+ *
+ * Thirty-odd links all shown at once is a list nobody reads; the section
+ * holding the page you are on is open on arrival, because collapsing the
+ * thing you just clicked into would be worse than showing everything.
+ */
+function NavSection({
+  section,
+  pathname,
+  collapsed,
+  open,
+  onToggle,
+  onNavigate,
+}: {
+  section: ConsoleNavSection;
+  pathname: string;
+  collapsed: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onNavigate?: () => void;
+}) {
+  const items = (
+    <>
+      {section.groups.map((group, gi) => (
+        <div key={group.label ?? `g${gi}`} className="flex flex-col gap-0.5">
+          {group.label && !collapsed && (
+            <p className="label text-ink-3 px-3 pb-0.5">{group.label}</p>
+          )}
+          {group.items.map((item) => {
+            const active = isItemActive(item, pathname);
+            const Icon = ICONS[item.icon];
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                title={collapsed ? item.label : undefined}
+                className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-base ${
+                  active
+                    ? "bg-indigo-soft text-indigo font-medium"
+                    : "text-ink-2 hover:text-ink hover:bg-surface-2"
+                } ${collapsed ? "justify-center" : ""}`}
+              >
+                {active && (
+                  <span
+                    aria-hidden
+                    className="absolute left-0 inset-y-1 w-[2px] rounded-full bg-brass"
+                  />
+                )}
+                <Icon />
+                {!collapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+    </>
+  );
+
+  // Collapsed to icons, or a section with no heading: nothing to open.
+  if (!section.label) return <div className="flex flex-col gap-2.5">{items}</div>;
+  if (collapsed) {
+    return (
+      <div className="flex flex-col gap-2.5">
+        <div className="mx-3 border-t border-line" />
+        {items}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex items-center gap-1.5 px-3 py-1 rounded-md text-brass hover:bg-surface-2 transition-base"
+      >
+        <IconChevron
+          className={`h-3 w-3 shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
+        />
+        <span className="label">{section.label}</span>
+      </button>
+      {open && items}
+    </div>
+  );
+}
+
 function NavList({
   sections,
   pathname,
@@ -52,51 +144,48 @@ function NavList({
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
+  const activeLabel =
+    sections.find((sec) =>
+      sec.groups.some((g) => g.items.some((i) => isItemActive(i, pathname))),
+    )?.label ?? null;
+
+  const [closed, setClosed] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(OPEN_KEY);
+      if (raw) setClosed(JSON.parse(raw) as string[]);
+    } catch {
+      /* every section simply stays open */
+    }
+  }, []);
+
+  const toggle = (label: string) => {
+    setClosed((prev) => {
+      const next = prev.includes(label)
+        ? prev.filter((l) => l !== label)
+        : [...prev, label];
+      try {
+        window.localStorage.setItem(OPEN_KEY, JSON.stringify(next));
+      } catch {
+        /* preference simply will not persist */
+      }
+      return next;
+    });
+  };
+
   return (
     <nav aria-label="Console" className="flex flex-col gap-5 py-4">
       {sections.map((section, i) => (
-        <div key={section.label ?? `s${i}`} className="flex flex-col gap-2.5">
-          {section.label && !collapsed && (
-            <p className="label text-brass px-3">{section.label}</p>
-          )}
-          {section.label && collapsed && (
-            <div className="mx-3 border-t border-line" />
-          )}
-          {section.groups.map((group, gi) => (
-            <div key={group.label ?? `g${gi}`} className="flex flex-col gap-0.5">
-              {group.label && !collapsed && (
-                <p className="label text-ink-3 px-3 pb-0.5">{group.label}</p>
-              )}
-              {group.items.map((item) => {
-                const active = isItemActive(item, pathname);
-                const Icon = ICONS[item.icon];
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onNavigate}
-                    aria-current={active ? "page" : undefined}
-                    title={collapsed ? item.label : undefined}
-                    className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-base ${
-                      active
-                        ? "bg-indigo-soft text-indigo font-medium"
-                        : "text-ink-2 hover:text-ink hover:bg-surface-2"
-                    } ${collapsed ? "justify-center" : ""}`}
-                  >
-                    {active && (
-                      <span
-                        aria-hidden
-                        className="absolute left-0 inset-y-1 w-[2px] rounded-full bg-brass"
-                      />
-                    )}
-                    <Icon />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </div>
+        <NavSection
+          key={section.label ?? `s${i}`}
+          section={section}
+          pathname={pathname}
+          collapsed={collapsed}
+          open={section.label === activeLabel || !closed.includes(section.label ?? "")}
+          onToggle={() => toggle(section.label ?? "")}
+          onNavigate={onNavigate}
+        />
       ))}
     </nav>
   );
@@ -213,6 +302,27 @@ function UserMenu({
               )}
             </div>
           </div>
+          <DropdownItem>
+            <Link href="/console/account" className="block w-full">
+              My account
+            </Link>
+          </DropdownItem>
+          <DropdownItem>
+            <Link href="/console/account#password" className="block w-full">
+              Change password
+            </Link>
+          </DropdownItem>
+          <DropdownItem>
+            <Link href="/console/setup" className="block w-full">
+              Set up the company
+            </Link>
+          </DropdownItem>
+          <DropdownItem>
+            <Link href="/console/settings/users" className="block w-full">
+              Accounts &amp; roles
+            </Link>
+          </DropdownItem>
+          <div className="border-t border-line-2" />
           <DropdownItem>
             <Link href="/" className="block w-full">
               Public site
