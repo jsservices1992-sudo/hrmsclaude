@@ -7,7 +7,12 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, canMutate, canAccessCompany } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
-import { isExitType, type ExitType } from "@/lib/exit/kinds";
+import {
+  isExitType,
+  isNoticeTreatment,
+  type ExitType,
+  type NoticeTreatment,
+} from "@/lib/exit/kinds";
 
 export type ExitState = { error?: string; ok?: string };
 
@@ -354,5 +359,109 @@ export async function resolveClearanceItem(_prev: ExitState, fd: FormData): Prom
       left.length === 0
         ? "Clearance is complete — the settlement can be released."
         : `Saved. ${left.length} item(s) still pending.`,
+  };
+}
+
+
+/**
+ * How notice is treated on this exit, and whether gratuity is forfeited.
+ *
+ * All three flags were read by the settlement engine and written by
+ * nothing: an exit was created with every one of them false and no
+ * screen could change them. So the recovery was compulsory, a waiver was
+ * impossible, and a company that terminated somebody had no way to say
+ * it was paying the notice rather than charging for it.
+ *
+ * Only while the settlement is still a draft. Afterwards the figures
+ * have been released against these choices, and changing them silently
+ * would restate what somebody has already been told they owe — reopen
+ * the settlement, which puts that on the record.
+ */
+export async function setNoticeTreatment(_prev: ExitState, fd: FormData): Promise<ExitState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Not authorised." };
+  if (!canMutate(user)) {
+    return { error: "Waiving a recovery is a payroll decision — your role cannot make it." };
+  }
+
+  const exitId = String(fd.get("exitId") ?? "");
+  const [row] = await db
+    .select({ exitCase: s.exitCases, employee: s.employees })
+    .from(s.exitCases)
+    .innerJoin(s.employees, eq(s.employees.id, s.exitCases.employeeId))
+    .where(eq(s.exitCases.id, exitId))
+    .limit(1);
+  if (!row) return { error: "Exit not found." };
+  if (!canAccessCompany(user, row.employee.companyId)) return { error: "Not authorised." };
+
+  const [settlement] = await db
+    .select({ status: s.fnfSettlements.status })
+    .from(s.fnfSettlements)
+    .where(eq(s.fnfSettlements.exitCaseId, exitId))
+    .limit(1);
+  if (settlement && settlement.status !== "draft") {
+    return {
+      error: `The settlement is already ${settlement.status.replace(/_/g, " ")}. Reopen it before changing how notice is treated — the figures were released against the current choice.`,
+    };
+  }
+
+  const treatment = String(fd.get("treatment") ?? "") as NoticeTreatment;
+  if (!isNoticeTreatment(treatment)) {
+    return { error: "Choose how notice is treated." };
+  }
+
+  const reason = String(fd.get("reason") ?? "").trim();
+  /* Forgiving a recovery is money the company chose not to collect, and
+     the question it gets asked later is who decided. */
+  if (treatment === "waive" && reason.length < 10) {
+    return { error: "Say why the shortfall is being waived. It is recorded against your name." };
+  }
+
+  const forfeitGratuity = fd.get("gratuityForfeited") !== null;
+  const forfeitReason = String(fd.get("gratuityForfeitureReason") ?? "").trim();
+  /* Gratuity is forfeitable only for the reasons section 4(6) allows, so
+     the ground has to be stated rather than implied by a checkbox. */
+  if (forfeitGratuity && forfeitReason.length < 15) {
+    return {
+      error:
+        "Forfeiting gratuity needs the ground it rests on — section 4(6) of the Payment of Gratuity Act allows it only for specific misconduct.",
+    };
+  }
+
+  await db
+    .update(s.exitCases)
+    .set({
+      noticeWaived: treatment === "waive",
+      noticeWaiverReason: treatment === "waive" ? reason : null,
+      noticeWaivedBy: treatment === "waive" ? user.email : null,
+      employerPaysNoticeInLieu: treatment === "employer_pays",
+      gratuityForfeited: forfeitGratuity,
+      gratuityForfeitureReason: forfeitGratuity ? forfeitReason : null,
+    })
+    .where(eq(s.exitCases.id, exitId));
+
+  await recordAudit({
+    user,
+    action: "exit.notice_treatment_set",
+    entity: "exit_case",
+    entityId: exitId,
+    before: {
+      noticeWaived: row.exitCase.noticeWaived,
+      employerPaysNoticeInLieu: row.exitCase.employerPaysNoticeInLieu,
+      gratuityForfeited: row.exitCase.gratuityForfeited,
+    },
+    after: { treatment, gratuityForfeited: forfeitGratuity },
+    reason: reason || forfeitReason || null,
+  });
+
+  revalidatePath(`/console/exits/${exitId}`);
+  revalidatePath(`/console/exits/${exitId}/settlement`);
+  return {
+    ok:
+      {
+        recover: "Notice shortfall will be recovered from the settlement.",
+        waive: "Notice shortfall waived — nothing will be recovered.",
+        employer_pays: "The employer will pay the notice period rather than recover it.",
+      }[treatment] + (settlement ? " Recompute the settlement to see the new figures." : ""),
   };
 }

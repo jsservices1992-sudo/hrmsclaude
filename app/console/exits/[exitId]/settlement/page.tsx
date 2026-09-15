@@ -18,6 +18,7 @@ import {
   WriteOffForm,
   ReopenForm,
 } from "../../fnf-forms";
+import { NoticeTreatmentForm } from "../../start-form";
 import { PageHeader, Card, Badge, type BadgeTone } from "@/components/console/ui";
 
 export const metadata = { title: "Full & final settlement" };
@@ -379,6 +380,44 @@ export default async function SettlementPage(
               <WriteOffForm exitCaseId={exitId} />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Set before the figures are computed, not discovered inside them:
+          whether the shortfall is recovered is a decision, and it was one
+          nothing in the application could make. */}
+      {canAct && (
+        <div className="border border-line bg-surface" data-print="hide">
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">Notice period and gratuity</span>
+          </div>
+          <div className="px-4 py-4">
+            <NoticeTreatmentForm
+              exitId={exitId}
+              current={{
+                noticeWaived: fnf.exitCase.noticeWaived,
+                employerPaysNoticeInLieu: fnf.exitCase.employerPaysNoticeInLieu,
+                noticeWaiverReason: fnf.exitCase.noticeWaiverReason,
+                noticeWaivedBy: fnf.exitCase.noticeWaivedBy,
+                gratuityForfeited: fnf.exitCase.gratuityForfeited,
+                gratuityForfeitureReason: fnf.exitCase.gratuityForfeitureReason,
+              }}
+              shortfallDays={settlement.notice.shortfallDays}
+              /* What the recovery is or would be. On a waived or
+                 employer-paid exit the engine reports nil, which is the
+                 wrong number to show beside "waive this". */
+              recoveryPaise={
+                settlement.noticeSettlement.kind === "none"
+                  ? 0
+                  : settlement.noticeSettlement.amountPaise
+              }
+              locked={
+                stored && stored.status !== "draft"
+                  ? `The settlement is ${stored.status.replace(/_/g, " ")}. Reopen it to change how notice is treated — the figures were released against the current choice.`
+                  : undefined
+              }
+            />
+          </div>
         </div>
       )}
 

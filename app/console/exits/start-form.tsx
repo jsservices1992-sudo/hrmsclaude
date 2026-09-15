@@ -1,7 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
-import { startExit, withdrawExit, resolveClearanceItem, type ExitState } from "./actions";
+import {
+  startExit,
+  withdrawExit,
+  resolveClearanceItem,
+  setNoticeTreatment,
+  type ExitState,
+} from "./actions";
+import { NOTICE_TREATMENTS } from "@/lib/exit/kinds";
 import { EXIT_TYPES } from "@/lib/exit/kinds";
 import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
 
@@ -160,5 +167,121 @@ export function ClearanceItemForm({
       {state.error && <span className="text-xs text-rust w-full">{state.error}</span>}
       {state.ok && <span className="text-xs text-teal w-full">{state.ok}</span>}
     </form>
+  );
+}
+
+/**
+ * How notice is treated, and whether gratuity is forfeited.
+ *
+ * Shown with the shortfall the settlement has actually computed, because
+ * "waive the recovery" means nothing until you can see what is being
+ * waived.
+ */
+export function NoticeTreatmentForm({
+  exitId,
+  current,
+  shortfallDays,
+  recoveryPaise,
+  locked,
+}: {
+  exitId: string;
+  current: {
+    noticeWaived: boolean;
+    employerPaysNoticeInLieu: boolean;
+    noticeWaiverReason: string | null;
+    noticeWaivedBy: string | null;
+    gratuityForfeited: boolean;
+    gratuityForfeitureReason: string | null;
+  };
+  shortfallDays: number;
+  recoveryPaise: number;
+  locked?: string;
+}) {
+  const selected = current.noticeWaived
+    ? "waive"
+    : current.employerPaysNoticeInLieu
+      ? "employer_pays"
+      : "recover";
+  const [state, action] = useActionState<ExitState, FormData>(setNoticeTreatment, {});
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-ink-2 max-w-[80ch]">
+        {shortfallDays > 0
+          ? `They are ${shortfallDays} day(s) short of the notice they owed, worth ₹${(recoveryPaise / 100).toLocaleString("en-IN")}.`
+          : "They served their full notice, so there is no shortfall to recover."}
+      </p>
+
+      {locked ? (
+        <p className="text-sm text-rust max-w-[70ch]">{locked}</p>
+      ) : (
+        <form action={action} className="flex flex-col gap-3">
+          <input type="hidden" name="exitId" value={exitId} />
+
+          <div className="flex flex-col gap-2">
+            {NOTICE_TREATMENTS.map((t) => (
+              <label key={t.id} className="flex items-start gap-2.5">
+                <input
+                  type="radio"
+                  name="treatment"
+                  value={t.id}
+                  defaultChecked={selected === t.id}
+                  className="mt-1 h-4 w-4"
+                />
+                <span className="text-sm">
+                  {t.label}
+                  <span className="block text-xs text-ink-3">{t.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          <label className="flex flex-col gap-1">
+            <span className="label text-ink-3">Reason</span>
+            <Input
+              name="reason"
+              defaultValue={current.noticeWaiverReason ?? ""}
+              placeholder="Required when waiving"
+            />
+          </label>
+
+          <div className="border-t border-line-2 pt-3 flex flex-col gap-2">
+            <label className="flex items-start gap-2.5">
+              <input
+                type="checkbox"
+                name="gratuityForfeited"
+                defaultChecked={current.gratuityForfeited}
+                className="mt-1 h-4 w-4"
+              />
+              <span className="text-sm">
+                Forfeit gratuity
+                <span className="block text-xs text-ink-3">
+                  Only on the grounds section 4(6) of the Payment of Gratuity Act
+                  allows. Rarely right, and never for a resignation.
+                </span>
+              </span>
+            </label>
+            <Input
+              name="gratuityForfeitureReason"
+              defaultValue={current.gratuityForfeitureReason ?? ""}
+              placeholder="The ground it rests on"
+            />
+          </div>
+
+          <div>
+            <SubmitButton pendingText="Saving…">Save</SubmitButton>
+          </div>
+          {state.error && <p className="text-sm text-rust max-w-[70ch]">{state.error}</p>}
+          {state.ok && <p className="text-sm text-teal max-w-[70ch]">{state.ok}</p>}
+        </form>
+      )}
+
+      {current.noticeWaivedBy && (
+        <p className="text-xs text-ink-3">
+          Waived by {current.noticeWaivedBy}
+          {current.noticeWaiverReason ? ` — ${current.noticeWaiverReason}` : ""}
+        </p>
+      )}
+    </div>
   );
 }
