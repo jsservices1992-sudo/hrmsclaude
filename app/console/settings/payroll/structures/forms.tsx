@@ -6,6 +6,7 @@ import {
   addStructureLine,
   removeStructureLine,
   setDefaultStructure,
+  deleteStructure,
   saveDepartmentSalaryStructureOverride,
   clearDepartmentSalaryStructureOverride,
   type PayrollSettingsState,
@@ -214,6 +215,29 @@ export function StarterStructureForm({ companyId }: { companyId: string }) {
         <SubmitButton pendingText="Creating…">Create the standard structure</SubmitButton>
       </form>
       <FormFeedback state={state} />
+    </div>
+  );
+}
+
+export function DeleteStructureForm({
+  companyId,
+  structureId,
+}: {
+  companyId: string;
+  structureId: string;
+}) {
+  const [state, action] = useActionState<PayrollSettingsState, FormData>(deleteStructure, {});
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <form action={action}>
+        <input type="hidden" name="companyId" value={companyId} />
+        <input type="hidden" name="structureId" value={structureId} />
+        <SubmitButton variant="ghost" size="sm" className="text-rust" pendingText="Working…">
+          Remove
+        </SubmitButton>
+      </form>
+      {state.error && <span className="text-xs text-rust max-w-[40ch] text-right">{state.error}</span>}
+      {state.ok && <span className="text-xs text-teal">{state.ok}</span>}
     </div>
   );
 }

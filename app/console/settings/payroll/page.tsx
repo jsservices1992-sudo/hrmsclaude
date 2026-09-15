@@ -29,6 +29,7 @@ import {
   DepartmentStructureOverrideForm,
   ClearDeptStructureOverrideForm,
   StarterStructureForm,
+  DeleteStructureForm,
 } from "./structures/forms";
 import {
   PageHeader,
@@ -357,6 +358,13 @@ export default async function PayrollSettingsPage(
             default — and only when none of those exist does the flat
             component list apply.
           </p>
+          {structures.filter((st) => st.isDefault).length > 1 && (
+            <p className="text-sm text-rust max-w-[70ch] border border-rust/40 bg-rust-soft px-3 py-2">
+              More than one structure is marked default. Which one an employee
+              resolves to is then not decided by anything you chose — open the
+              one that should win and make it default, which clears the others.
+            </p>
+          )}
           <Table>
             <THead>
               {["Name", "Grade", "Components", "Status", ""].map((h) => (
@@ -381,12 +389,15 @@ export default async function PayrollSettingsPage(
                   <TD className="font-mono tnum text-ink-2">{structureLineCounts[i]}</TD>
                   <TD>{st.active ? <span className="label text-teal">Active</span> : <span className="label text-ink-3">Inactive</span>}</TD>
                   <TD className="text-right">
-                    <Link
-                      href={`/console/settings/payroll/structures/${st.id}`}
-                      className="text-xs text-indigo hover:underline"
-                    >
-                      Open →
-                    </Link>
+                    <div className="flex items-center gap-3 justify-end">
+                      <Link
+                        href={`/console/settings/payroll/structures/${st.id}`}
+                        className="text-xs text-indigo hover:underline"
+                      >
+                        Open →
+                      </Link>
+                      {isAdmin && <DeleteStructureForm companyId={companyId} structureId={st.id} />}
+                    </div>
                   </TD>
                 </TR>
               ))}

@@ -403,3 +403,113 @@ export async function clearDepartmentSalaryStructureOverride(
   revalidatePath("/console/settings/payroll");
   return { ok: "Override cleared — this department now follows the company default structure." };
 }
+
+/**
+ * Removes a salary structure nothing points at.
+ *
+ * A structure is not a document — it is what an employee's pay is
+ * derived from, so deleting one that somebody resolves to changes what
+ * they are paid. It is refused wherever anything still references it,
+ * and the refusal names the thing, because "in use" without saying by
+ * what leaves somebody clicking around looking for it.
+ *
+ * The case this exists for is an empty structure left behind after
+ * setup, which is worse than untidy: the moment anyone assigns it to a
+ * department, every salary under it evaluates to zero.
+ */
+export async function deleteStructure(
+  _prev: PayrollSettingsState,
+  fd: FormData,
+): Promise<PayrollSettingsState> {
+  const { user, error } = await requireAdmin();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const structureId = String(fd.get("structureId") ?? "");
+  const [structure] = await db
+    .select()
+    .from(s.salaryStructures)
+    .where(eq(s.salaryStructures.id, structureId))
+    .limit(1);
+  if (!structure) return { error: "Structure not found." };
+  if (!canAccessCompany(user, structure.companyId)) return { error: "Not authorised." };
+
+  const [onSalaries, onDepartments, onJoiners, siblings] = await Promise.all([
+    db
+      .select({ id: s.employeeSalaries.id })
+      .from(s.employeeSalaries)
+      .where(eq(s.employeeSalaries.structureId, structureId))
+      .limit(1),
+    db
+      .select({ name: s.departments.name })
+      .from(s.departmentSalaryStructureOverrides)
+      .innerJoin(s.departments, eq(s.departments.id, s.departmentSalaryStructureOverrides.departmentId))
+      .where(eq(s.departmentSalaryStructureOverrides.structureId, structureId)),
+    db
+      .select({ id: s.joiners.id })
+      .from(s.joiners)
+      .where(eq(s.joiners.structureId, structureId))
+      .limit(1),
+    db
+      .select({ id: s.salaryStructures.id })
+      .from(s.salaryStructures)
+      .where(eq(s.salaryStructures.companyId, structure.companyId)),
+  ]);
+
+  if (onSalaries.length > 0) {
+    return {
+      error: `"${structure.name}" is recorded on somebody's salary, so removing it would leave a pay record that cannot explain how it was built. Untick Active instead — it stops being assignable and leaves history intact.`,
+    };
+  }
+  if (onDepartments.length > 0) {
+    return {
+      error: `The ${onDepartments.map((d) => `"${d.name}"`).join(", ")} department${onDepartments.length === 1 ? " is" : "s are"} assigned to "${structure.name}". Reassign ${onDepartments.length === 1 ? "it" : "them"} below, then delete this.`,
+    };
+  }
+  if (onJoiners.length > 0) {
+    return {
+      error: `"${structure.name}" is pinned to a joiner who has not been converted yet. Change it on their onboarding record first.`,
+    };
+  }
+  if (siblings.length <= 1) {
+    return {
+      error: `"${structure.name}" is this company's only salary structure. Create the one that replaces it first — with none at all, pay has nothing to be derived from.`,
+    };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(s.salaryStructureLines).where(eq(s.salaryStructureLines.structureId, structureId));
+    await tx.delete(s.salaryStructures).where(eq(s.salaryStructures.id, structureId));
+
+    /* Deleting the default would leave the company with none, and an
+       employee resolving to nothing falls back to the flat component
+       list — which is not what anybody chose. */
+    if (structure.isDefault) {
+      const [next] = await tx
+        .select({ id: s.salaryStructures.id })
+        .from(s.salaryStructures)
+        .where(eq(s.salaryStructures.companyId, structure.companyId))
+        .limit(1);
+      if (next) {
+        await tx
+          .update(s.salaryStructures)
+          .set({ isDefault: true })
+          .where(eq(s.salaryStructures.id, next.id));
+      }
+    }
+  });
+
+  await audit({
+    actor: user.email,
+    action: "salary_structure.removed",
+    entity: "salary_structure",
+    entityId: structureId,
+    before: structure,
+  });
+
+  revalidatePath("/console/settings/payroll");
+  return {
+    ok:
+      `Removed "${structure.name}".` +
+      (structure.isDefault ? " It was the default, so another structure now is — check it is the right one." : ""),
+  };
+}
