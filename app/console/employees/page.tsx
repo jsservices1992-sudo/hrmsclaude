@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { formatINR } from "@/lib/payroll/money";
@@ -37,9 +37,16 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
         .from(s.employees)
         .innerJoin(s.branches, eq(s.employees.branchId, s.branches.id))
         .innerJoin(s.companies, eq(s.employees.companyId, s.companies.id))
+        /* Only the salary in force. Without the second condition the join
+           returns one row per revision, so an employee who has had three
+           raises appears four times — and the extra rows carry the old
+           figures, which reads as several people on the same code. */
         .leftJoin(
           s.employeeSalaries,
-          eq(s.employeeSalaries.employeeId, s.employees.id),
+          and(
+            eq(s.employeeSalaries.employeeId, s.employees.id),
+            isNull(s.employeeSalaries.effectiveTo),
+          ),
         )
         .leftJoin(s.departments, eq(s.employees.departmentId, s.departments.id))
         .where(inArray(s.employees.companyId, companyIds))
