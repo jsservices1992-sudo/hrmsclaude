@@ -1,6 +1,6 @@
 import { currentPeriod } from "@/lib/clock";
 import Link from "next/link";
-import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { deriveMonth } from "@/lib/attendance/service";
@@ -164,6 +164,40 @@ export default async function AttendancePage(
       : "input";
   const q = `company=${companyId}&year=${year}&month=${month}`;
 
+  /* Self-service punches that were turned away. Only the employee saw
+     these, so a branch pinned in the wrong place looked to HR like
+     nobody punching and to the employee like being called a liar. */
+  const refusedPunches = await db
+    .select({
+      at: s.attendancePunches.at,
+      distanceMetres: s.attendancePunches.distanceMetres,
+      accuracyMetres: s.attendancePunches.accuracyMetres,
+      reason: s.attendancePunches.reason,
+      empCode: s.employees.empCode,
+      firstName: s.employees.firstName,
+      lastName: s.employees.lastName,
+    })
+    .from(s.attendancePunches)
+    .innerJoin(s.employees, eq(s.employees.id, s.attendancePunches.employeeId))
+    .where(
+      and(
+        eq(s.employees.companyId, companyId),
+        eq(s.attendancePunches.accepted, false),
+      ),
+    )
+    .orderBy(desc(s.attendancePunches.at))
+    .limit(8);
+
+  /* Every refusal landing at much the same distance is the signature of
+     a misplaced office pin rather than of people punching from home. */
+  const distances = refusedPunches
+    .map((p) => p.distanceMetres)
+    .filter((d): d is number => d != null);
+  const looksMisplaced =
+    distances.length >= 3 &&
+    Math.max(...distances) - Math.min(...distances) < 250 &&
+    Math.min(...distances) > 100;
+
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
@@ -196,6 +230,42 @@ export default async function AttendancePage(
           </div>
         }
       />
+
+      {refusedPunches.length > 0 && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="label text-ink-2">Punches turned away</span>
+            <Badge tone={looksMisplaced ? "rust" : "neutral"}>
+              {refusedPunches.length} recent
+            </Badge>
+          </div>
+          {looksMisplaced && (
+            <p className="px-4 py-3 text-sm text-rust border-b border-line-2 max-w-[80ch]">
+              All of these land at much the same distance, which is what a
+              misplaced office pin looks like rather than people punching from
+              home. Check the branch location — there is a button on the branch
+              form to set it from a phone standing at the office.
+            </p>
+          )}
+          <ul className="divide-y divide-line-2">
+            {refusedPunches.map((p, i) => (
+              <li key={i} className="px-4 py-2 text-xs flex flex-wrap gap-x-4 gap-y-1">
+                <span className="font-mono text-ink-3 w-36 shrink-0">
+                  {p.at.slice(0, 16).replace("T", " ")}
+                </span>
+                <span className="font-mono w-20 shrink-0">{p.empCode}</span>
+                <span className="w-40 shrink-0">{p.firstName} {p.lastName}</span>
+                <span className="text-ink-2 flex-1 min-w-[18rem]">
+                  {p.distanceMetres != null ? `${Math.round(p.distanceMetres)}m away` : p.reason}
+                  {p.accuracyMetres != null && (
+                    <span className="text-ink-3"> · device accurate to {Math.round(p.accuracyMetres)}m</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard label="Employees" value={months.length} />

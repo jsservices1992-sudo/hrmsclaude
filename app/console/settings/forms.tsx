@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   createCompany,
   updateCompany,
@@ -208,6 +208,7 @@ export function BranchForm({
         <FormField label="Pincode" error={err("pincode")}>
           <Input name="pincode" defaultValue={values.pincode ?? ""} invalid={!!err("pincode")} />
         </FormField>
+        <UseMyLocation />
         <FormField
           label="Office latitude"
           error={err("latitude")}
@@ -403,6 +404,63 @@ export function CompanyLogoForm({
 
       <FormFeedback state={state} />
       <FormFeedback state={removeState} />
+    </div>
+  );
+}
+
+/**
+ * Fills the office coordinates from the device standing in it.
+ *
+ * Typing a latitude and longitude copied from a map is where this goes
+ * wrong: a pin dropped on the wrong side of a building, or a digit lost
+ * in transcription, puts the fence hundreds of metres from the door and
+ * every refusal then blames the employee. Setting it from a phone in the
+ * lobby removes the transcription entirely.
+ */
+function UseMyLocation() {
+  const [state, setState] = useState<
+    { status: "idle" | "locating" } | { status: "done" | "error"; message: string }
+  >({ status: "idle" });
+
+  const fill = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const form = event.currentTarget.closest("form");
+    if (!form || !("geolocation" in navigator)) {
+      setState({ status: "error", message: "This browser cannot share a location." });
+      return;
+    }
+    setState({ status: "locating" });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const set = (name: string, value: string) => {
+          const el = form.elements.namedItem(name) as HTMLInputElement | null;
+          if (el) el.value = value;
+        };
+        set("latitude", position.coords.latitude.toFixed(6));
+        set("longitude", position.coords.longitude.toFixed(6));
+        setState({
+          status: "done",
+          message: `Filled in, accurate to about ${Math.round(position.coords.accuracy)}m. Save to keep it.`,
+        });
+      },
+      () => setState({ status: "error", message: "Your location could not be read." }),
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
+    );
+  };
+
+  return (
+    <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onClick={fill}
+        className="rounded-md border border-line bg-surface px-3 py-2 text-sm hover:border-brass"
+      >
+        {state.status === "locating" ? "Finding you…" : "Use my current location"}
+      </button>
+      <span className="text-xs text-ink-3 max-w-[60ch]">
+        {state.status === "done" || state.status === "error"
+          ? state.message
+          : "Press this standing at the office. More reliable than copying a pin off a map — a pin on the wrong side of the building puts the fence hundreds of metres from the door."}
+      </span>
     </div>
   );
 }
