@@ -114,6 +114,7 @@ export function LeaveTypeForm({
     frequency: string; paid: boolean; accruesDuringProbation: boolean;
     carryForwardCap: number; encashable: boolean; allowNegative: boolean; rounding: string;
     restrictedHoliday: boolean;
+    compensatoryOff: boolean;
   };
 }) {
   const [state, action] = useActionState<MasterState, FormData>(saveLeaveType, {});
@@ -162,6 +163,7 @@ export function LeaveTypeForm({
         <label className={check}><input type="checkbox" name="encashable" defaultChecked={editing?.encashable ?? false} />Encashable on exit</label>
         <label className={check}><input type="checkbox" name="allowNegative" defaultChecked={editing?.allowNegative ?? false} />Allow going negative</label>
         <label className={check}><input type="checkbox" name="restrictedHoliday" defaultChecked={editing?.restrictedHoliday ?? false} />Optional-holiday allowance</label>
+        <label className={check}><input type="checkbox" name="compensatoryOff" defaultChecked={editing?.compensatoryOff ?? false} />Compensatory off</label>
       </div>
       <p className="text-xs text-ink-3 max-w-[70ch]">
         Mark one type as the optional-holiday allowance and employees pick that

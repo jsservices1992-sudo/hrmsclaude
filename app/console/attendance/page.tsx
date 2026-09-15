@@ -164,6 +164,20 @@ export default async function AttendancePage(
       : "input";
   const q = `company=${companyId}&year=${year}&month=${month}`;
 
+  /* Compensatory offs with nowhere to go. The setting says credit them
+     and no leave type is marked to receive them, so the credit would be
+     computed and dropped — the sort of silence that is only discovered
+     when somebody tries to take the day. */
+  const [compOffType] = company.weeklyOffWorkTreatment === "comp_off"
+    ? await db
+        .select({ name: s.leaveTypes.name })
+        .from(s.leaveTypes)
+        .where(
+          and(eq(s.leaveTypes.companyId, companyId), eq(s.leaveTypes.compensatoryOff, true)),
+        )
+        .limit(1)
+    : [{ name: "" }];
+
   const activeEmployees = await db
     .select({
       id: s.employees.id,
@@ -241,6 +255,18 @@ export default async function AttendancePage(
           </div>
         }
       />
+
+      {company.weeklyOffWorkTreatment === "comp_off" && !compOffType?.name && (
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+          <p className="label text-rust mb-1.5">Compensatory offs have nowhere to go</p>
+          <p className="text-sm text-ink-2 max-w-[76ch]">
+            This company credits a compensatory off for a day worked on a weekly
+            off, and no leave type is marked to receive them — so nothing is
+            being credited. Mark one under Settings → Master data → Leave &amp;
+            holidays.
+          </p>
+        </div>
+      )}
 
       {refusedPunches.length > 0 && (
         <Card padded={false}>

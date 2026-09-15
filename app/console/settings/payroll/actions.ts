@@ -83,6 +83,7 @@ const CONVENTION_FIELDS = [
   "attendanceCutoffDay",
   "postCutoffTreatment",
   "retroLopTreatment",
+  "weeklyOffWorkTreatment",
   "financialYearStartMonth",
 ] as const;
 
@@ -100,6 +101,7 @@ const Schema = z.object({
   attendanceCutoffDay: z.coerce.number().int().min(0).max(31),
   postCutoffTreatment: z.enum(["lag_to_next", "estimate_and_true_up"]),
   retroLopTreatment: z.enum(["adjust_next_period", "reopen_run"]),
+  weeklyOffWorkTreatment: z.enum(["ignore", "extra_day", "comp_off"]),
   financialYearStartMonth: z.coerce.number().int().min(1).max(12),
 });
 
@@ -134,6 +136,7 @@ export async function updatePayrollSettings(
     attendanceCutoffDay: fd.get("attendanceCutoffDay") ?? existing.attendanceCutoffDay,
     postCutoffTreatment: String(fd.get("postCutoffTreatment") ?? existing.postCutoffTreatment),
     retroLopTreatment: String(fd.get("retroLopTreatment") ?? existing.retroLopTreatment),
+    weeklyOffWorkTreatment: String(fd.get("weeklyOffWorkTreatment") ?? existing.weeklyOffWorkTreatment),
     financialYearStartMonth: fd.get("financialYearStartMonth") ?? existing.financialYearStartMonth,
   });
 

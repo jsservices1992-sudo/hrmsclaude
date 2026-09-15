@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   computeEmployeePay,
@@ -399,4 +399,57 @@ test("a rounding adjustment is a deduction whichever way it went", () => {
   const roundOff = r.lines.find((l) => l.code === "ROUND_OFF");
   assert.ok(roundOff, "the residue is shown rather than absorbed silently");
   assert.equal(roundOff.kind, "deduction");
+});
+
+describe("Working a weekly off", () => {
+  const withTreatment = (
+    treatment: "ignore" | "extra_day" | "comp_off",
+    offDaysWorked: number,
+  ) =>
+    computeEmployeePay({
+      employee: { ...employee, monthlyGrossPaise: 30_000_00, offDaysWorked },
+      company: { ...company, weeklyOffWorkTreatment: treatment },
+      statutory,
+      year: 2026,
+      month: 9, // 30 days, so a day is exactly ₹1,000
+    });
+
+  test("ignore pays nothing extra — the day was already paid", () => {
+    const r = withTreatment("ignore", 2);
+    assert.equal(r.grossPaise, 30_000_00);
+    assert.ok(!r.lines.some((l) => l.code === "OFF_DAY_WORK"));
+  });
+
+  test("extra day pays a day's wages for each one", () => {
+    const r = withTreatment("extra_day", 2);
+    assert.equal(r.grossPaise, 32_000_00, "two days at ₹1,000 on a 30-day month");
+    const line = r.lines.find((l) => l.code === "OFF_DAY_WORK");
+    assert.equal(line?.amountPaise, 2_000_00);
+    assert.equal(line?.kind, "earning");
+  });
+
+  test("half a day worked is half a day paid", () => {
+    assert.equal(withTreatment("extra_day", 0.5).grossPaise, 30_500_00);
+  });
+
+  test("comp off is leave, not money, so payroll pays nothing extra", () => {
+    const r = withTreatment("comp_off", 2);
+    assert.equal(r.grossPaise, 30_000_00);
+    assert.ok(!r.lines.some((l) => l.code === "OFF_DAY_WORK"));
+  });
+
+  test("nobody working a day off is unaffected whatever the setting", () => {
+    for (const t of ["ignore", "extra_day", "comp_off"] as const) {
+      assert.equal(withTreatment(t, 0).grossPaise, 30_000_00, t);
+    }
+  });
+
+  test("the extra day still reconciles — gross less deductions is net", () => {
+    const r = withTreatment("extra_day", 1);
+    assert.equal(r.grossPaise - r.deductionsPaise, r.netPaise);
+    assert.equal(
+      r.lines.filter((l) => l.kind === "earning").reduce((a, l) => a + l.amountPaise, 0),
+      r.grossPaise,
+    );
+  });
 });

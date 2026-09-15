@@ -248,6 +248,7 @@ export default async function PayrollSettingsPage(
             sandwichRule: company.sandwichRule,
             epfOnActualBasic: company.epfOnActualBasic,
             retroLopTreatment: company.retroLopTreatment,
+            weeklyOffWorkTreatment: company.weeklyOffWorkTreatment,
             financialYearStartMonth: company.financialYearStartMonth,
           }}
         />
@@ -529,6 +530,7 @@ export default async function PayrollSettingsPage(
               sandwichRule: company.sandwichRule,
               epfOnActualBasic: company.epfOnActualBasic,
               retroLopTreatment: company.retroLopTreatment,
+              weeklyOffWorkTreatment: company.weeklyOffWorkTreatment,
               financialYearStartMonth: company.financialYearStartMonth,
               payDayConvention: company.payDayConvention,
               payDayOfMonth: company.payDayOfMonth,

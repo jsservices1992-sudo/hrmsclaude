@@ -381,6 +381,9 @@ export async function previewRun(args: {
   const lopByEmployee = Object.fromEntries(
     attendance.map((a) => [a.employeeId, a.lopDays]),
   );
+  const offDaysByEmployee = Object.fromEntries(
+    attendance.map((a) => [a.employeeId, a.offDaysWorked]),
+  );
 
   // Persisted ESIC coverage for this contribution period.
   const { period, financialYear } = contributionPeriodKey(args.year, args.month);
@@ -400,6 +403,7 @@ export async function previewRun(args: {
   const companyConfig: CompanyConfig = {
     prorationBasis: company.prorationBasis as ProrationBasis,
     standardDays: company.standardDays,
+    weeklyOffWorkTreatment: company.weeklyOffWorkTreatment,
     roundingMode: company.roundingMode as RoundingMode,
     roundComponents: company.roundComponents,
     roundGross: company.roundGross,
@@ -567,6 +571,7 @@ export async function previewRun(args: {
         dateOfJoining: emp.dateOfJoining,
         dateOfExit: emp.dateOfExit,
         lopDays: lopByEmployee[emp.id] ?? 0,
+        offDaysWorked: offDaysByEmployee[emp.id] ?? 0,
         hadPriorPfMembership: emp.hadPriorPfMembership,
         pfOptedIn: emp.pfOptedIn,
         vpfPercent: emp.vpfPercent,

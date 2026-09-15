@@ -82,6 +82,7 @@ export type SettingsValues = {
   sandwichRule: boolean;
   epfOnActualBasic: boolean;
   retroLopTreatment: string;
+  weeklyOffWorkTreatment: string;
   financialYearStartMonth: number;
   payDayConvention?: string;
   payDayOfMonth?: number;
@@ -122,6 +123,7 @@ export function PayrollSettingsForm({
           {values.sandwichRule && <input type="hidden" name="sandwichRule" value="on" />}
           {values.epfOnActualBasic && <input type="hidden" name="epfOnActualBasic" value="on" />}
           <input type="hidden" name="retroLopTreatment" value={values.retroLopTreatment} />
+          <input type="hidden" name="weeklyOffWorkTreatment" value={values.weeklyOffWorkTreatment} />
           <input type="hidden" name="financialYearStartMonth" value={values.financialYearStartMonth} />
         </>
       )}
@@ -157,6 +159,18 @@ export function PayrollSettingsForm({
             ) : (
               <input type="hidden" name="standardDays" value={values.standardDays} />
             )}
+            <Select
+              label="Worked on a weekly off or holiday"
+              name="weeklyOffWorkTreatment"
+              defaultValue={values.weeklyOffWorkTreatment}
+              disabled={d}
+              hint="The day itself is paid either way. This is what is owed on top."
+              options={[
+                { id: "ignore", label: "Nothing — the day was already paid" },
+                { id: "extra_day", label: "An extra day's wages" },
+                { id: "comp_off", label: "A compensatory off" },
+              ]}
+            />
             <Select
               label="Retrospective loss of pay" name="retroLopTreatment" defaultValue={values.retroLopTreatment} disabled={d}
               options={[

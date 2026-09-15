@@ -1,0 +1,1 @@
+ALTER TABLE "attendance_inputs" ADD COLUMN "off_days_worked" real DEFAULT 0 NOT NULL;

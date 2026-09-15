@@ -255,6 +255,7 @@ export async function persistMonth(args: {
 
       /* Refresh the payroll input. */
       const lop = m.summary.lopDays;
+      const offWorked = m.summary.offDaysWorked;
       const existingInput = await tx
         .select()
         .from(s.attendanceInputs)
@@ -272,7 +273,7 @@ export async function persistMonth(args: {
         // made right before running payroll.
         if (!existingInput[0].overridden) {
           await tx.update(s.attendanceInputs)
-            .set({ lopDays: lop })
+            .set({ lopDays: lop, offDaysWorked: offWorked })
             .where(eq(s.attendanceInputs.id, existingInput[0].id));
         }
       } else {
@@ -283,10 +284,70 @@ export async function persistMonth(args: {
             periodYear: args.year,
             periodMonth: args.month,
             lopDays: lop,
+            offDaysWorked: offWorked,
           });
       }
     }
   });
 
+  await creditCompensatoryOffs({ companyId: args.companyId, months });
+
   return months;
+}
+
+/**
+ * Turns days worked on a weekly off into leave, where the company has
+ * chosen that.
+ *
+ * The balance is set to the period's own figure rather than added to,
+ * because recomputing a month is routine — attendance is corrected, the
+ * button is pressed again — and adding would grant the same Sunday twice
+ * every time. Set means recomputing lands on the same answer however
+ * often it runs, which is the property that makes recomputing safe.
+ *
+ * A company with nowhere to put the credit is not silently ignored: the
+ * leave type has to be marked as the compensatory one, and until it is,
+ * nothing is credited and the attendance screen says so.
+ */
+async function creditCompensatoryOffs(args: {
+  companyId: string;
+  months: { employeeId: string; summary: { offDaysWorked: number } }[];
+}): Promise<void> {
+  const [company] = await db
+    .select({ treatment: s.companies.weeklyOffWorkTreatment })
+    .from(s.companies)
+    .where(eq(s.companies.id, args.companyId))
+    .limit(1);
+  if (company?.treatment !== "comp_off") return;
+
+  const [type] = await db
+    .select({ name: s.leaveTypes.name, encashable: s.leaveTypes.encashable })
+    .from(s.leaveTypes)
+    .where(
+      and(
+        eq(s.leaveTypes.companyId, args.companyId),
+        eq(s.leaveTypes.compensatoryOff, true),
+      ),
+    )
+    .limit(1);
+  if (!type) return;
+
+  const asOf = new Date().toISOString().slice(0, 10);
+  for (const m of args.months) {
+    if (m.summary.offDaysWorked <= 0) continue;
+    await db
+      .insert(s.leaveBalances)
+      .values({
+        id: randomUUID(),
+        employeeId: m.employeeId,
+        leaveType: type.name,
+        balanceDays: m.summary.offDaysWorked,
+        encashable: type.encashable,
+        asOf,
+      })
+      .onConflictDoUpdate({
+        target: [s.leaveBalances.employeeId, s.leaveBalances.leaveType],
+        set: { balanceDays: m.summary.offDaysWorked, asOf },
+      });
+  }
 }

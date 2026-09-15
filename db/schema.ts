@@ -45,6 +45,20 @@ export const companies = pgTable("companies", {
     .notNull()
     .default("calendar_days"),
   standardDays: integer("standard_days").notNull().default(26),
+  /**
+   * What is owed when somebody works a weekly off or a holiday.
+   *
+   * The day itself is already paid either way — that is what a weekly
+   * off is — so "ignore" is not stinginess, it is the position that the
+   * day was covered. The other two are what a company chooses to give on
+   * top, and both are common enough in India that neither can be the
+   * silent default.
+   */
+  weeklyOffWorkTreatment: text("weekly_off_work_treatment", {
+    enum: ["ignore", "extra_day", "comp_off"],
+  })
+    .notNull()
+    .default("ignore"),
   sandwichRule: boolean("sandwich_rule")
     .notNull()
     .default(false),
@@ -944,6 +958,8 @@ export const payrollEmployeeSummaries = pgTable(
     paidDays: real("paid_days").notNull(),
     totalDays: real("total_days").notNull(),
     lopDays: real("lop_days").notNull().default(0),
+    /** Weekly-off and holiday days actually worked in the period. */
+    offDaysWorked: real("off_days_worked").notNull().default(0),
     grossPaise: bigint("gross_paise", { mode: "number" }).notNull(),
     deductionsPaise: bigint("deductions_paise", { mode: "number" }).notNull(),
     employerCostPaise: bigint("employer_cost_paise", { mode: "number" }).notNull(),
@@ -1199,6 +1215,11 @@ export const leaveTypes = pgTable(
      * payroll path is reused rather than rebuilt, and `annualDays` is
      * how many may be taken.
      */
+    /**
+     * Marks the type compensatory offs are credited to. One per company;
+     * a credit with nowhere to go is reported rather than dropped.
+     */
+    compensatoryOff: boolean("compensatory_off").notNull().default(false),
     restrictedHoliday: boolean("restricted_holiday")
       .notNull()
       .default(false),
@@ -1248,6 +1269,8 @@ export const attendanceInputs = pgTable(
     periodYear: integer("period_year").notNull(),
     periodMonth: integer("period_month").notNull(),
     lopDays: real("lop_days").notNull().default(0),
+    /** Weekly-off and holiday days actually worked in the period. */
+    offDaysWorked: real("off_days_worked").notNull().default(0),
     /**
      * A hand override survives the next "Recompute" click — otherwise a
      * manual correction made right before running payroll is silently

@@ -50,6 +50,11 @@ export type EmployeeInput = {
   dateOfJoining: string;
   dateOfExit?: string | null;
   lopDays: number;
+  /**
+   * Weekly-off and holiday days actually worked. Paid for only when the
+   * company has chosen to pay for them; the day itself was already paid.
+   */
+  offDaysWorked?: number;
   hadPriorPfMembership: boolean;
   pfOptedIn: boolean;
   vpfPercent: number;
@@ -96,6 +101,8 @@ export type EmployeeInput = {
 export type CompanyConfig = {
   prorationBasis: ProrationBasis;
   standardDays: number;
+  /** What is owed for work done on a weekly off or holiday. */
+  weeklyOffWorkTreatment?: "ignore" | "extra_day" | "comp_off";
   roundingMode: RoundingMode;
   /** Levels rounding is applied at — FR-SET-4. Net only, by default. */
   roundComponents?: boolean;
@@ -375,6 +382,28 @@ export function computeEmployeePay(args: {
      deduction. An earning one-off must also raise `gross` explicitly —
      unlike `deductions`/`employerCost` below, `gross` is a local
      accumulator built once above, not re-derived from `lines`. */
+  /* An extra day's wages for a day off that was worked, where the
+     company pays for those. Priced on the same divisor the rest of the
+     month uses, so a day is worth what a day is worth — and added as an
+     earning rather than as extra paid days, because the day was already
+     inside the month and already paid. Compensatory off is not money and
+     is credited to leave when attendance is derived, not here. */
+  const offDaysWorked = e.offDaysWorked ?? 0;
+  if (c.weeklyOffWorkTreatment === "extra_day" && offDaysWorked > 0) {
+    const perDay = proration.divisor > 0 ? e.monthlyGrossPaise / proration.divisor : 0;
+    const amount = Math.round(perDay * offDaysWorked);
+    if (amount > 0) {
+      gross += amount;
+      lines.push({
+        code: "OFF_DAY_WORK",
+        label: "Worked on a day off",
+        kind: "earning",
+        amountPaise: amount,
+        basis: `${offDaysWorked} day(s) worked on a weekly off or holiday, at ${proration.divisor} days to the month`,
+      });
+    }
+  }
+
   for (const adj of e.oneOffLines ?? []) {
     if (adj.kind === "earning") gross += adj.amountPaise;
     lines.push({

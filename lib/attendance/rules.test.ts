@@ -128,6 +128,7 @@ function mk(date: string, status: DayResult["status"], payable: boolean): DayRes
     status,
     workedMinutes: 0,
     lateMinutes: 0,
+    offDayWorkedUnits: 0,
     lopUnits: payable ? 0 : 1,
     isPayable: payable,
     basis: status,
@@ -249,6 +250,7 @@ describe("Month summary", () => {
 describe("Overtime", () => {
   const mkWorked = (status: DayResult["status"], mins: number): DayResult => ({
     date: "2026-09-10",
+    offDayWorkedUnits: 0,
     status,
     workedMinutes: mins,
     lateMinutes: 0,
@@ -403,5 +405,58 @@ describe("Leave application validation", () => {
   test("probation warns for types that do not accrue then", () => {
     const r = app({ onProbation: true });
     assert.ok(r.warnings.some((w) => /probation/.test(w)));
+  });
+});
+
+describe("Working a weekly off or a holiday", () => {
+  const shift = {
+    code: "GEN", startMinute: 540, endMinute: 1080, graceMinutes: 10,
+    fullDayMinutes: 480, halfDayMinutes: 240,
+  };
+  const full = [{ inMinute: 540, outMinute: 1080 }];   // nine hours
+  const half = [{ inMinute: 540, outMinute: 800 }];    // four and a bit
+  const brief = [{ inMinute: 540, outMinute: 600 }];   // an hour
+
+  test("the day stays a weekly off, and stays paid", () => {
+    const d = deriveDay({ date: "2026-09-13", dayType: "weekly_off", punches: full, shift });
+    assert.equal(d.status, "weekly_off", "working it does not turn it into a working day");
+    assert.equal(d.lopUnits, 0);
+    assert.equal(d.isPayable, true, "it was already paid — that does not change");
+  });
+
+  test("but the work is counted, so something can be owed for it", () => {
+    assert.equal(deriveDay({ date: "2026-09-13", dayType: "weekly_off", punches: full, shift }).offDayWorkedUnits, 1);
+    assert.equal(deriveDay({ date: "2026-09-13", dayType: "weekly_off", punches: half, shift }).offDayWorkedUnits, 0.5);
+  });
+
+  test("an hour on a Sunday is not a day worked", () => {
+    const d = deriveDay({ date: "2026-09-13", dayType: "weekly_off", punches: brief, shift });
+    assert.equal(d.offDayWorkedUnits, 0, "popping in does not earn a compensatory day");
+    assert.equal(d.basis, "Weekly off");
+  });
+
+  test("a weekly off nobody worked counts nothing", () => {
+    const d = deriveDay({ date: "2026-09-13", dayType: "weekly_off", punches: [], shift });
+    assert.equal(d.offDayWorkedUnits, 0);
+    assert.equal(d.basis, "Weekly off");
+  });
+
+  test("a holiday behaves the same way", () => {
+    const d = deriveDay({ date: "2026-10-02", dayType: "holiday", punches: full, shift });
+    assert.equal(d.status, "holiday");
+    assert.equal(d.offDayWorkedUnits, 1);
+    assert.equal(d.basis, "Holiday, worked");
+  });
+
+  test("the month totals what was worked on days off", () => {
+    const summary = summariseMonth([
+      deriveDay({ date: "2026-09-06", dayType: "weekly_off", punches: full, shift }),
+      deriveDay({ date: "2026-09-13", dayType: "weekly_off", punches: half, shift }),
+      deriveDay({ date: "2026-09-20", dayType: "weekly_off", punches: [], shift }),
+      deriveDay({ date: "2026-09-07", dayType: "working", punches: full, shift }),
+    ]);
+    assert.equal(summary.offDaysWorked, 1.5);
+    assert.equal(summary.weeklyOffs, 3, "all three are still weekly offs");
+    assert.equal(summary.lopDays, 0);
   });
 });

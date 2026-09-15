@@ -137,6 +137,7 @@ export async function saveLeaveType(_prev: MasterState, fd: FormData): Promise<M
   const allowNegative = bool(fd.get("allowNegative"));
   const rounding = String(fd.get("rounding") ?? "none") as "none" | "half_up" | "down";
   const restrictedHoliday = bool(fd.get("restrictedHoliday"));
+  const compensatoryOff = bool(fd.get("compensatoryOff"));
 
   /* The code cannot be changed once a record exists, so the form shows it
      read-only and the check below is about a new record. It used to be
@@ -150,11 +151,33 @@ export async function saveLeaveType(_prev: MasterState, fd: FormData): Promise<M
   const values = {
     code, name, annualDays, frequency, paid, accruesDuringProbation,
     carryForwardCap, encashable, allowNegative, rounding, restrictedHoliday,
+    compensatoryOff,
   };
 
   /* Two optional-holiday types would split one allowance in half
      without saying so, and the portal would have to guess which one to
      offer. One per company. */
+  /* Same reasoning for the compensatory-off type: days worked on a
+     weekly off are credited to one balance, and two candidates would
+     mean picking one silently. */
+  if (compensatoryOff) {
+    const others = await db
+      .select({ id: s.leaveTypes.id, name: s.leaveTypes.name })
+      .from(s.leaveTypes)
+      .where(
+        and(
+          eq(s.leaveTypes.companyId, companyId),
+          eq(s.leaveTypes.compensatoryOff, true),
+        ),
+      );
+    const clashing = others.find((o) => o.id !== id);
+    if (clashing) {
+      return {
+        error: `${clashing.name} is already the compensatory-off type. Turn that off first — a company has one.`,
+      };
+    }
+  }
+
   if (restrictedHoliday) {
     const others = await db
       .select({ id: s.leaveTypes.id, name: s.leaveTypes.name })

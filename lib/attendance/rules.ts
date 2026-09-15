@@ -59,6 +59,17 @@ export type DayResult = {
   lopUnits: number;
   isPayable: boolean;
   basis: string;
+  /**
+   * 0, 0.5 or 1 — how much of a weekly off or holiday was actually
+   * worked.
+   *
+   * Separate from `lopUnits` and from the status, because the day stays
+   * a weekly off: it was already paid, and nothing about having worked
+   * it changes that. What the company owes on top — an extra day's
+   * wages, a compensatory off, or nothing — is its own decision, and
+   * this is the count that decision is applied to.
+   */
+  offDayWorkedUnits: number;
 };
 
 export function workedMinutes(punches: Punch[]): number {
@@ -85,6 +96,7 @@ export function deriveDay(input: DayInput): DayResult {
     date: input.date,
     workedMinutes: worked,
     lateMinutes: late,
+    offDayWorkedUnits: 0,
   };
 
   if (input.onDuty) {
@@ -103,11 +115,22 @@ export function deriveDay(input: DayInput): DayResult {
     };
   }
 
-  if (input.dayType === "weekly_off") {
-    return { ...base, status: "weekly_off", lopUnits: 0, isPayable: true, basis: "Weekly off" };
-  }
-  if (input.dayType === "holiday") {
-    return { ...base, status: "holiday", lopUnits: 0, isPayable: true, basis: "Holiday" };
+  if (input.dayType === "weekly_off" || input.dayType === "holiday") {
+    /* The day stays what it was and stays paid — working a weekly off
+       does not make it a working day, and counting it as one would pay
+       for the same day twice. What is recorded is only that it was
+       worked; what the company owes for that is decided elsewhere. */
+    const label = input.dayType === "weekly_off" ? "Weekly off" : "Holiday";
+    const offDayWorkedUnits =
+      worked >= shift.fullDayMinutes ? 1 : worked >= shift.halfDayMinutes ? 0.5 : 0;
+    return {
+      ...base,
+      status: input.dayType === "weekly_off" ? "weekly_off" : "holiday",
+      lopUnits: 0,
+      isPayable: true,
+      offDayWorkedUnits,
+      basis: offDayWorkedUnits > 0 ? `${label}, worked` : label,
+    };
   }
 
   if (worked >= shift.fullDayMinutes) {
@@ -192,6 +215,8 @@ export type MonthSummary = {
   leaveDays: number;
   weeklyOffs: number;
   holidays: number;
+  /** Weekly-off and holiday days actually worked, in the same units. */
+  offDaysWorked: number;
   lopDays: number;
   lateDays: number;
   workedHours: number;
@@ -208,6 +233,7 @@ export function summariseMonth(days: DayResult[]): MonthSummary {
     weeklyOffs: count("weekly_off"),
     holidays: count("holiday"),
     lopDays: Number(days.reduce((a, d) => a + d.lopUnits, 0).toFixed(2)),
+    offDaysWorked: Number(days.reduce((a, d) => a + d.offDayWorkedUnits, 0).toFixed(2)),
     lateDays: days.filter((d) => d.lateMinutes > 0).length,
     workedHours: Number((days.reduce((a, d) => a + d.workedMinutes, 0) / 60).toFixed(1)),
   };
