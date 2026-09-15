@@ -219,7 +219,7 @@ export function BranchForm({
         <FormField
           label="Office longitude"
           error={err("longitude")}
-          hint="From Google Maps: right-click the office, copy the pair."
+          hint="Set by the button above, or paste a pair from a map — the button is the one that does not go wrong."
         >
           <Input name="longitude" type="number" step="any" defaultValue={values.longitude ?? ""} invalid={!!err("longitude")} />
         </FormField>
@@ -414,21 +414,57 @@ export function CompanyLogoForm({
  * Typing a latitude and longitude copied from a map is where this goes
  * wrong: a pin dropped on the wrong side of a building, or a digit lost
  * in transcription, puts the fence hundreds of metres from the door and
- * every refusal then blames the employee. Setting it from a phone in the
- * lobby removes the transcription entirely.
+ * every refusal then blames the employee.
+ *
+ * Every outcome says something. A browser that refuses a location fails
+ * silently by default — the first version of this put its message in the
+ * same grey hint text as the instructions, which is indistinguishable
+ * from nothing having happened, and that is what a dead button looks
+ * like.
  */
 function UseMyLocation() {
-  const [state, setState] = useState<
-    { status: "idle" | "locating" } | { status: "done" | "error"; message: string }
-  >({ status: "idle" });
+  const [state, setState] = useState<{
+    tone: "idle" | "busy" | "ok" | "bad";
+    message: string;
+  }>({
+    tone: "idle",
+    message:
+      "Press this standing at the office. More reliable than copying a pin off a map — a pin on the wrong side of the building puts the fence hundreds of metres from the door.",
+  });
 
-  const fill = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const fill = async (event: React.MouseEvent<HTMLButtonElement>) => {
     const form = event.currentTarget.closest("form");
-    if (!form || !("geolocation" in navigator)) {
-      setState({ status: "error", message: "This browser cannot share a location." });
+    if (!form) return;
+
+    if (!window.isSecureContext) {
+      setState({
+        tone: "bad",
+        message: "Browsers only share a location over https. Open this page on the deployed site rather than over plain http.",
+      });
       return;
     }
-    setState({ status: "locating" });
+    if (!("geolocation" in navigator)) {
+      setState({ tone: "bad", message: "This browser cannot share a location at all." });
+      return;
+    }
+
+    /* Asked in advance so a blocked permission can be named, rather than
+       reported as a generic failure the person cannot act on. */
+    try {
+      const permission = await navigator.permissions?.query({ name: "geolocation" as PermissionName });
+      if (permission?.state === "denied") {
+        setState({
+          tone: "bad",
+          message: "Location is blocked for this site in your browser. Allow it — the padlock in the address bar — and press again.",
+        });
+        return;
+      }
+    } catch {
+      /* Some browsers do not implement the query; fall through and let
+         getCurrentPosition answer instead. */
+    }
+
+    setState({ tone: "busy", message: "Asking your device where it is…" });
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const set = (name: string, value: string) => {
@@ -437,15 +473,32 @@ function UseMyLocation() {
         };
         set("latitude", position.coords.latitude.toFixed(6));
         set("longitude", position.coords.longitude.toFixed(6));
+        const accuracy = Math.round(position.coords.accuracy);
         setState({
-          status: "done",
-          message: `Filled in, accurate to about ${Math.round(position.coords.accuracy)}m. Save to keep it.`,
+          tone: accuracy > 100 ? "bad" : "ok",
+          message:
+            accuracy > 100
+              ? `Filled in, but your device only knows where it is to within ${accuracy}m — on a laptop that is usually the wifi's guess, not the building. Do this on a phone at the office before saving.`
+              : `Filled in, accurate to about ${accuracy}m. Press Save branch to keep it.`,
         });
       },
-      () => setState({ status: "error", message: "Your location could not be read." }),
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
+      (error) => {
+        setState({
+          tone: "bad",
+          message:
+            error.code === error.PERMISSION_DENIED
+              ? "You refused the location prompt. Allow it for this site and press again."
+              : error.code === error.TIMEOUT
+                ? "Your device took too long to find itself. Near a window, or on a phone, it is quicker."
+                : "Your device could not work out where it is. Check that location services are switched on.",
+        });
+      },
+      { enableHighAccuracy: true, timeout: 20_000, maximumAge: 0 },
     );
   };
+
+  const tone =
+    state.tone === "ok" ? "text-teal" : state.tone === "bad" ? "text-rust" : "text-ink-3";
 
   return (
     <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap items-center gap-3">
@@ -454,13 +507,9 @@ function UseMyLocation() {
         onClick={fill}
         className="rounded-md border border-line bg-surface px-3 py-2 text-sm hover:border-brass"
       >
-        {state.status === "locating" ? "Finding you…" : "Use my current location"}
+        {state.tone === "busy" ? "Finding you…" : "Use my current location"}
       </button>
-      <span className="text-xs text-ink-3 max-w-[60ch]">
-        {state.status === "done" || state.status === "error"
-          ? state.message
-          : "Press this standing at the office. More reliable than copying a pin off a map — a pin on the wrong side of the building puts the fence hundreds of metres from the door."}
-      </span>
+      <span className={`text-xs max-w-[60ch] ${tone}`}>{state.message}</span>
     </div>
   );
 }
