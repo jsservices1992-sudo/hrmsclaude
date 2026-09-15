@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   createUser,
   updateUser,
@@ -8,7 +8,7 @@ import {
   endUserSessions,
   type UserAdminState,
 } from "./actions";
-import { ASSIGNABLE_ROLES, SCOPE_LABELS } from "@/lib/auth/user-admin";
+import { ASSIGNABLE_ROLES, SCOPE_LABELS, SCOPE_FOR_ROLE } from "@/lib/auth/user-admin";
 import { Input, Select, SubmitButton } from "@/components/console/ui";
 
 type Option = { id: string; label: string };
@@ -45,6 +45,11 @@ function Fields({
     employeeId: string | null; compensationScope: string; active: boolean;
   };
 }) {
+  const [role, setRole] = useState(editing?.role ?? "hr_manager");
+  const [scope, setScope] = useState(
+    editing?.compensationScope ?? SCOPE_FOR_ROLE.hr_manager,
+  );
+
   return (
     <>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -54,7 +59,19 @@ function Fields({
         </label>
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Role</span>
-          <Select name="role" defaultValue={editing?.role ?? "hr_manager"}>
+          <Select
+            name="role"
+            value={role}
+            onChange={(e) => {
+              const next = e.target.value;
+              setRole(next);
+              /* The scope follows the role until somebody chooses
+                 otherwise. A payroll manager created with no pay access
+                 can sign in and reach none of the screens the role
+                 exists for, which reads as the account being broken. */
+              setScope(SCOPE_FOR_ROLE[next] ?? scope);
+            }}
+          >
             {ASSIGNABLE_ROLES.map((r) => (
               <option key={r.role} value={r.role}>
                 {r.label} — {r.note}
@@ -64,11 +81,22 @@ function Fields({
         </label>
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Pay data they may see</span>
-          <Select name="compensationScope" defaultValue={editing?.compensationScope ?? "none"}>
+          <Select
+            name="compensationScope"
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+          >
             {SCOPE_LABELS.map((s) => (
               <option key={s.scope} value={s.scope}>{s.label}</option>
             ))}
           </Select>
+          <span className="text-xs text-ink-3">
+            {role === "payroll_manager"
+              ? "Payroll screens — runs, registers, settlements — all need this company's pay."
+              : role === "employee"
+                ? "Their own payslip only. Anything wider lets them read colleagues' pay."
+                : "Separate from the role: what this person may see, not what they may do."}
+          </span>
         </label>
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Company</span>

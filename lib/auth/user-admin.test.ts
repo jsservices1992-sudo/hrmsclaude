@@ -126,3 +126,28 @@ test("every assignable role is a real role, listed once", () => {
   assert.equal(new Set(roles).size, roles.length);
   assert.deepEqual(roles.sort(), ["admin", "auditor", "employee", "hr_manager", "payroll_manager"]);
 });
+
+test("a payroll manager must be able to see the pay they manage", () => {
+  const base = {
+    email: "p@x.test", name: "P", role: "payroll_manager" as const,
+    companyId: "c1", employeeId: null, active: true,
+  };
+  for (const compensationScope of ["none", "own"] as const) {
+    const issues = checkUserDraft({ ...base, compensationScope });
+    assert.ok(
+      issues.some((i) => i.includes("payroll manager needs access")),
+      `scope ${compensationScope} should be refused`,
+    );
+  }
+  assert.deepEqual(checkUserDraft({ ...base, compensationScope: "company" }), []);
+});
+
+test("the other roles are left alone by that rule", () => {
+  for (const role of ["admin", "hr_manager"] as const) {
+    const issues = checkUserDraft({
+      email: "x@x.test", name: "X", role, companyId: "c1",
+      employeeId: null, compensationScope: "none", active: true,
+    });
+    assert.deepEqual(issues, [], `${role} may be created without pay access`);
+  }
+});

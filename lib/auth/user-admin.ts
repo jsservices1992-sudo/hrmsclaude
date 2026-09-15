@@ -75,6 +75,20 @@ export function checkUserDraft(draft: UserDraft): UserIssue[] {
     issues.push("An auditor reviews other people's figures, not their own.");
   }
 
+  /* A payroll manager whose scope is "none" or "own" can sign in and do
+     nothing: every page they exist for — runs, registers, settlements —
+     is gated on seeing company pay data, so they are bounced off each
+     one without being told why. The role and the scope have to agree. */
+  if (
+    draft.role === "payroll_manager" &&
+    draft.compensationScope !== "company" &&
+    draft.compensationScope !== "all"
+  ) {
+    issues.push(
+      "A payroll manager needs access to this company's pay data — otherwise every payroll screen refuses them. Choose “this company's pay”.",
+    );
+  }
+
   return issues;
 }
 
@@ -122,3 +136,19 @@ export function checkNoLockout(
 
   return issues;
 }
+
+/**
+ * The pay access each role is created with.
+ *
+ * A default, not a rule — an administrator can widen or narrow it. It
+ * exists because the previous default was "none" for everybody, which
+ * quietly produced payroll managers who could sign in and reach none of
+ * the screens their role is for.
+ */
+export const SCOPE_FOR_ROLE: Record<string, string> = {
+  admin: "company",
+  payroll_manager: "company",
+  hr_manager: "none",
+  auditor: "company",
+  employee: "own",
+};
