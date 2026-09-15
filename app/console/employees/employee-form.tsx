@@ -170,7 +170,7 @@ export default function EmployeeForm({
       {values.id && <input type="hidden" name="employeeId" value={values.id} />}
 
       <Section title="Identity">
-        <Field label="Employee code" name="empCode" defaultValue={values.empCode} required error={err("empCode")} />
+        <Field label="Employee code" name="empCode" defaultValue={values.empCode} required error={err("empCode")} hint="Your own staff number — EMP001, JM0010. It identifies this person in every import file." />
         <Field label="First name" name="firstName" defaultValue={values.firstName} required error={err("firstName")} />
         <Field label="Middle name" name="middleName" defaultValue={values.middleName} error={err("middleName")} />
         <Field label="Last name" name="lastName" defaultValue={values.lastName} required error={err("lastName")} />

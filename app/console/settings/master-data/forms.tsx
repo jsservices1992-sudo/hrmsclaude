@@ -40,6 +40,7 @@ export function DepartmentForm({
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Code</span>
         <Input name="code" required defaultValue={editing?.code} className="w-28" />
+        <span className="text-xs text-ink-3">Your own short label for the department — ENG, HR, SALES. It is what the employee import file refers to.</span>
       </label>
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Cost centre</span>
@@ -110,6 +111,7 @@ export function LeaveTypeForm({
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Code</span>
           <Input name="code" required defaultValue={editing?.code} className="w-24" disabled={!!editing} />
+          <span className="text-xs text-ink-3">Your own short label for this leave type — EL, CL, SL. Used on payslips and in the balance import.</span>
         </label>
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Name</span>
@@ -245,6 +247,7 @@ export function ShiftForm({
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Code</span>
           <Input name="code" required defaultValue={editing?.code} className="w-24" disabled={!!editing} />
+          <span className="text-xs text-ink-3">Your own short label for this shift — GEN, NIGHT, SHIFT-A.</span>
         </label>
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Name</span>
@@ -317,6 +320,7 @@ export function PayComponentForm({
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Code</span>
           <Input name="code" required defaultValue={editing?.code} className="w-28" disabled={!!editing} />
+          <span className="text-xs text-ink-3">Your own short label for this component — BASIC, HRA, SPL. It appears on the payslip and cannot be changed later.</span>
         </label>
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Name</span>
@@ -403,6 +407,7 @@ export function LoanSchemeForm({
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Code</span>
           <Input name="code" required defaultValue={editing?.code} className="w-24" disabled={!!editing} />
+          <span className="text-xs text-ink-3">Your own short label for this scheme — ADVANCE, VEHICLE, EMERGENCY.</span>
         </label>
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Label</span>
@@ -486,6 +491,7 @@ export function GlAccountForm({
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Code</span>
         <Input name="code" required defaultValue={editing?.code} className="w-28" />
+        <span className="text-xs text-ink-3">The account code from your accounting software — 5001, 60200. It must match, or the journal will not post.</span>
       </label>
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Name</span>
@@ -595,6 +601,7 @@ export function VariablePayTypeForm({
             className="w-32 font-mono"
             placeholder="auto"
           />
+            <span className="text-xs text-ink-3">Your own short label for this pay type — INCENTIVE, OT, DAMAGE.</span>
         </label>
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Default ₹</span>

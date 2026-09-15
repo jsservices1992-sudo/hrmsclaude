@@ -9,6 +9,11 @@ import * as s from "@/db/schema";
 import { hashPassword } from "@/lib/auth/password";
 import { createSession } from "@/lib/auth/session";
 import {
+  starterComponents,
+  STARTER_STRUCTURE_NAME,
+  STARTER_STRUCTURE_DESCRIPTION,
+} from "@/lib/payroll/starter-structure";
+import {
   checkSignup,
   normaliseEmail,
   normaliseCompanyName,
@@ -146,6 +151,38 @@ export async function signup(
         active: true,
         createdAt: now,
       });
+
+    /* A working salary structure, rather than an empty one. See
+       lib/payroll/starter-structure.ts for why this is not left blank. */
+    const components = starterComponents();
+    await tx.insert(s.payComponents).values(
+      components.map((c) => ({ ...c, companyId })),
+    );
+
+    const structureId = randomUUID();
+    await tx.insert(s.salaryStructures).values({
+      id: structureId,
+      companyId,
+      name: STARTER_STRUCTURE_NAME,
+      description: STARTER_STRUCTURE_DESCRIPTION,
+      minBasicPercentOfGross: 40,
+      gradeId: null,
+      isDefault: true,
+      active: true,
+      effectiveFrom: now.slice(0, 10),
+    });
+
+    await tx.insert(s.salaryStructureLines).values(
+      components.map((c) => ({
+        id: randomUUID(),
+        structureId,
+        componentId: c.id,
+        calcMethodOverride: null,
+        percentValueOverride: null,
+        fixedPaiseOverride: null,
+        sequence: c.sequence,
+      })),
+    );
 
     await tx
       .insert(s.auditLog)

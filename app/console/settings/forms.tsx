@@ -178,7 +178,11 @@ export function BranchForm({
         <FormField label="Branch name" error={err("name")}>
           <Input name="name" defaultValue={values.name ?? ""} invalid={!!err("name")} />
         </FormField>
-        <FormField label="Code" error={err("code")}>
+        <FormField
+          label="Code"
+          error={err("code")}
+          hint="Your own short label for this branch — BLR, MUM, GGN. It is what the employee import file refers to."
+        >
           <Input name="code" defaultValue={values.code ?? ""} invalid={!!err("code")} />
         </FormField>
         <FormField label="State / UT" error={err("stateCode")}>

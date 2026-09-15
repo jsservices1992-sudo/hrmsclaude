@@ -14,6 +14,11 @@ import {
 } from "@/lib/hris/identifiers";
 import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany } from "@/lib/auth/session";
+import {
+  starterComponents,
+  STARTER_STRUCTURE_NAME,
+  STARTER_STRUCTURE_DESCRIPTION,
+} from "@/lib/payroll/starter-structure";
 
 export type PayrollSettingsState = {
   error?: string;
@@ -482,4 +487,85 @@ export async function clearDepartmentPayrollOverride(
 
   revalidatePath("/console/settings/payroll");
   return { ok: "Override cleared — this department now follows the company's payroll conventions again." };
+}
+
+/**
+ * Creates the ordinary Indian pay break-up for a company that has none.
+ *
+ * The alternative is inventing four components from scratch and deciding,
+ * for each, whether it counts toward EPF, ESIC, professional tax, bonus
+ * and gratuity — twenty-odd statutory questions rather than preferences.
+ * New companies get this at registration; this is the same thing for the
+ * ones created before that existed, and for anyone who cleared theirs out.
+ *
+ * It refuses rather than merges. Reconciling against components that
+ * already exist means guessing whether somebody's "BASIC" is this BASIC,
+ * and getting that wrong rewrites how everyone is paid.
+ */
+export async function createStarterStructure(
+  _prev: PayrollSettingsState,
+  fd: FormData,
+): Promise<PayrollSettingsState> {
+  const { user, error } = await requireAdmin();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const companyId = String(fd.get("companyId") ?? "");
+  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+
+  const existing = await db
+    .select({ id: s.payComponents.id })
+    .from(s.payComponents)
+    .where(eq(s.payComponents.companyId, companyId))
+    .limit(1);
+  if (existing.length > 0) {
+    return {
+      error:
+        "This company already has pay components. Add the missing ones by hand rather than having a second set created alongside them.",
+    };
+  }
+
+  const components = starterComponents();
+  const structureId = randomUUID();
+  const today = new Date().toISOString().slice(0, 10);
+
+  await db.transaction(async (tx) => {
+    await tx.insert(s.payComponents).values(components.map((c) => ({ ...c, companyId })));
+    await tx.insert(s.salaryStructures).values({
+      id: structureId,
+      companyId,
+      name: STARTER_STRUCTURE_NAME,
+      description: STARTER_STRUCTURE_DESCRIPTION,
+      minBasicPercentOfGross: 40,
+      gradeId: null,
+      isDefault: true,
+      active: true,
+      effectiveFrom: today,
+    });
+    await tx.insert(s.salaryStructureLines).values(
+      components.map((c) => ({
+        id: randomUUID(),
+        structureId,
+        componentId: c.id,
+        calcMethodOverride: null,
+        percentValueOverride: null,
+        fixedPaiseOverride: null,
+        sequence: c.sequence,
+      })),
+    );
+  });
+
+  await audit({
+    actor: user.email,
+    action: "payroll.starter_structure_created",
+    entity: "company",
+    entityId: companyId,
+    after: { components: components.map((c) => c.code), structure: STARTER_STRUCTURE_NAME },
+  });
+
+  revalidatePath("/console/settings/payroll");
+  revalidatePath("/console/settings/master-data");
+  revalidatePath("/console/setup");
+  return {
+    ok: `Created ${components.map((c) => c.code).join(", ")} and a default "${STARTER_STRUCTURE_NAME}" structure. Basic is half of gross and special allowance takes the balance — edit either if this company pays differently.`,
+  };
 }

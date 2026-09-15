@@ -10,6 +10,7 @@ import {
   clearDepartmentSalaryStructureOverride,
   type PayrollSettingsState,
 } from "./actions";
+import { createStarterStructure } from "../actions";
 import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
 
 export function CreateStructureForm({
@@ -175,5 +176,44 @@ export function ClearDeptStructureOverrideForm({ id }: { id: string }) {
       <SubmitButton variant="ghost" size="sm" className="underline" pendingText="Working…">Clear</SubmitButton>
       {state.error && <span className="text-xs text-rust">{state.error}</span>}
     </form>
+  );
+}
+
+/**
+ * Offered only when a company has no pay components at all. That state
+ * is not a blank slate waiting for preferences — it is a payroll that
+ * silently values every salary at zero, so the way out is one button
+ * rather than four forms and twenty statutory flags.
+ */
+export function StarterStructureForm({ companyId }: { companyId: string }) {
+  const [state, action] = useActionState<PayrollSettingsState, FormData>(
+    createStarterStructure,
+    {},
+  );
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-ink-2 max-w-[70ch]">
+        This company has no pay components, so any salary entered against it
+        is stored as zero. Create the ordinary Indian break-up to start from
+        — <span className="font-mono text-ink">BASIC</span> at half of gross,{" "}
+        <span className="font-mono text-ink">HRA</span> at 40% of basic,{" "}
+        <span className="font-mono text-ink">CONV</span> for the conveyance
+        allowance, and <span className="font-mono text-ink">SPL</span> taking
+        the balance — with the EPF, ESIC, professional tax, bonus and
+        gratuity flags already set the way the Acts require. Edit any of it
+        afterwards.
+      </p>
+      <p className="text-xs text-ink-3 max-w-[70ch]">
+        Provident fund, ESIC, professional tax and income tax are not
+        components. Payroll computes those from the statutory tables at the
+        rates in force for the month and the state — adding one here would
+        deduct it twice.
+      </p>
+      <form action={action}>
+        <input type="hidden" name="companyId" value={companyId} />
+        <SubmitButton pendingText="Creating…">Create the standard structure</SubmitButton>
+      </form>
+      <FormFeedback state={state} />
+    </div>
   );
 }

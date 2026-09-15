@@ -28,6 +28,7 @@ import {
   CreateStructureForm,
   DepartmentStructureOverrideForm,
   ClearDeptStructureOverrideForm,
+  StarterStructureForm,
 } from "./structures/forms";
 import {
   PageHeader,
@@ -102,6 +103,12 @@ export default async function PayrollSettingsPage(
     .select()
     .from(s.departmentPayrollOverrides)
     .where(eq(s.departmentPayrollOverrides.companyId, companyId));
+
+  const componentCount = await db
+    .select({ id: s.payComponents.id })
+    .from(s.payComponents)
+    .where(eq(s.payComponents.companyId, companyId))
+    .then((r) => r.length);
 
   const structures = await db
     .select()
@@ -333,6 +340,16 @@ export default async function PayrollSettingsPage(
 
       {tab === "structures" && (
         <div className="flex flex-col gap-5">
+          {componentCount === 0 && isAdmin && (
+            <Card padded={false}>
+              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+                <span className="label text-ink-2">Start here</span>
+              </div>
+              <div className="p-4">
+                <StarterStructureForm companyId={companyId} />
+              </div>
+            </Card>
+          )}
           <p className="text-sm text-ink-2 max-w-[70ch]">
             A structure is a named set of pay components. An employee resolves
             to a structure in this order: a pin on their own record, then
