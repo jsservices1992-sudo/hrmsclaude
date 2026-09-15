@@ -327,6 +327,73 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
   return { ok: "Component added. It becomes available to salary structures immediately." };
 }
 
+/**
+ * Removes a pay component that nothing depends on.
+ *
+ * A component is referenced by salary structures and, once payroll has
+ * run, by the lines of every payslip drawn from it. Deleting one of
+ * those would leave a payslip that cannot explain itself, so it is
+ * refused and deactivation offered instead — an inactive component stops
+ * applying to new structures while every historic run still reads back
+ * the way it was paid.
+ *
+ * What this is actually for is the first hour of a company's life,
+ * where something was created by mistake — most often "PF" as an
+ * earning, which is not a component at all — and there is no history to
+ * protect yet.
+ */
+export async function deletePayComponent(_prev: MasterState, fd: FormData): Promise<MasterState> {
+  const id = String(fd.get("id") ?? "");
+  const [existing] = await db.select().from(s.payComponents).where(eq(s.payComponents.id, id)).limit(1);
+  if (!existing) return { error: "Component not found." };
+  const { user, error } = await requireMutator(existing.companyId);
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const [inStructure, inPayslip, referencedBy] = await Promise.all([
+    db
+      .select({ name: s.salaryStructures.name })
+      .from(s.salaryStructureLines)
+      .innerJoin(s.salaryStructures, eq(s.salaryStructures.id, s.salaryStructureLines.structureId))
+      .where(eq(s.salaryStructureLines.componentId, id)),
+    db
+      .select({ id: s.payrollLines.id })
+      .from(s.payrollLines)
+      .where(eq(s.payrollLines.code, existing.code))
+      .limit(1),
+    /* Another component may compute as a percentage of this one. */
+    db
+      .select({ code: s.payComponents.code })
+      .from(s.payComponents)
+      .where(
+        and(
+          eq(s.payComponents.companyId, existing.companyId),
+          eq(s.payComponents.percentOfCode, existing.code),
+        ),
+      ),
+  ]);
+
+  if (inPayslip.length > 0) {
+    return {
+      error: `"${existing.code}" has already been paid on a payslip, so removing it would leave runs that cannot explain their own figures. Untick Active instead — it stops applying from now on and leaves history intact.`,
+    };
+  }
+  if (inStructure.length > 0) {
+    return {
+      error: `"${existing.code}" is part of the ${inStructure.map((r) => `"${r.name}"`).join(", ")} structure. Open it under Settings → Payroll → Salary structures, remove the component there, then delete it here.`,
+    };
+  }
+  if (referencedBy.length > 0) {
+    return {
+      error: `${referencedBy.map((c) => c.code).join(", ")} ${referencedBy.length === 1 ? "is" : "are"} calculated as a percentage of "${existing.code}". Repoint ${referencedBy.length === 1 ? "it" : "them"} first.`,
+    };
+  }
+
+  await db.delete(s.payComponents).where(eq(s.payComponents.id, id));
+  await audit({ actor: user.email, action: "pay_component.removed", entity: "pay_component", entityId: id, before: existing });
+  revalidate();
+  return { ok: `Removed "${existing.code}".` };
+}
+
 /* ----------------------------- loan schemes ----------------------------- */
 
 export async function saveVariablePayType(

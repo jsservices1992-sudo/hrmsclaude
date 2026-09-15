@@ -7,6 +7,7 @@ import {
   saveLeaveType,
   saveHoliday,
   deleteHoliday,
+  deletePayComponent,
   saveShift,
   savePayComponent,
   saveLoanScheme,
@@ -207,6 +208,17 @@ export function HolidayForm({
 
 export function DeleteHolidayForm({ id }: { id: string }) {
   const [state, action] = useActionState<MasterState, FormData>(deleteHoliday, {});
+  return (
+    <form action={action} className="flex items-center gap-2">
+      <input type="hidden" name="id" value={id} />
+      <SubmitButton variant="ghost" size="sm" className="text-rust" pendingText="Working…">Remove</SubmitButton>
+      <FormFeedback state={state} />
+    </form>
+  );
+}
+
+export function DeletePayComponentForm({ id }: { id: string }) {
+  const [state, action] = useActionState<MasterState, FormData>(deletePayComponent, {});
   return (
     <form action={action} className="flex items-center gap-2">
       <input type="hidden" name="id" value={id} />

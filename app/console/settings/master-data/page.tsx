@@ -7,6 +7,7 @@ import { listCompanies } from "@/lib/payroll/load";
 import { getSessionUser, canAccessCompany, scopeCompanies, canMutate } from "@/lib/auth/session";
 import {
   DepartmentForm, GradeForm, LeaveTypeForm, HolidayForm, DeleteHolidayForm,
+  DeletePayComponentForm,
   ShiftForm, PayComponentForm, LoanSchemeForm, GlAccountForm, GlMappingForm,
   VariablePayTypeForm,
 } from "./forms";
@@ -264,7 +265,12 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
                   <TD className="text-xs text-ink-3">{c.calcMethod.replace(/_/g, " ")}</TD>
                   <TD className="text-xs">{c.active ? "Yes" : "No"}</TD>
                   <TD>
-                    {canEdit && <Link href={`/console/settings/master-data?${query("pay")}&edit=${c.id}`} className="text-xs text-ink-3 hover:text-indigo">Edit</Link>}
+                    {canEdit && (
+                      <div className="flex items-center gap-3 justify-end">
+                        <Link href={`/console/settings/master-data?${query("pay")}&edit=${c.id}`} className="text-xs text-ink-3 hover:text-indigo">Edit</Link>
+                        <DeletePayComponentForm id={c.id} />
+                      </div>
+                    )}
                   </TD>
                 </TR>
               ))}
