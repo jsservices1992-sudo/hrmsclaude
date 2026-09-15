@@ -335,6 +335,20 @@ export async function resolveClearanceItem(_prev: ExitState, fd: FormData): Prom
         eq(s.clearanceItems.status, "pending"),
       ),
     );
+
+  /* The case moves with its checklist. It used to sit at `submitted`
+     however much work had been done on it, so nothing on a dashboard
+     could tell an exit nobody has touched from one waiting only on the
+     settlement. Left alone once settled or withdrawn — those are ends,
+     not stages. */
+  const stage = left.length === 0 ? "clearance" : "accepted";
+  if (!["settled", "withdrawn"].includes(row.exitCase.status)) {
+    await db
+      .update(s.exitCases)
+      .set({ status: stage })
+      .where(eq(s.exitCases.id, item.exitCaseId));
+  }
+
   return {
     ok:
       left.length === 0

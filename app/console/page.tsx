@@ -121,6 +121,16 @@ export default async function DashboardPage(props: PageProps<"/console">) {
   const activeJoiners = joiners.filter(
     (x) => x.j.status !== "joined" && x.j.status !== "dropped",
   );
+  /* What an open exit is actually waiting on. "Awaiting settlement" on
+     all of them said the same thing about a case nobody has started and
+     one where only the payment is left. */
+  const EXIT_STAGE: Record<string, string> = {
+    submitted: "clearance not started",
+    manager_approved: "clearance not started",
+    accepted: "clearance in progress",
+    clearance: "clearance done — awaiting settlement",
+  };
+
   const openExits = exits.filter(
     (x) => x.e.status !== "settled" && x.e.status !== "withdrawn",
   );
@@ -241,7 +251,15 @@ export default async function DashboardPage(props: PageProps<"/console">) {
           <StatCard
             label="Open exits"
             value={<span className="inline-flex items-center gap-2">{openExits.length}<IconUserMinus className="h-4 w-4 text-ink-3" /></span>}
-            hint={openExits.length ? <span className="text-rust">Awaiting settlement</span> : undefined}
+            hint={
+              openExits.length ? (
+                <span className="text-rust">
+                  {openExits.filter((x) => x.e.status === "clearance").length > 0
+                    ? "Awaiting settlement"
+                    : "Clearance still open"}
+                </span>
+              ) : undefined
+            }
           />
         )}
         <StatCard
@@ -409,7 +427,8 @@ export default async function DashboardPage(props: PageProps<"/console">) {
                       >
                         {emp.firstName} {emp.lastName}
                         <span className="block text-xs text-ink-2">
-                          {e.exitType.replace(/_/g, " ")} · LWD {e.lastWorkingDay}
+                          {e.exitType.replace(/_/g, " ")} · LWD {e.lastWorkingDay} ·{" "}
+                          {EXIT_STAGE[e.status] ?? e.status.replace(/_/g, " ")}
                         </span>
                       </Link>
                       {ageing > 0 && (

@@ -194,14 +194,35 @@ export async function releaseSettlement(
   const recoverable = fnf.settlement.netPaise < 0;
   const now = new Date().toISOString();
 
-  await db
-    .update(s.fnfSettlements)
-    .set({
-      status: recoverable ? "recoverable" : "approved",
-      approvedBy: user.email,
-      releasedAt: now,
-    })
-    .where(eq(s.fnfSettlements.id, fnf.stored.id));
+  const settlementId = fnf.stored.id;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(s.fnfSettlements)
+      .set({
+        status: recoverable ? "recoverable" : "approved",
+        approvedBy: user.email,
+        releasedAt: now,
+      })
+      .where(eq(s.fnfSettlements.id, settlementId));
+
+    /* The exit itself ends here. Releasing the settlement used to move
+       only the settlement's own status, so the case stayed wherever it
+       started and every dashboard went on counting it as open — for
+       good, with nothing left to do to it. */
+    await tx
+      .update(s.exitCases)
+      .set({ status: "settled" })
+      .where(eq(s.exitCases.id, fnf.exitCase.id));
+
+    /* And the person is now gone, rather than serving notice. Payroll
+       includes anyone marked `resigned` whatever their leaving date, so
+       leaving them there puts a settled leaver in every run after this
+       one. */
+    await tx
+      .update(s.employees)
+      .set({ status: "exited" })
+      .where(eq(s.employees.id, fnf.employee.id));
+  });
 
   await recordAudit({
     user,
