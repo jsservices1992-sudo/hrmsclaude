@@ -73,18 +73,28 @@ export function GradeForm({
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Name</span>
         <Input name="name" required defaultValue={editing?.name} />
+        <span className="text-xs text-ink-3">Whatever you call it — L1, M2, Senior Engineer.</span>
       </label>
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Level</span>
         <Input name="level" type="number" required defaultValue={editing?.level} className="w-20" />
+        <span className="text-xs text-ink-3">Seniority, low to high. Only the order matters.</span>
       </label>
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Notice (days)</span>
         <Input name="noticeDays" type="number" defaultValue={editing?.noticeDays ?? ""} className="w-24" />
+        <span className="text-xs text-ink-3">
+          What a settlement recovers short notice against. Blank falls back to
+          the company&apos;s 60.
+        </span>
       </label>
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Probation (months)</span>
         <Input name="probationMonths" type="number" defaultValue={editing?.probationMonths ?? ""} className="w-24" />
+        <span className="text-xs text-ink-3">
+          Recorded for reference. Nothing computes from it yet — set the
+          probation end date on the employee.
+        </span>
       </label>
       <SubmitButton size="sm" pendingText="Saving…">{editing ? "Save" : "Add grade"}</SubmitButton>
       <FormFeedback state={state} />

@@ -102,6 +102,14 @@ export async function loadFnfCase(
     warnings.push("No salary is on record, so every figure below is nil.");
   }
 
+  const [grade] = employee.gradeId
+    ? await db
+        .select({ name: s.grades.name, noticeDays: s.grades.noticeDays })
+        .from(s.grades)
+        .where(eq(s.grades.id, employee.gradeId))
+        .limit(1)
+    : [];
+
   const structure = await loadStructure(employee.companyId);
   const evaluated = evaluateStructure(structure, monthlyGross);
   const monthlyBasic = evaluated.gratuityBasePaise;
@@ -188,6 +196,11 @@ export async function loadFnfCase(
     monthlyBasicPaise: monthlyBasic,
     perDayPaise: perDay,
     leaveBalanceDays: leaveDays,
+    /* The grade's own notice period, where it has one. It was recorded
+       on the grade and read by nobody: every settlement used sixty days
+       whatever the grade said, so a junior on thirty days' notice was
+       charged for sixty they never owed. */
+    noticeGradeDays: grade?.noticeDays ?? null,
     companyDefaultNoticeDays: 60,
     leaveExtendsNotice: false,
     noticeWaived: exitCase.noticeWaived,

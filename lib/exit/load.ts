@@ -119,6 +119,14 @@ export async function loadExitCase(
 
   // Gratuity is computed on last-drawn basic + DA, which is exactly the
   // set of components flagged as a gratuity base.
+  const [gradeRow] = row.employee.gradeId
+    ? await db
+        .select({ noticeDays: s.grades.noticeDays })
+        .from(s.grades)
+        .where(eq(s.grades.id, row.employee.gradeId))
+        .limit(1)
+    : [];
+
   const monthlyBasic = evaluateStructure(
     DEFAULT_STRUCTURE,
     salary.monthlyGrossPaise,
@@ -154,6 +162,9 @@ export async function loadExitCase(
     monthlyBasicPaise: monthlyBasic,
     perDayPaise: perDay,
     leaveBalanceDays: leaveDays,
+    /* Same as the settlement path: the grade's notice period wins over
+       the company default where the grade states one. */
+    noticeGradeDays: gradeRow?.noticeDays ?? null,
     companyDefaultNoticeDays: DEFAULT_NOTICE_DAYS,
     leaveExtendsNotice: false,
     noticeWaived: row.exit.noticeWaived,
