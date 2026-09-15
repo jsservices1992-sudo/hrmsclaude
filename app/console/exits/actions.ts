@@ -7,19 +7,9 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, canMutate, canAccessCompany } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
+import { isExitType, type ExitType } from "@/lib/exit/kinds";
 
 export type ExitState = { error?: string; ok?: string };
-
-export const EXIT_TYPES = [
-  { id: "resignation", label: "Resignation" },
-  { id: "termination", label: "Termination" },
-  { id: "termination_cause", label: "Termination for cause" },
-  { id: "probation_termination", label: "Termination during probation" },
-  { id: "abscondment", label: "Abscondment" },
-  { id: "retirement", label: "Retirement" },
-  { id: "contract_end", label: "End of contract" },
-  { id: "death_in_service", label: "Death in service" },
-] as const;
 
 /**
  * The clearances an exit opens with.
@@ -70,7 +60,7 @@ export async function startExit(_prev: ExitState, fd: FormData): Promise<ExitSta
   if (!canAccessCompany(user, employee.companyId)) return { error: "Not authorised." };
 
   const exitType = String(fd.get("exitType") ?? "");
-  if (!EXIT_TYPES.some((t) => t.id === exitType)) return { error: "Choose the kind of exit." };
+  if (!isExitType(exitType)) return { error: "Choose the kind of exit." };
 
   const resignationDate = String(fd.get("resignationDate") ?? "").trim();
   const lastWorkingDay = String(fd.get("lastWorkingDay") ?? "").trim();
@@ -116,7 +106,7 @@ export async function startExit(_prev: ExitState, fd: FormData): Promise<ExitSta
     await tx.insert(s.exitCases).values({
       id: exitId,
       employeeId,
-      exitType: exitType as (typeof EXIT_TYPES)[number]["id"],
+      exitType: exitType as ExitType,
       resignationDate,
       lastWorkingDay,
       reason,

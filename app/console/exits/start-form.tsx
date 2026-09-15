@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { startExit, withdrawExit, EXIT_TYPES, type ExitState } from "./actions";
+import { startExit, withdrawExit, type ExitState } from "./actions";
+import { EXIT_TYPES } from "@/lib/exit/kinds";
 import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
 
 /**
