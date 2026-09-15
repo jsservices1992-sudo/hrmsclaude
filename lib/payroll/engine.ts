@@ -455,27 +455,24 @@ export function computeEmployeePay(args: {
      exactly. Net itself is untouched: it is the figure being paid. */
   const residue = gross - deductions - net;
   if (residue !== 0) {
-    if (residue > 0) {
-      // Rounded down: the few paise are withheld.
-      lines.push({
-        code: "ROUND_OFF",
-        label: "Rounding adjustment",
-        kind: "deduction",
-        amountPaise: residue,
-        basis: "Net rounded to the nearest rupee",
-      });
-      deductions += residue;
-    } else {
-      // Rounded up: the few paise are paid.
-      gross += -residue;
-      lines.push({
-        code: "ROUND_OFF",
-        label: "Rounding adjustment",
-        kind: "earning",
-        amountPaise: -residue,
-        basis: "Net rounded to the nearest rupee",
-      });
-    }
+    /* Always a deduction, negative when the rounding went the
+       employee's way. Booking a round-up as an earning instead — which
+       is what this did — adds it to gross, so somebody on ₹12,000 whose
+       net rounded up by 43 paise had a payslip headed ₹12,000.43. The
+       gross is their salary and nothing about rounding the net may
+       change it; the residue belongs on the side of the payslip that
+       explains the difference between the two. */
+    lines.push({
+      code: "ROUND_OFF",
+      label: "Rounding adjustment",
+      kind: "deduction",
+      amountPaise: residue,
+      basis:
+        residue > 0
+          ? "Net rounded down to the nearest rupee"
+          : "Net rounded up to the nearest rupee",
+    });
+    deductions += residue;
   }
 
   if (net < 0) warnings.push("Negative net pay — blocks finalisation");

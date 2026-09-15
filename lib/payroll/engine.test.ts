@@ -350,3 +350,53 @@ test("loss of pay is taken off earnings, never counted twice", () => {
     "a day off costs a day's pay, once",
   );
 });
+
+test("rounding the net never changes the gross", () => {
+  /* A net that rounds up used to be balanced with an earning, which
+     added the residue to gross — so somebody on ₹12,000 whose net
+     rounded up by a few paise had a payslip headed ₹12,000.43. */
+  for (const grossPaise of [12_000_00, 15_000_00, 23_456_78, 47_333_21]) {
+    const r = computeEmployeePay({
+      employee: {
+        ...employee,
+        monthlyGrossPaise: grossPaise,
+        // A fractional deduction, so the net does not land on a rupee.
+        monthlyTdsPaise: 1_971_43,
+      },
+      company: { ...company, roundNet: true, roundComponents: false, roundGross: false },
+      statutory,
+      year: 2026,
+      month: 9,
+    });
+
+    assert.equal(
+      r.grossPaise,
+      grossPaise,
+      `gross must stay ${grossPaise}, got ${r.grossPaise}`,
+    );
+    assert.equal(
+      r.lines.filter((l) => l.kind === "earning").reduce((a, l) => a + l.amountPaise, 0),
+      r.grossPaise,
+      "earnings still sum to gross",
+    );
+    assert.equal(
+      r.grossPaise - r.deductionsPaise,
+      r.netPaise,
+      "and the register still reconciles to the rupee",
+    );
+    assert.equal(r.netPaise % 100, 0, "net is a whole rupee");
+  }
+});
+
+test("a rounding adjustment is a deduction whichever way it went", () => {
+  const r = computeEmployeePay({
+    employee: { ...employee, monthlyGrossPaise: 12_000_00, monthlyTdsPaise: 1_971_43 },
+    company: { ...company, roundNet: true },
+    statutory,
+    year: 2026,
+    month: 9,
+  });
+  const roundOff = r.lines.find((l) => l.code === "ROUND_OFF");
+  assert.ok(roundOff, "the residue is shown rather than absorbed silently");
+  assert.equal(roundOff.kind, "deduction");
+});
