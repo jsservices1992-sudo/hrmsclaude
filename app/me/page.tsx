@@ -45,6 +45,7 @@ import {
   TeamRegularisationForm,
   RestrictedHolidayForm,
 } from "./forms";
+import { PunchForm } from "./punch-form";
 
 export const metadata = { title: "My workspace" };
 export const dynamic = "force-dynamic";
@@ -373,6 +374,27 @@ export default async function MePage(props: PageProps<"/me">) {
       : [];
   const activeLoans = myLoans.filter((l) => l.loan.status !== "closed");
 
+  /* An unfinished punch from today, so the card can offer the right
+     button rather than both. */
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const [todayRecord] = await db
+    .select({ punchesJson: s.attendanceRecords.punchesJson })
+    .from(s.attendanceRecords)
+    .where(
+      and(
+        eq(s.attendanceRecords.employeeId, emp.id),
+        eq(s.attendanceRecords.date, todayIso),
+      ),
+    )
+    .limit(1);
+  const openPunch = todayRecord
+    ? (JSON.parse(todayRecord.punchesJson) as { inMinute: number; outMinute: number | null }[])
+        .find((p) => p.outMinute == null)
+    : undefined;
+  const openPunchAt = openPunch
+    ? `${String(Math.floor(openPunch.inMinute / 60)).padStart(2, "0")}:${String(openPunch.inMinute % 60).padStart(2, "0")}`
+    : null;
+
   return (
     <div className="mx-auto w-full max-w-4xl px-5 sm:px-8 py-8 flex flex-col gap-6">
       <header className="flex items-center justify-between gap-4" data-print="hide">
@@ -406,6 +428,27 @@ export default async function MePage(props: PageProps<"/me">) {
           <span className="font-mono">{emp.empCode}</span> · {emp.designation} · {row.branch.name}
         </p>
       </div>
+
+      {/* First thing on the page and above the tabs: on a phone this is
+          the only reason most people open it, and burying it behind a
+          tab makes a daily action a three-tap one. */}
+      {emp.status !== "exited" && (
+        <section className="border border-line bg-surface">
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">Attendance</span>
+          </div>
+          <div className="p-4">
+            <PunchForm
+              branchName={row.branch.name}
+              hasOfficeLocation={
+                row.branch.latitude != null && row.branch.longitude != null
+              }
+              geofenceMetres={row.branch.geofenceMetres}
+              openSince={openPunchAt}
+            />
+          </div>
+        </section>
+      )}
 
       <nav
         aria-label="Sections"

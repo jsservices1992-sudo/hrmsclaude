@@ -31,6 +31,14 @@ import {
 import { CURRENT_FY } from "@/lib/tax/fy";
 import { profileFieldFor, validateProfileChange } from "@/lib/ess/profile";
 import { decideRegularisation } from "@/app/console/attendance/actions";
+import { headers } from "next/headers";
+import {
+  decidePunch,
+  DEFAULT_GEOFENCE_METRES,
+} from "@/lib/attendance/geofence";
+
+/** The app runs Indian payroll; attendance minutes are IST. */
+const IST_OFFSET_MINUTES = 330;
 
 export type SelfState = { error?: string; ok?: string };
 
@@ -919,4 +927,159 @@ export async function managerDecideRegularisation(
   const result = await decideRegularisation({}, fd);
   revalidatePath("/me");
   return result.error ? { error: result.error } : { ok: result.ok };
+}
+
+/* ==================== self-service attendance ==================== */
+
+export type PunchState = {
+  error?: string;
+  ok?: string;
+  /** How far the device said it was, so a refusal can be argued with. */
+  distanceMetres?: number | null;
+};
+
+/**
+ * Marks the employee in or out from their own browser.
+ *
+ * The coordinates are what the device reported and a device can be told
+ * to report anything, so this is a deterrent and a record rather than
+ * proof of attendance. Every attempt is written down — refused ones
+ * especially, because a pattern of tries from three streets away is the
+ * thing worth seeing, and only keeping the successes would hide it.
+ *
+ * The punch itself lands in the same attendance record the biometric and
+ * the CSV import write to, so nothing downstream has to know where a
+ * minute came from.
+ */
+export async function punchAttendance(_prev: PunchState, fd: FormData): Promise<PunchState> {
+  const ctx = await me();
+  if (!ctx) return { error: "Your account is not linked to an employee record." };
+  const { employee } = ctx;
+
+  if (employee.status === "exited") {
+    return { error: "This record is closed." };
+  }
+
+  const kind = String(fd.get("kind") ?? "");
+  if (kind !== "in" && kind !== "out") return { error: "Choose in or out." };
+
+  const num = (v: FormDataEntryValue | null) => {
+    const n = Number(String(v ?? ""));
+    return Number.isFinite(n) ? n : null;
+  };
+  const latitude = num(fd.get("latitude"));
+  const longitude = num(fd.get("longitude"));
+  const accuracyMetres = num(fd.get("accuracy"));
+
+  const [branch] = await db
+    .select({
+      id: s.branches.id,
+      name: s.branches.name,
+      latitude: s.branches.latitude,
+      longitude: s.branches.longitude,
+      geofenceMetres: s.branches.geofenceMetres,
+    })
+    .from(s.branches)
+    .where(eq(s.branches.id, employee.branchId))
+    .limit(1);
+
+  const decision = decidePunch({
+    reported: latitude != null && longitude != null ? { latitude, longitude } : null,
+    accuracyMetres,
+    office:
+      branch?.latitude != null && branch?.longitude != null
+        ? { latitude: branch.latitude, longitude: branch.longitude }
+        : null,
+    geofenceMetres: branch?.geofenceMetres ?? DEFAULT_GEOFENCE_METRES,
+  });
+
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const hdrs = await headers();
+
+  await db.insert(s.attendancePunches).values({
+    id: randomUUID(),
+    employeeId: employee.id,
+    branchId: branch?.id ?? null,
+    date,
+    at: now.toISOString(),
+    kind,
+    latitude,
+    longitude,
+    accuracyMetres,
+    distanceMetres: decision.distanceMetres,
+    accepted: decision.allowed,
+    reason: decision.allowed ? null : decision.reason,
+    userAgent: hdrs.get("user-agent")?.slice(0, 300) ?? null,
+  });
+
+  if (!decision.allowed) {
+    return { error: decision.reason, distanceMetres: decision.distanceMetres };
+  }
+
+  /* Minutes since midnight, which is what the attendance record stores
+     and what the derivation engine reads. */
+  const minute = now.getUTCHours() * 60 + now.getUTCMinutes() + IST_OFFSET_MINUTES;
+  const minuteOfDay = ((minute % 1440) + 1440) % 1440;
+
+  const [existing] = await db
+    .select()
+    .from(s.attendanceRecords)
+    .where(and(eq(s.attendanceRecords.employeeId, employee.id), eq(s.attendanceRecords.date, date)))
+    .limit(1);
+
+  const punches: { inMinute: number; outMinute: number | null }[] = existing
+    ? JSON.parse(existing.punchesJson)
+    : [];
+
+  if (kind === "in") {
+    const open = punches.find((p) => p.outMinute == null);
+    if (open) return { error: "You are already punched in. Punch out first." };
+    punches.push({ inMinute: minuteOfDay, outMinute: null });
+  } else {
+    const open = [...punches].reverse().find((p) => p.outMinute == null);
+    if (!open) return { error: "You are not punched in, so there is nothing to punch out of." };
+    if (minuteOfDay < open.inMinute) {
+      return { error: "That would end the shift before it started. Ask HR to correct it." };
+    }
+    open.outMinute = minuteOfDay;
+  }
+
+  if (existing) {
+    await db
+      .update(s.attendanceRecords)
+      .set({ punchesJson: JSON.stringify(punches), source: "mobile" })
+      .where(eq(s.attendanceRecords.id, existing.id));
+  } else {
+    await db.insert(s.attendanceRecords).values({
+      id: randomUUID(),
+      employeeId: employee.id,
+      date,
+      punchesJson: JSON.stringify(punches),
+      dayType: "working",
+      /* The real status is derived from worked minutes against the shift
+         when the month is computed; this is only what it looks like so
+         far. */
+      status: "present",
+      source: "mobile",
+    });
+  }
+
+  await recordAudit({
+    user: ctx.user,
+    action: kind === "in" ? "attendance.punched_in" : "attendance.punched_out",
+    entity: "attendance_record",
+    entityId: employee.id,
+    after: { date, minuteOfDay, distanceMetres: decision.distanceMetres },
+  });
+
+  revalidatePath("/me");
+  const clock = `${String(Math.floor(minuteOfDay / 60)).padStart(2, "0")}:${String(minuteOfDay % 60).padStart(2, "0")}`;
+  return {
+    ok:
+      kind === "in"
+        ? `Punched in at ${clock}, ${decision.distanceMetres}m from ${branch?.name ?? "the office"}.`
+        : `Punched out at ${clock}. Today's hours will be totalled when attendance is derived.`,
+    distanceMetres: decision.distanceMetres,
+  };
 }

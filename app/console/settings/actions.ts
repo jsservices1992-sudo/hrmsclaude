@@ -290,6 +290,11 @@ const BranchSchema = z.object({
   city: z.string().max(80).nullable(),
   pincode: z.string().regex(/^[0-9]{6}$/, "Pincode must be 6 digits").nullable(),
   costCentre: z.string().max(40).nullable(),
+  /* Both or neither: half a coordinate places nothing, and storing one
+     would leave the punch check silently comparing against nonsense. */
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+  geofenceMetres: z.number().int().min(10, "A radius under 10m is smaller than a phone's own error").max(5000),
   ptRegNo: z.string().max(60).nullable(),
   lwfRegNo: z.string().max(60).nullable(),
   pfCodeOverride: z.string().max(40).nullable(),
@@ -297,6 +302,13 @@ const BranchSchema = z.object({
   esicImplementedArea: z.boolean(),
   lwfApplicableOverride: z.union([z.literal("inherit"), z.literal("yes"), z.literal("no")]),
 });
+
+const numberOrNull = (v: FormDataEntryValue | null) => {
+  const t = typeof v === "string" ? v.trim() : "";
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+};
 
 function parseBranch(fd: FormData) {
   return BranchSchema.safeParse({
@@ -307,6 +319,9 @@ function parseBranch(fd: FormData) {
     city: nullable(fd.get("city")),
     pincode: nullable(fd.get("pincode")),
     costCentre: nullable(fd.get("costCentre")),
+    latitude: numberOrNull(fd.get("latitude")),
+    longitude: numberOrNull(fd.get("longitude")),
+    geofenceMetres: Number(fd.get("geofenceMetres") ?? 50) || 50,
     ptRegNo: nullable(fd.get("ptRegNo")),
     lwfRegNo: nullable(fd.get("lwfRegNo")),
     pfCodeOverride: nullable(fd.get("pfCodeOverride")),
@@ -366,6 +381,11 @@ export async function saveBranch(
     esicCodeOverride: d.esicCodeOverride,
     esicImplementedArea: d.esicImplementedArea,
     lwfApplicableOverride: overrideToBool(d.lwfApplicableOverride),
+    /* Half a coordinate is worse than none: the punch check would
+       compare against a point that does not exist. */
+    latitude: d.longitude == null ? null : d.latitude,
+    longitude: d.latitude == null ? null : d.longitude,
+    geofenceMetres: d.geofenceMetres,
     active: true,
   };
 

@@ -246,6 +246,17 @@ export const branches = pgTable(
     /* Derived from the state table, but overridable when the law changes
        before we ship a config update. Null means follow the state table. */
     lwfApplicableOverride: boolean("lwf_applicable_override"),
+    /**
+     * Where the office is, for self-service attendance.
+     *
+     * Null means punching from a browser is simply not offered for this
+     * branch, which is the right default: a geofence around a point
+     * nobody set would either accept everything or nothing.
+     */
+    latitude: real("latitude"),
+    longitude: real("longitude"),
+    /** How far from that point a punch is accepted. */
+    geofenceMetres: integer("geofence_metres").notNull().default(50),
     /* ESIC applies only in implemented areas — PRD FR-STAT-3 */
     esicImplementedArea: boolean("esic_implemented_area")
       .notNull()
@@ -1096,6 +1107,41 @@ export const attendanceRecords = pgTable(
       .default("derived"),
   },
   (t) => [uniqueIndex("attendance_emp_date_idx").on(t.employeeId, t.date)],
+);
+
+/**
+ * Every self-service punch, accepted or not, with where it claimed to be.
+ *
+ * The coordinates come from the employee's own browser and a browser can
+ * be told to report anything, so this is not evidence of presence — it is
+ * a record of what was claimed, how precise the device said it was, and
+ * how far off it landed. A refused punch is kept as carefully as an
+ * accepted one: a pattern of attempts from three streets away is the
+ * thing a supervisor needs to see, and deleting them would hide exactly
+ * that.
+ */
+export const attendancePunches = pgTable(
+  "attendance_punches",
+  {
+    id: text("id").primaryKey(),
+    employeeId: text("employee_id")
+      .notNull()
+      .references(() => employees.id),
+    branchId: text("branch_id").references(() => branches.id),
+    date: text("date").notNull(),
+    at: text("at").notNull(),
+    kind: text("kind", { enum: ["in", "out"] }).notNull(),
+    latitude: real("latitude"),
+    longitude: real("longitude"),
+    /** Metres of error the device claimed for its own fix. */
+    accuracyMetres: real("accuracy_metres"),
+    /** Metres from the branch, once computed. */
+    distanceMetres: real("distance_metres"),
+    accepted: boolean("accepted").notNull(),
+    reason: text("reason"),
+    userAgent: text("user_agent"),
+  },
+  (t) => [index("attendance_punches_emp_idx").on(t.employeeId, t.date)],
 );
 
 /** The original is never overwritten — FR-ATT-4. */

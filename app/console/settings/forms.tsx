@@ -149,6 +149,7 @@ export function CompanyForm({
 export type BranchValues = Partial<{
   id: string; name: string; code: string | null; addressLine: string | null;
   stateCode: string; city: string | null; pincode: string | null; costCentre: string | null;
+  latitude: number | null; longitude: number | null; geofenceMetres: number;
   ptRegNo: string | null; lwfRegNo: string | null;
   pfCodeOverride: string | null; esicCodeOverride: string | null;
   esicImplementedArea: boolean; lwfApplicableOverride: boolean | null;
@@ -206,6 +207,27 @@ export function BranchForm({
         </FormField>
         <FormField label="Pincode" error={err("pincode")}>
           <Input name="pincode" defaultValue={values.pincode ?? ""} invalid={!!err("pincode")} />
+        </FormField>
+        <FormField
+          label="Office latitude"
+          error={err("latitude")}
+          hint="For self-service attendance. Leave blank to not offer it here."
+        >
+          <Input name="latitude" type="number" step="any" defaultValue={values.latitude ?? ""} invalid={!!err("latitude")} />
+        </FormField>
+        <FormField
+          label="Office longitude"
+          error={err("longitude")}
+          hint="From Google Maps: right-click the office, copy the pair."
+        >
+          <Input name="longitude" type="number" step="any" defaultValue={values.longitude ?? ""} invalid={!!err("longitude")} />
+        </FormField>
+        <FormField
+          label="Punch radius (metres)"
+          error={err("geofenceMetres")}
+          hint="How far from that point a punch is accepted. 50 is a building; a campus needs more."
+        >
+          <Input name="geofenceMetres" type="number" min="10" max="5000" defaultValue={values.geofenceMetres ?? 50} invalid={!!err("geofenceMetres")} />
         </FormField>
         <FormField
           label="Cost centre"
