@@ -48,6 +48,7 @@ export function DepartmentForm({
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Cost centre</span>
         <Input name="costCentre" defaultValue={editing?.costCentre ?? ""} className="w-32" />
+        <span className="text-xs text-ink-3">Your accounting system&apos;s code — CC-ENG, 4200. Payroll cost is grouped by it in the journal. Blank is fine.</span>
       </label>
       <SubmitButton size="sm" pendingText="Saving…">{editing ? "Save" : "Add department"}</SubmitButton>
       <FormFeedback state={state} />

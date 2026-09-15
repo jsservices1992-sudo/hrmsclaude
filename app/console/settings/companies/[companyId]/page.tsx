@@ -4,7 +4,12 @@ import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany } from "@/lib/auth/session";
-import { CompanyForm, BranchForm, RegistrationForm } from "../../forms";
+import {
+  CompanyForm,
+  BranchForm,
+  RegistrationForm,
+  CompanyLogoForm,
+} from "../../forms";
 import { Badge, Card, Tabs, TabLink, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 
 export const metadata = { title: "Company settings" };
@@ -134,6 +139,15 @@ export default async function CompanySettingsPage(
                 changes what every future part-month is worth.
               </div>
             )}
+            <Card padded={false}>
+              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+                <span className="label text-ink-2">Logo</span>
+              </div>
+              <div className="p-4">
+                <CompanyLogoForm companyId={companyId} logoUrl={company.logoUrl} />
+              </div>
+            </Card>
+
             <CompanyForm
               mode="edit"
               hasRuns={hasRuns}

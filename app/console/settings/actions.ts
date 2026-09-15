@@ -13,6 +13,8 @@ import {
   canAccessCompany,
 } from "@/lib/auth/session";
 import { recordAuditAs } from "@/lib/audit/log";
+import { save, headHex, storageUnavailable } from "@/lib/storage";
+import { checkUpload } from "@/lib/storage/rules";
 
 export type SettingsState = {
   error?: string;
@@ -480,4 +482,110 @@ export async function saveRegistration(
 
   revalidatePath(`/console/settings/companies/${companyId}`);
   return { ok: `${kind.toUpperCase()} registration for ${stateCode} saved.` };
+}
+
+/* ==================== company logo ==================== */
+
+/**
+ * Replaces the company logo with an uploaded image.
+ *
+ * The field was a URL box, which works only if the logo already lives on
+ * a public web server — and a company that has one usually has it behind
+ * a login, or on a laptop. So the file is stored in the same place every
+ * other document goes and served back through an authorised route, which
+ * also means the payslip does not depend on somebody else's host staying
+ * up.
+ *
+ * Images only, checked by their leading bytes rather than their name: a
+ * PDF renamed to .png is still a PDF, and it would render as a broken
+ * image on every payslip.
+ */
+export async function uploadCompanyLogo(
+  _prev: SettingsState,
+  fd: FormData,
+): Promise<SettingsState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Not authorised." };
+  if (user.role !== "admin") return { error: "Only an administrator may change the logo." };
+
+  const companyId = String(fd.get("companyId") ?? "");
+  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+
+  const file = fd.get("logo");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose an image file." };
+  }
+  /* Far below the document limit. A logo is a masthead a centimetre
+     high; anything larger is a photograph somebody has not resized, and
+     it goes into every payslip. */
+  const MAX_LOGO_BYTES = 512 * 1024;
+  if (file.size > MAX_LOGO_BYTES) {
+    return { error: "That image is over 500KB. A logo only needs to be a few hundred pixels wide." };
+  }
+
+  const unavailable = storageUnavailable();
+  if (unavailable) return { error: unavailable };
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const check = checkUpload({
+    declaredMime: file.type,
+    sizeBytes: bytes.byteLength,
+    headHex: headHex(bytes),
+    originalName: file.name,
+  });
+  if (!check.ok) return { error: check.errors.join(" ") };
+  if (check.extension === "pdf") {
+    return { error: "A logo has to be a PNG or JPEG image, not a PDF." };
+  }
+
+  const key = `companies/${companyId}/logo.${check.extension}`;
+  await save(key, bytes);
+
+  /* Served by our own route rather than stored as a signed URL, which
+     would expire and leave every payslip with a broken image. */
+  const url = `/console/settings/companies/${companyId}/logo?v=${Date.now()}`;
+  const [before] = await db
+    .select({ logoUrl: s.companies.logoUrl })
+    .from(s.companies)
+    .where(eq(s.companies.id, companyId))
+    .limit(1);
+
+  await db.update(s.companies).set({ logoUrl: url }).where(eq(s.companies.id, companyId));
+
+  await audit({
+    actor: user.email,
+    action: "company.logo_uploaded",
+    entity: "company",
+    entityId: companyId,
+    before: { logoUrl: before?.logoUrl ?? null },
+    after: { logoUrl: url, bytes: bytes.byteLength, type: check.label },
+  });
+
+  revalidatePath("/console/settings");
+  revalidatePath(`/console/settings/companies/${companyId}`);
+  return { ok: `Logo updated — ${check.label}, ${(bytes.byteLength / 1024).toFixed(0)}KB.` };
+}
+
+/** Clears the logo. The stored file is left, being cheap and replaceable. */
+export async function removeCompanyLogo(
+  _prev: SettingsState,
+  fd: FormData,
+): Promise<SettingsState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Not authorised." };
+  if (user.role !== "admin") return { error: "Only an administrator may change the logo." };
+
+  const companyId = String(fd.get("companyId") ?? "");
+  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+
+  await db.update(s.companies).set({ logoUrl: null }).where(eq(s.companies.id, companyId));
+  await audit({
+    actor: user.email,
+    action: "company.logo_removed",
+    entity: "company",
+    entityId: companyId,
+  });
+  revalidatePath("/console/settings");
+  revalidatePath(`/console/settings/companies/${companyId}`);
+  return { ok: "Logo removed. Payslips fall back to the company's initial." };
 }

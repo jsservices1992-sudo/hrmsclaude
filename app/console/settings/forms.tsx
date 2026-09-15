@@ -7,6 +7,8 @@ import {
   saveBranch,
   saveRegistration,
   setDefaultCompany,
+  uploadCompanyLogo,
+  removeCompanyLogo,
   type SettingsState,
 } from "./actions";
 import { Input, Select, SubmitButton, FormFeedback, FormField, Card } from "@/components/console/ui";
@@ -88,9 +90,9 @@ export function CompanyForm({
           <Input name="registeredPincode" defaultValue={values.registeredPincode ?? ""} invalid={!!err("registeredPincode")} />
         </FormField>
         <FormField
-          label="Logo URL"
+          label="Logo address"
           error={err("logoUrl")}
-          hint="Printed on payslips. Falls back to the company initials."
+          hint="Set by uploading below, or paste a public image address."
         >
           <Input name="logoUrl" defaultValue={values.logoUrl ?? ""} invalid={!!err("logoUrl")} />
         </FormField>
@@ -205,7 +207,11 @@ export function BranchForm({
         <FormField label="Pincode" error={err("pincode")}>
           <Input name="pincode" defaultValue={values.pincode ?? ""} invalid={!!err("pincode")} />
         </FormField>
-        <FormField label="Cost centre" error={err("costCentre")}>
+        <FormField
+          label="Cost centre"
+          error={err("costCentre")}
+          hint="Your accounting system's cost centre for this — CC-SALES, 4200. Payroll cost is grouped by it in the journal. Leave blank if you do not use them."
+        >
           <Input name="costCentre" defaultValue={values.costCentre ?? ""} invalid={!!err("costCentre")} />
         </FormField>
       </div>
@@ -300,5 +306,81 @@ export function SetDefaultForm({ companyId }: { companyId: string }) {
       {state.ok && <span className="text-xs text-teal">{state.ok}</span>}
       {state.error && <span className="text-xs text-rust">{state.error}</span>}
     </form>
+  );
+}
+
+/**
+ * Uploading the logo, rather than knowing a public address for it.
+ *
+ * Its own form, outside the company form: a file cannot be carried
+ * through a save that is otherwise all text fields, and mixing them
+ * would mean picking a file, saving the company, and finding the file
+ * had gone.
+ */
+export function CompanyLogoForm({
+  companyId,
+  logoUrl,
+}: {
+  companyId: string;
+  logoUrl: string | null;
+}) {
+  const [state, action] = useActionState<SettingsState, FormData>(uploadCompanyLogo, {});
+  const [removeState, removeAction] = useActionState<SettingsState, FormData>(
+    removeCompanyLogo,
+    {},
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-4">
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- uploaded
+          // content served by our own route, not a build asset.
+          <img
+            src={logoUrl}
+            alt="Company logo"
+            className="h-12 w-auto max-w-[10rem] object-contain border border-line bg-surface p-1"
+          />
+        ) : (
+          <span className="h-12 w-12 border border-line bg-surface-2 grid place-items-center text-xs text-ink-3">
+            none
+          </span>
+        )}
+
+        <form action={action} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="companyId" value={companyId} />
+          <label className="flex flex-col gap-1">
+            <span className="label text-ink-3">Upload a logo</span>
+            <input
+              name="logo"
+              type="file"
+              accept="image/png,image/jpeg"
+              required
+              className="text-sm border border-line px-2 py-1.5 bg-surface"
+            />
+          </label>
+          <SubmitButton pendingText="Uploading…">Upload</SubmitButton>
+        </form>
+
+        {logoUrl && (
+          <form action={removeAction}>
+            <input type="hidden" name="companyId" value={companyId} />
+            <SubmitButton variant="ghost" size="sm" className="text-rust" pendingText="Removing…">
+              Remove
+            </SubmitButton>
+          </form>
+        )}
+      </div>
+
+      <p className="text-xs text-ink-3 max-w-[76ch]">
+        PNG or JPEG, up to 500KB — it prints about a centimetre high on every
+        payslip, so a few hundred pixels wide is plenty. Stored with the
+        company&apos;s other documents and served from here, so the payslip does
+        not depend on another host staying up.
+      </p>
+
+      <FormFeedback state={state} />
+      <FormFeedback state={removeState} />
+    </div>
   );
 }
