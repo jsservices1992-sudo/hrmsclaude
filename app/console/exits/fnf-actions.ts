@@ -349,6 +349,19 @@ export async function writeOffDemand(
     return { error: "Not authorised." };
   }
 
+  /* A debt can only be forgiven once it has been demanded. Without this
+     a settlement still in draft could be written off, which jumps it
+     straight to a terminal status and past release — leaving a case
+     that can never be settled and no button anywhere that would do it. */
+  if (fnf.stored.status !== "recoverable") {
+    return {
+      error:
+        fnf.stored.status === "draft"
+          ? "This settlement has not been released yet, so there is no demand to write off. Release it first — a negative settlement is released as a demand, and a write-off forgives what is then outstanding."
+          : `A ${fnf.stored.status.replace(/_/g, " ")} settlement has no outstanding demand to write off.`,
+    };
+  }
+
   const reason = String(fd.get("reason") ?? "").trim();
   if (reason.length < 15) {
     return {
@@ -416,6 +429,12 @@ export async function reopenSettlement(
       approvedBy: null,
       releasedAt: null,
       reopenReason: reason,
+      /* A write-off forgives a demand this settlement no longer makes.
+         Carried into the draft it would quietly reduce whatever the
+         recomputed figure turns out to be. */
+      writtenOffPaise: 0,
+      writeOffReason: null,
+      writtenOffBy: null,
     })
     .where(eq(s.fnfSettlements.id, fnf.stored.id));
 

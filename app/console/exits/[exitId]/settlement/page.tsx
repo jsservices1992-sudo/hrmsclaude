@@ -401,8 +401,27 @@ export default async function SettlementPage(
             {stored?.status === "draft" && fnf.gate.canRelease && (
               <ReleaseForm exitCaseId={exitId} />
             )}
+            {stored?.status === "draft" && !fnf.gate.canRelease && (
+              <p className="text-sm text-rust max-w-[70ch]">
+                Cannot be released yet — {fnf.gate.reason}
+              </p>
+            )}
+            {/* Saying why the button is not here. Its absence on a
+                settlement that looks finished reads as something broken
+                rather than as a status the case is in. */}
             {stored && stored.status !== "draft" && (
-              <ReopenForm exitCaseId={exitId} />
+              <>
+                <p className="text-sm text-ink-2 max-w-[70ch]">
+                  This settlement is{" "}
+                  <span className="font-mono">{stored.status.replace(/_/g, " ")}</span>
+                  {stored.status === "written_off"
+                    ? " — the demand against it was forgiven, so there is nothing left to release. Reopen it to go back to a draft and release it properly."
+                    : stored.releasedAt
+                      ? ` — released on ${stored.releasedAt.slice(0, 10)}. Reopen it only to correct something.`
+                      : " — reopen it to go back to a draft."}
+                </p>
+                <ReopenForm exitCaseId={exitId} />
+              </>
             )}
             {!stored && (
               <p className="text-xs text-ink-3 max-w-[70ch]">
