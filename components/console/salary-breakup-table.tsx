@@ -8,7 +8,25 @@ import { Table, THead, TH, TBody, TR, TD } from "./ui";
  * top of it to reach CTC. Monthly and annual are shown side by side
  * because offers are discussed annually and payroll is run monthly.
  */
-export function SalaryBreakupTable({ ctc }: { ctc: CtcBreakdown }) {
+export function SalaryBreakupTable({
+  ctc,
+  takeHome,
+}: {
+  ctc: CtcBreakdown;
+  /**
+   * What the employee is actually left with, and what came off to get
+   * there. Optional only because one caller does not have it yet; the
+   * table is worse without it — CTC is the number a company talks about
+   * and net is the number the employee lives on, and a breakup that
+   * stops at CTC answers the wrong person's question.
+   */
+  takeHome?: {
+    takeHomePaise: number;
+    epfPaise: number;
+    esicPaise: number;
+    ptPaise: number;
+  };
+}) {
   const employerLines = [
     { label: "Employer provident fund", amountPaise: ctc.employerPfPaise, basis: "Employer share of PF on PF wages" },
     { label: "Employer ESIC", amountPaise: ctc.employerEsicPaise, basis: "Employer share, where ESIC applies" },
@@ -49,6 +67,43 @@ export function SalaryBreakupTable({ ctc }: { ctc: CtcBreakdown }) {
             <TD className="text-right font-mono tnum text-ink-2">{formatINR(l.amountPaise * 12)}</TD>
           </TR>
         ))}
+
+        {takeHome && (
+          <>
+            {[
+              { label: "Provident fund (employee)", amountPaise: takeHome.epfPaise, basis: "12% of PF wages, deducted from pay" },
+              { label: "ESIC (employee)", amountPaise: takeHome.esicPaise, basis: "0.75% of gross, where ESIC applies" },
+              { label: "Professional tax", amountPaise: takeHome.ptPaise, basis: "State slab on the PT base" },
+            ]
+              .filter((l) => l.amountPaise > 0)
+              .map((l) => (
+                <TR key={l.label}>
+                  <TD className="text-ink-2">{l.label}</TD>
+                  <TD className="text-ink-2 text-xs whitespace-normal">{l.basis}</TD>
+                  <TD className="text-right font-mono tnum text-rust">
+                    −{formatINR(l.amountPaise)}
+                  </TD>
+                  <TD className="text-right font-mono tnum text-rust">
+                    −{formatINR(l.amountPaise * 12)}
+                  </TD>
+                </TR>
+              ))}
+
+            <TR className="bg-surface-2">
+              <TD className="font-medium">Net take home</TD>
+              <TD className="text-ink-2 text-xs whitespace-normal">
+                What reaches the bank account, before income tax — TDS depends
+                on their declarations and is deducted separately.
+              </TD>
+              <TD className="text-right font-mono tnum font-medium">
+                {formatINR(takeHome.takeHomePaise)}
+              </TD>
+              <TD className="text-right font-mono tnum font-medium">
+                {formatINR(takeHome.takeHomePaise * 12)}
+              </TD>
+            </TR>
+          </>
+        )}
 
         <TR className="bg-surface-2">
           <TD className="font-medium">Cost to company</TD>

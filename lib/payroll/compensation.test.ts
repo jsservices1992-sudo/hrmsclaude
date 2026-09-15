@@ -523,3 +523,27 @@ test("months before the revision takes effect are never in arrears", () => {
   assert.deepEqual(r.lines, []);
   assert.equal(r.totalPaise, 0);
 });
+
+test("a second balance component is always zero, which is why only one is allowed", () => {
+  /* Not a rule this file enforces — it is the arithmetic the rule in
+     savePayComponent exists to prevent. The first balance takes the
+     whole remainder and the second finds nothing, on every payslip,
+     silently. */
+  const twoBalances = [
+    { code: "BASIC", label: "Basic", kind: "earning" as const, calcMethod: "percent_of_gross" as const, percentValue: 50, percentOfCode: null, fixedPaise: 0, taxable: true, epfBase: true, esicBase: true, ptBase: true, bonusBase: true, gratuityBase: true, prorates: true, sequence: 0 },
+    { code: "CONV", label: "Conveyance", kind: "earning" as const, calcMethod: "balance" as const, percentValue: 0, percentOfCode: null, fixedPaise: 0, taxable: true, epfBase: false, esicBase: true, ptBase: true, bonusBase: false, gratuityBase: false, prorates: true, sequence: 1 },
+    { code: "SPL", label: "Special", kind: "earning" as const, calcMethod: "balance" as const, percentValue: 0, percentOfCode: null, fixedPaise: 0, taxable: true, epfBase: false, esicBase: true, ptBase: true, bonusBase: false, gratuityBase: false, prorates: true, sequence: 2 },
+  ];
+
+  const evaluated = evaluateStructure(twoBalances, 16_000_00);
+  const byCode = Object.fromEntries(evaluated.components.map((c) => [c.code, c.amountPaise]));
+
+  assert.equal(byCode.BASIC, 8_000_00);
+  assert.equal(byCode.CONV, 8_000_00, "the first balance takes the whole remainder");
+  assert.equal(byCode.SPL, 0, "and the second gets nothing, for ever");
+  assert.equal(
+    evaluated.components.reduce((a, c) => a + c.amountPaise, 0),
+    16_000_00,
+    "the total is still right, which is what makes it hard to notice",
+  );
+});

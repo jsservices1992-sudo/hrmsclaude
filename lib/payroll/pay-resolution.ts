@@ -34,6 +34,11 @@ export type ResolvedPay = {
   breakdown: CtcBreakdown;
   /** Net in hand after PF, ESIC and PT — before income tax. */
   takeHomePaise: number;
+  /**
+   * What was taken off to get there, so a screen can show the working
+   * rather than a number the employee has to take on trust.
+   */
+  employeeDeductions: { epfPaise: number; esicPaise: number; ptPaise: number };
   structureId: string | null;
   components: ComponentSpec[];
   /** Plain-English account of how the gross was arrived at. */
@@ -161,7 +166,7 @@ export async function resolvePay(args: {
 
   // Take-home for display, priced the same way whichever mode was used.
   const evaluation = evaluateStructure(components, monthlyGrossPaise);
-  const { takeHome } = takeHomeFor(
+  const { takeHome, epf, esic, pt } = takeHomeFor(
     evaluation,
     takeHomeParams ?? {
       epfCeilingPaise: statutory.epf.wageCeilingPaise,
@@ -177,6 +182,7 @@ export async function resolvePay(args: {
     monthlyGrossPaise,
     breakdown,
     takeHomePaise: takeHome,
+    employeeDeductions: { epfPaise: epf, esicPaise: esic, ptPaise: pt },
     structureId: resolution.structureId,
     components,
     derivation,

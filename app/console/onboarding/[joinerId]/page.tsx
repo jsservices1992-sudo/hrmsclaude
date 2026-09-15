@@ -362,7 +362,15 @@ export default async function JoinerDetailPage(
                   </div>
                 ))}
               </div>
-              <SalaryBreakupTable ctc={offeredPay.breakdown} />
+              <SalaryBreakupTable
+                ctc={offeredPay.breakdown}
+                takeHome={{
+                  takeHomePaise: offeredPay.takeHomePaise,
+                  epfPaise: offeredPay.employeeDeductions.epfPaise,
+                  esicPaise: offeredPay.employeeDeductions.esicPaise,
+                  ptPaise: offeredPay.employeeDeductions.ptPaise,
+                }}
+              />
               <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2 max-w-[76ch]">
                 This is the figure conversion writes to the employee record. In
                 hand is after PF, ESIC and professional tax — income tax is

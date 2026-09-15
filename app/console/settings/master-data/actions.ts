@@ -308,6 +308,29 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
     return { error: "Choose the component this percentage is calculated against." };
   }
 
+  /* Only one component can take the balance. A second one finds nothing
+     left and evaluates to zero for ever — which is not an error anybody
+     sees, just a line on every payslip that is always ₹0 while the first
+     one silently swallows the remainder. */
+  if (calcMethod === "balance") {
+    const others = await db
+      .select({ code: s.payComponents.code, name: s.payComponents.name })
+      .from(s.payComponents)
+      .where(
+        and(
+          eq(s.payComponents.companyId, companyId),
+          eq(s.payComponents.calcMethod, "balance"),
+          eq(s.payComponents.active, true),
+        ),
+      );
+    const clash = others.find((o) => o.code !== code);
+    if (clash) {
+      return {
+        error: `"${clash.code}" (${clash.name}) already takes the balance of gross. Only one component can — a second would be zero on every payslip while the first takes the remainder. Give this one a fixed amount or a percentage.`,
+      };
+    }
+  }
+
   const values = {
     code, name, kind, calcMethod, percentValue, percentOfCode, fixedPaise,
     taxable, epfBase, esicBase, ptBase, bonusBase, gratuityBase, prorates, active, sequence,

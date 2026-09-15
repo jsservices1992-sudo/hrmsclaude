@@ -6,7 +6,10 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { loadEmployee, loadFormOptions } from "@/lib/hris/load";
 import { loadStructureResolutionContext, resolveEmployeeStructure, loadStatutoryConfig } from "@/lib/payroll/load";
-import { buildFromGross, type CtcBreakdown } from "@/lib/payroll/compensation";
+import { buildFromGross, type CtcBreakdown,
+  evaluateStructure,
+  takeHomeFor,
+} from "@/lib/payroll/compensation";
 import { formatINR } from "@/lib/payroll/money";
 import {
   getSessionUser,
@@ -31,6 +34,7 @@ import { loadEmployeeAssetHistory } from "@/lib/assets/load";
 import { RevokeAssetForm } from "@/app/console/assets/forms";
 import { SalaryBreakupTable } from "@/components/console/salary-breakup-table";
 import { Card, Badge, THead, TH, TBody, TR, TD, Tabs, TabLink } from "@/components/console/ui";
+import { computeProfessionalTax } from "@/lib/payroll/statutory";
 
 export const metadata = { title: "Employee" };
 
@@ -110,6 +114,9 @@ export default async function EmployeeDetailPage(
   const currentSalary = salaryHistory.find((r) => r.effectiveTo === null) ?? null;
   let currentCtc: CtcBreakdown | null = null;
   let currentBreakupStructureId: string | null = null;
+  let currentTakeHome: {
+    takeHomePaise: number; epfPaise: number; esicPaise: number; ptPaise: number;
+  } | null = null;
   if (canSeeCompensation(user) && currentSalary) {
     const structureCtx = await loadStructureResolutionContext(company.id);
     const resolved = resolveEmployeeStructure(structureCtx, {
@@ -132,6 +139,40 @@ export default async function EmployeeDetailPage(
         gratuityAccrualBps: 481,
       },
     });
+
+    /* What they are actually left with. CTC is the number the company
+       talks about and net is the number they live on; a breakup that
+       stops at CTC answers the wrong person's question. */
+    const evaluation = evaluateStructure(resolved.components, currentSalary.monthlyGrossPaise);
+    const [branchRow] = await db
+      .select({ stateCode: s.branches.stateCode })
+      .from(s.branches)
+      .where(eq(s.branches.id, e.branchId))
+      .limit(1);
+    const stateCode = branchRow?.stateCode ?? "";
+    const professionalTaxPaise = computeProfessionalTax({
+      stateCode,
+      ptBasePaise: evaluation.ptBasePaise,
+      month: Number(currentSalary.effectiveFrom.slice(5, 7)),
+      gender: e.gender ?? "other",
+      slabs: statutory.ptSlabsByState[stateCode] ?? [],
+      applicable: statutory.ptApplicableByState[stateCode] ?? false,
+    }).amountPaise;
+
+    const th = takeHomeFor(evaluation, {
+      epfCeilingPaise: statutory.epf.wageCeilingPaise,
+      epfEmployeeBps: statutory.epf.employeeBps,
+      epfOnActualBasic: company.epfOnActualBasic,
+      esicThresholdPaise: statutory.esic.wageThresholdPaise,
+      esicEmployeeBps: statutory.esic.employeeBps,
+      professionalTaxPaise,
+    });
+    currentTakeHome = {
+      takeHomePaise: th.takeHome,
+      epfPaise: th.epf,
+      esicPaise: th.esic,
+      ptPaise: th.pt,
+    };
   }
 
   // The checklist is what turns a pile of files into an answer about
@@ -626,7 +667,7 @@ export default async function EmployeeDetailPage(
                   </Link>
                 )}
               </div>
-              <SalaryBreakupTable ctc={currentCtc} />
+              <SalaryBreakupTable ctc={currentCtc} takeHome={currentTakeHome ?? undefined} />
             </Card>
           )}
 
