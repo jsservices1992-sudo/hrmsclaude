@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   recomputeAttendance,
   bulkUploadAttendance,
@@ -96,30 +96,100 @@ export function BulkUploadForm({
  * every day of the period in one submit — the department-wide sibling of
  * the CSV upload, for the common "the whole shift was on X" case.
  */
+/**
+ * Marking a lot of people at once.
+ *
+ * Whole company, one department, or a chosen few; the whole period or a
+ * few days of it. Weekly offs and holidays inside the range are not
+ * excluded here — the derivation that runs afterwards already knows a
+ * Sunday is a Sunday, and pre-filtering would only be a second, worse
+ * copy of that rule.
+ */
 export function DepartmentBulkMarkForm({
-  companyId, year, month, departments,
+  companyId, year, month, departments, employees,
 }: {
-  companyId: string; year: number; month: number; departments: { id: string; name: string }[];
+  companyId: string; year: number; month: number;
+  departments: { id: string; name: string }[];
+  employees: { id: string; label: string }[];
 }) {
   const [state, action] = useActionState<AttendanceState, FormData>(bulkMarkDepartment, {});
+  const [scope, setScope] = useState<"company" | "department" | "people">("company");
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const iso = (d: number) =>
+    `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
   return (
-    <form action={action} className="flex flex-col gap-2">
+    <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
-      <div className="flex flex-wrap items-center gap-2">
-        <Select name="departmentId" className="w-44" required defaultValue="">
-          <option value="" disabled>Department</option>
-          {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </Select>
-        <Select name="status" className="w-36" defaultValue="present">
-          <option value="present">Present</option>
-          <option value="half_day">Half day</option>
-          <option value="absent">Absent</option>
-          <option value="on_duty">On duty</option>
-        </Select>
-        <SubmitButton pendingText="Working…">Mark department</SubmitButton>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1">
+          <span className="label text-ink-3">Who</span>
+          <Select
+            className="w-44"
+            value={scope}
+            onChange={(e) => setScope(e.target.value as typeof scope)}
+          >
+            <option value="company">Everyone</option>
+            <option value="department">One department</option>
+            <option value="people">Pick people</option>
+          </Select>
+        </label>
+
+        {scope === "department" && (
+          <label className="flex flex-col gap-1">
+            <span className="label text-ink-3">Department</span>
+            <Select name="departmentId" className="w-44" required defaultValue="">
+              <option value="" disabled>Choose…</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select>
+          </label>
+        )}
+
+        <label className="flex flex-col gap-1">
+          <span className="label text-ink-3">From</span>
+          <Input name="fromDate" type="date" defaultValue={iso(1)} min={iso(1)} max={iso(last)} className="font-mono" />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="label text-ink-3">To</span>
+          <Input name="toDate" type="date" defaultValue={iso(last)} min={iso(1)} max={iso(last)} className="font-mono" />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="label text-ink-3">Mark as</span>
+          <Select name="status" className="w-36" defaultValue="present">
+            <option value="present">Present</option>
+            <option value="half_day">Half day</option>
+            <option value="absent">Absent</option>
+            <option value="on_duty">On duty</option>
+          </Select>
+        </label>
+
+        <SubmitButton pendingText="Working…">Mark attendance</SubmitButton>
       </div>
+
+      {scope === "people" && (
+        <div className="border border-line bg-surface-2 p-3 max-h-56 overflow-y-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-1">
+          {employees.map((e) => (
+            <label key={e.id} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="employeeIds" value={e.id} className="h-4 w-4" />
+              <span className="truncate">{e.label}</span>
+            </label>
+          ))}
+          {employees.length === 0 && (
+            <span className="text-xs text-ink-3">Nobody active to choose from.</span>
+          )}
+        </div>
+      )}
+
+      <p className="text-xs text-ink-3 max-w-[80ch]">
+        Sundays and holidays inside the range are marked too, and then
+        ignored — attendance is re-derived afterwards and a weekly off stays
+        a weekly off, paid, whatever the mark says.
+      </p>
+
       <FormFeedback state={state} />
     </form>
   );

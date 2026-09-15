@@ -164,6 +164,17 @@ export default async function AttendancePage(
       : "input";
   const q = `company=${companyId}&year=${year}&month=${month}`;
 
+  const activeEmployees = await db
+    .select({
+      id: s.employees.id,
+      empCode: s.employees.empCode,
+      firstName: s.employees.firstName,
+      lastName: s.employees.lastName,
+    })
+    .from(s.employees)
+    .where(and(eq(s.employees.companyId, companyId), eq(s.employees.status, "active")))
+    .orderBy(asc(s.employees.empCode));
+
   /* Self-service punches that were turned away. Only the employee saw
      these, so a branch pinned in the wrong place looked to HR like
      nobody punching and to the employee like being called a liar. */
@@ -546,7 +557,16 @@ export default async function AttendancePage(
               <span className="label text-ink-2">Mark a whole department</span>
             </div>
             <div className="p-4">
-              <DepartmentBulkMarkForm companyId={companyId} year={year} month={month} departments={departments} />
+              <DepartmentBulkMarkForm
+                companyId={companyId}
+                year={year}
+                month={month}
+                departments={departments}
+                employees={activeEmployees.map((e) => ({
+                  id: e.id,
+                  label: `${e.empCode} — ${e.firstName} ${e.lastName}`,
+                }))}
+              />
             </div>
           </Card>
         </div>

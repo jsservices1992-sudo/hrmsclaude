@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray} from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import {
@@ -261,7 +261,11 @@ export async function bulkMarkDepartment(
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const companyId = String(fd.get("companyId") ?? "");
+  /* Empty means every department — marking the whole company for a day
+     is the commonest case (a shutdown, a strike, a town-wide holiday)
+     and having to pick each department in turn invites missing one. */
   const departmentId = String(fd.get("departmentId") ?? "");
+  const employeeIds = fd.getAll("employeeIds").map(String).filter(Boolean);
   const year = Number(fd.get("year"));
   const month = Number(fd.get("month"));
   const status = String(fd.get("status") ?? "") as BulkStatus;
@@ -301,11 +305,14 @@ export async function bulkMarkDepartment(
     .where(
       and(
         eq(s.employees.companyId, companyId),
-        eq(s.employees.departmentId, departmentId),
         eq(s.employees.status, "active"),
+        ...(employeeIds.length > 0 ? [inArray(s.employees.id, employeeIds)] : []),
+        ...(employeeIds.length === 0 && departmentId
+          ? [eq(s.employees.departmentId, departmentId)]
+          : []),
       ),
     );
-  if (employees.length === 0) return { error: "No active employees in this department." };
+  if (employees.length === 0) return { error: "Nobody matches that selection." };
 
   const [shiftRow] = await db
     .select()
@@ -314,8 +321,33 @@ export async function bulkMarkDepartment(
     .limit(1);
   const shift = shiftRow ?? DEFAULT_SHIFT;
 
+  /* A range inside the period, or the whole period when none is given.
+     Marking a whole month present when somebody was away for three days
+     is the mistake this avoids. */
   const total = daysInMonth(year, month);
-  const dates = Array.from({ length: total }, (_, i) => `${year}-${String(month).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`);
+  const first = `${year}-${String(month).padStart(2, "0")}-01`;
+  const last = `${year}-${String(month).padStart(2, "0")}-${String(total).padStart(2, "0")}`;
+  const fromDate = String(fd.get("fromDate") ?? "").trim() || first;
+  const toDate = String(fd.get("toDate") ?? "").trim() || last;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
+    return { error: "Enter the dates as YYYY-MM-DD." };
+  }
+  if (fromDate > toDate) return { error: "The first date is after the last one." };
+  if (fromDate < first || toDate > last) {
+    return {
+      error: `Those dates fall outside ${month}/${year}. Mark one period at a time, so a run only ever covers the month it belongs to.`,
+    };
+  }
+
+  const dates: string[] = [];
+  for (
+    let d = new Date(fromDate + "T00:00:00Z");
+    d.toISOString().slice(0, 10) <= toDate;
+    d.setUTCDate(d.getUTCDate() + 1)
+  ) {
+    dates.push(d.toISOString().slice(0, 10));
+  }
 
   const { punches, recordStatus } = punchesForBulkStatus(status, shift);
   const punchesJson = JSON.stringify(punches);
@@ -335,7 +367,7 @@ export async function bulkMarkDepartment(
             workedMinutes,
             lateMinutes: 0,
             lopUnits: 0,
-            basis: "Bulk department mark",
+            basis: "Bulk mark",
             regularised: false,
             source: "manual" as const,
           })
