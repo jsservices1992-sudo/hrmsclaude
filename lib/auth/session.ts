@@ -47,6 +47,15 @@ export async function createSession(userId: string, userAgent?: string) {
   return id;
 }
 
+/**
+ * The session this request is on, so an action that revokes the others can
+ * leave the one doing the revoking alive.
+ */
+export async function currentSessionId(): Promise<string | null> {
+  const jar = await cookies();
+  return jar.get(SESSION_COOKIE)?.value ?? null;
+}
+
 export async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies();
   const id = jar.get(SESSION_COOKIE)?.value;

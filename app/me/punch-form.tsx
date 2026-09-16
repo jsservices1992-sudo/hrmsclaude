@@ -12,18 +12,30 @@ import { punchAttendance, type PunchState } from "./actions";
  * position at all. What this buys is that marking yourself present from
  * bed takes deliberate effort rather than a tap, and that every attempt
  * is on record with where it claimed to be.
+ *
+ * One in and one out a day. The day's own state is the interface: what has
+ * happened reads as a pair of times, and only the button that can still be
+ * pressed is a button at all.
  */
 export function PunchForm({
   branchName,
   hasOfficeLocation,
   geofenceMetres,
-  openSince,
+  next,
+  inAt,
+  outAt,
+  worked,
+  doneReason,
 }: {
   branchName: string;
   hasOfficeLocation: boolean;
   geofenceMetres: number;
-  /** HH:MM of an unfinished punch, if there is one. */
-  openSince: string | null;
+  /** Which button is live, or null when the day is done. */
+  next: "in" | "out" | null;
+  inAt: string | null;
+  outAt: string | null;
+  worked: string | null;
+  doneReason: string | null;
 }) {
   const [state, action] = useActionState<PunchState, FormData>(punchAttendance, {});
   const [locating, setLocating] = useState(false);
@@ -79,36 +91,54 @@ export function PunchForm({
   };
 
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="latitude" />
       <input type="hidden" name="longitude" />
       <input type="hidden" name="accuracy" />
       <input type="hidden" name="kind" />
 
-      <p className="text-sm text-ink-2">
-        {openSince
-          ? `Punched in at ${openSince}. Punch out when you finish.`
-          : `Marks you present at ${branchName}. Accepted within ${geofenceMetres}m of the office.`}
-      </p>
+      {/* The day so far, as two times rather than a sentence to parse. */}
+      <div className="flex items-stretch gap-3">
+        <Slot label="In" value={inAt} live={next === "in"} />
+        <Slot label="Out" value={outAt} live={next === "out"} />
+        <Slot label="Worked" value={worked} live={false} />
+      </div>
 
-      <div className="flex flex-wrap gap-2">
+      {next === "in" && (
         <button
           type="button"
           onClick={submit("in")}
-          disabled={locating || Boolean(openSince)}
-          className="rounded-md bg-indigo text-on-indigo px-5 py-3 text-base font-medium disabled:opacity-40"
+          disabled={locating}
+          className="rounded-md bg-indigo text-on-indigo px-5 py-3.5 text-base font-medium disabled:opacity-40"
         >
           {locating ? "Finding you…" : "Punch in"}
         </button>
+      )}
+
+      {next === "out" && (
         <button
           type="button"
           onClick={submit("out")}
-          disabled={locating || !openSince}
-          className="rounded-md border border-line bg-surface px-5 py-3 text-base font-medium disabled:opacity-40"
+          disabled={locating}
+          className="rounded-md border border-line bg-surface px-5 py-3.5 text-base font-medium disabled:opacity-40"
         >
-          Punch out
+          {locating ? "Finding you…" : "Punch out"}
         </button>
-      </div>
+      )}
+
+      {next === null && doneReason && (
+        <p className="rounded-md bg-surface-2 px-4 py-3 text-sm text-ink-2">
+          {doneReason} Ask for a correction under Attendance if a time is wrong.
+        </p>
+      )}
+
+      {next !== null && (
+        <p className="text-sm text-ink-2">
+          {next === "in"
+            ? `Marks you present at ${branchName}. Accepted within ${geofenceMetres}m of the office.`
+            : "One punch out a day — make it when you finish."}
+        </p>
+      )}
 
       {locationError && <p className="text-sm text-rust">{locationError}</p>}
       {state.error && (
@@ -128,5 +158,32 @@ export function PunchForm({
         distance, and stored with the punch. It is not tracked in between.
       </p>
     </form>
+  );
+}
+
+function Slot({
+  label,
+  value,
+  live,
+}: {
+  label: string;
+  value: string | null;
+  live: boolean;
+}) {
+  return (
+    <div
+      className={`flex-1 rounded-md border px-3 py-2.5 ${
+        live ? "border-indigo/40 bg-indigo/5" : "border-line bg-surface-2"
+      }`}
+    >
+      <p className="label text-ink-3">{label}</p>
+      <p
+        className={`font-mono tnum text-lg mt-0.5 ${
+          value ? "text-ink" : "text-ink-3"
+        }`}
+      >
+        {value ?? "—"}
+      </p>
+    </div>
   );
 }

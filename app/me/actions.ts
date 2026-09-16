@@ -2,10 +2,12 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser, currentSessionId } from "@/lib/auth/session";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { checkPassword } from "@/lib/auth/signup";
 import { recordAudit } from "@/lib/audit/log";
 import { validateApplication, type LeaveTypeDef } from "@/lib/attendance/leave";
 import {
@@ -21,6 +23,7 @@ import {
 import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { publishedRunFor } from "@/lib/ess/load";
+import { applyPunch, clockOf, type DayPunch } from "@/lib/ess/punch-day";
 import { validateRegularisation } from "@/lib/ess/regularisation";
 import {
   DECLARATION_SECTIONS,
@@ -1029,22 +1032,11 @@ export async function punchAttendance(_prev: PunchState, fd: FormData): Promise<
     .where(and(eq(s.attendanceRecords.employeeId, employee.id), eq(s.attendanceRecords.date, date)))
     .limit(1);
 
-  const punches: { inMinute: number; outMinute: number | null }[] = existing
-    ? JSON.parse(existing.punchesJson)
-    : [];
+  const existingPunches: DayPunch[] = existing ? JSON.parse(existing.punchesJson) : [];
 
-  if (kind === "in") {
-    const open = punches.find((p) => p.outMinute == null);
-    if (open) return { error: "You are already punched in. Punch out first." };
-    punches.push({ inMinute: minuteOfDay, outMinute: null });
-  } else {
-    const open = [...punches].reverse().find((p) => p.outMinute == null);
-    if (!open) return { error: "You are not punched in, so there is nothing to punch out of." };
-    if (minuteOfDay < open.inMinute) {
-      return { error: "That would end the shift before it started. Ask HR to correct it." };
-    }
-    open.outMinute = minuteOfDay;
-  }
+  const applied = applyPunch(existingPunches, kind, minuteOfDay);
+  if (!applied.ok) return { error: applied.error };
+  const punches = applied.punches;
 
   if (existing) {
     await db
@@ -1075,12 +1067,83 @@ export async function punchAttendance(_prev: PunchState, fd: FormData): Promise<
   });
 
   revalidatePath("/me");
-  const clock = `${String(Math.floor(minuteOfDay / 60)).padStart(2, "0")}:${String(minuteOfDay % 60).padStart(2, "0")}`;
+  const clock = clockOf(minuteOfDay)!;
   return {
     ok:
       kind === "in"
         ? `Punched in at ${clock}, ${decision.distanceMetres}m from ${branch?.name ?? "the office"}.`
         : `Punched out at ${clock}. Today's hours will be totalled when attendance is derived.`,
     distanceMetres: decision.distanceMetres,
+  };
+}
+
+/* ==================== account ==================== */
+
+/**
+ * Changing your own password.
+ *
+ * The current one is asked for because a signed-in session left open on a
+ * shared machine is otherwise enough to lock the owner out of their own
+ * payslips. Every other session is then revoked: if the reason for
+ * changing it is that somebody else knows it, leaving their session alive
+ * defeats the change.
+ */
+export async function changeOwnPassword(
+  _prev: SelfState,
+  fd: FormData,
+): Promise<SelfState> {
+  const self = await me();
+  if (!self) return { error: "Your account is not linked to an employee record." };
+  const { user } = self;
+
+  const current = String(fd.get("currentPassword") ?? "");
+  const next = String(fd.get("newPassword") ?? "");
+  const confirm = String(fd.get("confirmPassword") ?? "");
+
+  if (!current || !next) return { error: "Fill in both your current and new password." };
+  if (next !== confirm) return { error: "The two new passwords do not match." };
+  if (next === current) return { error: "That is the password you already have." };
+
+  const [account] = await db
+    .select({ id: s.users.id, passwordHash: s.users.passwordHash })
+    .from(s.users)
+    .where(eq(s.users.email, user.email))
+    .limit(1);
+  if (!account) return { error: "Your account could not be read." };
+
+  /* Compared against a dud hash when there is none on record, so a missing
+     password takes the same time to fail as a wrong one. */
+  const ok = await verifyPassword(current, account.passwordHash ?? "scrypt$00$00");
+  if (!ok) return { error: "That is not your current password." };
+
+  const problem = checkPassword(next, { email: user.email });
+  if (problem) return { error: problem };
+
+  const now = new Date().toISOString();
+  await db
+    .update(s.users)
+    .set({ passwordHash: await hashPassword(next), passwordSetAt: now })
+    .where(eq(s.users.id, account.id));
+
+  const keep = await currentSessionId();
+  await db
+    .delete(s.sessions)
+    .where(
+      keep
+        ? and(eq(s.sessions.userId, account.id), ne(s.sessions.id, keep))
+        : eq(s.sessions.userId, account.id),
+    );
+
+  await recordAudit({
+    user,
+    action: "account.password_changed",
+    entity: "user",
+    entityId: account.id,
+    reason: "Changed by the employee from their own workspace",
+  });
+
+  revalidatePath("/me");
+  return {
+    ok: "Password changed. Any other device you were signed in on has been signed out.",
   };
 }

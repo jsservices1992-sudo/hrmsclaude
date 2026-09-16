@@ -44,8 +44,15 @@ import {
   CancelProfileChangeForm,
   TeamRegularisationForm,
   RestrictedHolidayForm,
+  ChangePasswordForm,
 } from "./forms";
 import { PunchForm } from "./punch-form";
+import {
+  punchDayState,
+  clockOf,
+  durationOf,
+  type DayPunch,
+} from "@/lib/ess/punch-day";
 import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "My workspace" };
@@ -145,14 +152,43 @@ export default async function MePage(props: PageProps<"/me">) {
     { id: "tax", label: "Tax" },
     { id: "form16", label: "Form 16" },
     { id: "documents", label: "Documents" },
+    { id: "profile", label: "Profile" },
     { id: "assets", label: `Assets${myAssets.length > 0 ? ` (${myAssets.length})` : ""}` },
     ...(isManager ? [{ id: "team", label: `My team (${reports.length})` }] : []),
     ...(inbox.length > 0 ? [{ id: "tasks", label: `Tasks (${inbox.length})` }] : []),
+    { id: "settings", label: "Settings" },
   ];
   // "settlement" is reachable only from the F&F tile's link, not from the
   // tab bar itself, so it is valid without being in `tabs`.
   const validTabs = new Set([...tabs.map((t) => t.id), "settlement"]);
   const tab = typeof sp.tab === "string" && validTabs.has(sp.tab) ? sp.tab : "home";
+
+  /* Names for the ids on the record. Loaded only for the tab that shows
+     them — every other tab would be paying three queries for nothing. */
+  let profileDepartment: string | null = null;
+  let profileGrade: string | null = null;
+  let profileManager: string | null = null;
+  if (tab === "profile") {
+    const [dept, grade, manager] = await Promise.all([
+      emp.departmentId
+        ? db.select({ name: s.departments.name }).from(s.departments)
+            .where(eq(s.departments.id, emp.departmentId)).limit(1)
+        : Promise.resolve([]),
+      emp.gradeId
+        ? db.select({ name: s.grades.name }).from(s.grades)
+            .where(eq(s.grades.id, emp.gradeId)).limit(1)
+        : Promise.resolve([]),
+      emp.managerId
+        ? db.select({ first: s.employees.firstName, last: s.employees.lastName, code: s.employees.empCode })
+            .from(s.employees).where(eq(s.employees.id, emp.managerId)).limit(1)
+        : Promise.resolve([]),
+    ]);
+    profileDepartment = dept[0]?.name ?? null;
+    profileGrade = grade[0]?.name ?? null;
+    profileManager = manager[0]
+      ? `${manager[0].first} ${manager[0].last} (${manager[0].code})`
+      : null;
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date();
@@ -388,13 +424,9 @@ export default async function MePage(props: PageProps<"/me">) {
       ),
     )
     .limit(1);
-  const openPunch = todayRecord
-    ? (JSON.parse(todayRecord.punchesJson) as { inMinute: number; outMinute: number | null }[])
-        .find((p) => p.outMinute == null)
-    : undefined;
-  const openPunchAt = openPunch
-    ? `${String(Math.floor(openPunch.inMinute / 60)).padStart(2, "0")}:${String(openPunch.inMinute % 60).padStart(2, "0")}`
-    : null;
+  const punchDay = punchDayState(
+    todayRecord ? (JSON.parse(todayRecord.punchesJson) as DayPunch[]) : [],
+  );
 
   return (
     <div className="mx-auto w-full max-w-4xl px-5 sm:px-8 py-8 flex flex-col gap-6">
@@ -445,15 +477,22 @@ export default async function MePage(props: PageProps<"/me">) {
                 row.branch.latitude != null && row.branch.longitude != null
               }
               geofenceMetres={row.branch.geofenceMetres}
-              openSince={openPunchAt}
+              next={punchDay.next}
+              inAt={clockOf(punchDay.inMinute)}
+              outAt={clockOf(punchDay.outMinute)}
+              worked={durationOf(punchDay.workedMinutes)}
+              doneReason={punchDay.doneReason}
             />
           </div>
         </section>
       )}
 
+      {/* A phone gets one scrolling row rather than four wrapped ones: at a
+          dozen sections, wrapping pushes the page's own content below the
+          fold before it has said anything. */}
       <nav
         aria-label="Sections"
-        className="flex flex-wrap gap-1 border-b border-line"
+        className="-mx-5 sm:mx-0 px-5 sm:px-0 flex sm:flex-wrap gap-1 border-b border-line overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         data-print="hide"
       >
         {tabs.map((t) => (
@@ -461,7 +500,7 @@ export default async function MePage(props: PageProps<"/me">) {
             key={t.id}
             href={`/me?tab=${t.id}`}
             aria-current={tab === t.id ? "page" : undefined}
-            className={`px-3 py-2 text-sm -mb-px border-b-2 ${
+            className={`shrink-0 whitespace-nowrap px-3 py-2.5 text-sm -mb-px border-b-2 ${
               tab === t.id
                 ? "border-indigo text-ink font-medium"
                 : "border-transparent text-ink-2 hover:text-ink"
@@ -642,22 +681,81 @@ export default async function MePage(props: PageProps<"/me">) {
             </Panel>
           )}
 
+        </div>
+      )}
+
+      {/* ======================= profile ======================= */}
+      {tab === "profile" && (
+        <div className="flex flex-col gap-4">
           <Panel title="Profile">
-            <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2 px-4 py-4 text-sm">
+            {/* The whole record, grouped the way somebody checks it: who
+                they are, how to reach them, where they work, and the
+                numbers a payslip and a PF account are filed under. */}
+            <div className="flex flex-col">
               {[
-                ["Date of joining", emp.dateOfJoining],
-                ["Employment type", emp.employmentType],
-                ["Work email", emp.email ?? "—"],
-                ["Mobile", emp.mobile ?? "—"],
-                ["PAN", emp.pan ? `${emp.pan.slice(0, 3)}••••${emp.pan.slice(-2)}` : "Not on record"],
-                ["Bank account", emp.bankAccount ? `••••${emp.bankAccount.slice(-4)}` : "Not on record"],
-              ].map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-3 border-b border-line-2 pb-1.5">
-                  <dt className="text-ink-3">{k}</dt>
-                  <dd className="font-mono text-xs text-right">{v}</dd>
+                {
+                  heading: "You",
+                  rows: [
+                    ["Name", [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(" ")],
+                    ["Employee code", emp.empCode],
+                    ["Date of birth", emp.dateOfBirth ? formatDate(emp.dateOfBirth) : "—"],
+                    ["Gender", emp.gender],
+                  ] as const,
+                },
+                {
+                  heading: "Contact",
+                  rows: [
+                    ["Work email", emp.email ?? "—"],
+                    ["Personal email", emp.personalEmail ?? "—"],
+                    ["Mobile", emp.mobile ?? "—"],
+                    [
+                      "Address",
+                      [emp.addressLine, emp.city, emp.stateCode, emp.pincode]
+                        .filter(Boolean)
+                        .join(", ") || "—",
+                    ],
+                    ["Emergency contact", emp.emergencyContactName ?? "—"],
+                    ["Emergency phone", emp.emergencyContactPhone ?? "—"],
+                  ] as const,
+                },
+                {
+                  heading: "Work",
+                  rows: [
+                    ["Designation", emp.designation ?? "—"],
+                    ["Department", profileDepartment ?? "—"],
+                    ["Grade", profileGrade ?? "—"],
+                    ["Reports to", profileManager ?? "—"],
+                    ["Branch", `${row.branch.name}${row.branch.city ? ` · ${row.branch.city}` : ""}`],
+                    ["Employment type", emp.employmentType],
+                    ["Date of joining", formatDate(emp.dateOfJoining)],
+                    ...(emp.dateOfExit ? ([["Date of exit", formatDate(emp.dateOfExit)]] as const) : []),
+                  ],
+                },
+                {
+                  heading: "Statutory & banking",
+                  rows: [
+                    ["PAN", emp.pan ? `${emp.pan.slice(0, 3)}••••${emp.pan.slice(-2)}` : "Not on record"],
+                    ["UAN", emp.uan ? `••••${emp.uan.slice(-4)}` : "Not on record"],
+                    ["ESIC IP", emp.esicIp ?? "Not on record"],
+                    ["Bank account", emp.bankAccount ? maskAccount(emp.bankAccount) : "Not on record"],
+                    ["IFSC", emp.ifsc ?? "Not on record"],
+                    ["Tax regime", emp.taxRegime === "old" ? "Old" : "New"],
+                  ] as const,
+                },
+              ].map((group) => (
+                <div key={group.heading} className="border-b border-line-2 last:border-0">
+                  <p className="label text-ink-3 px-4 pt-3.5 pb-1">{group.heading}</p>
+                  <dl className="grid sm:grid-cols-2 gap-x-6 px-4 pb-3 text-sm">
+                    {group.rows.map(([k, v]) => (
+                      <div key={k} className="flex justify-between gap-3 py-1.5 border-b border-line-2 last:border-0 sm:border-b">
+                        <dt className="text-ink-3 shrink-0">{k}</dt>
+                        <dd className="text-right min-w-0 break-words">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
               ))}
-            </dl>
+            </div>
             <div className="px-4 pb-4 pt-1 border-t border-line-2 mt-1 flex flex-col gap-3">
               <p className="text-xs text-ink-3 max-w-[70ch]">
                 Identifiers are masked here. Ask for a correction below — nothing
@@ -1543,6 +1641,69 @@ export default async function MePage(props: PageProps<"/me">) {
       )}
 
       {/* ======================= settlement (FR-ESS-5) ======================= */}
+      {/* ======================= settings ======================= */}
+      {tab === "settings" && (
+        <div className="flex flex-col gap-4">
+          <Panel title="Your sign-in">
+            <dl className="grid sm:grid-cols-2 gap-x-6 px-4 py-4 text-sm">
+              {[
+                ["Signed in as", user.email],
+                ["Name on the account", user.name],
+                ["Role", user.role],
+                ["Employee code", emp.empCode],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3 py-1.5 border-b border-line-2">
+                  <dt className="text-ink-3 shrink-0">{k}</dt>
+                  <dd className="text-right min-w-0 break-words">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="px-4 pb-4 text-xs text-ink-3 max-w-[70ch]">
+              Your name, email and employee code come from your HR record. To
+              correct any of them, ask under Profile — nothing is written onto
+              the record until HR approves it.
+            </p>
+          </Panel>
+
+          <Panel title="Password">
+            <ChangePasswordForm />
+          </Panel>
+
+          <Panel title="Attendance on this device">
+            <div className="px-4 py-4 text-sm text-ink-2 flex flex-col gap-2 max-w-[70ch]">
+              <p>
+                Punching needs your location, which the browser only shares
+                after you allow it. If you refused once, the browser remembers
+                — allow location for this site in its site settings and the
+                buttons will work again.
+              </p>
+              <p className="text-xs text-ink-3">
+                The location is read when you press a button, used to check the
+                distance from your branch, and stored with the punch. Nothing is
+                read in between.
+              </p>
+            </div>
+          </Panel>
+
+          <Panel title="Signing out">
+            <div className="px-4 py-4 flex flex-col gap-3 items-start">
+              <p className="text-sm text-ink-2 max-w-[70ch]">
+                Signing out ends this session on this device. Changing your
+                password ends every other one.
+              </p>
+              <form action={logout}>
+                <button
+                  type="submit"
+                  className="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium"
+                >
+                  Sign out
+                </button>
+              </form>
+            </div>
+          </Panel>
+        </div>
+      )}
+
       {tab === "settlement" && settlementVisible && settlement && (
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3" data-print="hide">

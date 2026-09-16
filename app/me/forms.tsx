@@ -13,12 +13,13 @@ import {
   requestProfileChange,
   cancelProfileChange,
   managerDecideRegularisation,
+  changeOwnPassword,
   type SelfState,
 } from "./actions";
 import { PROFILE_FIELDS } from "@/lib/ess/profile";
 import { DECLARATION_SECTIONS } from "@/lib/ess/declaration";
 import { paiseToRupees } from "@/lib/payroll/money";
-import { SubmitButton } from "@/components/console/ui";
+import { SubmitButton, Input, FormFeedback } from "@/components/console/ui";
 
 const field =
   "px-2.5 py-1.5 text-sm bg-surface border border-line outline-none focus:border-ink-3";
@@ -588,6 +589,40 @@ export function RestrictedHolidayForm({
       <input type="hidden" name="reason" value={name} />
       <SubmitButton size="sm" pendingText="Applying…">Take this day</SubmitButton>
       <Note state={state} />
+    </form>
+  );
+}
+
+/**
+ * Changing your own password.
+ *
+ * The current one is asked for so that a session left open on a shared
+ * machine is not enough to lock the owner out of their own payslips.
+ */
+export function ChangePasswordForm() {
+  const [state, action] = useActionState<SelfState, FormData>(changeOwnPassword, {});
+  return (
+    <form action={action} className="flex flex-col gap-3 px-4 py-4 max-w-sm">
+      <label className="flex flex-col gap-1">
+        <span className="label text-ink-3">Current password</span>
+        <Input name="currentPassword" type="password" autoComplete="current-password" required />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="label text-ink-3">New password</span>
+        <Input name="newPassword" type="password" autoComplete="new-password" required />
+        <span className="text-xs text-ink-3">
+          At least 12 characters. A few ordinary words beat one clever one.
+        </span>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="label text-ink-3">Confirm new password</span>
+        <Input name="confirmPassword" type="password" autoComplete="new-password" required />
+      </label>
+      <SubmitButton pendingText="Changing…">Change password</SubmitButton>
+      <FormFeedback state={state} />
+      <p className="text-xs text-ink-3">
+        Changing it signs you out everywhere else — this device stays signed in.
+      </p>
     </form>
   );
 }
