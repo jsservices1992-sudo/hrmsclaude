@@ -7,6 +7,7 @@ import * as s from "@/db/schema";
 import { loadEmployee, loadFormOptions } from "@/lib/hris/load";
 import { loadStructureResolutionContext, resolveEmployeeStructure, loadStatutoryConfig } from "@/lib/payroll/load";
 import {
+  anchorsFrom,
   buildFromGross,
   evaluateStructure,
   grossForTargetTakeHome,
@@ -157,32 +158,41 @@ export default async function EmployeeDetailPage(
     /* For a salary held at a net, the stored gross is a derived figure and
        the run re-solves it every period. Showing the stored one would put a
        gross on this screen that no payslip will carry — the same drift the
-       held net exists to prevent, moved from the payslip to the page. */
-    const displayGrossPaise =
+       held net exists to prevent, moved from the payslip to the page. The
+       agreed components are anchored, so only the balance one moves. */
+    const heldAtNet =
       currentSalary.payMode === "take_home" && currentSalary.targetTakeHomePaise
-        ? grossForTargetTakeHome({
-            targetMonthlyTakeHomePaise: currentSalary.targetTakeHomePaise,
-            components: resolved.components,
-            employer,
-            stateCode,
-            gender: e.gender,
-            month: Number(currentSalary.effectiveFrom.slice(5, 7)),
-            pfOptedIn: e.pfOptedIn,
-            hadPriorPfMembership: e.hadPriorPfMembership,
-            statutory,
-          }).monthlyGrossPaise
-        : currentSalary.monthlyGrossPaise;
+        ? currentSalary.targetTakeHomePaise
+        : null;
+    const anchors = heldAtNet
+      ? anchorsFrom(resolved.components, currentSalary.monthlyGrossPaise)
+      : undefined;
+    const displayGrossPaise = heldAtNet
+      ? grossForTargetTakeHome({
+          targetMonthlyTakeHomePaise: heldAtNet,
+          components: resolved.components,
+          anchors,
+          employer,
+          stateCode,
+          gender: e.gender,
+          month: Number(currentSalary.effectiveFrom.slice(5, 7)),
+          pfOptedIn: e.pfOptedIn,
+          hadPriorPfMembership: e.hadPriorPfMembership,
+          statutory,
+        }).monthlyGrossPaise
+      : currentSalary.monthlyGrossPaise;
 
     currentCtc = buildFromGross({
       monthlyGrossPaise: displayGrossPaise,
       components: resolved.components,
       employer,
+      anchors,
     });
 
     /* What they are actually left with. CTC is the number the company
        talks about and net is the number they live on; a breakup that
        stops at CTC answers the wrong person's question. */
-    const evaluation = evaluateStructure(resolved.components, displayGrossPaise);
+    const evaluation = evaluateStructure(resolved.components, displayGrossPaise, anchors);
     const professionalTaxPaise = computeProfessionalTax({
       stateCode,
       ptBasePaise: evaluation.ptBasePaise,

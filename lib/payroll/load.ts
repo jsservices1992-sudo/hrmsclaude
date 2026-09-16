@@ -22,6 +22,7 @@ import {
 } from "./settings";
 import type { PtSlab, LwfRate } from "./statutory";
 import {
+  anchorsFrom,
   grossForTargetTakeHome,
   GRATUITY_ACCRUAL_BPS,
   type ComponentSpec,
@@ -574,6 +575,9 @@ export async function previewRun(args: {
   const structureIdByEmployee = new Map(rowsSalary.map((r) => [r.emp.id, r.salary.structureId]));
   /* Who was promised a net in hand rather than a gross. Their gross is a
      derived figure, re-solved below against this period's rates. */
+  const agreedGrossByEmployee = new Map(
+    rowsSalary.map((r) => [r.emp.id, r.salary.monthlyGrossPaise]),
+  );
   const lockedTakeHomeByEmployee = new Map(
     rowsSalary
       .filter((r) => r.salary.payMode === "take_home" && (r.salary.targetTakeHomePaise ?? 0) > 0)
@@ -672,12 +676,24 @@ export async function previewRun(args: {
          charge. Solving once at joining and storing the gross keeps the
          gross still and lets the net drift, which is backwards. */
       const lockedTakeHome = lockedTakeHomeByEmployee.get(employee.id);
+      /* Basic, HRA and the rest stay at what was agreed; the balance
+         component carries the month's difference. Both the solve and the
+         engine below have to see these, or the engine re-derives what the
+         solve just pinned. */
+      const anchors = lockedTakeHome
+        ? anchorsFrom(
+            resolved.components,
+            agreedGrossByEmployee.get(employee.id) ?? employee.monthlyGrossPaise,
+          )
+        : undefined;
       const forRun = lockedTakeHome
         ? {
             ...employee,
+            componentAnchors: anchors,
             monthlyGrossPaise: grossForTargetTakeHome({
               targetMonthlyTakeHomePaise: lockedTakeHome,
               components: resolved.components,
+              anchors,
               employer: {
                 epfCeilingPaise: statutory.epf.wageCeilingPaise,
                 epfEmployerBps: statutory.epf.employerBps,

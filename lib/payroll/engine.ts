@@ -57,6 +57,8 @@ export type EmployeeInput = {
   offDaysWorked?: number;
   hadPriorPfMembership: boolean;
   pfOptedIn: boolean;
+  /** Components held at their agreed amounts; the balance one absorbs. */
+  componentAnchors?: Map<string, Paise>;
   vpfPercent: number;
   /** Covered at the start of the current ESIC contribution period. */
   esicCoveredAtPeriodStart: boolean;
@@ -189,7 +191,15 @@ export function computeEmployeePay(args: {
   });
 
   // Evaluate the structure at full monthly gross, then prorate.
-  const evaluated = evaluateStructure(c.structure, e.monthlyGrossPaise);
+  /* Where a salary is held at a net, the agreed components are pinned and
+     only the balance one moves. Without this the engine re-derives Basic
+     from the adjusted gross, and a rupee of labour welfare fund restates
+     the PF wage on the payslip and the ECR. */
+  const evaluated = evaluateStructure(
+    c.structure,
+    e.monthlyGrossPaise,
+    e.componentAnchors,
+  );
   for (const w of evaluated.warnings) warnings.push(w);
 
   const lines: PayLine[] = [];

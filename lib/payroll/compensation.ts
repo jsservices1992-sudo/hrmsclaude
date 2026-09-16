@@ -201,12 +201,49 @@ export type EvaluationResult = {
 };
 
 /**
+ * Components pinned at the amounts a base gross produced.
+ *
+ * Everything except the balance component: that one exists to absorb
+ * whatever is left, which is exactly where an adjustment belongs.
+ *
+ * Empty unless the structure has exactly one balance component. With none,
+ * pinning every other component pins the gross itself and no adjustment
+ * can land anywhere; with two, they each claim the same remainder and the
+ * gross stops being well defined. In both cases the honest answer is to
+ * anchor nothing and let the structure scale as it is written — a wrong
+ * anchor silently freezes a salary, which is worse than a moving Basic.
+ */
+export function anchorsFrom(
+  components: ComponentSpec[],
+  baseGrossPaise: Paise,
+): Map<string, Paise> {
+  const balance = components.filter(
+    (c) => c.kind === "earning" && c.calcMethod === "balance",
+  );
+  if (balance.length !== 1) return new Map();
+
+  const base = evaluateStructure(components, baseGrossPaise);
+  return new Map(
+    base.components
+      .filter((c) => c.kind === "earning" && c.code !== balance[0].code)
+      .map((c) => [c.code, c.amountPaise]),
+  );
+}
+
+/**
  * Resolve every earning to an amount for a given monthly gross.
  * Deterministic: same inputs, same configuration, same output.
+ *
+ * Anchors hold named components at a given amount instead of deriving
+ * them. Solving a gross upward to carry a new deduction otherwise drags
+ * Basic up with it, and Basic moving drags PF, gratuity and the bonus
+ * wage behind it — a rupee of labour welfare fund should not restate
+ * somebody's PF wage on the ECR.
  */
 export function evaluateStructure(
   components: ComponentSpec[],
   monthlyGrossPaise: Paise,
+  anchors?: Map<string, Paise>,
 ): EvaluationResult {
   const warnings: string[] = [];
   const ordered = resolveOrder(components);
@@ -236,6 +273,13 @@ export function evaluateStructure(
 
     let amount = 0;
     let basis = "";
+
+    const anchored = anchors?.get(code);
+    if (anchored !== undefined && c.calcMethod !== "balance") {
+      values.set(code, anchored);
+      bases.set(code, "Held at the agreed amount");
+      continue;
+    }
 
     switch (c.calcMethod) {
       case "fixed":
@@ -377,8 +421,13 @@ export function buildFromGross(args: {
   monthlyGrossPaise: Paise;
   components: ComponentSpec[];
   employer: EmployerCostParams;
+  anchors?: Map<string, Paise>;
 }): CtcBreakdown {
-  const evaluation = evaluateStructure(args.components, args.monthlyGrossPaise);
+  const evaluation = evaluateStructure(
+    args.components,
+    args.monthlyGrossPaise,
+    args.anchors,
+  );
   const cost = employerCostFor(evaluation, args.employer);
 
   const monthlyCtc =
@@ -495,6 +544,8 @@ export function buildFromTargetTakeHome(args: {
   components: ComponentSpec[];
   employer: EmployerCostParams;
   takeHome: TakeHomeParams;
+  /** Hold these components; the balance component absorbs the rest. */
+  anchors?: Map<string, Paise>;
 }): CtcBreakdown & { takeHomePaise: Paise } {
   let lo = 0;
   let hi = args.targetMonthlyTakeHomePaise * 3;
@@ -502,7 +553,7 @@ export function buildFromTargetTakeHome(args: {
 
   for (let i = 0; i < 60; i++) {
     const mid = Math.floor((lo + hi) / 2);
-    const evaluation = evaluateStructure(args.components, mid);
+    const evaluation = evaluateStructure(args.components, mid, args.anchors);
     const { takeHome } = takeHomeFor(evaluation, args.takeHome);
     bestGross = mid;
     if (takeHome === args.targetMonthlyTakeHomePaise) break;
@@ -515,8 +566,9 @@ export function buildFromTargetTakeHome(args: {
     monthlyGrossPaise: bestGross,
     components: args.components,
     employer: args.employer,
+    anchors: args.anchors,
   });
-  const evaluation = evaluateStructure(args.components, bestGross);
+  const evaluation = evaluateStructure(args.components, bestGross, args.anchors);
   const { takeHome } = takeHomeFor(evaluation, args.takeHome);
 
   return { ...breakdown, takeHomePaise: takeHome };
@@ -549,6 +601,11 @@ export function grossForTargetTakeHome(args: {
   /** Passed to the excluded-employee test, as the run applies it. */
   pfOptedIn?: boolean;
   hadPriorPfMembership?: boolean;
+  /**
+   * Components to hold at their agreed amounts while the gross moves. The
+   * balance component takes the difference, which is what it is for.
+   */
+  anchors?: Map<string, Paise>;
   statutory: {
     epf: { wageCeilingPaise: Paise; employeeBps: number };
     esic: { wageThresholdPaise: Paise; employeeBps: number };
@@ -594,15 +651,20 @@ export function grossForTargetTakeHome(args: {
     components: args.components,
     employer: args.employer,
     takeHome: paramsFor(ptFor(args.targetMonthlyTakeHomePaise)),
+    anchors: args.anchors,
   });
   const takeHome = paramsFor(
-    ptFor(evaluateStructure(args.components, firstPass.monthlyGrossPaise).ptBasePaise),
+    ptFor(
+      evaluateStructure(args.components, firstPass.monthlyGrossPaise, args.anchors)
+        .ptBasePaise,
+    ),
   );
   const settled = buildFromTargetTakeHome({
     targetMonthlyTakeHomePaise: args.targetMonthlyTakeHomePaise,
     components: args.components,
     employer: args.employer,
     takeHome,
+    anchors: args.anchors,
   });
 
   return { monthlyGrossPaise: settled.monthlyGrossPaise, takeHome };

@@ -8,6 +8,7 @@ import {
   buildFromTargetCtc,
   buildFromTargetTakeHome,
   employerCostFor,
+  anchorsFrom,
   grossForTargetTakeHome,
   takeHomeFor,
   checkMinimumWage,
@@ -401,6 +402,62 @@ describe("Excluded employees", () => {
       target,
       "with nothing deducted, the gross is the net",
     );
+  });
+});
+
+describe("Anchored components", () => {
+  const statutory = {
+    epf: { wageCeilingPaise: R(15000), employeeBps: 1200 },
+    esic: { wageThresholdPaise: R(21000), employeeBps: 75 },
+    ptSlabsByState: {},
+    ptApplicableByState: {},
+    lwfByState: {
+      HR: {
+        employeePaise: R(34),
+        employerPaise: R(68),
+        frequency: "monthly" as const,
+        deductionMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      },
+    },
+    lwfApplicableByState: { HR: true },
+  };
+
+  test("only the balance component absorbs a new deduction", () => {
+    const agreedGross = R(28723.41);
+    const anchors = anchorsFrom(STRUCTURE, agreedGross);
+    const before = evaluateStructure(STRUCTURE, agreedGross);
+
+    const solved = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: R(27000),
+      components: STRUCTURE,
+      employer: EMPLOYER,
+      anchors,
+      stateCode: "HR",
+      gender: null,
+      month: 9,
+      statutory,
+    });
+    const after = evaluateStructure(STRUCTURE, solved.monthlyGrossPaise, anchors);
+
+    const amountOf = (e: typeof before, code: string) =>
+      e.components.find((c) => c.code === code)!.amountPaise;
+
+    for (const code of ["BASIC", "HRA", "CONV"]) {
+      assert.equal(amountOf(after, code), amountOf(before, code), `${code} moved`);
+    }
+    assert.equal(
+      amountOf(after, "SPL") - amountOf(before, "SPL"),
+      solved.monthlyGrossPaise - agreedGross,
+      "the whole difference belongs to the balance component",
+    );
+    assert.equal(after.epfBasePaise, before.epfBasePaise, "PF wage must not be restated");
+  });
+
+  test("without anchors the whole structure scales, PF wage included", () => {
+    const agreedGross = R(28723.41);
+    const before = evaluateStructure(STRUCTURE, agreedGross);
+    const after = evaluateStructure(STRUCTURE, agreedGross + R(100));
+    assert.ok(after.epfBasePaise > before.epfBasePaise, "the test's premise");
   });
 });
 
