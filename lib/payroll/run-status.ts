@@ -141,7 +141,9 @@ export function buildRunSteps(i: RunStatusInput, query: string): RunStep[] {
     title: "Attendance & leave",
     state: !i.attendanceFinalised ? "attention" : attendancePending > 0 ? "attention" : "done",
     detail: [
-      `${i.lopTotalDays.toFixed(2)} days loss of pay`,
+      i.lopTotalDays > 0
+        ? `${i.lopTotalDays.toFixed(2)} day(s) will not be paid`
+        : "Every active day is paid",
       attendancePending > 0 ? `${attendancePending} awaiting a decision` : null,
       !i.attendanceFinalised ? "changed since the last calculation" : null,
     ]

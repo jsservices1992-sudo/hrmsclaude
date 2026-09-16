@@ -110,6 +110,18 @@ test("variable pay reports what was entered, not an instruction", () => {
   assert.match(step(some, "variable").detail, /2 entries · ₹4,500 net/);
 });
 
+test("attendance says paid days, never the words loss of pay", () => {
+  /* This is where "loss of pay" leaked back in once already, in the
+     step detail rather than on the attendance table it was fixed on —
+     the phrase nobody reading a payslip understands. */
+  const withLop = input({ lopTotalDays: 4.5 });
+  assert.doesNotMatch(step(withLop, "attendance").detail, /loss of pay/i);
+  assert.match(step(withLop, "attendance").detail, /4\.50 day\(s\) will not be paid/);
+
+  const none = input({ lopTotalDays: 0 });
+  assert.match(step(none, "attendance").detail, /every active day is paid/i);
+});
+
 test("progress counts only finished steps", () => {
   const p = progressOf(buildRunSteps(input(), Q));
   assert.equal(p.total, 9);

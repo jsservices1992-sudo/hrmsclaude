@@ -172,10 +172,14 @@ export function PayrollSettingsForm({
               ]}
             />
             <Select
-              label="Retrospective loss of pay" name="retroLopTreatment" defaultValue={values.retroLopTreatment} disabled={d}
+              label="An attendance correction after the month is closed"
+              name="retroLopTreatment"
+              defaultValue={values.retroLopTreatment}
+              disabled={d}
+              hint="Somebody was marked present, and it turns out they should not have been — or the other way round."
               options={[
-                { id: "adjust_next_period", label: "Adjust in the next period" },
-                { id: "reopen_run", label: "Reopen the closed run" },
+                { id: "adjust_next_period", label: "Carry the difference into next month" },
+                { id: "reopen_run", label: "Reopen the closed run and redo it" },
               ]}
             />
           </Group>

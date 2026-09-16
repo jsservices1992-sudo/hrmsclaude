@@ -183,7 +183,7 @@ export default async function PayrollSettingsPage(
   });
 
   const TABS = [
-    { id: "conventions", label: "Conventions & rounding" },
+    { id: "conventions", label: "How pay is calculated" },
     { id: "departments", label: `Department overrides (${deptOverrides.length})` },
     { id: "structures", label: `Salary structures (${structures.length})` },
     { id: "controls", label: "Approval controls" },
