@@ -1,6 +1,10 @@
 import { today } from "@/lib/clock";
 import Link from "next/link";
 import { listJoiners } from "@/lib/onboarding/load";
+import { db } from "@/db";
+import * as s from "@/db/schema";
+import { inArray } from "drizzle-orm";
+import { BulkJoinerForm } from "./bulk-form";
 import { listCompanies } from "@/lib/payroll/load";
 import { daysBetween } from "@/lib/exit/notice";
 import {
@@ -50,6 +54,20 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
   const inFlight = allJoiners.filter((j) => j.joiner.status !== "joined" && j.joiner.status !== "dropped");
   const blocked = inFlight.filter((j) => !j.readiness.canConvert);
   const canAdd = canActOnPeople(user);
+  const companyIds = companies.map((c) => c.id);
+
+  /* The codes bulk onboarding checks against, in front of the person
+     filling in the file — the same reasoning as the employee import. */
+  const [bulkBranches, bulkDepartments, bulkGrades] = canAdd && companyIds.length
+    ? await Promise.all([
+        db.select({ code: s.branches.code }).from(s.branches).where(inArray(s.branches.companyId, companyIds)),
+        db.select({ code: s.departments.code }).from(s.departments).where(inArray(s.departments.companyId, companyIds)),
+        db.select({ name: s.grades.name }).from(s.grades).where(inArray(s.grades.companyId, companyIds)),
+      ])
+    : [[], [], []];
+  const bulkBranchCodes = bulkBranches.map((b) => b.code).filter(Boolean) as string[];
+  const bulkDepartmentCodes = bulkDepartments.map((d) => d.code).filter(Boolean) as string[];
+  const bulkGradeNames = bulkGrades.map((g) => g.name);
 
   const q = (typeof sp.q === "string" ? sp.q : "").trim().toLowerCase();
   const statusFilter = typeof sp.status === "string" ? sp.status : "";
@@ -77,12 +95,37 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
         description="The joiner completes their own profile and documents before day one. A record cannot convert to an employee while PAN or bank details are missing — those two would break the first payroll."
         actions={
           canAdd && (
-            <Button href="/console/onboarding/new" variant="primary">
-              New joiner
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button href="#bulk-onboarding" variant="ghost">
+                Import in bulk
+              </Button>
+              <Button href="/console/onboarding/new" variant="primary">
+                New joiner
+              </Button>
+            </div>
           )
         }
       />
+
+      {canAdd && companyIds[0] && (
+        <Card>
+          <h2 id="bulk-onboarding" className="font-display text-lg font-semibold mb-1">
+            Add joiners in bulk
+          </h2>
+          <p className="text-sm text-ink-2 mb-3 max-w-[70ch]">
+            For a batch of offers landing at once. Each is still a
+            complete onboarding record afterwards — documents, the
+            offer and background verification happen per person, same
+            as adding one by hand.
+          </p>
+          <BulkJoinerForm
+            companyId={companyIds[0]}
+            branchCodes={bulkBranchCodes}
+            departmentCodes={bulkDepartmentCodes}
+            gradeNames={bulkGradeNames}
+          />
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total candidates" value={allJoiners.length} />

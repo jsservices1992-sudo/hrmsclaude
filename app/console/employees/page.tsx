@@ -150,9 +150,14 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
         }
         actions={
           (canActOnPeople(user)) && (
-            <Button href="/console/employees/new" variant="primary">
-              New employee
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button href="#bulk-import" variant="ghost">
+                Import in bulk
+              </Button>
+              <Button href="/console/employees/new" variant="primary">
+                New employee
+              </Button>
+            </div>
           )
         }
       />
@@ -197,7 +202,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
 
       {(canActOnPeople(user)) && companyIds[0] && (
         <Card>
-          <h2 className="font-display text-lg font-semibold mb-1">Add people in bulk</h2>
+          <h2 id="bulk-import" className="font-display text-lg font-semibold mb-1">Add people in bulk</h2>
           <p className="text-sm text-ink-2 mb-3 max-w-[70ch]">
             For a first import, or whenever a batch joins at once.
           </p>

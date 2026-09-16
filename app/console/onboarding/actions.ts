@@ -33,6 +33,7 @@ import {
   loadJoiner,
 } from "@/lib/onboarding/load";
 import { formatEmployeeCode } from "@/lib/onboarding/rules";
+import { parseJoinerCsv, unresolvedJoinerReferences } from "@/lib/hris/joiner-bulk";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { checkUpload, storageKeyFor, MAX_FILE_BYTES } from "@/lib/storage/rules";
 import { resolvePay, isPayMode, type ResolvedPay } from "@/lib/payroll/pay-resolution";
@@ -240,6 +241,226 @@ export async function createJoiner(
 }
 
 /* ==================== offer & status ==================== */
+
+
+export type BulkJoinerState = {
+  error?: string;
+  ok?: string;
+  problems?: {
+    line: number;
+    column: string;
+    message: string;
+    fix?: { label: string; href: string };
+    rows?: number;
+  }[];
+};
+
+/**
+ * Create several joiner shells from a spreadsheet — FR-ONB-15's other
+ * half. Onboarding was one person at a time, which is fine for the
+ * ordinary trickle of hires and a real obstacle the week a batch of
+ * offers lands together.
+ *
+ * This writes only what "New joiner" writes for one person, repeated:
+ * the joiner row, their document checklist, their statutory
+ * declarations, their provisioning tasks. Nothing about the rest of
+ * onboarding changes — each one still has documents to upload, an
+ * offer to be sent and accepted, and a conversion to go through, on
+ * their own page, exactly as if they had been added by hand.
+ *
+ * Unlike the employee import, a branch, department or grade the file
+ * names but this company does not have is refused outright, never
+ * offered for creation — see the note on lib/hris/joiner-bulk.ts.
+ */
+export async function bulkUploadJoiners(
+  _prev: BulkJoinerState,
+  fd: FormData,
+): Promise<BulkJoinerState> {
+  const { user, error } = await requireHr();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const companyId = String(fd.get("companyId") ?? "");
+  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+
+  const file = fd.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose a CSV file to import." };
+  }
+  if (file.size > 2_000_000) {
+    return { error: "That file is larger than 2MB. Split it into a few smaller ones." };
+  }
+
+  const { rows, problems } = parseJoinerCsv(await file.text());
+  if (problems.length > 0) {
+    return {
+      error: `${problems.length} problem(s) in the file. Nothing has been imported.`,
+      problems: problems.slice(0, 50),
+    };
+  }
+
+  const [branches, departments, grades, existingJoiners] = await Promise.all([
+    db
+      .select({ id: s.branches.id, code: s.branches.code })
+      .from(s.branches)
+      .where(eq(s.branches.companyId, companyId)),
+    db
+      .select({ id: s.departments.id, code: s.departments.code })
+      .from(s.departments)
+      .where(eq(s.departments.companyId, companyId)),
+    db
+      .select({ id: s.grades.id, name: s.grades.name })
+      .from(s.grades)
+      .where(eq(s.grades.companyId, companyId)),
+    db
+      .select({ personalEmail: s.joiners.personalEmail })
+      .from(s.joiners)
+      .where(eq(s.joiners.companyId, companyId)),
+  ]);
+
+  const unresolved = unresolvedJoinerReferences(rows, {
+    branchCodes: branches.map((b) => b.code ?? "").filter(Boolean),
+    departmentCodes: departments.map((d) => d.code ?? "").filter(Boolean),
+    gradeNames: grades.map((g) => g.name),
+  });
+  if (unresolved.length > 0) {
+    /* One wrong code shared by forty rows is one problem, not forty. */
+    const seen = new Map<string, (typeof unresolved)[number] & { rows: number }>();
+    for (const p of unresolved) {
+      const key = `${p.column}::${p.message}`;
+      const hit = seen.get(key);
+      if (hit) hit.rows += 1;
+      else seen.set(key, { ...p, rows: 1 });
+    }
+    const collapsed = [...seen.values()].sort((a, b) => a.line - b.line);
+    return {
+      error: `${collapsed.length} problem(s) in the file. Nothing has been imported.`,
+      problems: collapsed.slice(0, 50),
+    };
+  }
+
+  /* The same file uploaded twice must not invite anyone a second time —
+     matched on personal email, the only thing every row genuinely
+     identifies them by before they have a joiner id of their own. */
+  const alreadyInvited = new Set(existingJoiners.map((j) => j.personalEmail.toLowerCase()));
+  const fresh = rows.filter((r) => !alreadyInvited.has(r.personalEmail));
+  const skipped = rows.length - fresh.length;
+  if (fresh.length === 0) {
+    return {
+      ok: `Everybody in this file has already been invited. Nothing was changed — upload the same file as often as you like.`,
+    };
+  }
+
+  const branchByCode = new Map(branches.map((b) => [(b.code ?? "").toUpperCase(), b.id]));
+  const deptByCode = new Map(departments.map((d) => [(d.code ?? "").toUpperCase(), d.id]));
+  const gradeByName = new Map(grades.map((g) => [g.name.toLowerCase(), g.id]));
+
+  const now = new Date().toISOString();
+  const joinerRows = fresh.map((r) => ({
+    id: randomUUID(),
+    companyId,
+    branchId: branchByCode.get(r.branchCode)!,
+    departmentId: r.departmentCode ? (deptByCode.get(r.departmentCode) ?? null) : null,
+    gradeId: r.gradeName ? (gradeByName.get(r.gradeName.toLowerCase()) ?? null) : null,
+    managerId: null as string | null,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    personalEmail: r.personalEmail,
+    mobile: r.mobile,
+    designation: r.designation,
+    employmentType: r.employmentType,
+    offeredCtcPaise: Math.round(r.offeredCtc * 100),
+    offeredMonthlyGrossPaise: null as number | null,
+    proposedDoj: r.proposedDoj,
+    portalToken: randomBytes(24).toString("base64url"),
+    portalTokenExpiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+    offerStatus: "draft" as const,
+    bgvStatus: "not_started" as const,
+    status: "draft" as const,
+    hadPriorPfMembership: false,
+    createdBy: user.email,
+    createdAt: now,
+  }));
+
+  /* Solved before the transaction, one row at a time, the same as a
+     single joiner — CTC carries employer PF, ESIC and gratuity on top
+     of gross, so it is never simply CTC ÷ 12. */
+  for (let i = 0; i < fresh.length; i++) {
+    if (joinerRows[i].offeredCtcPaise > 0) {
+      const pay = await resolvePay({
+        companyId,
+        departmentId: joinerRows[i].departmentId,
+        mode: "ctc",
+        amountPaise: joinerRows[i].offeredCtcPaise,
+        asOf: fresh[i].proposedDoj,
+        branchId: joinerRows[i].branchId,
+      });
+      joinerRows[i].offeredMonthlyGrossPaise = pay.monthlyGrossPaise;
+    }
+  }
+
+  const checklistRows = joinerRows.flatMap((jr) =>
+    DOC_CHECKLIST.map((doc, i) => ({
+      id: randomUUID(),
+      joinerId: jr.id,
+      docType: doc.docType,
+      label: doc.label,
+      category: doc.category,
+      mandatory: doc.mandatory,
+      status: "pending" as const,
+      sequence: i,
+    })),
+  );
+  const declarationRows = joinerRows.flatMap((jr) =>
+    DECLARATIONS.map((decl) => ({
+      id: randomUUID(),
+      joinerId: jr.id,
+      form: decl.form,
+      status: "pending" as const,
+    })),
+  );
+  const taskRows = joinerRows.flatMap((jr) =>
+    PROVISIONING_TASKS.map((t, i) => ({
+      id: randomUUID(),
+      joinerId: jr.id,
+      owner: t.owner,
+      label: t.label,
+      dueOffsetDays: t.dueOffsetDays,
+      status: "pending" as const,
+      sequence: i,
+    })),
+  );
+
+  await db.transaction(async (tx) => {
+    await tx.insert(s.joiners).values(joinerRows);
+    if (checklistRows.length > 0) await tx.insert(s.joinerDocuments).values(checklistRows);
+    if (declarationRows.length > 0) await tx.insert(s.joinerDeclarations).values(declarationRows);
+    if (taskRows.length > 0) await tx.insert(s.joinerTasks).values(taskRows);
+  });
+
+  await audit({
+    actor: user.email,
+    action: "joiner.bulk_created",
+    entity: "joiner",
+    entityId: companyId,
+    after: {
+      count: fresh.length,
+      skipped,
+      emails: fresh.slice(0, 20).map((r) => r.personalEmail),
+    },
+  });
+
+  revalidatePath("/console/onboarding");
+
+  const notes: string[] = [];
+  if (skipped > 0) {
+    notes.push(`${skipped} were already invited and left untouched.`);
+  }
+  notes.push(
+    "Each is a draft — open their onboarding page to collect documents, set the offer, and send it.",
+  );
+
+  return { ok: `Added ${fresh.length} joiner(s). ${notes.join(" ")}` };
+}
 
 export async function sendOffer(_prev: OnboardState, fd: FormData): Promise<OnboardState> {
   const { user, error } = await requireHr();
