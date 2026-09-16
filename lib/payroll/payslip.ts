@@ -27,7 +27,10 @@ export type PayslipHeader = {
   name: string;
   employeeId: string;
   joiningDate: string;
+  /** The establishment's PF code — the company's, not the employee's. */
   pfNumber: string;
+  /** The employee's ESIC insurance number, where they are covered. */
+  esicIp: string;
   panNo: string;
   uanNo: string;
   bankName: string;
@@ -186,6 +189,7 @@ export async function loadPayslips(args: {
         employeeId: r.empCode,
         joiningDate: slipDate(emp?.dateOfJoining),
         pfNumber: company?.pfCode ?? "",
+        esicIp: emp?.esicIp ?? "",
         panNo: emp?.pan ?? "",
         uanNo: emp?.uan ?? "",
         // The employee master holds the account and IFSC; the bank's own

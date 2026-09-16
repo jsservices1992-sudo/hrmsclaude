@@ -178,10 +178,18 @@ export async function bulkUploadAttendance(
   }
 
   const employees = await db
-    .select({ id: s.employees.id, empCode: s.employees.empCode })
+    .select({
+      id: s.employees.id,
+      empCode: s.employees.empCode,
+      dateOfJoining: s.employees.dateOfJoining,
+      dateOfExit: s.employees.dateOfExit,
+    })
     .from(s.employees)
     .where(eq(s.employees.companyId, companyId));
   const byCode = new Map(employees.map((e) => [e.empCode, e.id]));
+  const employmentByCode = new Map(
+    employees.map((e) => [e.empCode, { doj: e.dateOfJoining, doe: e.dateOfExit }]),
+  );
 
   const unknownCodes = [...new Set(rows.filter((r) => !byCode.has(r.empCode)).map((r) => r.empCode))];
   if (unknownCodes.length > 0) {
@@ -198,10 +206,37 @@ export async function bulkUploadAttendance(
     .limit(1);
   const shift = shiftRow ?? DEFAULT_SHIFT;
 
+  /*
+   * Days outside somebody's employment.
+   *
+   * These used to import, and then vanish: the derivation treats a day
+   * before joining or after leaving as not a working day at all, so the
+   * recompute wrote over them and the upload's own message still said
+   * they had been imported. Somebody who uploaded a full month for a
+   * person who joined on the 15th was told fourteen rows went in, and
+   * then saw half a month of absence with nothing to explain it.
+   */
+  const outsideEmployment = rows.filter((r) => {
+    const e = employmentByCode.get(r.empCode);
+    if (!e) return false;
+    return r.date < e.doj || (e.doe !== null && r.date > e.doe);
+  });
+  const usable = rows.filter((r) => !outsideEmployment.includes(r));
+  if (usable.length === 0) {
+    const e = employmentByCode.get(rows[0].empCode);
+    return {
+      error:
+        `Every row falls outside the employment it is for — ` +
+        `${rows[0].empCode} joined on ${formatDate(e?.doj)}` +
+        (e?.doe ? ` and left on ${formatDate(e.doe)}` : "") +
+        ". Nothing was imported.",
+    };
+  }
+
   /* One statement, not one per row. Against a hosted database a row at a
      time meant a round trip per day per person, which is where a month
      for one employee took the better part of a minute. */
-  const values = rows.map((row) => {
+  const values = usable.map((row) => {
     const { punches, recordStatus } = punchesForBulkStatus(row.status, shift);
     return {
       id: randomUUID(),
@@ -249,7 +284,11 @@ export async function bulkUploadAttendance(
     action: "attendance.bulk_imported",
     entity: "attendance",
     entityId: `${companyId}:${year}-${month}`,
-    after: { rows: rows.length, employees: [...new Set(rows.map((r) => r.empCode))].length },
+    after: {
+      rows: usable.length,
+      employees: [...new Set(usable.map((r) => r.empCode))].length,
+      skippedOutsideEmployment: outsideEmployment.length,
+    },
   });
 
   revalidatePath("/console/attendance");
@@ -262,9 +301,22 @@ export async function bulkUploadAttendance(
   /* The file's employees, not the company's. `months` is everybody the
      recompute touched, which made a one-person import read as though it
      had covered the whole company. */
-  const importedFor = new Set(rows.map((r) => r.empCode)).size;
+  const importedFor = new Set(usable.map((r) => r.empCode)).size;
+
+  const outsideNote =
+    outsideEmployment.length > 0
+      ? ` ${outsideEmployment.length} row(s) were left out because they fall outside the person's employment — ` +
+        [...new Set(outsideEmployment.map((r) => r.empCode))]
+          .map((code) => {
+            const e = employmentByCode.get(code)!;
+            return `${code} joined ${formatDate(e.doj)}${e.doe ? `, left ${formatDate(e.doe)}` : ""}`;
+          })
+          .join("; ") +
+        "."
+      : "";
+
   return {
-    ok: `Imported ${rows.length} row(s) for ${importedFor} employee(s), and recomputed the month.${skippedNote}`,
+    ok: `Imported ${usable.length} row(s) for ${importedFor} employee(s), and recomputed the month.${skippedNote}${outsideNote}`,
     parseErrors: parseErrors.length > 0 ? parseErrors : undefined,
   };
 }

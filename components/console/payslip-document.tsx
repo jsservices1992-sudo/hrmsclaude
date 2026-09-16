@@ -194,9 +194,13 @@ export function PayslipDocument({
             <Field label="Joining date" value={h.joiningDate} />
           </tr>
           <tr>
-            <Field label="PF number" value={h.pfNumber} />
-            <Field label="PAN" value={h.panNo} />
+            {/* The employee's own numbers. The establishment's PF code
+                used to sit here labelled "PF number", which is the
+                company's, identical on everybody's slip, and not what a
+                person checking their PF account needs — that is the UAN. */}
             <Field label="UAN" value={h.uanNo} />
+            <Field label="PAN" value={h.panNo} />
+            <Field label="ESIC IP" value={h.esicIp} />
           </tr>
           <tr>
             <Field label="Bank" value={h.bankName} />
@@ -212,6 +216,12 @@ export function PayslipDocument({
             <Field label="Days LWP" value={h.daysLwp} />
             <Field label="Arrear days" value={h.arrearDays} />
             <Field label="Location" value={h.location} />
+          </tr>
+          <tr>
+            {/* The company's, so it sits apart from the person's. */}
+            <Field label="PF estd. code" value={h.pfNumber} />
+            <Field label="" value="" />
+            <Field label="" value="" />
           </tr>
         </tbody>
       </table>

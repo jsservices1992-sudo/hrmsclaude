@@ -258,25 +258,63 @@ export function OverrideCell({
   );
 }
 
+/**
+ * A hand correction, said in paid days.
+ *
+ * The figure stored and read by the run is still loss of pay, because
+ * that is what the engine prorates with; nobody has to know that to use
+ * this. Typing "18 of 30" is the question a payroll manager is actually
+ * answering, and the conversion happens on the way in.
+ */
 export function OverrideAttendanceForm({
-  employeeId, companyId, year, month, currentLopDays,
+  employeeId, companyId, year, month, currentLopDays, currentPaidDays, totalDays,
 }: {
-  employeeId: string; companyId: string; year: number; month: number; currentLopDays: number;
+  employeeId: string;
+  companyId: string;
+  year: number;
+  month: number;
+  currentLopDays: number;
+  currentPaidDays: number;
+  totalDays: number;
 }) {
   const [state, action] = useActionState<AttendanceState, FormData>(overrideAttendanceInput, {});
+  const [paid, setPaid] = useState(currentPaidDays);
+  /* The engine wants loss of pay, so the difference goes back the way it
+     came: whatever the derivation said, minus the days being added. */
+  const lop = Math.max(0, Number((currentLopDays + (currentPaidDays - paid)).toFixed(2)));
+
   return (
-    <form action={action} className="flex flex-col gap-2 w-56">
+    <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="employeeId" value={employeeId} />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
+      <input type="hidden" name="lopDays" value={lop} />
+
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Loss of pay (days)</span>
-        <Input name="lopDays" type="number" step="0.5" min="0" defaultValue={currentLopDays} className="w-24 font-mono" />
+        <span className="label text-ink-3">Paid days</span>
+        <div className="flex items-baseline gap-2">
+          <Input
+            type="number"
+            step="0.5"
+            min="0"
+            max={totalDays}
+            value={paid}
+            onChange={(e) => setPaid(Number(e.target.value))}
+            className="w-24 font-mono"
+          />
+          <span className="text-sm text-ink-3">of {totalDays} days</span>
+        </div>
+        <span className="text-xs text-ink-3">
+          {lop > 0
+            ? `${lop} day(s) will not be paid.`
+            : "The whole month will be paid."}
+        </span>
       </label>
+
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Reason</span>
-        <Textarea name="reason" placeholder="Required" rows={2} className="w-full" />
+        <Textarea name="reason" placeholder="Required — this replaces what attendance derived" rows={2} className="w-full" />
       </label>
       <SubmitButton variant="primary" pendingText="Saving…">Save override</SubmitButton>
       <FormFeedback state={state} />

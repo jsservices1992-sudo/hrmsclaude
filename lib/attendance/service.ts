@@ -27,6 +27,12 @@ export type EmployeeMonth = {
   employeeId: string;
   name: string;
   empCode: string;
+  /* Carried through because paid days cannot be worked out without
+     them: for somebody who joined on the 15th, the days before that are
+     not days they were absent, and totalDays minus loss of pay would
+     count them as paid. */
+  dateOfJoining: string;
+  dateOfExit: string | null;
   days: DayResult[];
   summary: ReturnType<typeof summariseMonth>;
 };
@@ -209,6 +215,8 @@ export async function deriveMonth(args: {
       employeeId: emp.id,
       name: `${emp.firstName} ${emp.lastName}`,
       empCode: emp.empCode,
+      dateOfJoining: emp.dateOfJoining,
+      dateOfExit: emp.dateOfExit,
       days,
       summary: summariseMonth(days),
     };

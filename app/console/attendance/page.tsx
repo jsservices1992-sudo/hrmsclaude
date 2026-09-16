@@ -33,6 +33,7 @@ import {
 } from "@/components/console/ui";
 import { formatINR } from "@/lib/payroll/money";
 import { formatDate, formatDateTime } from "@/lib/format/date";
+import { paidDaysForPeriod, type ProrationBasis } from "@/lib/payroll/proration";
 
 export const metadata = { title: "Attendance" };
 
@@ -153,9 +154,31 @@ export default async function AttendancePage(
     )
     .orderBy(asc(s.holidays.date));
 
+  const company = companies.find((c) => c.id === companyId)!;
   const totalLop = months.reduce((a, m) => a + m.summary.lopDays, 0);
   const withLop = months.filter((m) => m.summary.lopDays > 0);
-  const company = companies.find((c) => c.id === companyId)!;
+
+  /*
+   * Paid days, worked out by the same function the payroll engine uses.
+   *
+   * The table used to show loss of pay, which almost nobody reads as
+   * "days that will not be paid" — "12" next to somebody's name looked
+   * like twelve days of attendance. Paid days out of the month's days
+   * says the same thing in the direction people actually think in, and
+   * a figure derived any other way here would eventually disagree with
+   * what the run pays.
+   */
+  const daysInThisMonth = daysInMonth(year, month);
+  const paidDaysFor = (m: (typeof months)[number], lopDays: number) =>
+    paidDaysForPeriod({
+      year,
+      month,
+      basis: company.prorationBasis as ProrationBasis,
+      standardDays: company.standardDays,
+      dateOfJoining: m.dateOfJoining,
+      dateOfExit: m.dateOfExit,
+      lopDays,
+    });
 
   const pendingCount = pendingLeave.length + pendingReg.length;
   const tab =
@@ -307,7 +330,11 @@ export default async function AttendancePage(
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard label="Employees" value={months.length} />
-        <StatCard label="Loss of pay" value={`${totalLop.toFixed(2)} d`} hint={`${withLop.length} employee(s)`} />
+        <StatCard
+          label="Unpaid days"
+          value={`${totalLop.toFixed(2)} d`}
+          hint={`across ${withLop.length} employee(s)`}
+        />
         <StatCard label="Holidays" value={holidayRows.filter((h) => !h.restricted).length} />
         <StatCard label="Pending approvals" value={pendingCount} />
         <StatCard label="Adjustments" value={adjustments.length} hint="Incentives & deductions" />
@@ -339,7 +366,7 @@ export default async function AttendancePage(
       {tab === "input" && (
         <Card padded={false}>
           <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="label text-ink-2">Loss of pay the run will read</span>
+            <span className="label text-ink-2">Paid days the run will read</span>
             <a
               href={`/console/attendance/export?${q}`}
               className="label text-brass hover:underline whitespace-nowrap"
@@ -355,6 +382,7 @@ export default async function AttendancePage(
               <thead>
                 <tr className="border-b border-line">
                   <th className="label text-ink-3 text-left px-3 py-2">Employee</th>
+                  <th className="label text-ink-3 px-3 py-2 text-left">The month</th>
                   <th className="label text-ink-3 px-3 py-2 text-right">Derived</th>
                   <th className="label text-ink-3 px-3 py-2 text-right">Feeds payroll</th>
                   <th className="label text-ink-3 px-3 py-2 text-left">Source</th>
@@ -364,20 +392,49 @@ export default async function AttendancePage(
               <tbody>
                 {months.map((m) => {
                   const stored = storedByEmployee[m.employeeId];
-                  const feeds = stored ? stored.lopDays : m.summary.lopDays;
+                  const lopFeeding = stored ? stored.lopDays : m.summary.lopDays;
+                  const derivedPaid = paidDaysFor(m, m.summary.lopDays);
+                  const feedingPaid = paidDaysFor(m, lopFeeding);
+                  /* Nothing uploaded at all reads as "everybody absent",
+                     which is arithmetically true and almost never what
+                     happened — so it is said rather than left to look
+                     like a settled figure. */
+                  const nothingRecorded =
+                    m.summary.presentDays === 0 &&
+                    m.summary.halfDays === 0 &&
+                    m.summary.leaveDays === 0;
                   return (
-                    <tr key={m.employeeId} className="group border-b border-line-2 last:border-0 hover:bg-surface-2/60">
-                      <td className="px-3 py-1.5 whitespace-nowrap max-w-[14rem] truncate" title={m.name}>
+                    <tr key={m.employeeId} className="group border-b border-line-2 last:border-0 hover:bg-surface-2/60 align-top">
+                      <td className="px-3 py-2 whitespace-nowrap max-w-[14rem] truncate" title={m.name}>
                         {m.name}
                         <span className="block font-mono text-xs text-ink-3">{m.empCode}</span>
                       </td>
-                      <td className="px-3 py-1.5 text-right font-mono tnum text-ink-3">
-                        {m.summary.lopDays.toFixed(1)}
+                      <td className="px-3 py-2 text-xs text-ink-2 whitespace-nowrap">
+                        {m.summary.presentDays > 0 && `${m.summary.presentDays} present`}
+                        {m.summary.halfDays > 0 && ` · ${m.summary.halfDays} half`}
+                        {m.summary.leaveDays > 0 && ` · ${m.summary.leaveDays} leave`}
+                        {(m.summary.weeklyOffs + m.summary.holidays) > 0 &&
+                          `${m.summary.presentDays > 0 ? " · " : ""}${m.summary.weeklyOffs + m.summary.holidays} off`}
+                        {m.summary.absentDays > 0 && (
+                          <span className="text-rust"> · {m.summary.absentDays} not marked</span>
+                        )}
+                        {nothingRecorded && (
+                          <span className="block text-rust">
+                            No attendance uploaded for this month
+                          </span>
+                        )}
                       </td>
-                      <td className={`px-3 py-1.5 text-right font-mono tnum ${feeds > 0 ? "text-rust font-medium" : "text-ink-3"}`}>
-                        {feeds.toFixed(1)}
+                      <td className="px-3 py-2 text-right font-mono tnum text-ink-3 whitespace-nowrap">
+                        {derivedPaid.toFixed(1)}
+                        <span className="text-ink-3"> / {daysInThisMonth}</span>
                       </td>
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 py-2 text-right font-mono tnum whitespace-nowrap">
+                        <span className={feedingPaid < daysInThisMonth ? "text-rust font-medium" : ""}>
+                          {feedingPaid.toFixed(1)}
+                        </span>
+                        <span className="text-ink-3"> / {daysInThisMonth}</span>
+                      </td>
+                      <td className="px-3 py-2">
                         {stored?.overridden ? (
                           <Badge tone="brass" >overridden</Badge>
                         ) : (
@@ -385,14 +442,16 @@ export default async function AttendancePage(
                         )}
                       </td>
                       {canAct && (
-                        <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                        <td className="px-3 py-2 text-right whitespace-nowrap">
                           <OverrideCell name={m.name} overridden={Boolean(stored?.overridden)}>
                             <OverrideAttendanceForm
                               employeeId={m.employeeId}
                               companyId={companyId}
                               year={year}
                               month={month}
-                              currentLopDays={feeds}
+                              currentLopDays={lopFeeding}
+                              currentPaidDays={feedingPaid}
+                              totalDays={daysInThisMonth}
                             />
                           </OverrideCell>
                           {stored?.overridden && (
