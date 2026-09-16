@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { resolvePay, isPayMode } from "@/lib/payroll/pay-resolution";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
@@ -205,6 +206,45 @@ export async function createEmployee(
     };
   }
 
+  /*
+   * The salary, resolved before anything is written.
+   *
+   * Creating an employee used to stop at their details, which left them
+   * with no pay and no structure — and an employee with no salary row is
+   * dropped from every payroll run without a word. The structure is
+   * asked for here because it is a decision about this person, not a
+   * company-wide setting: two people in the same department can sit on
+   * different ones.
+   *
+   * Resolved first so that a structure which cannot express the figure
+   * fails the whole thing, rather than leaving a half-made employee
+   * behind a message nobody sees after the redirect.
+   */
+  const payAmount = Number(formData.get("payAmount") ?? "");
+  const payModeRaw = String(formData.get("payMode") ?? "gross");
+  const structureIdRaw = String(formData.get("structureId") ?? "").trim();
+  const structureId = structureIdRaw === "" ? null : structureIdRaw;
+
+  let pay: Awaited<ReturnType<typeof resolvePay>> | null = null;
+  if (Number.isFinite(payAmount) && payAmount > 0) {
+    pay = await resolvePay({
+      companyId,
+      structureId,
+      departmentId: data.departmentId ?? null,
+      mode: isPayMode(payModeRaw) ? payModeRaw : "gross",
+      amountPaise: Math.round(payAmount * 100),
+      asOf: data.dateOfJoining,
+      branchId: data.branchId ?? null,
+      gender: data.gender ?? null,
+    });
+    if (pay.warnings.length > 0) {
+      return {
+        error: `The salary structure cannot express this pay: ${pay.warnings.join("; ")}`,
+        fieldErrors: { payAmount: "Not expressible on the chosen structure" },
+      };
+    }
+  }
+
   const id = randomUUID();
   await db.insert(s.employees).values({
     id,
@@ -241,11 +281,32 @@ export async function createEmployee(
     taxRegime: "new",
   });
 
+  if (pay) {
+    await db.insert(s.employeeSalaries).values({
+      id: randomUUID(),
+      employeeId: id,
+      monthlyGrossPaise: pay.monthlyGrossPaise,
+      annualCtcPaise: pay.breakdown.annualCtcPaise,
+      structureId,
+      effectiveFrom: data.dateOfJoining,
+      effectiveTo: null,
+      reason: "Set when the employee was created",
+      revisionType: "initial",
+      createdBy: user.email,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   await audit({
     actor: user.email,
     action: "employee.created",
     entityId: id,
-    after: { empCode: data.empCode, name: `${data.firstName} ${data.lastName}` },
+    after: {
+      empCode: data.empCode,
+      name: `${data.firstName} ${data.lastName}`,
+      structureId,
+      monthlyGrossPaise: pay?.monthlyGrossPaise ?? null,
+    },
   });
 
   /* The sign-in comes with the record rather than being a second errand

@@ -61,7 +61,19 @@ export function Textarea({
   return (
     <textarea
       className={`${fieldBase} ${widthClass(className)} ${borderClass(invalid)} resize-none overflow-hidden ${className}`}
-      style={{ fieldSizing: "content" } as React.CSSProperties}
+      /*
+       * `field-sizing: content` grows the box with what is typed, which
+       * also means an empty one collapses to a single line and ignores
+       * `rows` entirely — a "Reason" field that looked like a squashed
+       * text input nobody could see the placeholder in. The floor keeps
+       * it the size it claims to be until there is more to show.
+       */
+      style={
+        {
+          fieldSizing: "content",
+          minHeight: `calc(${Number(props.rows ?? 2)} * 1.4em + 1rem)`,
+        } as React.CSSProperties
+      }
       ref={autoGrow}
       onInput={(e) => {
         autoGrow(e.currentTarget);

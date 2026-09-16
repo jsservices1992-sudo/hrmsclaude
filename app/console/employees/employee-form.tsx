@@ -16,6 +16,7 @@ export type FormOptions = {
   grades: { id: string; name: string; level: number }[];
   branches: { id: string; name: string; stateCode: string }[];
   managers: Option[];
+  structures: { id: string; name: string; isDefault: boolean }[];
 };
 
 export type EmployeeValues = Partial<{
@@ -267,6 +268,43 @@ export default function EmployeeForm({
           <span className="text-sm">Has prior PF membership</span>
         </label>
       </Section>
+
+      {mode === "create" && (
+        <Section title="Pay">
+          <Select
+            label="Salary structure"
+            name="structureId"
+            options={options.structures.map((x) => ({
+              id: x.id,
+              label: x.isDefault ? `${x.name} (default)` : x.name,
+            }))}
+            error={err("structureId")}
+          />
+
+          <Select
+            label="Enter pay as"
+            name="payMode"
+            defaultValue="gross"
+            allowEmpty={false}
+            options={[
+              { id: "gross", label: "Monthly gross" },
+              { id: "annual_gross", label: "Annual gross" },
+              { id: "ctc", label: "Annual CTC" },
+              { id: "take_home", label: "Monthly take-home (NTH)" },
+            ]}
+          />
+
+          <Field
+            label="Amount (₹)"
+            name="payAmount"
+            type="number"
+            min="0"
+            step="0.01"
+            hint="Leave blank to set it later. Without it they are in no payroll run."
+            error={err("payAmount")}
+          />
+        </Section>
+      )}
 
       {mode === "edit" && (
         <label className="flex flex-col gap-1.5 max-w-md">

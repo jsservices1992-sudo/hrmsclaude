@@ -49,7 +49,14 @@ export function Dialog({
         if (e.target === ref.current) onClose();
       }}
       onClose={onClose}
-      className={`m-auto w-[calc(100vw-2rem)] ${sizeClasses[size]} max-h-[85vh] overflow-y-auto rounded-md border border-line bg-surface p-0 shadow-lg`}
+      /*
+       * The typography resets are not decoration. A <dialog> paints in
+       * the browser's top layer but stays where it is in the DOM, so it
+       * inherits from whatever opened it — and these open from table
+       * cells, which are `whitespace-nowrap`. The first one to carry a
+       * sentence had it run off the side instead of wrapping.
+       */
+      className={`m-auto w-[calc(100vw-2rem)] ${sizeClasses[size]} max-h-[85vh] overflow-y-auto rounded-md border border-line bg-surface p-0 shadow-lg whitespace-normal text-left align-baseline text-ink`}
     >
       {children}
     </dialog>

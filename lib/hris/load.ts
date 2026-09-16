@@ -148,7 +148,7 @@ export async function loadEmployee(
 
 /** Reference data for the employee form. */
 export async function loadFormOptions(companyId: string) {
-  const [departments, grades, branches, managers] = await Promise.all([
+  const [departments, grades, branches, managers, structures] = await Promise.all([
     db
       .select()
       .from(s.departments)
@@ -179,12 +179,30 @@ export async function loadFormOptions(companyId: string) {
         ),
       )
       .orderBy(asc(s.employees.empCode)),
+    /* Offered on the create form so a new employee arrives on a pay
+       structure rather than on none, which is what left people with a
+       record, no salary, and nothing in the run. */
+    db
+      .select({
+        id: s.salaryStructures.id,
+        name: s.salaryStructures.name,
+        isDefault: s.salaryStructures.isDefault,
+      })
+      .from(s.salaryStructures)
+      .where(
+        and(
+          eq(s.salaryStructures.companyId, companyId),
+          eq(s.salaryStructures.active, true),
+        ),
+      )
+      .orderBy(asc(s.salaryStructures.name)),
   ]);
 
   return {
     departments,
     grades,
     branches,
+    structures,
     managers: managers.map((m) => ({
       id: m.id,
       label: `${m.empCode} — ${fullName(m)}`,
