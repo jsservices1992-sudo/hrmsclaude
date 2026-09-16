@@ -8,8 +8,14 @@ import * as s from "@/db/schema";
 import { getSessionUser, canMutate, canAccessCompany } from "@/lib/auth/session";
 import { recordAuditAs } from "@/lib/audit/log";
 import { certainHolidays } from "@/lib/hris/holidays-india";
+import { submitted } from "@/lib/forms/submitted";
 
-export type MasterState = { error?: string; ok?: string };
+export type MasterState = {
+  error?: string;
+  ok?: string;
+  /** What was submitted, so a refused form keeps the person's own work. */
+  values?: Record<string, string>;
+};
 
 const nullable = (v: FormDataEntryValue | null) => {
   const t = typeof v === "string" ? v.trim() : "";
@@ -58,17 +64,17 @@ function revalidate() {
 export async function saveDepartment(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const id = String(fd.get("id") ?? "") || null;
   const name = String(fd.get("name") ?? "").trim();
   const code = String(fd.get("code") ?? "").trim();
   const costCentre = nullable(fd.get("costCentre"));
-  if (!name || !code) return { error: "Name and code are both required." };
+  if (!name || !code) return { error: "Name and code are both required.", values: submitted(fd) };
 
   if (id) {
     const [existing] = await db.select().from(s.departments).where(eq(s.departments.id, id)).limit(1);
-    if (!existing || existing.companyId !== companyId) return { error: "Department not found." };
+    if (!existing || existing.companyId !== companyId) return { error: "Department not found.", values: submitted(fd) };
     await db.update(s.departments).set({ name, code, costCentre }).where(eq(s.departments.id, id));
     await audit({ actor: user.email, action: "department.updated", entity: "department", entityId: id, before: existing, after: { name, code, costCentre } });
     revalidate();
@@ -76,7 +82,7 @@ export async function saveDepartment(_prev: MasterState, fd: FormData): Promise<
   }
 
   const clash = await db.select({ id: s.departments.id }).from(s.departments).where(and(eq(s.departments.companyId, companyId), eq(s.departments.code, code))).limit(1);
-  if (clash.length > 0) return { error: "That department code is already in use." };
+  if (clash.length > 0) return { error: "That department code is already in use.", values: submitted(fd) };
 
   const newId = randomUUID();
   await db.insert(s.departments).values({ id: newId, companyId, name, code, costCentre });
@@ -90,18 +96,18 @@ export async function saveDepartment(_prev: MasterState, fd: FormData): Promise<
 export async function saveGrade(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const id = String(fd.get("id") ?? "") || null;
   const name = String(fd.get("name") ?? "").trim();
   const level = num(fd.get("level"));
   const noticeDays = fd.get("noticeDays") ? num(fd.get("noticeDays")) : null;
   const probationMonths = fd.get("probationMonths") ? num(fd.get("probationMonths")) : null;
-  if (!name) return { error: "Name is required." };
+  if (!name) return { error: "Name is required.", values: submitted(fd) };
 
   if (id) {
     const [existing] = await db.select().from(s.grades).where(eq(s.grades.id, id)).limit(1);
-    if (!existing || existing.companyId !== companyId) return { error: "Grade not found." };
+    if (!existing || existing.companyId !== companyId) return { error: "Grade not found.", values: submitted(fd) };
     await db.update(s.grades).set({ name, level, noticeDays, probationMonths }).where(eq(s.grades.id, id));
     await audit({ actor: user.email, action: "grade.updated", entity: "grade", entityId: id, before: existing, after: { name, level } });
     revalidate();
@@ -109,7 +115,7 @@ export async function saveGrade(_prev: MasterState, fd: FormData): Promise<Maste
   }
 
   const clash = await db.select({ id: s.grades.id }).from(s.grades).where(and(eq(s.grades.companyId, companyId), eq(s.grades.name, name))).limit(1);
-  if (clash.length > 0) return { error: "That grade name is already in use." };
+  if (clash.length > 0) return { error: "That grade name is already in use.", values: submitted(fd) };
 
   const newId = randomUUID();
   await db.insert(s.grades).values({ id: newId, companyId, name, level, noticeDays, probationMonths });
@@ -123,7 +129,7 @@ export async function saveGrade(_prev: MasterState, fd: FormData): Promise<Maste
 export async function saveLeaveType(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const id = String(fd.get("id") ?? "") || null;
   const code = String(fd.get("code") ?? "").trim().toUpperCase();
@@ -143,9 +149,9 @@ export async function saveLeaveType(_prev: MasterState, fd: FormData): Promise<M
      read-only and the check below is about a new record. It used to be
      `disabled`, which submits nothing at all, and every edit came back
      asking for a code that was plainly on the screen. */
-  if (!code || !name) return { error: "Code and name are both required." };
+  if (!code || !name) return { error: "Code and name are both required.", values: submitted(fd) };
   if (!["monthly", "quarterly", "annually"].includes(frequency)) {
-    return { error: "Choose a valid accrual frequency." };
+    return { error: "Choose a valid accrual frequency.", values: submitted(fd) };
   }
 
   const values = {
@@ -198,7 +204,7 @@ export async function saveLeaveType(_prev: MasterState, fd: FormData): Promise<M
 
   if (id) {
     const [existing] = await db.select().from(s.leaveTypes).where(eq(s.leaveTypes.id, id)).limit(1);
-    if (!existing || existing.companyId !== companyId) return { error: "Leave type not found." };
+    if (!existing || existing.companyId !== companyId) return { error: "Leave type not found.", values: submitted(fd) };
     await db.update(s.leaveTypes).set(values).where(eq(s.leaveTypes.id, id));
     await audit({ actor: user.email, action: "leave_type.updated", entity: "leave_type", entityId: id, before: existing, after: values });
     revalidate();
@@ -206,7 +212,7 @@ export async function saveLeaveType(_prev: MasterState, fd: FormData): Promise<M
   }
 
   const clash = await db.select({ id: s.leaveTypes.id }).from(s.leaveTypes).where(and(eq(s.leaveTypes.companyId, companyId), eq(s.leaveTypes.code, code))).limit(1);
-  if (clash.length > 0) return { error: "That leave type code is already in use." };
+  if (clash.length > 0) return { error: "That leave type code is already in use.", values: submitted(fd) };
 
   const newId = randomUUID();
   await db.insert(s.leaveTypes).values({ id: newId, companyId, ...values });
@@ -220,19 +226,19 @@ export async function saveLeaveType(_prev: MasterState, fd: FormData): Promise<M
 export async function saveHoliday(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const id = String(fd.get("id") ?? "") || null;
   const date = String(fd.get("date") ?? "");
   const name = String(fd.get("name") ?? "").trim();
   const branchId = nullable(fd.get("branchId"));
   const restricted = bool(fd.get("restricted"));
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Enter the date as YYYY-MM-DD." };
-  if (!name) return { error: "Name is required." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Enter the date as YYYY-MM-DD.", values: submitted(fd) };
+  if (!name) return { error: "Name is required.", values: submitted(fd) };
 
   if (id) {
     const [existing] = await db.select().from(s.holidays).where(eq(s.holidays.id, id)).limit(1);
-    if (!existing || existing.companyId !== companyId) return { error: "Holiday not found." };
+    if (!existing || existing.companyId !== companyId) return { error: "Holiday not found.", values: submitted(fd) };
     await db.update(s.holidays).set({ date, name, branchId, restricted }).where(eq(s.holidays.id, id));
     await audit({ actor: user.email, action: "holiday.updated", entity: "holiday", entityId: id, before: existing, after: { date, name } });
     revalidate();
@@ -249,9 +255,9 @@ export async function saveHoliday(_prev: MasterState, fd: FormData): Promise<Mas
 export async function deleteHoliday(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const id = String(fd.get("id") ?? "");
   const [existing] = await db.select().from(s.holidays).where(eq(s.holidays.id, id)).limit(1);
-  if (!existing) return { error: "Holiday not found." };
+  if (!existing) return { error: "Holiday not found.", values: submitted(fd) };
   const { user, error } = await requireMutator(existing.companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   await db.delete(s.holidays).where(eq(s.holidays.id, id));
   await audit({ actor: user.email, action: "holiday.removed", entity: "holiday", entityId: id, before: existing });
@@ -264,7 +270,7 @@ export async function deleteHoliday(_prev: MasterState, fd: FormData): Promise<M
 export async function saveShift(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const id = String(fd.get("id") ?? "") || null;
   const code = String(fd.get("code") ?? "").trim().toUpperCase();
@@ -280,7 +286,7 @@ export async function saveShift(_prev: MasterState, fd: FormData): Promise<Maste
   const halfDayMinutes = num(fd.get("halfDayMinutes"), 240);
   const weeklyOffDays = (fd.getAll("weeklyOffDays") as string[]).join(",") || "0";
   const isDefault = bool(fd.get("isDefault"));
-  if (!code || !name) return { error: "Code and name are both required." };
+  if (!code || !name) return { error: "Code and name are both required.", values: submitted(fd) };
 
   const values = { code, name, startMinute, endMinute, graceMinutes, fullDayMinutes, halfDayMinutes, weeklyOffDays, isDefault };
 
@@ -305,7 +311,7 @@ export async function saveShift(_prev: MasterState, fd: FormData): Promise<Maste
 export async function savePayComponent(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const id = String(fd.get("id") ?? "") || null;
   const code = String(fd.get("code") ?? "").trim().toUpperCase();
@@ -326,9 +332,9 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
   const active = bool(fd.get("active"));
   const sequence = num(fd.get("sequence"));
 
-  if (!code || !name) return { error: "Code and name are both required." };
+  if (!code || !name) return { error: "Code and name are both required.", values: submitted(fd) };
   if (calcMethod === "percent_of" && !percentOfCode) {
-    return { error: "Choose the component this percentage is calculated against." };
+    return { error: "Choose the component this percentage is calculated against.", values: submitted(fd) };
   }
 
   /* Only one component can take the balance. A second one finds nothing
@@ -361,7 +367,7 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
 
   if (id) {
     const [existing] = await db.select().from(s.payComponents).where(eq(s.payComponents.id, id)).limit(1);
-    if (!existing || existing.companyId !== companyId) return { error: "Component not found." };
+    if (!existing || existing.companyId !== companyId) return { error: "Component not found.", values: submitted(fd) };
     await db.update(s.payComponents).set(values).where(eq(s.payComponents.id, id));
     await audit({ actor: user.email, action: "pay_component.updated", entity: "pay_component", entityId: id, before: existing, after: values });
     revalidate();
@@ -369,7 +375,7 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
   }
 
   const clash = await db.select({ id: s.payComponents.id }).from(s.payComponents).where(and(eq(s.payComponents.companyId, companyId), eq(s.payComponents.code, code))).limit(1);
-  if (clash.length > 0) return { error: "That component code is already in use." };
+  if (clash.length > 0) return { error: "That component code is already in use.", values: submitted(fd) };
 
   const newId = randomUUID();
   await db.insert(s.payComponents).values({ id: newId, companyId, ...values });
@@ -396,9 +402,9 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
 export async function deletePayComponent(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const id = String(fd.get("id") ?? "");
   const [existing] = await db.select().from(s.payComponents).where(eq(s.payComponents.id, id)).limit(1);
-  if (!existing) return { error: "Component not found." };
+  if (!existing) return { error: "Component not found.", values: submitted(fd) };
   const { user, error } = await requireMutator(existing.companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const [inStructure, inPayslip, referencedBy] = await Promise.all([
     db
@@ -453,13 +459,13 @@ export async function saveVariablePayType(
 ): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const label = String(fd.get("label") ?? "").trim();
   const category = String(fd.get("category") ?? "");
-  if (!label) return { error: "Give the type a name." };
+  if (!label) return { error: "Give the type a name.", values: submitted(fd) };
   if (!["ot", "bonus", "incentive", "deduction", "other"].includes(category)) {
-    return { error: "Choose what kind of pay this is." };
+    return { error: "Choose what kind of pay this is.", values: submitted(fd) };
   }
 
   const rawCode = String(fd.get("code") ?? "").trim();
@@ -474,7 +480,7 @@ export async function saveVariablePayType(
   let defaultAmountPaise: number | null = null;
   if (rawDefault !== "") {
     const n = Number(rawDefault);
-    if (!Number.isFinite(n) || n < 0) return { error: "The default amount must be a number." };
+    if (!Number.isFinite(n) || n < 0) return { error: "The default amount must be a number.", values: submitted(fd) };
     defaultAmountPaise = Math.round(n * 100);
   }
 
@@ -485,7 +491,7 @@ export async function saveVariablePayType(
     .where(and(eq(s.variablePayTypes.companyId, companyId), eq(s.variablePayTypes.code, code)))
     .limit(1);
   if (existing.length > 0 && existing[0].id !== id) {
-    return { error: `A type with code ${code} already exists.` };
+    return { error: `A type with code ${code} already exists.`, values: submitted(fd) };
   }
 
   await db
@@ -527,7 +533,7 @@ export async function saveVariablePayType(
 export async function saveLoanScheme(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const id = String(fd.get("id") ?? "") || null;
   const code = String(fd.get("code") ?? "").trim().toUpperCase();
@@ -548,10 +554,10 @@ export async function saveLoanScheme(_prev: MasterState, fd: FormData): Promise<
   const active = bool(fd.get("active"));
   const effectiveFrom = String(fd.get("effectiveFrom") ?? "");
 
-  if (!code || !label) return { error: "Code and label are both required." };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) return { error: "Enter the effective date as YYYY-MM-DD." };
+  if (!code || !label) return { error: "Code and label are both required.", values: submitted(fd) };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) return { error: "Enter the effective date as YYYY-MM-DD.", values: submitted(fd) };
   if (maxPrincipalPaise <= 0 || maxTenureMonths <= 0) {
-    return { error: "Maximum principal and tenure must both be greater than zero." };
+    return { error: "Maximum principal and tenure must both be greater than zero.", values: submitted(fd) };
   }
 
   const values = {
@@ -562,7 +568,7 @@ export async function saveLoanScheme(_prev: MasterState, fd: FormData): Promise<
 
   if (id) {
     const [existing] = await db.select().from(s.loanSchemes).where(eq(s.loanSchemes.id, id)).limit(1);
-    if (!existing || existing.companyId !== companyId) return { error: "Scheme not found." };
+    if (!existing || existing.companyId !== companyId) return { error: "Scheme not found.", values: submitted(fd) };
     await db.update(s.loanSchemes).set(values).where(eq(s.loanSchemes.id, id));
     await audit({ actor: user.email, action: "loan_scheme.updated", entity: "loan_scheme", entityId: id, before: existing, after: values });
     revalidate();
@@ -570,7 +576,7 @@ export async function saveLoanScheme(_prev: MasterState, fd: FormData): Promise<
   }
 
   const clash = await db.select({ id: s.loanSchemes.id }).from(s.loanSchemes).where(and(eq(s.loanSchemes.companyId, companyId), eq(s.loanSchemes.code, code))).limit(1);
-  if (clash.length > 0) return { error: "That scheme code is already in use." };
+  if (clash.length > 0) return { error: "That scheme code is already in use.", values: submitted(fd) };
 
   const newId = randomUUID();
   await db.insert(s.loanSchemes).values({ id: newId, companyId, ...values });
@@ -584,18 +590,18 @@ export async function saveLoanScheme(_prev: MasterState, fd: FormData): Promise<
 export async function saveGlAccount(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const id = String(fd.get("id") ?? "") || null;
   const code = String(fd.get("code") ?? "").trim();
   const name = String(fd.get("name") ?? "").trim();
   const accountType = String(fd.get("accountType") ?? "expense") as "expense" | "liability" | "asset";
   const active = bool(fd.get("active"));
-  if (!code || !name) return { error: "Code and name are both required." };
+  if (!code || !name) return { error: "Code and name are both required.", values: submitted(fd) };
 
   if (id) {
     const [existing] = await db.select().from(s.glAccounts).where(eq(s.glAccounts.id, id)).limit(1);
-    if (!existing || existing.companyId !== companyId) return { error: "Account not found." };
+    if (!existing || existing.companyId !== companyId) return { error: "Account not found.", values: submitted(fd) };
     await db.update(s.glAccounts).set({ code, name, accountType, active }).where(eq(s.glAccounts.id, id));
     await audit({ actor: user.email, action: "gl_account.updated", entity: "gl_account", entityId: id, before: existing, after: { code, name, accountType } });
     revalidate();
@@ -603,7 +609,7 @@ export async function saveGlAccount(_prev: MasterState, fd: FormData): Promise<M
   }
 
   const clash = await db.select({ id: s.glAccounts.id }).from(s.glAccounts).where(and(eq(s.glAccounts.companyId, companyId), eq(s.glAccounts.code, code))).limit(1);
-  if (clash.length > 0) return { error: "That account code is already in use." };
+  if (clash.length > 0) return { error: "That account code is already in use.", values: submitted(fd) };
 
   const newId = randomUUID();
   await db.insert(s.glAccounts).values({ id: newId, companyId, code, name, accountType, active: true });
@@ -615,12 +621,12 @@ export async function saveGlAccount(_prev: MasterState, fd: FormData): Promise<M
 export async function saveGlMapping(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const componentCode = String(fd.get("componentCode") ?? "").trim().toUpperCase();
   const debitAccount = nullable(fd.get("debitAccount"));
   const creditAccount = nullable(fd.get("creditAccount"));
-  if (!componentCode) return { error: "Choose the component to map." };
+  if (!componentCode) return { error: "Choose the component to map.", values: submitted(fd) };
 
   const [existing] = await db
     .select()
@@ -657,11 +663,11 @@ export async function saveGlMapping(_prev: MasterState, fd: FormData): Promise<M
 export async function seedIndiaHolidays(_prev: MasterState, fd: FormData): Promise<MasterState> {
   const companyId = String(fd.get("companyId") ?? "");
   const { user, error } = await requireMutator(companyId);
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const year = Number(fd.get("year"));
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
-    return { error: "Choose a year." };
+    return { error: "Choose a year.", values: submitted(fd) };
   }
 
   const existing = await db

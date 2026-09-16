@@ -13,6 +13,49 @@ import {
 } from "./actions";
 import { Input, Select, SubmitButton, FormFeedback, FormField, Card } from "@/components/console/ui";
 
+/** What the form calls each field, so a refusal can name them. */
+const COMPANY_LABELS: Record<string, string> = {
+  name: "Display name",
+  legalName: "Legal name",
+  cin: "CIN",
+  pan: "PAN",
+  tan: "TAN",
+  pfCode: "PF establishment code",
+  esicCode: "ESIC code",
+  registeredAddress: "Address",
+  registeredCity: "City",
+  registeredStateCode: "State code",
+  registeredPincode: "Pincode",
+  logoUrl: "Logo address",
+  otRatePaisePerHour: "Overtime rate",
+  roundingMode: "Rounding",
+  changeReason: "Reason for the change",
+};
+
+const BRANCH_LABELS: Record<string, string> = {
+  name: "Branch name",
+  code: "Code",
+  stateCode: "State / UT",
+  city: "City",
+  addressLine: "Address",
+  pincode: "Pincode",
+  latitude: "Latitude",
+  longitude: "Longitude",
+  geofenceMetres: "Geofence",
+  pfCodeOverride: "PF code for this branch",
+  esicCodeOverride: "ESIC code for this branch",
+};
+
+/** Says what the asterisks mean, before somebody meets one as an error. */
+function RequiredNote() {
+  return (
+    <p className="text-xs text-ink-3">
+      <span className="text-rust">*</span> is required. Everything else can be
+      filled in later — what you have typed is kept if something is refused.
+    </p>
+  );
+}
+
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card padded={false}>
@@ -44,57 +87,63 @@ export function CompanyForm({
     mode === "create" ? createCompany : updateCompany, {},
   );
   const err = (k: string) => state.fieldErrors?.[k];
+  /* What was typed beats what is on record: a refused form has to come
+     back with the person's own work in it. */
+  const val = (k: keyof CompanyValues, fallback = "") =>
+    state.values?.[k] ?? (values[k] as string | null | undefined) ?? fallback;
 
   return (
     <form action={action} className="flex flex-col gap-5">
       {values.id && <input type="hidden" name="companyId" value={values.id} />}
 
+      <RequiredNote />
+
       <Group title="Legal entity">
-        <FormField label="Display name" error={err("name")}>
-          <Input name="name" defaultValue={values.name ?? ""} invalid={!!err("name")} />
+        <FormField label="Display name" error={err("name")} required>
+          <Input name="name" defaultValue={val("name")} invalid={!!err("name")} />
         </FormField>
-        <FormField label="Legal name" error={err("legalName")}>
-          <Input name="legalName" defaultValue={values.legalName ?? ""} invalid={!!err("legalName")} />
+        <FormField label="Legal name" error={err("legalName")} required>
+          <Input name="legalName" defaultValue={val("legalName")} invalid={!!err("legalName")} />
         </FormField>
         <FormField label="CIN" error={err("cin")} hint="U72900KA2018PTC112233">
-          <Input name="cin" defaultValue={values.cin ?? ""} invalid={!!err("cin")} />
+          <Input name="cin" defaultValue={val("cin")} invalid={!!err("cin")} />
         </FormField>
-        <FormField label="PAN" error={err("pan")} hint="AABCM1234F">
-          <Input name="pan" defaultValue={values.pan ?? ""} invalid={!!err("pan")} />
+        <FormField label="PAN" error={err("pan")} hint="AABCM1234F" needed="needed to finish setup">
+          <Input name="pan" defaultValue={val("pan")} invalid={!!err("pan")} />
         </FormField>
-        <FormField label="TAN" error={err("tan")} hint="BLRM12345B">
-          <Input name="tan" defaultValue={values.tan ?? ""} invalid={!!err("tan")} />
+        <FormField label="TAN" error={err("tan")} hint="BLRM12345B" needed="needed to finish setup">
+          <Input name="tan" defaultValue={val("tan")} invalid={!!err("tan")} />
         </FormField>
       </Group>
 
       <Group title="Central statutory codes">
-        <FormField label="PF establishment code" error={err("pfCode")}>
-          <Input name="pfCode" defaultValue={values.pfCode ?? ""} invalid={!!err("pfCode")} />
+        <FormField label="PF establishment code" error={err("pfCode")} needed="needed to file PF returns">
+          <Input name="pfCode" defaultValue={val("pfCode")} invalid={!!err("pfCode")} />
         </FormField>
-        <FormField label="ESIC code" error={err("esicCode")}>
-          <Input name="esicCode" defaultValue={values.esicCode ?? ""} invalid={!!err("esicCode")} />
+        <FormField label="ESIC code" error={err("esicCode")} needed="needed to file ESIC returns">
+          <Input name="esicCode" defaultValue={val("esicCode")} invalid={!!err("esicCode")} />
         </FormField>
       </Group>
 
       <Group title="Registered office">
         <FormField label="Address" error={err("registeredAddress")}>
-          <Input name="registeredAddress" defaultValue={values.registeredAddress ?? ""} invalid={!!err("registeredAddress")} />
+          <Input name="registeredAddress" defaultValue={val("registeredAddress")} invalid={!!err("registeredAddress")} />
         </FormField>
         <FormField label="City" error={err("registeredCity")}>
-          <Input name="registeredCity" defaultValue={values.registeredCity ?? ""} invalid={!!err("registeredCity")} />
+          <Input name="registeredCity" defaultValue={val("registeredCity")} invalid={!!err("registeredCity")} />
         </FormField>
         <FormField label="State code" error={err("registeredStateCode")} hint="e.g. KA">
-          <Input name="registeredStateCode" defaultValue={values.registeredStateCode ?? ""} invalid={!!err("registeredStateCode")} />
+          <Input name="registeredStateCode" defaultValue={val("registeredStateCode")} invalid={!!err("registeredStateCode")} />
         </FormField>
         <FormField label="Pincode" error={err("registeredPincode")}>
-          <Input name="registeredPincode" defaultValue={values.registeredPincode ?? ""} invalid={!!err("registeredPincode")} />
+          <Input name="registeredPincode" defaultValue={val("registeredPincode")} invalid={!!err("registeredPincode")} />
         </FormField>
         <FormField
           label="Logo address"
           error={err("logoUrl")}
           hint="Set by uploading below, or paste a public image address."
         >
-          <Input name="logoUrl" defaultValue={values.logoUrl ?? ""} invalid={!!err("logoUrl")} />
+          <Input name="logoUrl" defaultValue={val("logoUrl")} invalid={!!err("logoUrl")} />
         </FormField>
       </Group>
 
@@ -140,7 +189,7 @@ export function CompanyForm({
         </FormField>
       )}
 
-      <FormFeedback state={state} />
+      <FormFeedback state={state} labels={COMPANY_LABELS} />
       <div><SubmitButton pendingText="Saving…">{mode === "create" ? "Create company" : "Save company"}</SubmitButton></div>
     </form>
   );
@@ -165,6 +214,8 @@ export function BranchForm({
 }) {
   const [state, action] = useActionState<SettingsState, FormData>(saveBranch, {});
   const err = (k: string) => state.fieldErrors?.[k];
+  const val = (k: keyof BranchValues, fallback = "") =>
+    state.values?.[k] ?? (values[k] as string | null | undefined) ?? fallback;
   const inherit =
     values.lwfApplicableOverride === null || values.lwfApplicableOverride === undefined
       ? "inherit"
@@ -177,18 +228,20 @@ export function BranchForm({
       <input type="hidden" name="companyId" value={companyId} />
       {values.id && <input type="hidden" name="branchId" value={values.id} />}
 
+      <RequiredNote />
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <FormField label="Branch name" error={err("name")}>
-          <Input name="name" defaultValue={values.name ?? ""} invalid={!!err("name")} />
+        <FormField label="Branch name" error={err("name")} required>
+          <Input name="name" defaultValue={val("name")} invalid={!!err("name")} />
         </FormField>
         <FormField
           label="Code"
           error={err("code")}
           hint="Your own short label for this branch — BLR, MUM, GGN. It is what the employee import file refers to."
         >
-          <Input name="code" defaultValue={values.code ?? ""} invalid={!!err("code")} />
+          <Input name="code" defaultValue={val("code")} invalid={!!err("code")} />
         </FormField>
-        <FormField label="State / UT" error={err("stateCode")}>
+        <FormField label="State / UT" error={err("stateCode")} required>
           <Select name="stateCode" defaultValue={values.stateCode ?? ""} invalid={!!err("stateCode")}>
             {/* Professional tax, LWF and ESIC all follow this, so it is
                 picked deliberately rather than inherited from whichever
@@ -281,7 +334,7 @@ export function BranchForm({
         </FormField>
       )}
 
-      <FormFeedback state={state} />
+      <FormFeedback state={state} labels={BRANCH_LABELS} />
       <div><SubmitButton pendingText="Saving…">{values.id ? "Save branch" : "Add branch"}</SubmitButton></div>
     </form>
   );

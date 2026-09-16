@@ -15,12 +15,23 @@ import {
 import { recordAuditAs } from "@/lib/audit/log";
 import { save, headHex, storageUnavailable } from "@/lib/storage";
 import { checkUpload } from "@/lib/storage/rules";
+import { submitted } from "@/lib/forms/submitted";
 
 export type SettingsState = {
   error?: string;
   ok?: string;
   fieldErrors?: Record<string, string>;
+  /**
+   * What was submitted, so a refused form redisplays what the person
+   * typed rather than what is on record.
+   *
+   * Without it a long form clears itself on the first mistake and the
+   * whole thing has to be typed again — which teaches people to fill
+   * these screens in as few fields as they can get away with.
+   */
+  values?: Record<string, string>;
 };
+
 
 const nullable = (v: FormDataEntryValue | null) => {
   const t = typeof v === "string" ? v.trim() : "";
@@ -140,7 +151,11 @@ export async function createCompany(
 
   const parsed = parseCompany(fd);
   if (!parsed.success) {
-    return { error: "Fix the highlighted fields.", fieldErrors: fieldErrorsOf(parsed.error) };
+    return {
+      error: "Fix the highlighted fields.",
+      fieldErrors: fieldErrorsOf(parsed.error),
+      values: submitted(fd),
+    };
   }
   const d = parsed.data;
   const id = randomUUID();
@@ -198,7 +213,11 @@ export async function updateCompany(
 
   const parsed = parseCompany(fd);
   if (!parsed.success) {
-    return { error: "Fix the highlighted fields.", fieldErrors: fieldErrorsOf(parsed.error) };
+    return {
+      error: "Fix the highlighted fields.",
+      fieldErrors: fieldErrorsOf(parsed.error),
+      values: submitted(fd),
+    };
   }
   const d = parsed.data;
 
@@ -226,6 +245,7 @@ export async function updateCompany(
       error:
         "This company has saved payroll runs. Changing a payroll convention requires a reason, which is recorded in the audit log.",
       fieldErrors: { changeReason: "Required when conventions change" },
+      values: submitted(fd),
     };
   }
 
@@ -348,7 +368,11 @@ export async function saveBranch(
 
   const parsed = parseBranch(fd);
   if (!parsed.success) {
-    return { error: "Fix the highlighted fields.", fieldErrors: fieldErrorsOf(parsed.error) };
+    return {
+      error: "Fix the highlighted fields.",
+      fieldErrors: fieldErrorsOf(parsed.error),
+      values: submitted(fd),
+    };
   }
   const d = parsed.data;
 
@@ -363,6 +387,7 @@ export async function saveBranch(
     return {
       error: `${d.stateCode} is not a known state or UT code.`,
       fieldErrors: { stateCode: "Unknown state code" },
+      values: submitted(fd),
     };
   }
 
