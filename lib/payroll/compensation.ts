@@ -1,5 +1,5 @@
 import { apportion, type Paise } from "./money";
-import { computeProfessionalTax, type PtSlab } from "./statutory";
+import { computeProfessionalTax, epfExcluded, type PtSlab } from "./statutory";
 
 /**
  * 15 days' wages a year over 26 working days, spread monthly — the
@@ -319,6 +319,12 @@ export type EmployerCostParams = {
   gratuityAccrualBps: number;
   /** Flat monthly employer cost, e.g. group medical cover. */
   otherMonthlyPaise?: Paise;
+  /**
+   * The excluded-employee test. An excluded employee has no employer PF
+   * either — the exclusion is from the scheme, not from one side of it.
+   */
+  pfOptedIn?: boolean;
+  hadPriorPfMembership?: boolean;
 };
 
 export type CtcBreakdown = {
@@ -338,10 +344,16 @@ export function employerCostFor(
   evaluation: EvaluationResult,
   p: EmployerCostParams,
 ): { pf: Paise; esic: Paise; gratuity: Paise; other: Paise } {
+  const excluded = epfExcluded({
+    pfWagePaise: evaluation.epfBasePaise,
+    wageCeilingPaise: p.epfCeilingPaise,
+    optedIn: p.pfOptedIn ?? true,
+    hadPriorMembership: p.hadPriorPfMembership ?? false,
+  });
   const pfWage = p.epfOnActualBasic
     ? evaluation.epfBasePaise
     : Math.min(evaluation.epfBasePaise, p.epfCeilingPaise);
-  const pf = Math.round((pfWage * p.epfEmployerBps) / 10000);
+  const pf = excluded ? 0 : Math.round((pfWage * p.epfEmployerBps) / 10000);
 
   const esic =
     evaluation.esicBasePaise <= p.esicThresholdPaise
@@ -425,16 +437,29 @@ export type TakeHomeParams = {
   esicEmployeeBps: number;
   /** Flat monthly professional tax, where it applies. */
   professionalTaxPaise: Paise;
+  /**
+   * The excluded-employee test, so a projected take-home does not show a
+   * PF deduction the run will not make. Omitted, PF is taken to apply —
+   * which is the answer for everyone who is not an excluded employee.
+   */
+  pfOptedIn?: boolean;
+  hadPriorPfMembership?: boolean;
 };
 
 export function takeHomeFor(
   evaluation: EvaluationResult,
   p: TakeHomeParams,
 ): { takeHome: Paise; epf: Paise; esic: Paise; pt: Paise } {
+  const excluded = epfExcluded({
+    pfWagePaise: evaluation.epfBasePaise,
+    wageCeilingPaise: p.epfCeilingPaise,
+    optedIn: p.pfOptedIn ?? true,
+    hadPriorMembership: p.hadPriorPfMembership ?? false,
+  });
   const pfWage = p.epfOnActualBasic
     ? evaluation.epfBasePaise
     : Math.min(evaluation.epfBasePaise, p.epfCeilingPaise);
-  const epf = Math.round((pfWage * p.epfEmployeeBps) / 10000);
+  const epf = excluded ? 0 : Math.round((pfWage * p.epfEmployeeBps) / 10000);
 
   const esic =
     evaluation.esicBasePaise <= p.esicThresholdPaise
@@ -502,6 +527,9 @@ export function grossForTargetTakeHome(args: {
   gender: "female" | "male" | "other" | null;
   /** Calendar month 1-12, for states that charge a different February. */
   month: number;
+  /** Passed to the excluded-employee test, as the run applies it. */
+  pfOptedIn?: boolean;
+  hadPriorPfMembership?: boolean;
   statutory: {
     epf: { wageCeilingPaise: Paise; employeeBps: number };
     esic: { wageThresholdPaise: Paise; employeeBps: number };
@@ -526,6 +554,8 @@ export function grossForTargetTakeHome(args: {
     esicThresholdPaise: args.statutory.esic.wageThresholdPaise,
     esicEmployeeBps: args.statutory.esic.employeeBps,
     professionalTaxPaise,
+    pfOptedIn: args.pfOptedIn,
+    hadPriorPfMembership: args.hadPriorPfMembership,
   });
 
   const firstPass = buildFromTargetTakeHome({

@@ -6,9 +6,13 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { loadEmployee, loadFormOptions } from "@/lib/hris/load";
 import { loadStructureResolutionContext, resolveEmployeeStructure, loadStatutoryConfig } from "@/lib/payroll/load";
-import { buildFromGross, type CtcBreakdown,
+import {
+  buildFromGross,
   evaluateStructure,
+  grossForTargetTakeHome,
   takeHomeFor,
+  GRATUITY_ACCRUAL_BPS,
+  type CtcBreakdown,
 } from "@/lib/payroll/compensation";
 import { formatINR } from "@/lib/payroll/money";
 import {
@@ -38,6 +42,7 @@ import {
   type TakeHomeSummary,
 } from "@/components/console/salary-breakup-table";
 import { loadWorksheet } from "@/lib/tax/load";
+import { payModeSummary } from "@/lib/payroll/pay-mode";
 import { Card, Badge, THead, TH, TBody, TR, TD, Tabs, TabLink } from "@/components/console/ui";
 import { computeProfessionalTax, computeLwf } from "@/lib/payroll/statutory";
 import { formatDate } from "@/lib/format/date";
@@ -130,31 +135,54 @@ export default async function EmployeeDetailPage(
     });
     currentBreakupStructureId = resolved.structureId;
     const statutory = await loadStatutoryConfig(currentSalary.effectiveFrom);
-    currentCtc = buildFromGross({
-      monthlyGrossPaise: currentSalary.monthlyGrossPaise,
-      components: resolved.components,
-      employer: {
-        epfCeilingPaise: statutory.epf.wageCeilingPaise,
-        epfEmployerBps: statutory.epf.employerBps,
-        epfOnActualBasic: company.epfOnActualBasic,
-        esicThresholdPaise: statutory.esic.wageThresholdPaise,
-        esicEmployerBps: statutory.esic.employerBps,
-        // 15 days' wages a year over 26 working days, spread monthly — the
-        // standard accrual, same rate the CTC-mode revision solves against.
-        gratuityAccrualBps: 481,
-      },
-    });
-
-    /* What they are actually left with. CTC is the number the company
-       talks about and net is the number they live on; a breakup that
-       stops at CTC answers the wrong person's question. */
-    const evaluation = evaluateStructure(resolved.components, currentSalary.monthlyGrossPaise);
     const [branchRow] = await db
       .select({ stateCode: s.branches.stateCode })
       .from(s.branches)
       .where(eq(s.branches.id, e.branchId))
       .limit(1);
     const stateCode = branchRow?.stateCode ?? "";
+    const employer = {
+      epfCeilingPaise: statutory.epf.wageCeilingPaise,
+      epfEmployerBps: statutory.epf.employerBps,
+      epfOnActualBasic: company.epfOnActualBasic,
+      esicThresholdPaise: statutory.esic.wageThresholdPaise,
+      esicEmployerBps: statutory.esic.employerBps,
+      // 15 days' wages a year over 26 working days, spread monthly — the
+      // standard accrual, same rate the CTC-mode revision solves against.
+      gratuityAccrualBps: GRATUITY_ACCRUAL_BPS,
+      pfOptedIn: e.pfOptedIn,
+      hadPriorPfMembership: e.hadPriorPfMembership,
+    };
+
+    /* For a salary held at a net, the stored gross is a derived figure and
+       the run re-solves it every period. Showing the stored one would put a
+       gross on this screen that no payslip will carry — the same drift the
+       held net exists to prevent, moved from the payslip to the page. */
+    const displayGrossPaise =
+      currentSalary.payMode === "take_home" && currentSalary.targetTakeHomePaise
+        ? grossForTargetTakeHome({
+            targetMonthlyTakeHomePaise: currentSalary.targetTakeHomePaise,
+            components: resolved.components,
+            employer,
+            stateCode,
+            gender: e.gender,
+            month: Number(currentSalary.effectiveFrom.slice(5, 7)),
+            pfOptedIn: e.pfOptedIn,
+            hadPriorPfMembership: e.hadPriorPfMembership,
+            statutory,
+          }).monthlyGrossPaise
+        : currentSalary.monthlyGrossPaise;
+
+    currentCtc = buildFromGross({
+      monthlyGrossPaise: displayGrossPaise,
+      components: resolved.components,
+      employer,
+    });
+
+    /* What they are actually left with. CTC is the number the company
+       talks about and net is the number they live on; a breakup that
+       stops at CTC answers the wrong person's question. */
+    const evaluation = evaluateStructure(resolved.components, displayGrossPaise);
     const professionalTaxPaise = computeProfessionalTax({
       stateCode,
       ptBasePaise: evaluation.ptBasePaise,
@@ -171,6 +199,8 @@ export default async function EmployeeDetailPage(
       esicThresholdPaise: statutory.esic.wageThresholdPaise,
       esicEmployeeBps: statutory.esic.employeeBps,
       professionalTaxPaise,
+      pfOptedIn: e.pfOptedIn,
+      hadPriorPfMembership: e.hadPriorPfMembership,
     });
     /* Labour welfare fund is charged in named months — half-yearly in most
        states that levy it, annually in some — so its year is the rate times
@@ -655,7 +685,7 @@ export default async function EmployeeDetailPage(
             ) : (
               <table className="w-full text-sm">
                 <THead>
-                  {["Effective", "Monthly gross", "Annual CTC", "Type", "Reason", "Set by"].map((h) => (
+                  {["Effective", "Monthly gross", "Annual CTC", "Agreed as", "Type", "Reason", "Set by"].map((h) => (
                     <TH key={h}>{h}</TH>
                   ))}
                 </THead>
@@ -673,6 +703,14 @@ export default async function EmployeeDetailPage(
                         {r.annualCtcPaise
                           ? maskIfNeeded(user, formatINR(r.annualCtcPaise))
                           : "—"}
+                      </TD>
+                      <TD className="text-ink-2 text-xs whitespace-normal">
+                        {payModeSummary(r.payMode).label}
+                        {r.payMode === "take_home" && r.targetTakeHomePaise && (
+                          <span className="block text-ink-3">
+                            {maskIfNeeded(user, formatINR(r.targetTakeHomePaise))} held
+                          </span>
+                        )}
                       </TD>
                       <TD className="text-ink-2">{r.revisionType}</TD>
                       <TD className="text-xs text-ink-2 max-w-[30ch] whitespace-normal">
@@ -723,6 +761,18 @@ export default async function EmployeeDetailPage(
                   </Link>
                 )}
               </div>
+              {/* Which figure the salary is pinned to decides which of the
+                  numbers below are derived, so it belongs above them. */}
+              <p className="px-4 py-3 text-xs text-ink-2 border-b border-line-2 max-w-[78ch] whitespace-normal">
+                <span className="text-ink">
+                  Agreed as {payModeSummary(currentSalary.payMode).label.toLowerCase()}
+                  {currentSalary.payMode === "take_home" && currentSalary.targetTakeHomePaise
+                    ? ` of ${maskIfNeeded(user, formatINR(currentSalary.targetTakeHomePaise))} a month`
+                    : ""}
+                  .
+                </span>{" "}
+                {payModeSummary(currentSalary.payMode).note}
+              </p>
               <SalaryBreakupTable ctc={currentCtc} takeHome={currentTakeHome ?? undefined} />
             </Card>
           )}

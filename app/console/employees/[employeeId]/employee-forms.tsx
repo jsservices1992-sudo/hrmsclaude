@@ -177,14 +177,17 @@ export function ReviseSalaryForm({
   const [state, action] = useActionState<SalaryState, FormData>(reviseSalary, {});
   const [mode, setMode] = useState("gross");
 
+  /* Whichever figure is entered is the one that is then held; the others
+     are derived from it. Only take-home holds the bottom line, and saying
+     so here is the difference between choosing a basis and guessing one. */
   const hint =
     mode === "ctc"
-      ? "Annual cost to company. The gross is worked back from it, allowing for employer PF, ESIC and gratuity accrual."
+      ? "Annual cost to company. The gross is worked back from it, allowing for employer PF, ESIC and gratuity accrual. The CTC is what is held — the net in hand moves as PF, ESIC and professional tax change."
       : mode === "annual_gross"
-        ? "Annual gross, divided across twelve months."
+        ? "Annual gross, divided across twelve months. The gross is what is held — the net in hand moves as PF, ESIC and professional tax change."
         : mode === "take_home"
-          ? "Monthly net take-home. The gross is worked back from it, allowing for employee PF, ESIC and professional tax — income tax is deducted separately once declarations are in, so it is not part of this figure."
-          : "Monthly gross, as it appears on the payslip.";
+          ? "Monthly net take-home, and the figure that is then held: every run re-solves the gross and CTC against that period's PF, ESIC and professional tax, so the amount reaching the bank does not drift. Income tax is deducted separately once declarations are in, so it is not part of this figure."
+          : "Monthly gross, as it appears on the payslip. The gross is what is held — the net in hand moves as PF, ESIC and professional tax change.";
 
   return (
     <form action={action} className="flex flex-col gap-3">

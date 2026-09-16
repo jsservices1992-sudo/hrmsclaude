@@ -7,6 +7,7 @@ import {
   buildFromGross,
   buildFromTargetCtc,
   buildFromTargetTakeHome,
+  employerCostFor,
   grossForTargetTakeHome,
   takeHomeFor,
   checkMinimumWage,
@@ -324,6 +325,80 @@ describe("Take-home", () => {
       `take-home ${b.takeHomePaise} vs target ${target}`,
     );
     assert.ok(b.monthlyGrossPaise > target, "gross exceeds take-home");
+  });
+});
+
+describe("Excluded employees", () => {
+  /* Somebody joining above the ceiling with no prior PF membership is not
+     a compulsory member, and the run does not deduct from them. A screen
+     or a solver that assumes PF anyway shows a deduction the payslip never
+     makes — and, when solving for a net, hands them the difference. */
+  const excluded = { pfOptedIn: false, hadPriorPfMembership: false };
+
+  test("no PF is projected for an excluded employee", () => {
+    const e = evaluateStructure(STRUCTURE, R(60000));
+    const t = takeHomeFor(e, { ...TAKEHOME, ...excluded });
+    assert.equal(t.epf, 0);
+    assert.equal(t.takeHome, R(60000) - R(200), "only PT comes off");
+  });
+
+  test("PF is projected for anyone who is not excluded", () => {
+    const e = evaluateStructure(STRUCTURE, R(60000));
+    assert.equal(takeHomeFor(e, TAKEHOME).epf, R(1800), "silent on the question");
+    assert.equal(
+      takeHomeFor(e, { ...TAKEHOME, pfOptedIn: true, hadPriorPfMembership: false }).epf,
+      R(1800),
+      "opted in",
+    );
+    assert.equal(
+      takeHomeFor(e, { ...TAKEHOME, pfOptedIn: false, hadPriorPfMembership: true }).epf,
+      R(1800),
+      "already a member",
+    );
+  });
+
+  test("below the ceiling nobody is excluded", () => {
+    const e = evaluateStructure(STRUCTURE, R(20000));
+    assert.ok(takeHomeFor(e, { ...TAKEHOME, ...excluded }).epf > 0);
+  });
+
+  test("an excluded employee costs the employer no PF either", () => {
+    const e = evaluateStructure(STRUCTURE, R(60000));
+    const withPf = employerCostFor(e, EMPLOYER);
+    const without = employerCostFor(e, { ...EMPLOYER, ...excluded });
+    assert.equal(withPf.pf, R(1800));
+    assert.equal(without.pf, 0, "the exclusion is from the scheme, not one side of it");
+    assert.equal(without.gratuity, withPf.gratuity, "gratuity is unaffected");
+  });
+
+  test("a net solved for an excluded employee lands on it", () => {
+    const target = R(60000);
+    const solved = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: target,
+      components: STRUCTURE,
+      employer: EMPLOYER,
+      stateCode: "DL",
+      gender: null,
+      month: 6,
+      ...excluded,
+      statutory: {
+        epf: { wageCeilingPaise: R(15000), employeeBps: 1200 },
+        esic: { wageThresholdPaise: R(21000), employeeBps: 75 },
+        ptSlabsByState: {},
+        ptApplicableByState: {},
+      },
+    });
+    const net = takeHomeFor(evaluateStructure(STRUCTURE, solved.monthlyGrossPaise), {
+      ...TAKEHOME,
+      professionalTaxPaise: 0,
+      ...excluded,
+    }).takeHome;
+    assert.ok(Math.abs(net - target) <= R(2), `net ${net} vs target ${target}`);
+    assert.equal(
+      solved.monthlyGrossPaise,
+      target,
+      "with nothing deducted, the gross is the net",
+    );
   });
 });
 

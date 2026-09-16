@@ -44,6 +44,28 @@ export type EpfResult = {
   reason: string;
 };
 
+/**
+ * The excluded-employee test, on its own so that anything projecting a
+ * take-home applies the same rule the run will.
+ *
+ * Somebody joining on wages above the ceiling with no prior PF membership
+ * is not a compulsory member. Left to each caller to re-derive, this is
+ * exactly the kind of rule a screen forgets and then shows a deduction the
+ * payslip never makes.
+ */
+export function epfExcluded(input: {
+  pfWagePaise: Paise;
+  wageCeilingPaise: Paise;
+  optedIn: boolean;
+  hadPriorMembership: boolean;
+}): boolean {
+  return (
+    !input.optedIn &&
+    input.pfWagePaise > input.wageCeilingPaise &&
+    !input.hadPriorMembership
+  );
+}
+
 export function computeEpf(input: EpfInput): EpfResult {
   const { params } = input;
   const zero = {
@@ -56,7 +78,14 @@ export function computeEpf(input: EpfInput): EpfResult {
 
   const aboveCeiling = input.pfWagePaise > params.wageCeilingPaise;
 
-  if (!input.optedIn && aboveCeiling && !input.hadPriorMembership) {
+  if (
+    epfExcluded({
+      pfWagePaise: input.pfWagePaise,
+      wageCeilingPaise: params.wageCeilingPaise,
+      optedIn: input.optedIn,
+      hadPriorMembership: input.hadPriorMembership,
+    })
+  ) {
     return {
       applicable: false,
       ...zero,
