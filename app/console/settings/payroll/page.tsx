@@ -187,11 +187,31 @@ export default async function PayrollSettingsPage(
     { id: "departments", label: `Department overrides (${deptOverrides.length})` },
     { id: "structures", label: `Salary structures (${structures.length})` },
     { id: "controls", label: "Approval controls" },
-    { id: "calendar", label: "Calendar & cut-offs" },
     { id: "statutory", label: `Statutory rates (${params.length})` },
-    { id: "groups", label: `Groups (${groups.length})` },
     { id: "banks", label: `Bank accounts (${banks.length})` },
   ];
+
+  /*
+   * Groups (multi-tranche processing) and a non-default calendar are
+   * both things one company in a hundred needs on day one — a
+   * factory-floor cut-off, a payroll split into review batches. Every
+   * other company saw two tabs it would never open before the ones it
+   * actually needed. Both stay reachable — as a plain link once
+   * something is already configured in them, they behave exactly like
+   * a normal tab again, so nobody who set one up loses it.
+   */
+  const ADVANCED_TABS = [
+    { id: "calendar", label: "Calendar & cut-offs", configured: calendars.length > 0 },
+    { id: "groups", label: `Groups (${groups.length})`, configured: groups.length > 0 },
+  ];
+  for (const advanced of ADVANCED_TABS) {
+    if (advanced.configured || tab === advanced.id) {
+      TABS.push({ id: advanced.id, label: advanced.label });
+    }
+  }
+  const hiddenAdvanced = ADVANCED_TABS.filter(
+    (a) => !a.configured && tab !== a.id,
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -233,6 +253,20 @@ export default async function PayrollSettingsPage(
             {t.label}
           </TabLink>
         ))}
+        {hiddenAdvanced.length > 0 && (
+          <span className="ml-auto flex items-center gap-3 pl-3 text-xs text-ink-3">
+            More:
+            {hiddenAdvanced.map((a) => (
+              <Link
+                key={a.id}
+                href={`/console/settings/payroll?company=${companyId}&tab=${a.id}`}
+                className="hover:underline hover:text-ink-2"
+              >
+                {a.label}
+              </Link>
+            ))}
+          </span>
+        )}
       </Tabs>
 
       {tab === "conventions" && (
