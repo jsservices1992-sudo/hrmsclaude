@@ -1,10 +1,11 @@
 import { currentPeriod } from "@/lib/clock";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { listCompanies } from "@/lib/payroll/load";
+import { isRecalculable } from "@/lib/payroll/run-status";
 import { formatINR } from "@/lib/payroll/money";
 import {
   getSessionUser,
@@ -132,6 +133,25 @@ export default async function VariablePayPage(
     .filter((a) => a.kind === "deduction")
     .reduce((x, a) => x + a.amountPaise, 0);
 
+  /* What happens to an amount entered here depends entirely on the state
+     of that period's run, and the period defaulted to is the one payroll
+     is normally working on — not necessarily the one somebody has open in
+     another tab. A ₹500 deduction typed against the wrong month is silent
+     until somebody wonders why the net did not move. */
+  const runRows = await db
+    .select({
+      year: s.payrollRuns.periodYear,
+      month: s.payrollRuns.periodMonth,
+      status: s.payrollRuns.status,
+      version: s.payrollRuns.version,
+    })
+    .from(s.payrollRuns)
+    .where(eq(s.payrollRuns.companyId, companyId))
+    .orderBy(desc(s.payrollRuns.periodYear), desc(s.payrollRuns.periodMonth));
+
+  const runHere = runRows.find((r) => r.year === year && r.month === month) ?? null;
+  const runElsewhere = runHere ? null : (runRows[0] ?? null);
+
   const q = `company=${companyId}&year=${year}&month=${month}`;
   const mode = sp.mode === "bulk" ? "bulk" : "one";
 
@@ -199,6 +219,28 @@ export default async function VariablePayPage(
               </Link>
             </div>
           </div>
+
+          {/* Where this amount is going to land, before it is typed. */}
+          <p className="px-4 py-2.5 text-xs text-ink-2 border-b border-line-2 max-w-[80ch]">
+            {runHere
+              ? isRecalculable(runHere.status)
+                ? `${MONTHS[month - 1]} ${year} is calculated (v${runHere.version}) but not approved. Anything added here appears once the period is calculated again.`
+                : `${MONTHS[month - 1]} ${year} is ${runHere.status.replace(/_/g, " ")}. Reopen the run before adding to it, so this is captured in a new version rather than quietly disagreeing with what was signed off.`
+              : `${MONTHS[month - 1]} ${year} has no payroll run yet — this is stored and picked up when it is first calculated.`}
+            {runElsewhere && (
+              <>
+                {" "}
+                The most recent run is{" "}
+                <Link
+                  href={`/console/payroll/inputs?company=${companyId}&year=${runElsewhere.year}&month=${runElsewhere.month}`}
+                  className="text-brass hover:underline"
+                >
+                  {MONTHS[runElsewhere.month - 1]} {runElsewhere.year}
+                </Link>
+                . If that is the month you mean, switch to it first.
+              </>
+            )}
+          </p>
           <div className="px-4 pt-3">
             <Tabs>
               <TabLink href={`/console/payroll/inputs?${q}`} active={mode === "one"}>

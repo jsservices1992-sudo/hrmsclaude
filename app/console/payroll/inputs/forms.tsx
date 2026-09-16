@@ -63,6 +63,14 @@ export function AddVariablePayForm({
     );
   }
 
+  /* Which side of the payslip a type lands on is the first thing to know
+     about it, and a flat list of labels does not say. Somebody looking for
+     a way to dock ₹500 sees "Advance" and "Collection Incentive" side by
+     side with nothing to tell them apart. */
+  const adds = types.filter((t) => t.category !== "deduction");
+  const takes = types.filter((t) => t.category === "deduction");
+  const isDeduction = type?.category === "deduction";
+
   const preview =
     isOt && otRatePaisePerHour && Number(hours) > 0
       ? (Number(hours) * otRatePaisePerHour) / 100
@@ -88,10 +96,34 @@ export function AddVariablePayForm({
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Type</span>
           <Select name="typeId" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
+            {adds.length > 0 && (
+              <optgroup label="Adds to pay">
+                {adds.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </optgroup>
+            )}
+            {takes.length > 0 && (
+              <optgroup label="Comes off pay">
+                {takes.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </optgroup>
+            )}
           </Select>
+          {takes.length === 0 && (
+            <span className="text-xs text-ink-3">
+              Nothing here comes off pay yet. A penalty, a salary advance or
+              damage to an asset needs a type of its own —{" "}
+              <a
+                href="/console/settings/master-data?tab=variable"
+                className="text-brass hover:underline"
+              >
+                add one with the deduction category
+              </a>
+              .
+            </span>
+          )}
         </label>
 
         {isOt ? (
@@ -110,7 +142,9 @@ export function AddVariablePayForm({
           </label>
         ) : (
           <label className="flex flex-col gap-1">
-            <span className="label text-ink-3">Amount (₹)</span>
+            <span className="label text-ink-3">
+              {isDeduction ? "Amount to deduct (₹)" : "Amount (₹)"}
+            </span>
             <Input
               key={typeId}
               name="amount"
@@ -121,6 +155,12 @@ export function AddVariablePayForm({
               className="tnum"
               defaultValue={type?.defaultAmountPaise != null ? type.defaultAmountPaise / 100 : ""}
             />
+            {isDeduction && (
+              <span className="text-xs text-ink-3">
+                Comes off the net, after PF and the rest. Enter it as a positive
+                amount — the payslip shows it as a deduction.
+              </span>
+            )}
           </label>
         )}
       </div>
