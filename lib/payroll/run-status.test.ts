@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildRunSteps, nextStep, progressOf, type RunStatusInput } from "./run-status";
+import {
+  isRecalculable, buildRunSteps, nextStep, progressOf, type RunStatusInput } from "./run-status";
 
 const Q = "company=c1&year=2026&month=9";
 
@@ -127,3 +128,15 @@ test("progress counts only finished steps", () => {
   assert.equal(p.total, 9);
   assert.ok(p.done < p.total);
 });
+
+test("a run that can still be recalculated is not figures of record", () => {
+  for (const status of ["draft", "calculated", "in_review"]) {
+    assert.equal(isRecalculable(status), true, `${status} should still be open`);
+  }
+  for (const status of ["approved", "finalised", "disbursed", "closed"]) {
+    assert.equal(isRecalculable(status), false, `${status} is signed off`);
+  }
+  assert.equal(isRecalculable(null), false, "no run at all is not recalculable");
+  assert.equal(isRecalculable(undefined), false);
+});
+

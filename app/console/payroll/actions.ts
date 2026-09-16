@@ -22,6 +22,7 @@ import { recordAudit, loadSodPolicies, bankChangesFor } from "@/lib/audit/log";
 import { checkRunApproval } from "@/lib/audit/controls";
 import { recordAuditAs } from "@/lib/audit/log";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
+import { isRecalculable } from "@/lib/payroll/run-status";
 
 /**
  * Delegates to the shared recorder so every entry carries the actor's
@@ -86,7 +87,7 @@ export async function calculateRun(
     .orderBy(desc(s.payrollRuns.version))
     .limit(1);
 
-  if (latest && !["draft", "calculated", "in_review"].includes(latest.status)) {
+  if (latest && !isRecalculable(latest.status)) {
     return {
       error: `Version ${latest.version} is ${latest.status.replace("_", " ")}. Reopen it to recalculate.`,
     };

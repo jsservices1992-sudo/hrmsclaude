@@ -5,6 +5,20 @@ export const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+/**
+ * Statuses where calculating the period again simply replaces the figures,
+ * under the same version number. Past these, a run is signed off and only
+ * a reopen — which creates a new version — may touch it.
+ *
+ * Shared so that the guard in the calculate action and what the payslip
+ * tells the reader about its own figures cannot drift apart.
+ */
+export const RECALCULABLE_STATUSES = ["draft", "calculated", "in_review"];
+
+export function isRecalculable(status: string | null | undefined): boolean {
+  return RECALCULABLE_STATUSES.includes(status ?? "");
+}
+
 /** How far through its lifecycle a run is, at a glance. */
 export const STATUS_TONE: Record<string, BadgeTone> = {
   draft: "neutral",

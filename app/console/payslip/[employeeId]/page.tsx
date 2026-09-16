@@ -13,6 +13,7 @@ import {
 import { recordAccess } from "@/lib/audit/log";
 import { PrintButton } from "@/components/console/print-button";
 import { PayslipDocument } from "@/components/console/payslip-document";
+import { isRecalculable } from "@/lib/payroll/run-status";
 import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Payslip" };
@@ -76,9 +77,15 @@ export default async function PayslipPage(
         </p>
       ) : (
         <p data-print="hide" className="text-xs text-ink-3">
-          Figures of record — run v{period.run?.version} ({period.run?.status.replace(/_/g, " ")})
-          {period.run?.calculatedAt ? `, calculated ${formatDate(period.run.calculatedAt)}` : ""}.
-          Later changes to attendance or salary do not alter them.
+          Run v{period.run?.version} ({period.run?.status.replace(/_/g, " ")})
+          {period.run?.calculatedAt ? `, calculated ${formatDate(period.run.calculatedAt)}` : ""}.{" "}
+          {/* Only an approved run is fixed. Calculating an unapproved period
+              again replaces its figures in place, under the same version —
+              so telling the reader they cannot change would be untrue, and
+              untrue on the one document they check their pay against. */}
+          {isRecalculable(period.run?.status)
+            ? "Not approved yet — calculating the period again replaces these figures with whatever attendance and salary then say."
+            : "Figures of record. Later changes to attendance or salary do not alter them."}
         </p>
       )}
 
