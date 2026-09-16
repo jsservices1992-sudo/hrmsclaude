@@ -80,3 +80,51 @@ export function formatDateRange(
   if (!to) return `from ${formatDate(from)}`;
   return `${formatDate(from)} – ${formatDate(to)}`;
 }
+
+/**
+ * Reads a date the way it is actually typed into a spreadsheet — not
+ * how it must be typed into an `<input type="date">`.
+ *
+ * A CSV import cannot rely on the browser's date picker to normalise
+ * what somebody types; it gets whatever their spreadsheet exported.
+ * This accepts ISO (2026-04-01), the same with slashes (2026/04/01,
+ * from a system that writes YYYY/MM/DD), and the Indian day-first form
+ * (01/04/2026 or 01-04-2026) — never month-first. This product has no
+ * date anywhere that means MM/DD, and guessing between the two for an
+ * ambiguous "03/04/2026" is how a date of birth becomes a joining date
+ * three months out. Every one of these is unambiguous against the
+ * others: the 4-digit year anchors which end of the string it is on.
+ *
+ * Returns the canonical ISO string for storage, or null if the text is
+ * not one of these shapes, or names a date that does not exist (31
+ * February, 30 February).
+ */
+export function parseFlexibleDate(raw: string): string | null {
+  const s = raw.trim();
+
+  const yearFirst = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(s);
+  if (yearFirst) {
+    const [, y, mo, d] = yearFirst;
+    return ymdToIsoIfReal(Number(y), Number(mo), Number(d));
+  }
+
+  const dayFirst = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/.exec(s);
+  if (dayFirst) {
+    const [, d, mo, y] = dayFirst;
+    return ymdToIsoIfReal(Number(y), Number(mo), Number(d));
+  }
+
+  return null;
+}
+
+function ymdToIsoIfReal(y: number, mo: number, d: number): string | null {
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  /* Round-tripped through Date.UTC and checked back apart, so "31 Feb"
+     is refused rather than quietly landing on 3 March. */
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) {
+    return null;
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${y}-${pad(mo)}-${pad(d)}`;
+}

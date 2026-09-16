@@ -105,9 +105,27 @@ test("quoted commas survive, which is how designations arrive", () => {
 });
 
 test("an invalid row is excluded from rows, not half-imported", () => {
-  const r = parseEmployeeCsv(csv(row(), row({ empCode: "BLR002", dateOfJoining: "15-01-2026" })));
+  const r = parseEmployeeCsv(csv(row(), row({ empCode: "BLR002", dateOfJoining: "not-a-date" })));
   assert.equal(r.rows.length, 1);
   assert.equal(r.rows[0].empCode, "BLR001");
+});
+
+test("a date of joining written day-first, the way it actually arrives, is accepted", () => {
+  const r = parseEmployeeCsv(csv(row({ dateOfJoining: "15-01-2026" })));
+  assert.deepEqual(r.problems, []);
+  assert.equal(r.rows[0].dateOfJoining, "2026-01-15");
+});
+
+test("a date of birth written YYYY/MM/DD, the way one export writes it, is accepted", () => {
+  const r = parseEmployeeCsv(csv(row({ dateOfBirth: "1995/04/02" })));
+  assert.deepEqual(r.problems, []);
+  assert.equal(r.rows[0].dateOfBirth, "1995-04-02");
+});
+
+test("a genuinely unparseable date is refused with a message naming both accepted forms", () => {
+  const r = parseEmployeeCsv(csv(row({ dateOfJoining: "31/02/2026" })));
+  assert.match(r.problems[0].message, /DD\/MM\/YYYY/);
+  assert.match(r.problems[0].message, /YYYY-MM-DD/);
 });
 
 test("unknown branch, department and grade codes are reported by default", () => {

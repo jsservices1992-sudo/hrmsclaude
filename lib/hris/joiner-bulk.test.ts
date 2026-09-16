@@ -115,6 +115,28 @@ test("every problem carries the line it is on, so a large file points at exactly
   assert.ok(problems.every((p) => p.line === 3));
 });
 
+test("proposedDoj written day-first, the way it actually arrives, is accepted", () => {
+  const csv = [HEADER, "Asha,Rao,asha@example.com,,,BLR,,,,21/01/2026,"].join("\n");
+  const { rows, problems } = parseJoinerCsv(csv);
+  assert.deepEqual(problems, []);
+  assert.equal(rows[0]?.proposedDoj, "2026-01-21");
+});
+
+test("proposedDoj written YYYY/MM/DD is also accepted", () => {
+  const csv = [HEADER, "Asha,Rao,asha@example.com,,,BLR,,,,2026/01/21,"].join("\n");
+  const { rows, problems } = parseJoinerCsv(csv);
+  assert.deepEqual(problems, []);
+  assert.equal(rows[0]?.proposedDoj, "2026-01-21");
+});
+
+test("a date that does not exist is refused, naming both accepted forms", () => {
+  const csv = [HEADER, "Asha,Rao,asha@example.com,,,BLR,,,,31/02/2026,"].join("\n");
+  const { problems } = parseJoinerCsv(csv);
+  const p = problems.find((x) => x.column === "proposedDoj")!;
+  assert.match(p.message, /DD\/MM\/YYYY/);
+  assert.match(p.message, /YYYY-MM-DD/);
+});
+
 test("unresolved references refuse a code this company does not have, with where to add it", () => {
   const rows = parseJoinerCsv(
     [HEADER, "Asha,Rao,asha@example.com,,,GGN,ENG,L9,,2026-04-01,"].join("\n"),

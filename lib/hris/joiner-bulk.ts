@@ -3,6 +3,7 @@ import {
   MOBILE_RE,
   IDENTIFIER_MESSAGES as MSG,
 } from "./identifiers";
+import { parseFlexibleDate } from "../format/date";
 import { EMPLOYMENT_TYPES, splitCsvLine, type RowProblem } from "./employee-bulk";
 
 /**
@@ -58,7 +59,6 @@ export type JoinerParseResult = {
   problems: RowProblem[];
 };
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function parseJoinerCsv(text: string): JoinerParseResult {
@@ -124,7 +124,8 @@ export function parseJoinerCsv(text: string): JoinerParseResult {
     const lastName = get("lastName");
     const personalEmail = get("personalEmail")?.toLowerCase() ?? null;
     const branchCode = get("branchCode")?.toUpperCase() ?? null;
-    const proposedDoj = get("proposedDoj");
+    const proposedDojRaw = get("proposedDoj");
+    const proposedDoj = proposedDojRaw ? parseFlexibleDate(proposedDojRaw) : null;
 
     if (!firstName) problem("firstName", "A first name is required.");
     if (!lastName) problem("lastName", "A last name is required.");
@@ -143,8 +144,11 @@ export function parseJoinerCsv(text: string): JoinerParseResult {
       }
     }
 
-    if (!proposedDoj || !DATE_RE.test(proposedDoj)) {
-      problem("proposedDoj", `"${proposedDoj ?? ""}" is not a date. Use YYYY-MM-DD.`);
+    if (!proposedDoj) {
+      problem(
+        "proposedDoj",
+        `"${proposedDojRaw ?? ""}" is not a date. Use DD/MM/YYYY or YYYY-MM-DD.`,
+      );
     }
 
     const mobileRaw = get("mobile");
@@ -177,7 +181,6 @@ export function parseJoinerCsv(text: string): JoinerParseResult {
       !EMAIL_RE.test(personalEmail) ||
       !branchCode ||
       !proposedDoj ||
-      !DATE_RE.test(proposedDoj) ||
       !employmentType
     ) {
       continue;

@@ -1,3 +1,4 @@
+import { parseFlexibleDate } from "../format/date";
 import {
   normaliseMobile,
   normalisePan,
@@ -104,7 +105,6 @@ export type EmployeeParseResult = {
   problems: RowProblem[];
 };
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Splits a CSV line, honouring double quotes around commas. */
 export function splitCsvLine(line: string): string[] {
@@ -204,7 +204,11 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
     const empCode = get("empCode")?.toUpperCase() ?? null;
     const firstName = get("firstName");
     const lastName = get("lastName");
-    const dateOfJoining = get("dateOfJoining");
+    /* Read the way a spreadsheet actually writes it — DD/MM/YYYY,
+       YYYY/MM/DD, or plain ISO — then held to ISO from here on, so
+       every comparison below is a straightforward string compare. */
+    const dateOfJoiningRaw = get("dateOfJoining");
+    const dateOfJoining = dateOfJoiningRaw ? parseFlexibleDate(dateOfJoiningRaw) : null;
     const branchCode = get("branchCode")?.toUpperCase() ?? null;
 
     if (!empCode) problem("empCode", "An employee code is required.");
@@ -221,15 +225,22 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
       }
     }
 
-    if (!dateOfJoining || !DATE_RE.test(dateOfJoining)) {
-      problem("dateOfJoining", `"${dateOfJoining ?? ""}" is not a date. Use YYYY-MM-DD.`);
+    if (!dateOfJoining) {
+      problem(
+        "dateOfJoining",
+        `"${dateOfJoiningRaw ?? ""}" is not a date. Use DD/MM/YYYY or YYYY-MM-DD.`,
+      );
     }
 
-    const dateOfBirth = get("dateOfBirth");
-    if (dateOfBirth && !DATE_RE.test(dateOfBirth)) {
-      problem("dateOfBirth", `"${dateOfBirth}" is not a date. Use YYYY-MM-DD.`);
+    const dateOfBirthRaw = get("dateOfBirth");
+    const dateOfBirth = dateOfBirthRaw ? parseFlexibleDate(dateOfBirthRaw) : null;
+    if (dateOfBirthRaw && !dateOfBirth) {
+      problem(
+        "dateOfBirth",
+        `"${dateOfBirthRaw}" is not a date. Use DD/MM/YYYY or YYYY-MM-DD.`,
+      );
     }
-    if (dateOfBirth && dateOfJoining && DATE_RE.test(dateOfJoining) && dateOfBirth >= dateOfJoining) {
+    if (dateOfBirth && dateOfJoining && dateOfBirth >= dateOfJoining) {
       problem("dateOfBirth", "Date of birth is on or after the joining date.");
     }
 
@@ -273,7 +284,8 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
     if (bankAccount && !ifsc) problem("ifsc", MSG.ifscMissing);
 
     if (!empCode || !firstName || !lastName || !gender || !employmentType || !branchCode) continue;
-    if (!dateOfJoining || !DATE_RE.test(dateOfJoining)) continue;
+    if (!dateOfJoining) continue;
+    if (dateOfBirthRaw && !dateOfBirth) continue;
 
     rows.push({
       line,
