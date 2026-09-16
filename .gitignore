@@ -46,3 +46,10 @@ data/
 # local database backups (may contain real payroll data)
 data/backups/
 
+
+# Throwaway scripts used to set up or tear down test data on a live
+# database. They are written for one session and are never a product
+# feature; committing one is how a delete-everything script ends up in
+# a release.
+db/zz-*.mts
+db/tmp-*.mts
