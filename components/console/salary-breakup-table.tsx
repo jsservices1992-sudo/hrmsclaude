@@ -2,14 +2,6 @@ import { formatINR } from "@/lib/payroll/money";
 import type { CtcBreakdown } from "@/lib/payroll/compensation";
 import { Table, THead, TH, TBody, TR, TD } from "./ui";
 
-type Line = {
-  label: string;
-  basis: string;
-  amountPaise: number;
-  /** Where the annual figure is not simply twelve of the monthly one. */
-  annualPaise?: number;
-};
-
 /**
  * What the employee is actually left with, and everything that came off to
  * get there. Optional only because one caller does not have it yet; the
@@ -24,36 +16,90 @@ export type TakeHomeSummary = {
   ptPaise: number;
   /** Employee share of labour welfare fund, per deduction, and per year. */
   lwfPaise?: number;
-  lwfAnnualPaise?: number;
-  lwfBasis?: string;
+  lwfEmployerPaise?: number;
+  lwfMonths?: number[];
   /** Projected income tax for the month, once declarations are in. */
   incomeTaxPaise?: number;
   incomeTaxAnnualPaise?: number;
   incomeTaxBasis?: string;
 };
 
-function SectionRow({ label }: { label: string }) {
+type Row = {
+  label: string;
+  /** Text stands in for an amount where there is no figure to give yet. */
+  monthly: number | string;
+  annual?: number | string;
+  note?: string;
+  strong?: boolean;
+  negative?: boolean;
+};
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function Amount({ value, negative }: { value: number | string; negative?: boolean }) {
+  if (typeof value === "string") return <span className="text-ink-2 text-xs">{value}</span>;
   return (
-    <TR className="bg-surface-2">
-      <TD className="label text-ink-2" colSpan={4}>
-        {label}
-      </TD>
-    </TR>
+    <>
+      {negative && value > 0 ? "−" : ""}
+      {formatINR(value)}
+    </>
+  );
+}
+
+function Section({ heading, rows }: { heading: string; rows: Row[] }) {
+  return (
+    <Table>
+      <THead>
+        <TH>{heading}</TH>
+        <TH className="text-right">Monthly</TH>
+        <TH className="text-right">Annual</TH>
+      </THead>
+      <TBody>
+        {rows.map((r) => (
+          <TR key={r.label} className={r.strong ? "bg-surface-2" : undefined}>
+            <TD className={r.strong ? "font-medium" : undefined}>
+              {r.label}
+              {r.note && (
+                <span className="block text-ink-2 text-xs whitespace-normal">{r.note}</span>
+              )}
+            </TD>
+            <TD
+              className={`text-right font-mono tnum ${r.strong ? "font-medium" : ""} ${
+                r.negative ? "text-rust" : ""
+              }`}
+            >
+              <Amount value={r.monthly} negative={r.negative} />
+            </TD>
+            <TD
+              className={`text-right font-mono tnum ${r.strong ? "font-medium" : "text-ink-2"} ${
+                r.negative ? "text-rust" : ""
+              }`}
+            >
+              <Amount
+                value={r.annual ?? (typeof r.monthly === "number" ? r.monthly * 12 : r.monthly)}
+                negative={r.negative}
+              />
+            </TD>
+          </TR>
+        ))}
+      </TBody>
+    </Table>
   );
 }
 
 /**
- * The whole compensation picture for one salary: every earning component
- * that derives the monthly gross, then the employer-borne cost stacked on
- * top of it to reach CTC, then everything deducted from the employee to
- * reach the net. Monthly and annual are shown side by side because offers
- * are discussed annually and payroll is run monthly.
+ * The compensation letter's two tables: what the employee is paid and what
+ * comes out of it, then the employer's cost stacked on the same gross to
+ * reach CTC.
  *
- * The three sides are labelled rather than merely ordered. Read as one
- * unbroken list, an employer contribution and an employee deduction look
- * alike — both sit under the gross, both are statutory, and only the minus
- * sign tells them apart. The employee's own deductions are the ones they
- * came to this screen to find.
+ * Statutory lines are listed even at nil. "ESIC ₹0" is information — it
+ * says the question was asked and this salary sits above the threshold —
+ * where a missing row only raises it. Income tax is the one figure that
+ * cannot be stated from a salary alone, so it says so rather than printing
+ * a zero that reads as a promise.
  */
 export function SalaryBreakupTable({
   ctc,
@@ -62,145 +108,100 @@ export function SalaryBreakupTable({
   ctc: CtcBreakdown;
   takeHome?: TakeHomeSummary;
 }) {
-  const annualOf = (l: Line) => l.annualPaise ?? l.amountPaise * 12;
+  const earnings: Row[] = ctc.components.map((c) => ({
+    label: c.label,
+    monthly: c.amountPaise,
+    note: c.basis,
+  }));
 
-  const employerLines: Line[] = [
-    { label: "Employer provident fund", amountPaise: ctc.employerPfPaise, basis: "Employer share of PF on PF wages" },
-    { label: "Employer ESIC", amountPaise: ctc.employerEsicPaise, basis: "Employer share, where ESIC applies" },
-    { label: "Gratuity provision", amountPaise: ctc.gratuityProvisionPaise, basis: "15 days' wages a year, accrued monthly" },
-    { label: "Other employer cost", amountPaise: ctc.otherEmployerPaise, basis: "Flat monthly employer cost" },
-  ].filter((l) => l.amountPaise > 0);
-
-  const employeeLines: Line[] = takeHome
-    ? (
-        [
-          { label: "Provident fund (employee)", amountPaise: takeHome.epfPaise, basis: "12% of PF wages, deducted from pay" },
-          { label: "ESIC (employee)", amountPaise: takeHome.esicPaise, basis: "0.75% of gross, where ESIC applies" },
-          { label: "Professional tax", amountPaise: takeHome.ptPaise, basis: "State slab on the PT base" },
-          {
-            label: "Labour welfare fund (employee)",
-            amountPaise: takeHome.lwfPaise ?? 0,
-            annualPaise: takeHome.lwfAnnualPaise,
-            basis: takeHome.lwfBasis ?? "State labour welfare fund",
-          },
-          {
-            label: "Income tax (TDS)",
-            amountPaise: takeHome.incomeTaxPaise ?? 0,
-            annualPaise: takeHome.incomeTaxAnnualPaise,
-            basis: takeHome.incomeTaxBasis ?? "Projected annual tax spread over the remaining months",
-          },
-        ] satisfies Line[]
-      ).filter((l) => l.amountPaise > 0)
+  const employeeRows: Row[] = takeHome
+    ? [
+        { label: "Employee PF", monthly: takeHome.epfPaise, negative: true, note: "12% of PF wages" },
+        {
+          label: "Professional tax",
+          monthly: takeHome.ptPaise,
+          negative: true,
+          note: "State slab — varies by the state the branch sits in",
+        },
+        { label: "ESIC", monthly: takeHome.esicPaise, negative: true, note: "0.75% of gross, where ESIC applies" },
+        {
+          label: "TDS (income tax)",
+          monthly: takeHome.incomeTaxPaise ? takeHome.incomeTaxPaise : "As applicable",
+          annual: takeHome.incomeTaxPaise ? takeHome.incomeTaxAnnualPaise : "As applicable",
+          negative: true,
+          note: takeHome.incomeTaxPaise
+            ? takeHome.incomeTaxBasis
+            : "Depends on their declarations and proofs — deducted once those are in",
+        },
+      ]
     : [];
 
-  /* The net above is struck before income tax, because that is how the
-     rest of the app defines take-home. Tax is subtracted again here so the
-     final line is the figure that actually reaches the bank. */
-  const taxMonthly = takeHome?.incomeTaxPaise ?? 0;
-  const taxAnnual = takeHome?.incomeTaxAnnualPaise ?? taxMonthly * 12;
-  const netMonthly = (takeHome?.takeHomePaise ?? 0) - (takeHome?.lwfPaise ?? 0) - taxMonthly;
-  const netAnnual =
-    (takeHome?.takeHomePaise ?? 0) * 12 - (takeHome?.lwfAnnualPaise ?? (takeHome?.lwfPaise ?? 0) * 12) - taxAnnual;
+  const lwfMonths = takeHome?.lwfMonths ?? [];
+  const lwfNote =
+    takeHome && (takeHome.lwfPaise ?? 0) > 0 && lwfMonths.length > 0
+      ? `Labour welfare fund: ₹${((takeHome.lwfPaise ?? 0) / 100).toFixed(0)} from the employee` +
+        ` and ₹${((takeHome.lwfEmployerPaise ?? 0) / 100).toFixed(0)} from the employer,` +
+        ` deducted in ${lwfMonths.map((m) => MONTH_NAMES[m - 1]).join(" and ")} only.` +
+        " It is left out of the monthly figures above because it is not charged every month."
+      : null;
 
-  const employeeTotalMonthly = employeeLines.reduce((a, l) => a + l.amountPaise, 0);
-  const employeeTotalAnnual = employeeLines.reduce((a, l) => a + annualOf(l), 0);
+  const employerRows: Row[] = [
+    { label: "Gross salary", monthly: ctc.monthlyGrossPaise, annual: ctc.annualGrossPaise },
+    { label: "Employer PF", monthly: ctc.employerPfPaise, note: "Employer share on PF wages" },
+    {
+      label: "Gratuity provision",
+      monthly: ctc.gratuityProvisionPaise,
+      note: "Approximately 4.81% of basic — 15 days' wages a year, accrued monthly",
+    },
+    { label: "Employer ESIC", monthly: ctc.employerEsicPaise, note: "Employer share, where ESIC applies" },
+    ...(ctc.otherEmployerPaise > 0
+      ? [{ label: "Other employer cost", monthly: ctc.otherEmployerPaise, note: "Flat monthly employer cost" }]
+      : []),
+    {
+      label: "Total CTC",
+      monthly: ctc.monthlyCtcPaise,
+      annual: ctc.annualCtcPaise,
+      strong: true,
+      note: "Gross plus everything the employer pays on top — not money the employee receives",
+    },
+  ];
 
   return (
-    <Table>
-      <THead>
-        <TH>Component</TH>
-        <TH>Basis</TH>
-        <TH className="text-right">Monthly</TH>
-        <TH className="text-right">Annual</TH>
-      </THead>
-      <TBody>
-        <SectionRow label="Earnings — what makes up the gross" />
-        {ctc.components.map((l) => (
-          <TR key={l.code}>
-            <TD>{l.label}</TD>
-            <TD className="text-ink-2 text-xs whitespace-normal">{l.basis}</TD>
-            <TD className="text-right font-mono tnum">{formatINR(l.amountPaise)}</TD>
-            <TD className="text-right font-mono tnum text-ink-2">{formatINR(l.amountPaise * 12)}</TD>
-          </TR>
-        ))}
+    <div className="flex flex-col">
+      <Section
+        heading="Particulars"
+        rows={[
+          ...earnings,
+          {
+            label: "Gross salary",
+            monthly: ctc.monthlyGrossPaise,
+            annual: ctc.annualGrossPaise,
+            strong: true,
+            note: "What the payslip is built from, before deductions",
+          },
+          ...employeeRows,
+          ...(takeHome
+            ? [
+                {
+                  label: "Net take-home before TDS",
+                  monthly: takeHome.takeHomePaise,
+                  strong: true,
+                  note: "What reaches the bank account, before income tax",
+                } satisfies Row,
+              ]
+            : []),
+        ]}
+      />
 
-        <TR className="bg-surface-2">
-          <TD className="font-medium">Gross</TD>
-          <TD className="text-ink-2 text-xs whitespace-normal">What the payslip is built from, before deductions</TD>
-          <TD className="text-right font-mono tnum font-medium">{formatINR(ctc.monthlyGrossPaise)}</TD>
-          <TD className="text-right font-mono tnum font-medium">{formatINR(ctc.annualGrossPaise)}</TD>
-        </TR>
+      {lwfNote && (
+        <p className="px-4 py-3 text-xs text-ink-2 border-t border-line whitespace-normal">
+          {lwfNote}
+        </p>
+      )}
 
-        {employerLines.length > 0 && (
-          <SectionRow label="Employer contributions — paid on top of gross, not deducted" />
-        )}
-        {employerLines.map((l) => (
-          <TR key={l.label}>
-            <TD className="text-ink-2">{l.label}</TD>
-            <TD className="text-ink-2 text-xs whitespace-normal">{l.basis}</TD>
-            <TD className="text-right font-mono tnum text-ink-2">{formatINR(l.amountPaise)}</TD>
-            <TD className="text-right font-mono tnum text-ink-2">{formatINR(annualOf(l))}</TD>
-          </TR>
-        ))}
-
-        <TR className="bg-surface-2">
-          <TD className="font-medium">Cost to company</TD>
-          <TD className="text-ink-2 text-xs whitespace-normal">
-            Gross plus everything the employer pays on top — not money the employee receives
-          </TD>
-          <TD className="text-right font-mono tnum font-medium">{formatINR(ctc.monthlyCtcPaise)}</TD>
-          <TD className="text-right font-mono tnum font-medium">{formatINR(ctc.annualCtcPaise)}</TD>
-        </TR>
-
-        {takeHome && (
-          <>
-            <SectionRow label="Employee deductions — taken out of gross" />
-            {employeeLines.map((l) => (
-              <TR key={l.label}>
-                <TD className="text-ink-2">{l.label}</TD>
-                <TD className="text-ink-2 text-xs whitespace-normal">{l.basis}</TD>
-                <TD className="text-right font-mono tnum text-rust">−{formatINR(l.amountPaise)}</TD>
-                <TD className="text-right font-mono tnum text-rust">−{formatINR(annualOf(l))}</TD>
-              </TR>
-            ))}
-
-            {employeeLines.length === 0 && (
-              <TR>
-                <TD className="text-ink-2" colSpan={4}>
-                  Nothing is deducted at this salary — PF, ESIC, professional tax and labour
-                  welfare fund all fall outside their thresholds, and no income tax is projected.
-                </TD>
-              </TR>
-            )}
-
-            {employeeLines.length > 1 && (
-              <TR>
-                <TD className="font-medium">Total deductions</TD>
-                <TD className="text-ink-2 text-xs whitespace-normal">
-                  Everything that comes off the gross before it is paid
-                </TD>
-                <TD className="text-right font-mono tnum font-medium text-rust">
-                  −{formatINR(employeeTotalMonthly)}
-                </TD>
-                <TD className="text-right font-mono tnum font-medium text-rust">
-                  −{formatINR(employeeTotalAnnual)}
-                </TD>
-              </TR>
-            )}
-
-            <TR className="bg-surface-2">
-              <TD className="font-medium">Net in hand</TD>
-              <TD className="text-ink-2 text-xs whitespace-normal">
-                {takeHome.incomeTaxPaise
-                  ? "What reaches the bank account, after every deduction including income tax."
-                  : "What reaches the bank account. No income tax is projected yet — it is added once their declarations are in."}
-              </TD>
-              <TD className="text-right font-mono tnum font-medium">{formatINR(netMonthly)}</TD>
-              <TD className="text-right font-mono tnum font-medium">{formatINR(netAnnual)}</TD>
-            </TR>
-          </>
-        )}
-      </TBody>
-    </Table>
+      <div className="border-t border-line">
+        <Section heading="Employer contribution" rows={employerRows} />
+      </div>
+    </div>
   );
 }

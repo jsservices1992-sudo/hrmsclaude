@@ -176,7 +176,6 @@ export default async function EmployeeDetailPage(
        states that levy it, annually in some — so its year is the rate times
        the number of those months, not the monthly figure times twelve. */
     const lwfRate = statutory.lwfByState[stateCode] ?? null;
-    const lwfMonths = lwfRate?.deductionMonths.length ?? 0;
     const lwf = computeLwf({
       stateCode,
       month: lwfRate?.deductionMonths[0] ?? 1,
@@ -195,8 +194,8 @@ export default async function EmployeeDetailPage(
       esicPaise: th.esic,
       ptPaise: th.pt,
       lwfPaise: lwf.employeePaise,
-      lwfAnnualPaise: lwf.employeePaise * lwfMonths,
-      lwfBasis: `${stateCode} — ${lwf.reason}, charged in ${lwfMonths} month(s) a year`,
+      lwfEmployerPaise: lwf.employerPaise,
+      lwfMonths: lwfRate?.deductionMonths ?? [],
       incomeTaxPaise: worksheet?.projection.monthlyTdsPaise ?? 0,
       /* The projection's own annual figure, not the slab tax: without a
          valid PAN section 206AA deducts at a flat rate that can exceed the

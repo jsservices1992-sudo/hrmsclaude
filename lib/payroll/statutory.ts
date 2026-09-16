@@ -246,18 +246,42 @@ export function computeProfessionalTax(input: PtInput): PtResult {
     };
   }
 
-  const candidates = input.slabs.filter(
+  const matching = input.slabs.filter(
     (s) =>
       s.gender === undefined ||
       s.gender === "all" ||
       s.gender === input.gender,
   );
 
-  const slab = candidates.find(
-    (s) =>
-      input.ptBasePaise >= s.minPaise &&
-      (s.maxPaise === null || input.ptBasePaise <= s.maxPaise),
-  );
+  /*
+   * A few states set a higher exemption threshold for women — Maharashtra
+   * exempts them to ₹25,000 against ₹7,500 for everyone else — so their
+   * slabs come in gendered sets. An employee recorded as "other" matches
+   * neither set, and used to fall through to no professional tax at all.
+   * That is the field's default on the create form, so people were silently
+   * escaping a deduction the employer is liable for when it is short.
+   *
+   * Where the gender does not name a set, every set is considered and the
+   * higher charge taken. Under-deducting PT lands on the employer; granting
+   * a concession the state may not extend to this person does not.
+   */
+  const usedFallback = matching.length === 0;
+  const candidates = usedFallback ? input.slabs : matching;
+
+  const amountOf = (s: PtSlab) =>
+    s.overrideMonth === input.month && s.overrideAmountPaise != null
+      ? s.overrideAmountPaise
+      : s.amountPaise;
+
+  const inBand = candidates
+    .filter(
+      (s) =>
+        input.ptBasePaise >= s.minPaise &&
+        (s.maxPaise === null || input.ptBasePaise <= s.maxPaise),
+    )
+    .sort((a, b) => amountOf(b) - amountOf(a));
+
+  const slab = inBand[0];
 
   if (!slab) {
     return {
@@ -267,10 +291,7 @@ export function computeProfessionalTax(input: PtInput): PtResult {
     };
   }
 
-  let amount =
-    slab.overrideMonth === input.month && slab.overrideAmountPaise != null
-      ? slab.overrideAmountPaise
-      : slab.amountPaise;
+  let amount = amountOf(slab);
 
   const cap = slab.annualCapPaise ?? 250000;
   const ytd = input.ytdDeductedPaise ?? 0;
@@ -285,9 +306,11 @@ export function computeProfessionalTax(input: PtInput): PtResult {
     amountPaise: amount,
     reason: capped
       ? "Annual professional tax cap reached"
-      : slab.overrideMonth === input.month
-        ? "State-specific higher deduction for this month"
-        : "Slab rate applied",
+      : usedFallback
+        ? `${input.stateCode} sets its slabs by gender and this record names none, so the higher charge is taken`
+        : slab.overrideMonth === input.month
+          ? "State-specific higher deduction for this month"
+          : "Slab rate applied",
   };
 }
 

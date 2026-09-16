@@ -291,6 +291,60 @@ describe("Professional tax", () => {
     assert.equal(feb.amountPaise, R(300));
   });
 
+  test("a record with no gender is charged, not silently exempted", () => {
+    /* "Other" is the create form's default, and it matches neither of a
+       gendered slab set. It used to fall through to nil PT, which is the
+       employer's liability to make good, not a saving. */
+    const other = computeProfessionalTax({
+      stateCode: "MH",
+      ptBasePaise: R(50000),
+      month: 6,
+      gender: "other",
+      slabs: MH,
+      applicable: true,
+    });
+    assert.equal(other.amountPaise, R(200));
+    assert.match(other.reason, /names none/);
+  });
+
+  test("a record with no gender takes the higher of the gendered slabs", () => {
+    /* At ₹20,000 Maharashtra exempts women and charges everyone else. The
+       conservative reading is the one that deducts. */
+    const other = computeProfessionalTax({
+      stateCode: "MH",
+      ptBasePaise: R(20000),
+      month: 6,
+      gender: "other",
+      slabs: MH,
+      applicable: true,
+    });
+    const woman = computeProfessionalTax({
+      stateCode: "MH",
+      ptBasePaise: R(20000),
+      month: 6,
+      gender: "female",
+      slabs: MH,
+      applicable: true,
+    });
+    assert.equal(woman.amountPaise, 0, "the concession still reaches the women it is for");
+    assert.ok(other.amountPaise > 0, "and is not handed to a record that does not claim it");
+  });
+
+  test("a genderless slab set is unaffected by the employee's gender", () => {
+    for (const gender of ["male", "female", "other"] as const) {
+      const r = computeProfessionalTax({
+        stateCode: "KA",
+        ptBasePaise: R(60000),
+        month: 6,
+        gender,
+        slabs: KA,
+        applicable: true,
+      });
+      assert.equal(r.amountPaise, R(200), `${gender} was charged differently`);
+      assert.equal(r.reason, "Slab rate applied");
+    }
+  });
+
   test("respects gender-differentiated thresholds", () => {
     const woman = computeProfessionalTax({
       stateCode: "MH",
