@@ -85,6 +85,7 @@ export function PayslipDocument({
 
   // The three panels differ in length; pad so their borders line up.
   const bodyRows = Math.max(slip.rates.length, slip.earnings.length, slip.deductions.length, 1);
+  const showRates = slip.rates.length > 0;
 
   const annual = worksheet?.annual;
   const tax = annual?.tax;
@@ -226,24 +227,33 @@ export function PayslipDocument({
         </tbody>
       </table>
 
-      {/* Rates | earnings | deductions */}
+      {/* Rates | earnings | deductions. The rates column appears only in a
+          month where it differs from what was earned — otherwise it repeats
+          the earnings column line for line and reads as a duplicate. */}
       <table className="w-full border-collapse table-fixed">
         {/* Amount columns are sized for the widest figure a payroll of this
             size produces; too narrow and a bold total wraps mid-number. */}
         <colgroup>
-          <col className="w-[17%]" /><col className="w-[13%]" />
-          <col className="w-[17%]" /><col className="w-[8%]" /><col className="w-[13%]" />
-          <col className="w-[19%]" /><col className="w-[13%]" />
+          {showRates && <><col className="w-[17%]" /><col className="w-[13%]" /></>}
+          <col className={showRates ? "w-[17%]" : "w-[26%]"} />
+          <col className="w-[8%]" />
+          <col className={showRates ? "w-[13%]" : "w-[20%]"} />
+          <col className={showRates ? "w-[19%]" : "w-[28%]"} />
+          <col className={showRates ? "w-[13%]" : "w-[18%]"} />
         </colgroup>
         <thead>
           <tr>
-            <th colSpan={2} className={BAND}>Salary rates (Rs)</th>
+            {showRates && <th colSpan={2} className={BAND}>Salary rates (Rs)</th>}
             <th colSpan={3} className={BAND}>Earnings this month (Rs)</th>
             <th colSpan={2} className={BAND}>Deductions (Rs)</th>
           </tr>
           <tr className="text-ink-3">
-            <th className={`${KEY} font-normal`}>Component</th>
-            <th className={`${KEY} font-normal text-right`}>Monthly</th>
+            {showRates && (
+              <>
+                <th className={`${KEY} font-normal`}>Component</th>
+                <th className={`${KEY} font-normal text-right`}>Monthly</th>
+              </>
+            )}
             <th className={`${KEY} font-normal`}>Component</th>
             <th className={`${KEY} font-normal text-right`}>Arrear</th>
             <th className={`${KEY} font-normal text-right`}>Total</th>
@@ -258,8 +268,12 @@ export function PayslipDocument({
             const ded = slip.deductions[i];
             return (
               <tr key={i}>
-                <td className={CELL}>{rate?.label ?? ""}</td>
-                <td className={NUM}>{rate ? rs(rate.amountPaise) : ""}</td>
+                {showRates && (
+                  <>
+                    <td className={CELL}>{rate?.label ?? ""}</td>
+                    <td className={NUM}>{rate ? rs(rate.amountPaise) : ""}</td>
+                  </>
+                )}
                 <td className={CELL}>{earn?.label ?? ""}</td>
                 <td className={NUM}>{earn ? rs(earn.arrearPaise) : ""}</td>
                 <td className={NUM}>{earn ? rs(earn.amountPaise) : ""}</td>
@@ -269,8 +283,12 @@ export function PayslipDocument({
             );
           })}
           <tr className="font-semibold bg-surface-2/60">
-            <td className={CELL}>Total</td>
-            <td className={NUM}>{rs(slip.ratesTotalPaise)}</td>
+            {showRates && (
+              <>
+                <td className={CELL}>Total</td>
+                <td className={NUM}>{rs(slip.ratesTotalPaise)}</td>
+              </>
+            )}
             <td className={CELL}>Gross salary</td>
             <td className={NUM}>{rs(slip.arrearTotalPaise)}</td>
             <td className={NUM}>{rs(slip.grossPaise)}</td>
@@ -290,6 +308,50 @@ export function PayslipDocument({
         </span>
         <span className="text-ink-2 italic min-w-0">{slip.netInWords}</span>
       </div>
+
+      {/* What the employer pays on top. Never deducted from the employee —
+          but leaving it off makes their own PF look like it has no
+          counterpart, and it is the difference between a salary and what
+          the employee actually costs. */}
+      {slip.employerContributions.length > 0 && (
+        <table className="w-full border-collapse table-fixed">
+          <colgroup>
+            <col className="w-[54%]" />
+            <col className="w-[23%]" />
+            <col className="w-[23%]" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th colSpan={3} className={BAND}>
+                Employer contributions (Rs) — paid on top, not deducted from pay
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {slip.employerContributions.map((l, i) => (
+              <tr key={l.label}>
+                <td className={CELL}>{l.label}</td>
+                <td className={NUM}>{rs(l.amountPaise)}</td>
+                {i === 0 && (
+                  <td
+                    className={`${CELL} text-ink-2 align-middle text-center`}
+                    rowSpan={slip.employerContributions.length + 1}
+                  >
+                    Gross salary plus these is what this month costs the
+                    company: <span className="font-mono tnum">
+                      {rs(slip.grossPaise + slip.employerTotalPaise)}
+                    </span>
+                  </td>
+                )}
+              </tr>
+            ))}
+            <tr className="font-semibold bg-surface-2/60">
+              <td className={CELL}>Total employer contributions</td>
+              <td className={NUM}>{rs(slip.employerTotalPaise)}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
 
       {worksheet && (
         <>

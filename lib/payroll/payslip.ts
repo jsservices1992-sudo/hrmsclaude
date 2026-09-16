@@ -47,7 +47,14 @@ export type PayslipHeader = {
 export type PayslipData = {
   header: PayslipHeader;
   periodLabel: string;
-  /** Un-prorated monthly rate per component — the "salary rates" column. */
+  /**
+   * Un-prorated monthly rate per component — the "salary rates" column.
+   *
+   * Empty in a month paid in full, where it would repeat the earnings
+   * column line for line and read as every component listed twice. It
+   * earns its place only when the two differ: a month with loss of pay, a
+   * mid-month joiner, somebody who left.
+   */
   rates: SlipLine[];
   ratesTotalPaise: number;
   earnings: SlipEarningLine[];
@@ -55,6 +62,13 @@ export type PayslipData = {
   grossPaise: number;
   deductions: SlipLine[];
   deductionsTotalPaise: number;
+  /**
+   * What the employer pays on top of the salary. Not deducted from anybody
+   * — but it is money spent on this employee, and a payslip that omits it
+   * makes the employee's own PF look like it has no counterpart.
+   */
+  employerContributions: SlipLine[];
+  employerTotalPaise: number;
   netPaise: number;
   netInWords: string;
   warnings: string[];
@@ -180,6 +194,18 @@ export async function loadPayslips(args: {
       .filter((l) => l.kind === "deduction")
       .map((l) => ({ label: l.label, amountPaise: l.amountPaise }));
 
+    const employerContributions: SlipLine[] = r.lines
+      .filter((l) => l.kind === "employer_contribution" && l.amountPaise !== 0)
+      .map((l) => ({ label: l.label, amountPaise: l.amountPaise }));
+
+    /* The rate card only where it says something the earnings column does
+       not. Paid in full with no arrear, the two are the same figures. */
+    const ratesDiffer =
+      rates.length !== earnings.length ||
+      earnings.some(
+        (e, i) => e.amountPaise !== rates[i]?.amountPaise || e.arrearPaise !== 0,
+      );
+
     out.set(r.employeeId, {
       header: {
         companyName: company?.name ?? "",
@@ -207,13 +233,15 @@ export async function loadPayslips(args: {
         location: row?.branchCity ?? row?.branchName ?? "",
       },
       periodLabel: `${MONTHS[month - 1]},${year}`,
-      rates,
-      ratesTotalPaise,
+      rates: ratesDiffer ? rates : [],
+      ratesTotalPaise: ratesDiffer ? ratesTotalPaise : 0,
       earnings,
       arrearTotalPaise: earnings.reduce((a, x) => a + x.arrearPaise, 0),
       grossPaise: r.grossPaise,
       deductions,
       deductionsTotalPaise: r.deductionsPaise,
+      employerContributions,
+      employerTotalPaise: employerContributions.reduce((a, x) => a + x.amountPaise, 0),
       netPaise: r.netPaise,
       netInWords: rupeesInWords(r.netPaise).replace(/^Rupees/, "Indian Rupees"),
       warnings: r.warnings,
