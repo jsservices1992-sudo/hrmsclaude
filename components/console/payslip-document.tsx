@@ -316,33 +316,21 @@ export function PayslipDocument({
       {slip.employerContributions.length > 0 && (
         <table className="w-full border-collapse table-fixed">
           <colgroup>
-            <col className="w-[54%]" />
-            <col className="w-[23%]" />
-            <col className="w-[23%]" />
+            <col className="w-[70%]" />
+            <col className="w-[30%]" />
           </colgroup>
           <thead>
             <tr>
-              <th colSpan={3} className={BAND}>
+              <th colSpan={2} className={BAND}>
                 Employer contributions (Rs) — paid on top, not deducted from pay
               </th>
             </tr>
           </thead>
           <tbody>
-            {slip.employerContributions.map((l, i) => (
+            {slip.employerContributions.map((l) => (
               <tr key={l.label}>
                 <td className={CELL}>{l.label}</td>
                 <td className={NUM}>{rs(l.amountPaise)}</td>
-                {i === 0 && (
-                  <td
-                    className={`${CELL} text-ink-2 align-middle`}
-                    rowSpan={slip.employerContributions.length + (slip.monthlyCtcPaise > 0 ? 3 : 1)}
-                  >
-                    The contributions are this month&apos;s. Cost to company is
-                    stated at the full monthly rate and includes the gratuity
-                    provision, so unpaid leave in one month does not read as a
-                    cut in the package.
-                  </td>
-                )}
               </tr>
             ))}
             <tr className="font-semibold bg-surface-2/60">
