@@ -15,6 +15,7 @@ import {
   WriteOffForm,
 } from "../forms";
 import { Card, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Loan" };
 
@@ -281,7 +282,7 @@ export default async function LoanDetailPage(
                 <p className="text-sm">
                   <span className="font-medium">{TXN_LABEL[t.kind] ?? t.kind}</span>
                   <span className="text-ink-3 text-xs ml-2 font-mono">
-                    {t.at.slice(0, 10)}
+                    {formatDate(t.at)}
                   </span>
                   {t.actor !== "system" && (
                     <span className="text-ink-3 text-xs ml-2">{t.actor}</span>

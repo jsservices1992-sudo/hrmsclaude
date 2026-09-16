@@ -6,6 +6,7 @@ import { formatINR } from "@/lib/payroll/money";
 import { getSessionUser } from "@/lib/auth/session";
 import { AddStatutoryParamForm } from "./forms";
 import { PageHeader, Card, Badge, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Statutory configuration" };
 
@@ -105,7 +106,7 @@ export default async function ComplianceConfigPage() {
                 </td>
                 <td className="px-4 py-2 text-ink-2">{p.note}</td>
                 <td className="px-4 py-2 font-mono text-xs text-ink-3 whitespace-nowrap">
-                  from {p.effectiveFrom}
+                  from {formatDate(p.effectiveFrom)}
                 </td>
                 <td className="px-4 py-2 text-xs whitespace-nowrap">
                   {p.verified ? (

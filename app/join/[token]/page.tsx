@@ -3,6 +3,7 @@ import { loadJoinerByToken } from "@/lib/onboarding/load";
 import { formatINR } from "@/lib/payroll/money";
 import { SITE } from "@/lib/site";
 import { AcceptOfferForm, ProfileForm } from "./portal-form";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = {
   title: "Welcome",
@@ -81,7 +82,7 @@ export default async function JoinerPortalPage(
           <section className="border-2 border-indigo bg-surface p-5 flex flex-col gap-3">
             <h2 className="font-display text-xl font-semibold">Your offer</h2>
             <p className="text-sm text-ink-2">
-              Accepting confirms you intend to join on {j.proposedDoj}. Your
+              Accepting confirms you intend to join on {formatDate(j.proposedDoj)}. Your
               acceptance is recorded with a timestamp.
             </p>
             <AcceptOfferForm token={token} />
@@ -90,14 +91,14 @@ export default async function JoinerPortalPage(
 
         {j.offerStatus === "accepted" && (
           <div className="border border-teal/40 bg-teal-soft px-4 py-3 text-sm text-teal">
-            Offer accepted{j.offerRespondedAt ? ` on ${j.offerRespondedAt.slice(0, 10)}` : ""}. Thank you.
+            Offer accepted{j.offerRespondedAt ? ` on ${formatDate(j.offerRespondedAt)}` : ""}. Thank you.
           </div>
         )}
 
         {j.profileSubmittedAt && (
           <div className="border border-line bg-surface px-4 py-3 text-sm text-ink-2">
             <span className="label text-ink-3">Saved</span> — you submitted these
-            details on {j.profileSubmittedAt.slice(0, 10)}. You can update them
+            details on {formatDate(j.profileSubmittedAt)}. You can update them
             until your first day.
           </div>
         )}

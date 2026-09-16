@@ -19,6 +19,7 @@ import {
 } from "@/components/console/ui";
 import { MONTHS, STATUS_TONE, canApproveRun } from "@/lib/payroll/run-status";
 import { loadFinalCheck, type FinalCheckResult } from "@/lib/payroll/finalcheck";
+import { formatDate, formatDateTime } from "@/lib/format/date";
 
 const CALC_YEAR = 2026;
 const CALC_MONTH = 9;
@@ -243,7 +244,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                   <td className="px-3 py-1.5 whitespace-nowrap text-right font-mono tnum text-ink-2">{t.count}</td>
                   <td className="px-3 py-1.5 whitespace-nowrap text-right font-mono tnum text-ink-2">{formatINR(t.gross)}</td>
                   <td className="px-3 py-1.5 whitespace-nowrap text-right font-mono tnum font-medium">{formatINR(t.net)}</td>
-                  <td className="px-3 py-1.5 whitespace-nowrap font-mono tnum text-xs text-ink-3">{asOf}</td>
+                  <td className="px-3 py-1.5 whitespace-nowrap font-mono tnum text-xs text-ink-3">{formatDate(asOf)}</td>
                   <td className="px-3 py-1.5 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2">
                       {canApprove && <ApproveForm runId={run.id} />}
@@ -261,12 +262,12 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                         <div className="flex flex-col gap-1.5 text-xs text-ink-2">
                           <span>
                             Prepared by <span className="font-mono text-ink">{run.preparedBy}</span>
-                            {run.calculatedAt && ` · ${run.calculatedAt.slice(0, 16).replace("T", " ")}`}
+                            {run.calculatedAt && ` · ${formatDateTime(run.calculatedAt)}`}
                           </span>
                           {run.approvedBy && (
                             <span>
                               Approved by <span className="font-mono text-ink">{run.approvedBy}</span>
-                              {run.approvedAt && ` · ${run.approvedAt.slice(0, 16).replace("T", " ")}`}
+                              {run.approvedAt && ` · ${formatDateTime(run.approvedAt)}`}
                             </span>
                           )}
                           {run.reopenReason && (

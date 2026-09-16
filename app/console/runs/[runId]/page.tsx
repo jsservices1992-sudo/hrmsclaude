@@ -6,6 +6,7 @@ import { getSessionUser, canSeeCompensation, canAccessCompany, canMutate } from 
 import { ApproveForm, ReopenForm } from "../run-actions";
 import { MONTHS, STATUS_TONE, canApproveRun } from "@/lib/payroll/run-status";
 import { PageHeader, Card, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "Run detail" };
 
@@ -41,11 +42,11 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
         description={
           <>
             Prepared by <span className="font-mono text-ink">{run.preparedBy}</span>
-            {run.calculatedAt && ` · ${run.calculatedAt.slice(0, 16).replace("T", " ")}`}
+            {run.calculatedAt && ` · ${formatDateTime(run.calculatedAt)}`}
             {run.approvedBy && (
               <>
                 {" · "}Approved by <span className="font-mono text-ink">{run.approvedBy}</span>
-                {run.approvedAt && ` · ${run.approvedAt.slice(0, 16).replace("T", " ")}`}
+                {run.approvedAt && ` · ${formatDateTime(run.approvedAt)}`}
               </>
             )}
           </>

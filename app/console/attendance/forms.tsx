@@ -15,7 +15,14 @@ import {
   type BulkAttendanceState,
 } from "./actions";
 import { BULK_STATUSES, BULK_STATUS_LABELS } from "@/lib/attendance/bulk";
-import { Input, Textarea, Select, SubmitButton, FormFeedback, Popover } from "@/components/console/ui";
+import {
+  Input,
+  Textarea,
+  Select,
+  SubmitButton,
+  FormFeedback,
+  FormDialog,
+} from "@/components/console/ui";
 
 export function RecomputeForm({
   companyId, year, month,
@@ -225,18 +232,17 @@ export function OverrideCell({
 }: {
   name: string;
   overridden: boolean;
-  children: React.ReactNode;
+  children: React.ReactNode | ((props: { close: () => void }) => React.ReactNode);
 }) {
   return (
-    <Popover
-      align="end"
-      side="auto"
-      panelClassName="p-3"
+    <FormDialog
+      title={name}
+      description="What payroll will read for this month, instead of what attendance derived."
       trigger={({ onClick }) => (
         <button
           type="button"
           onClick={onClick}
-          aria-label={`Override loss of pay for ${name}`}
+          aria-label={`Override paid days for ${name}`}
           className={`label px-1.5 py-0.5 rounded transition-base ${
             overridden
               ? "text-brass hover:bg-brass-soft"
@@ -248,7 +254,7 @@ export function OverrideCell({
       )}
     >
       {children}
-    </Popover>
+    </FormDialog>
   );
 }
 

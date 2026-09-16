@@ -9,12 +9,13 @@ import {
   ToggleWebhookForm,
 } from "./forms";
 import { PageHeader, Card, Badge, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "API & webhooks" };
 
 function fmt(iso: string | null) {
   if (!iso) return "—";
-  return iso.slice(0, 16).replace("T", " ");
+  return formatDateTime(iso);
 }
 
 export default async function ApiAdminPage() {

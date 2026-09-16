@@ -13,6 +13,7 @@ import {
 import { recordAccess } from "@/lib/audit/log";
 import { PrintButton } from "@/components/console/print-button";
 import { PayslipDocument } from "@/components/console/payslip-document";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Payslip" };
 
@@ -76,7 +77,7 @@ export default async function PayslipPage(
       ) : (
         <p data-print="hide" className="text-xs text-ink-3">
           Figures of record — run v{period.run?.version} ({period.run?.status.replace(/_/g, " ")})
-          {period.run?.calculatedAt ? `, calculated ${period.run.calculatedAt.slice(0, 10)}` : ""}.
+          {period.run?.calculatedAt ? `, calculated ${formatDate(period.run.calculatedAt)}` : ""}.
           Later changes to attendance or salary do not alter them.
         </p>
       )}

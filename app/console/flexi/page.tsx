@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth/session";
 import { ClaimDecisionForm } from "./forms";
 import { PageHeader, Card, Select, FilterBar, FilterField, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Flexible benefits" };
 
@@ -131,7 +132,7 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
                     {head.label} · claimed {formatINR(claim.claimPaise)}
                     {claim.farePaise !== null && ` (fare ${formatINR(claim.farePaise)})`}
                     {claim.billRef && ` · ${claim.billRef}`}
-                    {claim.billDate && ` · ${claim.billDate}`}
+                    {claim.billDate && ` · ${formatDate(claim.billDate)}`}
                   </p>
                 </div>
                 {canAct && <ClaimDecisionForm claimId={claim.id} />}

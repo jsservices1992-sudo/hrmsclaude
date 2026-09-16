@@ -20,6 +20,7 @@ import {
   PageHeader, Card, StatCard, Input, Select, FilterBar, FilterField, Badge, EmptyState,
   Tabs, TabLink, Table, THead, TH, TBody, TR, TD,
 } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Payroll run" };
 
@@ -204,7 +205,7 @@ export default async function PayrollConsolePage(
               {" · "}
               <span className="font-mono">{company.roundingMode}</span>
               {" · config as at "}
-              <span className="font-mono tnum">{preview.asOf}</span>
+              <span className="font-mono tnum">{formatDate(preview.asOf)}</span>
             </span>
           </div>
           {results.length === 0 ? (

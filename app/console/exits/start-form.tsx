@@ -13,6 +13,7 @@ import {
 import { NOTICE_TREATMENTS } from "@/lib/exit/kinds";
 import { EXIT_TYPES } from "@/lib/exit/kinds";
 import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 /**
  * Opening an exit. The two dates are separate on purpose: notice given
@@ -313,7 +314,7 @@ export function AcceptExitForm({
       <p className="text-sm text-ink-2">
         Accepted by {acceptedBy}
         {acceptedAt ? ` on ${acceptedAt.slice(0, 10)}` : ""} · last working day{" "}
-        <span className="font-mono">{lastWorkingDay}</span>
+        <span className="font-mono">{formatDate(lastWorkingDay)}</span>
       </p>
     );
   }

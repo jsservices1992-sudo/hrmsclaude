@@ -39,6 +39,7 @@ import { resolvePay, isPayMode, type ResolvedPay } from "@/lib/payroll/pay-resol
 import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
 import { ensureEmployeeAccount } from "@/lib/auth/employee-account";
 import { currentOrigin } from "@/lib/http/origin";
+import { formatDate } from "@/lib/format/date";
 
 export type OnboardState = {
   error?: string;
@@ -1010,7 +1011,7 @@ export async function rehireJoiner(
           structureId: j.structureId,
           effectiveFrom: j.proposedDoj,
           effectiveTo: null,
-          reason: `Rehired ${j.proposedDoj}, previously ${existing.dateOfJoining} to ${existing.dateOfExit ?? "—"}`,
+          reason: `Rehired ${formatDate(j.proposedDoj)}, previously ${formatDate(existing.dateOfJoining)} to ${formatDate(existing.dateOfExit)}`,
           revisionType: "initial",
           createdBy: user.email,
           createdAt: now,

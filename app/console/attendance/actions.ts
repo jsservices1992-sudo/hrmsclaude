@@ -23,6 +23,7 @@ import {
 } from "@/lib/attendance/bulk";
 import { DEFAULT_SHIFT } from "@/lib/attendance/rules";
 import { daysInMonth } from "@/lib/payroll/proration";
+import { formatDate } from "@/lib/format/date";
 
 export type AttendanceState = { error?: string; ok?: string };
 export type BulkAttendanceState = {
@@ -443,7 +444,7 @@ export async function bulkMarkDepartment(
   return {
     ok:
       `Marked ${BULK_STATUS_LABELS[status].toLowerCase()} for ${employees.length} employee(s) ` +
-      `from ${fromDate} to ${toDate} — ${dates.length} day(s). ` +
+      `from ${formatDate(fromDate)} to ${formatDate(toDate)} — ${dates.length} day(s). ` +
       `Recomputed for ${months.length} employee(s).`,
   };
 }
@@ -563,7 +564,7 @@ export async function markAttendanceDay(
 
   revalidatePath("/console/attendance");
   revalidatePath("/console/payroll");
-  return { ok: `${date} set to ${status.replace(/_/g, " ")}.` };
+  return { ok: `${formatDate(date)} set to ${status.replace(/_/g, " ")}.` };
 }
 
 /* ==================== manual override, at run time ==================== */

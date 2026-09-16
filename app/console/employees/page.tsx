@@ -15,6 +15,7 @@ import { PageHeader, Card, StatCard, Button, Input, Select, FilterBar, FilterFie
 import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
 import { ProfileChangeDecisionForm } from "./change-request-form";
 import { BulkEmployeeForm } from "./bulk-form";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Employees" };
 
@@ -300,7 +301,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
                 <TD className="text-ink-2 max-w-[10rem] truncate" title={r.company.name}>{r.company.name}</TD>
                 <TD className="text-ink-2 max-w-[10rem] truncate" title={r.branch.name}>{r.branch.name}</TD>
                 <TD className="font-mono text-xs whitespace-nowrap">{r.branch.stateCode}</TD>
-                <TD className="font-mono text-xs tnum text-ink-2 whitespace-nowrap">{r.emp.dateOfJoining}</TD>
+                <TD className="font-mono text-xs tnum text-ink-2 whitespace-nowrap">{formatDate(r.emp.dateOfJoining)}</TD>
                 <TD className="font-mono tnum text-right whitespace-nowrap">
                   {r.salary ? maskIfNeeded(user, formatINR(r.salary.monthlyGrossPaise)) : "—"}
                 </TD>

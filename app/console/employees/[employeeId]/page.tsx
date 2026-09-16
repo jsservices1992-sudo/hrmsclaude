@@ -36,6 +36,7 @@ import { RevokeAssetForm } from "@/app/console/assets/forms";
 import { SalaryBreakupTable } from "@/components/console/salary-breakup-table";
 import { Card, Badge, THead, TH, TBody, TR, TD, Tabs, TabLink } from "@/components/console/ui";
 import { computeProfessionalTax } from "@/lib/payroll/statutory";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Employee" };
 
@@ -243,7 +244,7 @@ export default async function EmployeeDetailPage(
           <span className="label text-brass">Exit in progress</span>{" "}
           <span className="text-ink-2">
             {detail.exitCase.exitType.replace(/_/g, " ")} · last working day{" "}
-            {detail.exitCase.lastWorkingDay} ·{" "}
+            {formatDate(detail.exitCase.lastWorkingDay)} ·{" "}
             <Link
               href={`/console/exits/${detail.exitCase.id}`}
               className="underline text-ink"
@@ -258,7 +259,7 @@ export default async function EmployeeDetailPage(
         <div className="rounded-md border border-rust/40 bg-rust-soft px-4 py-3 text-sm">
           <span className="label text-rust">Documents expiring</span>{" "}
           <span className="text-ink-2">
-            {expiring.map((d) => `${d.label} (${d.expiresOn})`).join(", ")}
+            {expiring.map((d) => `${d.label} (${formatDate(d.expiresOn)})`).join(", ")}
           </span>
         </div>
       )}
@@ -307,9 +308,9 @@ export default async function EmployeeDetailPage(
             <Row k="Department" v={department ? `${department.code} — ${department.name}` : e.department} />
             <Row k="Grade" v={grade?.name} />
             <Row k="Employment type" v={e.employmentType} />
-            <Row k="Date of joining" v={<span className="font-mono tnum">{e.dateOfJoining}</span>} />
-            <Row k="Probation ends" v={e.probationEndDate ? <span className="font-mono tnum">{e.probationEndDate}</span> : null} />
-            <Row k="Confirmed on" v={e.confirmationDate ? <span className="font-mono tnum">{e.confirmationDate}</span> : <span className="text-brass">Not confirmed</span>} />
+            <Row k="Date of joining" v={<span className="font-mono tnum">{formatDate(e.dateOfJoining)}</span>} />
+            <Row k="Probation ends" v={e.probationEndDate ? <span className="font-mono tnum">{formatDate(e.probationEndDate)}</span> : null} />
+            <Row k="Confirmed on" v={e.confirmationDate ? <span className="font-mono tnum">{formatDate(e.confirmationDate)}</span> : <span className="text-brass">Not confirmed</span>} />
             <Row
               k="Reports to"
               v={
@@ -471,7 +472,7 @@ export default async function EmployeeDetailPage(
                             expired ? "text-rust" : soon ? "text-brass" : "text-ink-2"
                           }`}
                         >
-                          {d.expiresOn}
+                          {formatDate(d.expiresOn)}
                           {expired ? " · expired" : soon ? " · soon" : ""}
                         </span>
                       ) : (
@@ -584,8 +585,8 @@ export default async function EmployeeDetailPage(
                     <span className="block text-xs text-ink-3">
                       {h.asset.category.replace(/_/g, " ")}
                       {h.asset.make || h.asset.model ? ` · ${[h.asset.make, h.asset.model].filter(Boolean).join(" ")}` : ""}
-                      {" · issued "}{h.alloc.issuedAt.slice(0, 10)}
-                      {h.alloc.returnedAt ? ` · returned ${h.alloc.returnedAt.slice(0, 10)}` : ""}
+                      {" · issued "}{formatDate(h.alloc.issuedAt)}
+                      {h.alloc.returnedAt ? ` · returned ${formatDate(h.alloc.returnedAt)}` : ""}
                     </span>
                   </div>
                   {!h.alloc.returnedAt ? (
@@ -635,8 +636,8 @@ export default async function EmployeeDetailPage(
                   {salaryHistory.map((r) => (
                     <TR key={r.id}>
                       <TD className="font-mono text-xs tnum">
-                        {r.effectiveFrom}
-                        {r.effectiveTo ? ` → ${r.effectiveTo}` : " → current"}
+                        {formatDate(r.effectiveFrom)}
+                        {r.effectiveTo ? ` → ${formatDate(r.effectiveTo)}` : " → current"}
                       </TD>
                       <TD className="font-mono tnum">
                         {maskIfNeeded(user, formatINR(r.monthlyGrossPaise))}

@@ -6,6 +6,7 @@ import type { PayFigures } from "./load";
 import { evaluateStructure } from "./compensation";
 import { loadStructureResolutionContext, resolveEmployeeStructure } from "./load";
 import { rupeesInWords } from "./amount-in-words";
+import { formatDate } from "@/lib/format/date";
 
 /** One row on either side of the slip. */
 export type SlipLine = {
@@ -62,10 +63,13 @@ const MONTHS = [
 ];
 
 /** dd/mm/yyyy, as payslips print dates. */
+/* The payslip's own copy of this predates the shared one; it stays a
+   named function only because a payslip shows an empty cell rather than
+   an em dash where a date is missing. */
 function slipDate(iso: string | null | undefined): string {
-  if (!iso || !/^\d{4}-\d{2}-\d{2}/.test(iso)) return "";
-  const [y, m, d] = iso.slice(0, 10).split("-");
-  return `${d}/${m}/${y}`;
+  if (!iso) return "";
+  const out = formatDate(iso);
+  return out === "—" ? "" : out;
 }
 
 function num(value: number): string {

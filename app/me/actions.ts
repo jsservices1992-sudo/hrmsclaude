@@ -36,6 +36,7 @@ import {
   decidePunch,
   DEFAULT_GEOFENCE_METRES,
 } from "@/lib/attendance/geofence";
+import { formatDate } from "@/lib/format/date";
 
 /** The app runs Indian payroll; attendance minutes are IST. */
 const IST_OFFSET_MINUTES = 330;
@@ -107,7 +108,7 @@ export async function applyForLeave(_prev: SelfState, fd: FormData): Promise<Sel
   );
   if (overlap) {
     return {
-      error: `You already have ${overlap.status} leave from ${overlap.fromDate} to ${overlap.toDate} that overlaps these dates.`,
+      error: `You already have ${overlap.status} leave from ${formatDate(overlap.fromDate)} to ${formatDate(overlap.toDate)} that overlaps these dates.`,
     };
   }
 

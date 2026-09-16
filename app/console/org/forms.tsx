@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import {
   reassignEmployee,
   reassignTeam,
@@ -13,7 +13,7 @@ import {
   Select,
   SubmitButton,
   FormFeedback,
-  Popover,
+  FormDialog,
 } from "@/components/console/ui";
 
 export type PersonOption = { id: string; label: string };
@@ -26,6 +26,7 @@ export function ReassignForm({
   managerId,
   departments,
   managers,
+  onSaved,
 }: {
   employeeId: string;
   designation: string | null;
@@ -33,10 +34,20 @@ export function ReassignForm({
   managerId: string | null;
   departments: PersonOption[];
   managers: PersonOption[];
+  /** Given when the form is in a modal, so a save dismisses it. */
+  onSaved?: () => void;
 }) {
   const [state, action] = useActionState<OrgState, FormData>(reassignEmployee, {});
+
+  /* Close on success. The tree behind has already re-rendered with the
+     new role and manager, so it is the confirmation — leaving the modal
+     up in front of it just hides the thing that changed. */
+  useEffect(() => {
+    if (state.ok && onSaved) onSaved();
+  }, [state.ok, onSaved]);
+
   return (
-    <form action={action} className="flex flex-col gap-2.5 w-[20rem] max-w-full">
+    <form action={action} className="flex flex-col gap-2.5">
       <input type="hidden" name="employeeId" value={employeeId} />
       <label className="flex flex-col gap-1">
         <span className="label text-ink-3">Role</span>
@@ -165,18 +176,42 @@ export function HeadcountForm({
   );
 }
 
-/** The per-person "Edit" affordance on a node in the tree. */
+/**
+ * The per-person "Edit" affordance on a node in the tree.
+ *
+ * Opens as a modal. As a popover it was clipped by the tree's own box —
+ * the form ended part-way through the first field, which is no use for
+ * changing somebody's role or manager.
+ *
+ * It takes the form's data rather than the form itself: the page that
+ * renders the tree is a server component, and a server component cannot
+ * hand a client component a function. Keeping the dialog and the form on
+ * the same side of that boundary is what lets a save close the dialog.
+ */
 export function NodeEditButton({
   name,
-  children,
+  empCode,
+  employeeId,
+  designation,
+  departmentId,
+  managerId,
+  departments,
+  managers,
 }: {
   name: string;
-  children: React.ReactNode;
+  empCode: string;
+  employeeId: string;
+  designation: string | null;
+  departmentId: string | null;
+  managerId: string | null;
+  departments: PersonOption[];
+  managers: PersonOption[];
 }) {
   return (
-    <Popover
-      align="end"
-      panelClassName="p-3"
+    <FormDialog
+      title={`${name} · ${empCode}`}
+      description="Role, team and who they report to. Every change is recorded against your name."
+      size="md"
       trigger={({ onClick }) => (
         <button
           type="button"
@@ -188,7 +223,17 @@ export function NodeEditButton({
         </button>
       )}
     >
-      {children}
-    </Popover>
+      {({ close }) => (
+        <ReassignForm
+          employeeId={employeeId}
+          designation={designation}
+          departmentId={departmentId}
+          managerId={managerId}
+          departments={departments}
+          managers={managers}
+          onSaved={close}
+        />
+      )}
+    </FormDialog>
   );
 }

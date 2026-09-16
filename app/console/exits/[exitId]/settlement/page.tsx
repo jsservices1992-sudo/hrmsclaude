@@ -20,6 +20,7 @@ import {
 } from "../../fnf-forms";
 import { NoticeTreatmentForm } from "../../start-form";
 import { PageHeader, Card, Badge, type BadgeTone } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Full & final settlement" };
 
@@ -110,7 +111,7 @@ export default async function SettlementPage(
           <>
             <span className="font-mono">{fnf.employee.empCode}</span> ·{" "}
             {fnf.exitCase.exitType.replace(/_/g, " ")} · last working day{" "}
-            <span className="font-mono">{fnf.exitCase.lastWorkingDay}</span>
+            <span className="font-mono">{formatDate(fnf.exitCase.lastWorkingDay)}</span>
           </>
         }
         actions={
@@ -456,7 +457,7 @@ export default async function SettlementPage(
                   {stored.status === "written_off"
                     ? " — the demand against it was forgiven, so there is nothing left to release. Reopen it to go back to a draft and release it properly."
                     : stored.releasedAt
-                      ? ` — released on ${stored.releasedAt.slice(0, 10)}. Reopen it only to correct something.`
+                      ? ` — released on ${formatDate(stored.releasedAt)}. Reopen it only to correct something.`
                       : " — reopen it to go back to a draft."}
                 </p>
                 <ReopenForm exitCaseId={exitId} />

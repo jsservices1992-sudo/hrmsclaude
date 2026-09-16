@@ -38,6 +38,7 @@ import {
   TR,
   TD,
 } from "@/components/console/ui";
+import { formatDate, formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "Audit & controls" };
 
@@ -252,7 +253,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
                     </p>
                     <p className="text-xs text-ink-2 mt-1 max-w-[76ch]">{a.detail}</p>
                     <p className="text-xs text-ink-3 mt-1 font-mono">
-                      {a.actor} · {a.raisedAt.slice(0, 16).replace("T", " ")}
+                      {a.actor} · {formatDateTime(a.raisedAt)}
                     </p>
                   </div>
                   {canMutate(user) && <AcknowledgeForm alertId={a.id} />}
@@ -298,7 +299,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
                       {v.preparedBy}
                     </TD>
                     <TD className="text-ink-3 font-mono text-xs">
-                      {v.calculatedAt.slice(0, 16).replace("T", " ")}
+                      {formatDateTime(v.calculatedAt)}
                     </TD>
                     <TD className="font-mono tnum text-ink-2">
                       {v.employees.length}
@@ -451,7 +452,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
                 {access.map((a) => (
                   <tr key={a.id} className="border-b border-line-2 last:border-0">
                     <td className="px-4 py-2 font-mono text-xs text-ink-3 whitespace-nowrap">
-                      {a.at.slice(0, 16).replace("T", " ")}
+                      {formatDateTime(a.at)}
                     </td>
                     <td className="px-4 py-2 font-mono text-xs">{a.actor}</td>
                     <td className="px-4 py-2 text-xs text-ink-2">{a.actorRole}</td>
@@ -565,8 +566,8 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
                   </p>
                   <p className="text-xs text-ink-2 mt-0.5">{h.reason}</p>
                   <p className="text-xs text-ink-3 mt-0.5 font-mono">
-                    {h.placedBy} · {h.placedAt.slice(0, 10)}
-                    {h.releasedAt && ` · released ${h.releasedAt.slice(0, 10)}`}
+                    {h.placedBy} · {formatDate(h.placedAt)}
+                    {h.releasedAt && ` · released ${formatDate(h.releasedAt)}`}
                   </p>
                 </div>
                 {!h.releasedAt && user.role === "admin" && (
@@ -614,7 +615,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
               {entries.map((e) => (
                 <tr key={e.id} className="border-b border-line-2 last:border-0">
                   <td className="px-4 py-2 font-mono text-xs text-ink-3 whitespace-nowrap">
-                    {e.at.slice(0, 16).replace("T", " ")}
+                    {formatDateTime(e.at)}
                   </td>
                   <td className="px-4 py-2 font-mono text-xs">{e.actor}</td>
                   <td className="px-4 py-2 text-xs text-ink-2">{e.actorRole ?? "—"}</td>

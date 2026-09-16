@@ -22,6 +22,7 @@ import {
   IconCheck,
 } from "@/components/console/icons";
 import { Card, Badge, StatCard, PageHeader } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Dashboard" };
 
@@ -349,7 +350,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
                   <span className="text-sm min-w-0 truncate">
                     {emp.firstName} {emp.lastName}
                     <span className="block text-xs text-ink-2">
-                      {t.name} · {r.fromDate} → {r.toDate} · {r.days}d
+                      {t.name} · {formatDate(r.fromDate)} → {formatDate(r.toDate)} · {r.days}d
                     </span>
                   </span>
                   <span className="label text-ink-3 shrink-0">leave</span>
@@ -390,7 +391,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
                     >
                       {j.firstName} {j.lastName}
                       <span className="block text-xs text-ink-2">
-                        {j.designation ?? "—"} · joins {j.proposedDoj}
+                        {j.designation ?? "—"} · joins {formatDate(j.proposedDoj)}
                       </span>
                     </Link>
                     <span

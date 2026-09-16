@@ -17,6 +17,7 @@ import {
 import { UploadExitDocumentForm } from "./forms";
 import { ClearanceItemForm, AcceptExitForm, RehireEligibilityForm } from "../start-form";
 import { PageHeader, Card, Badge } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Settlement" };
 
@@ -69,7 +70,7 @@ export default async function ExitDetailPage(
           <>
             <span className="font-mono">{employee.empCode}</span> · {company.name} ·{" "}
             {exit.exitType.replace(/_/g, " ")} · last working day{" "}
-            <span className="font-mono">{exit.lastWorkingDay}</span>
+            <span className="font-mono">{formatDate(exit.lastWorkingDay)}</span>
           </>
         }
       />

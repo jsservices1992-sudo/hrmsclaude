@@ -50,6 +50,7 @@ import {
 } from "@/components/console/ui";
 import { loadSodPolicies } from "@/lib/audit/log";
 import { SodToggle } from "../../audit/forms";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Payroll settings" };
 
@@ -583,7 +584,7 @@ export default async function PayrollSettingsPage(
                       <TD className="font-mono text-xs tnum">{c.attendanceCutoff}</TD>
                       <TD className="font-mono text-xs tnum">{c.inputFreeze}</TD>
                       <TD className="font-mono text-xs tnum">{c.approvalDeadline}</TD>
-                      <TD className="font-mono text-xs tnum">{c.payDate}</TD>
+                      <TD className="font-mono text-xs tnum">{formatDate(c.payDate)}</TD>
                       <TD>
                         {p.stored ? (
                           <Tooltip label={p.stored.note ?? ""}>
@@ -627,7 +628,7 @@ export default async function PayrollSettingsPage(
                     <p className="font-mono text-xs text-indigo">{p.key}</p>
                     <p className="text-xs text-ink-2 mt-0.5">{p.note}</p>
                     <p className="text-xs text-ink-3 mt-0.5 font-mono">
-                      from {p.effectiveFrom} ·{" "}
+                      from {formatDate(p.effectiveFrom)} ·{" "}
                       {p.unit === "paise" ? formatINR(p.value) : p.unit === "bps" ? `${(p.value / 100).toFixed(2)}%` : p.value}
                     </p>
                   </div>

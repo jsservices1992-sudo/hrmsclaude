@@ -30,6 +30,7 @@ import {
   TR,
   TD,
 } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Reports" };
 
@@ -220,7 +221,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
                       {b.joinerId}
                     </Link>
                   </TD>
-                  <TD className="font-mono text-xs">{b.proposedDoj}</TD>
+                  <TD className="font-mono text-xs">{formatDate(b.proposedDoj)}</TD>
                   <TD className="text-rust">{b.daysOverdue}</TD>
                 </TR>
               ))}
@@ -352,7 +353,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
                         {r.employeeName} <span className="text-xs text-ink-3">{r.empCode}</span>
                       </Link>
                     </TD>
-                    <TD className="font-mono text-xs">{r.lastWorkingDay}</TD>
+                    <TD className="font-mono text-xs">{formatDate(r.lastWorkingDay)}</TD>
                     <TD className="tnum">{r.daysSinceLastWorkingDay}</TD>
                     <TD className={r.status === "overdue" || r.status === "gratuity_overdue" ? "text-rust" : ""}>
                       {r.status.replace(/_/g, " ")}

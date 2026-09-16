@@ -46,6 +46,7 @@ import {
   RestrictedHolidayForm,
 } from "./forms";
 import { PunchForm } from "./punch-form";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "My workspace" };
 export const dynamic = "force-dynamic";
@@ -850,7 +851,7 @@ export default async function MePage(props: PageProps<"/me">) {
                   <tbody>
                     {attendanceMonth.days.map((d) => (
                       <tr key={d.date} className="border-b border-line-2 last:border-0">
-                        <td className="px-4 py-1.5 font-mono text-xs tnum whitespace-nowrap">{d.date}</td>
+                        <td className="px-4 py-1.5 font-mono text-xs tnum whitespace-nowrap">{formatDate(d.date)}</td>
                         <td className="px-4 py-1.5">
                           <span
                             className={`label px-1.5 py-0.5 ${
@@ -913,7 +914,7 @@ export default async function MePage(props: PageProps<"/me">) {
                     <li key={r.id} className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm">
-                          <span className="font-mono">{r.date}</span> · was{" "}
+                          <span className="font-mono">{formatDate(r.date)}</span> · was{" "}
                           {r.originalStatus.replace(/_/g, " ")}
                           {asked[0] && (
                             <>
@@ -1000,7 +1001,7 @@ export default async function MePage(props: PageProps<"/me">) {
                         {req.lopDays > 0 && <span className="text-rust"> · {req.lopDays} unpaid</span>}
                       </p>
                       <p className="text-xs text-ink-3 font-mono mt-0.5">
-                        {req.fromDate} → {req.toDate}
+                        {formatDate(req.fromDate)} → {formatDate(req.toDate)}
                         {req.decisionNote && <span className="font-sans"> · {req.decisionNote}</span>}
                       </p>
                     </div>
@@ -1026,7 +1027,7 @@ export default async function MePage(props: PageProps<"/me">) {
                   .map((h) => (
                     <li key={h.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
                       <span className="text-sm">{h.name}</span>
-                      <span className="font-mono text-xs tnum text-ink-2">{h.date}</span>
+                      <span className="font-mono text-xs tnum text-ink-2">{formatDate(h.date)}</span>
                     </li>
                   ))}
               </ul>
@@ -1053,7 +1054,7 @@ export default async function MePage(props: PageProps<"/me">) {
                       <span className={`text-sm ${o.past && !o.taken ? "text-ink-3" : ""}`}>
                         {o.name}
                       </span>
-                      <span className="font-mono text-xs tnum text-ink-3 ml-2">{o.date}</span>
+                      <span className="font-mono text-xs tnum text-ink-3 ml-2">{formatDate(o.date)}</span>
                     </div>
                     {o.taken ? (
                       <Badge tone="teal">Claimed</Badge>
@@ -1374,7 +1375,7 @@ export default async function MePage(props: PageProps<"/me">) {
                         <span className="label text-ink-3 ml-2">{ASSET_CATEGORY_LABEL[asset.category]}</span>
                       </p>
                       <p className="text-xs text-ink-3 font-mono mt-0.5">
-                        issued {alloc.issuedAt.slice(0, 10)}
+                        issued {formatDate(alloc.issuedAt)}
                       </p>
                     </div>
                     {alloc.consentedAt ? (
@@ -1411,7 +1412,7 @@ export default async function MePage(props: PageProps<"/me">) {
                       <p className="text-xs text-ink-2 mt-0.5">
                         {type.name} · {req.days} day(s) ·{" "}
                         <span className="font-mono">
-                          {req.fromDate} → {req.toDate}
+                          {formatDate(req.fromDate)} → {formatDate(req.toDate)}
                         </span>
                         {req.lopDays > 0 && <span className="text-rust"> · {req.lopDays} unpaid</span>}
                         {req.reason && ` · ${req.reason}`}
@@ -1451,7 +1452,7 @@ export default async function MePage(props: PageProps<"/me">) {
                           <span className="font-mono text-xs text-ink-3 ml-2">{who.empCode}</span>
                         </p>
                         <p className="text-xs text-ink-2 mt-0.5">
-                          <span className="font-mono">{req.date}</span> · recorded as{" "}
+                          <span className="font-mono">{formatDate(req.date)}</span> · recorded as{" "}
                           {req.originalStatus.replace(/_/g, " ")}
                           {asked[0] && (
                             <>

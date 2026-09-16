@@ -30,6 +30,7 @@ import {
   PostProvisionsForm,
 } from "./forms";
 import { PageHeader, Card, Select, Input, Button, FilterBar, FilterField, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Banking & accounting" };
 
@@ -329,8 +330,8 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
                         </span>
                       </p>
                       <p className="text-xs text-ink-3 mt-0.5">
-                        {f.format} · value {f.valueDate} · {f.generatedBy} ·{" "}
-                        {f.generatedAt.slice(0, 10)}
+                        {f.format} · value {formatDate(f.valueDate)} · {f.generatedBy} ·{" "}
+                        {formatDate(f.generatedAt)}
                         {f.supersededReason && (
                           <span className="text-rust"> · {f.supersededReason}</span>
                         )}

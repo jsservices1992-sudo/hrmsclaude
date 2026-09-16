@@ -28,13 +28,13 @@ import {
   EmptyState,
 } from "@/components/console/ui";
 import {
-  ReassignForm,
   ReassignTeamForm,
   ReplacementForm,
   HeadcountForm,
   NodeEditButton,
   type PersonOption,
 } from "./forms";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Org chart" };
 
@@ -48,8 +48,8 @@ const TODAY = new Date().toISOString().slice(0, 10);
  */
 function departureLabel(p: { status: string; lastWorkingDay: string | null }): string {
   const gone = p.status === "exited" || (p.lastWorkingDay !== null && p.lastWorkingDay <= TODAY);
-  if (gone) return p.lastWorkingDay ? `left · ${p.lastWorkingDay}` : "left";
-  return p.lastWorkingDay ? `leaving · ${p.lastWorkingDay}` : "leaving";
+  if (gone) return p.lastWorkingDay ? `left · ${formatDate(p.lastWorkingDay)}` : "left";
+  return p.lastWorkingDay ? `leaving · ${formatDate(p.lastWorkingDay)}` : "leaving";
 }
 
 type Ctx = {
@@ -110,16 +110,16 @@ function Node({ node, ctx }: { node: OrgNode; ctx: Ctx }) {
         )}
 
         {ctx.canAct && (
-          <NodeEditButton name={node.name}>
-            <ReassignForm
-              employeeId={node.id}
-              designation={node.designation}
-              departmentId={node.departmentId}
-              managerId={node.managerId}
-              departments={ctx.departments}
-              managers={ctx.people}
-            />
-          </NodeEditButton>
+          <NodeEditButton
+            name={node.name}
+            empCode={node.empCode}
+            employeeId={node.id}
+            designation={node.designation}
+            departmentId={node.departmentId}
+            managerId={node.managerId}
+            departments={ctx.departments}
+            managers={ctx.people}
+          />
         )}
       </div>
 

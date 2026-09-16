@@ -4,6 +4,7 @@ import { getSessionUser, canAccessConsole, canAccessCompany } from "@/lib/auth/s
 import { loadInstance } from "@/lib/workflow/service";
 import { StepActionForm } from "../forms";
 import { Card, Badge, type BadgeTone } from "@/components/console/ui";
+import { formatDate, formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "Workflow" };
 
@@ -42,7 +43,7 @@ export default async function WorkflowInstancePage(
         </h1>
         <p className="text-sm text-ink-2 mt-1">
           <span className="font-mono">{view.subject.empCode}</span> · started{" "}
-          {view.instance.startedAt.slice(0, 10)} · {view.instance.status} · template version{" "}
+          {formatDate(view.instance.startedAt)} · {view.instance.status} · template version{" "}
           {view.instance.templateVersion}
           {view.instance.sourceEntity === "exit_case" && (
             <>
@@ -103,7 +104,7 @@ export default async function WorkflowInstancePage(
                           </p>
                           {st.decidedBy && (
                             <p className="text-xs text-ink-2 mt-0.5">
-                              {st.status} by {st.decidedBy} · {st.decidedAt?.slice(0, 16).replace("T", " ")}
+                              {st.status} by {st.decidedBy} · {formatDateTime(st.decidedAt)}
                               {st.comment && ` · "${st.comment}"`}
                             </p>
                           )}
@@ -130,7 +131,7 @@ export default async function WorkflowInstancePage(
           {view.events.map((e) => (
             <li key={e.id} className="px-4 py-2 flex flex-wrap items-baseline gap-3 text-sm">
               <span className="font-mono text-xs text-ink-3 whitespace-nowrap">
-                {e.at.slice(0, 16).replace("T", " ")}
+                {formatDateTime(e.at)}
               </span>
               <span className="font-mono text-xs text-ink-3">{e.actor}</span>
               <span className="text-ink-2">{e.message}</span>

@@ -20,6 +20,7 @@ import { loadForm26q } from "@/lib/statutory/form26q-load";
 import { QUARTER_MONTHS, type Q } from "@/lib/statutory/form26q";
 import { RecordFilingForm } from "./forms";
 import { PageHeader, Card, Badge, type BadgeTone, Select, Input, FilterBar, FilterField, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Statutory returns" };
 
@@ -219,7 +220,7 @@ export default async function StatutoryPage(
                     {item.frequency.replace(/_/g, "-")}
                   </TD>
                   <TD className="font-mono tnum">
-                    {item.dueDate}
+                    {formatDate(item.dueDate)}
                     <span
                       className={`block text-xs ${
                         item.daysUntilDue < 0
@@ -407,7 +408,7 @@ export default async function StatutoryPage(
           title={`26Q — non-salary TDS · ${form26q.quarter} ${month >= 4 ? year : year - 1}-${String((month >= 4 ? year + 1 : year) % 100).padStart(2, "0")}`}
           right={
             <span className="label text-ink-3">
-              return due {form26q.returnDueOn}
+              return due {formatDate(form26q.returnDueOn)}
             </span>
           }
         >
@@ -461,7 +462,7 @@ export default async function StatutoryPage(
                   <span className="font-mono tnum text-ink">
                     {formatINR(m.tdsPaise)}
                   </span>{" "}
-                  <span className="text-ink-3">by {m.dueOn}</span>
+                  <span className="text-ink-3">by {formatDate(m.dueOn)}</span>
                 </li>
               ))}
             </ul>

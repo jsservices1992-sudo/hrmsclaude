@@ -3,6 +3,7 @@
 import { useActionState, useId, useState } from "react";
 import { markAttendanceDay, type AttendanceState } from "./actions";
 import { Dialog, Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export type DayCell = { date: string; status: string; basis: string };
 
@@ -50,12 +51,12 @@ export function AttendanceDayRow({
         const mark = MARK[d.status] ?? MARK.present;
         const cell = <span className={`font-mono text-xs ${mark.cls}`}>{mark.ch}</span>;
         return (
-          <td key={d.date} className="px-0.5 py-1 text-center" title={`${d.date} — ${d.basis}`}>
+          <td key={d.date} className="px-0.5 py-1 text-center" title={`${formatDate(d.date)} — ${d.basis}`}>
             {canEdit ? (
               <button
                 type="button"
                 onClick={() => setOpenDate(d.date)}
-                aria-label={`Edit ${name} on ${d.date} — currently ${mark.title}`}
+                aria-label={`Edit ${name} on ${formatDate(d.date)} — currently ${mark.title}`}
                 className="w-5 h-5 rounded hover:bg-indigo-soft hover:ring-1 hover:ring-indigo/40 transition-base"
               >
                 {cell}
@@ -73,7 +74,7 @@ export function AttendanceDayRow({
             <div>
               <h2 id={headingId} className="label text-ink-2">{name}</h2>
               <p className="font-mono text-xs text-ink-3 mt-0.5">
-                {openDate} · currently {MARK[current?.status ?? "present"]?.title.toLowerCase()}
+                {formatDate(openDate)} · currently {MARK[current?.status ?? "present"]?.title.toLowerCase()}
               </p>
             </div>
             <button
@@ -94,7 +95,7 @@ export function AttendanceDayRow({
               <Select name="date" defaultValue={openDate ?? ""} key={openDate ?? "none"}>
                 {days.map((d) => (
                   <option key={d.date} value={d.date}>
-                    {d.date} — {MARK[d.status]?.title ?? d.status}
+                    {formatDate(d.date)} — {MARK[d.status]?.title ?? d.status}
                   </option>
                 ))}
               </Select>

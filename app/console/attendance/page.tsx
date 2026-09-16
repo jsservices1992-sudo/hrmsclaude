@@ -32,6 +32,7 @@ import {
   Tabs, TabLink, Table, THead, TH, TBody, TR, TD,
 } from "@/components/console/ui";
 import { formatINR } from "@/lib/payroll/money";
+import { formatDate, formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "Attendance" };
 
@@ -288,7 +289,7 @@ export default async function AttendancePage(
             {refusedPunches.map((p, i) => (
               <li key={i} className="px-4 py-2 text-xs flex flex-wrap gap-x-4 gap-y-1">
                 <span className="font-mono text-ink-3 w-36 shrink-0">
-                  {p.at.slice(0, 16).replace("T", " ")}
+                  {formatDateTime(p.at)}
                 </span>
                 <span className="font-mono w-20 shrink-0">{p.empCode}</span>
                 <span className="w-40 shrink-0">{p.firstName} {p.lastName}</span>
@@ -424,7 +425,7 @@ export default async function AttendancePage(
                     <span className="text-sm font-medium">{emp.firstName} {emp.lastName}</span>
                     {!type.paid && <Badge tone="rust" className="ml-2">unpaid</Badge>}
                     <span className="block text-xs text-ink-2 mt-0.5">
-                      {type.name} · {req.fromDate} → {req.toDate} · {req.days} day(s)
+                      {type.name} · {formatDate(req.fromDate)} → {formatDate(req.toDate)} · {req.days} day(s)
                       {req.reason && ` · ${req.reason}`}
                     </span>
                   </div>
@@ -437,7 +438,7 @@ export default async function AttendancePage(
                     <span className="text-sm font-medium">{emp.firstName} {emp.lastName}</span>
                     <Badge tone="brass" className="ml-2">correction</Badge>
                     <span className="block text-xs text-ink-2 mt-0.5">
-                      {req.date} · was {req.originalStatus} · {req.reason}
+                      {formatDate(req.date)} · was {req.originalStatus} · {req.reason}
                     </span>
                   </div>
                   {canAct && <RegularisationDecisionForm requestId={req.id} />}

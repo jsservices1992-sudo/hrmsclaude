@@ -30,6 +30,7 @@ import {
   TD,
   type BadgeTone,
 } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Exits" };
 
@@ -170,7 +171,7 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
                   <span className="block font-mono text-xs text-ink-3">{q.empCode}</span>
                 </TD>
                 <TD className="font-mono text-xs tnum">
-                  {q.exitCase.lastWorkingDay}
+                  {formatDate(q.exitCase.lastWorkingDay)}
                 </TD>
                 <TD>
                   <Badge
@@ -263,10 +264,10 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
                     {TYPE_LABEL[exit.exitType]}
                   </TD>
                   <TD className="font-mono text-xs tnum text-ink-2">
-                    {exit.resignationDate}
+                    {formatDate(exit.resignationDate)}
                   </TD>
                   <TD className="font-mono text-xs tnum">
-                    {exit.lastWorkingDay}
+                    {formatDate(exit.lastWorkingDay)}
                   </TD>
                   <TD>
                     {ageing > 0 ? (

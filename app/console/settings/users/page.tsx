@@ -20,6 +20,7 @@ import {
   ResetPasswordForm,
   EndSessionsForm,
 } from "./forms";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Accounts" };
 export const dynamic = "force-dynamic";
@@ -182,7 +183,7 @@ export default async function UsersPage(
                     {r.companyId ? (companyName.get(r.companyId) ?? "Unknown company") : "Every company"}
                     {r.employeeId && ` · ${employeeLabel.get(r.employeeId) ?? "linked record"}`}
                     {r.lastLoginAt
-                      ? ` · last signed in ${r.lastLoginAt.slice(0, 10)}`
+                      ? ` · last signed in ${formatDate(r.lastLoginAt)}`
                       : " · never signed in"}
                   </p>
                 </div>

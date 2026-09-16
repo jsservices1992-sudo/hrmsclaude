@@ -18,6 +18,7 @@ import {
   type ExitType,
   type NoticeTreatment,
 } from "@/lib/exit/kinds";
+import { formatDate } from "@/lib/format/date";
 
 export type ExitState = { error?: string; ok?: string };
 
@@ -512,7 +513,7 @@ export async function acceptExit(_prev: ExitState, fd: FormData): Promise<ExitSt
   if (row.exitCase.acceptedBy) {
     return {
       error: `Already accepted by ${row.exitCase.acceptedBy}${
-        row.exitCase.acceptedAt ? ` on ${row.exitCase.acceptedAt.slice(0, 10)}` : ""
+        row.exitCase.acceptedAt ? ` on ${formatDate(row.exitCase.acceptedAt)}` : ""
       }.`,
     };
   }

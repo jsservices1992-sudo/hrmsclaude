@@ -27,6 +27,7 @@ import {
   TD,
   type BadgeTone,
 } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Onboarding" };
 
@@ -178,7 +179,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
                       {branch?.name ?? "—"}
                       {branch && <span className="font-mono text-xs text-ink-3 ml-1.5">{branch.stateCode}</span>}
                     </TD>
-                    <TD className="font-mono text-xs tnum whitespace-nowrap">{j.proposedDoj}</TD>
+                    <TD className="font-mono text-xs tnum whitespace-nowrap">{formatDate(j.proposedDoj)}</TD>
                     <TD className="whitespace-nowrap">
                       {j.status === "joined" ? (
                         <span className="label text-teal">joined</span>

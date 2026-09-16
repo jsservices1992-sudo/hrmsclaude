@@ -12,6 +12,7 @@ export { StatCard } from "./stat-card";
 export { Tabs, TabLink } from "./tabs";
 export { Dialog, DialogHeader, DialogBody, DialogFooter } from "./dialog";
 export { Popover } from "./popover";
+export { FormDialog } from "./form-dialog";
 export { DropdownMenu, DropdownItem } from "./dropdown-menu";
 export { Tooltip } from "./tooltip";
 export { ToastProvider, useToast } from "./toast";

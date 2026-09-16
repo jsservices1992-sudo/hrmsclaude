@@ -4,6 +4,7 @@ import * as s from "@/db/schema";
 import { getSessionUser } from "@/lib/auth/session";
 import { PageHeader, Card, Badge } from "@/components/console/ui";
 import { ChangePasswordForm } from "./forms";
+import { formatDate, formatDateTime } from "@/lib/format/date";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "My account" };
@@ -95,20 +96,20 @@ export default async function AccountPage() {
         <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
           <span className="label text-ink-2">Where you are signed in</span>
           <span className="label text-ink-3">
-            {row?.lastLoginAt ? `last sign-in ${row.lastLoginAt.slice(0, 16).replace("T", " ")}` : ""}
+            {row?.lastLoginAt ? `last sign-in ${formatDateTime(row.lastLoginAt)}` : ""}
           </span>
         </div>
         <ul className="divide-y divide-line-2">
           {sessions.map((sess) => (
             <li key={sess.id} className="px-4 py-2.5 text-xs flex flex-wrap gap-x-4 gap-y-1">
               <span className="font-mono text-ink-3 w-36 shrink-0">
-                {sess.createdAt.slice(0, 16).replace("T", " ")}
+                {formatDateTime(sess.createdAt)}
               </span>
               <span className="text-ink-2 flex-1 min-w-[18rem] truncate">
                 {sess.userAgent ?? "unknown device"}
               </span>
               <span className="text-ink-3">
-                until {sess.expiresAt.slice(0, 10)}
+                until {formatDate(sess.expiresAt)}
               </span>
             </li>
           ))}

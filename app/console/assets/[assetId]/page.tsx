@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth/session";
 import { IssueAssetForm, RevokeAssetForm, RetireAssetForm } from "../forms";
 import { Card, Badge, type BadgeTone } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Asset" };
 
@@ -105,7 +106,7 @@ export default async function AssetDetailPage(
               {view.open.emp.firstName} {view.open.emp.lastName}
             </Link>{" "}
             <span className="font-mono text-xs text-ink-3">{view.open.emp.empCode}</span> · issued{" "}
-            {view.open.alloc.issuedAt.slice(0, 10)}
+            {formatDate(view.open.alloc.issuedAt)}
           </p>
           <div className="flex items-center gap-3">
             {view.open.alloc.consentedAt ? (
@@ -144,7 +145,7 @@ export default async function AssetDetailPage(
                     {h.emp.firstName} {h.emp.lastName}
                   </Link>
                   <span className="block text-xs text-ink-3 font-mono">
-                    {h.alloc.issuedAt.slice(0, 10)} → {h.alloc.returnedAt ? h.alloc.returnedAt.slice(0, 10) : "current"}
+                    {formatDate(h.alloc.issuedAt)} → {h.alloc.returnedAt ? formatDate(h.alloc.returnedAt) : "current"}
                   </span>
                 </div>
                 {h.alloc.returnCondition && (

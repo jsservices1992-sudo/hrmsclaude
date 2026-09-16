@@ -13,6 +13,7 @@ import {
   VariablePayTypeForm,
 } from "./forms";
 import { PageHeader, Card, Select, FilterBar, FilterField, Tabs, TabLink, Table, THead, TH, TBody, TR, TD, Badge, EmptyState } from "@/components/console/ui";
+import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Master data" };
 
@@ -197,7 +198,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
               <TBody>
                 {holidays.map((h) => (
                   <TR key={h.id}>
-                    <TD className="font-mono text-xs">{h.date}</TD>
+                    <TD className="font-mono text-xs">{formatDate(h.date)}</TD>
                     <TD>{h.name}</TD>
                     <TD className="text-xs text-ink-3">{branches.find((b) => b.id === h.branchId)?.name ?? "All"}</TD>
                     <TD className="text-xs">{h.restricted ? "Yes" : "No"}</TD>
