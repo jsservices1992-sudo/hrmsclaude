@@ -69,33 +69,27 @@ export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
     label: "Payroll",
     groups: [
       {
-        label: "Run payroll",
+        /* One door, not four. The register, incentives, and approvals
+           were each their own nav item — one workflow with four
+           entrances, none of which said what to do next. Run payroll
+           is that answer: a status page that already links to every
+           one of these, in the order they actually happen. Landing on
+           any of them straight (a bookmark, a step link) still lights
+           this item up, so where you are stays visible. */
+        label: null,
         items: [
           {
             href: "/console/payroll/run",
             label: "Run payroll",
             icon: "check",
             needsCompensation: true,
-          },
-          {
-            href: "/console/payroll",
-            label: "Register",
-            icon: "table",
-            needsCompensation: true,
-            exact: true,
-            alsoMatches: ["/console/payslip", "/console/payroll/payslips"],
-          },
-          {
-            href: "/console/payroll/inputs",
-            label: "Incentives & deductions",
-            icon: "sliders",
-            needsCompensation: true,
-          },
-          {
-            href: "/console/runs",
-            label: "Runs & approvals",
-            icon: "history",
-            needsCompensation: true,
+            alsoMatches: [
+              "/console/payroll",
+              "/console/payroll/inputs",
+              "/console/payroll/payslips",
+              "/console/payslip",
+              "/console/runs",
+            ],
           },
         ],
       },
