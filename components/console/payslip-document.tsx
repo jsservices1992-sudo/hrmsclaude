@@ -334,13 +334,13 @@ export function PayslipDocument({
                 <td className={NUM}>{rs(l.amountPaise)}</td>
                 {i === 0 && (
                   <td
-                    className={`${CELL} text-ink-2 align-middle text-center`}
-                    rowSpan={slip.employerContributions.length + 1}
+                    className={`${CELL} text-ink-2 align-middle`}
+                    rowSpan={slip.employerContributions.length + (slip.monthlyCtcPaise > 0 ? 3 : 1)}
                   >
-                    Gross salary plus these is what this month costs the
-                    company: <span className="font-mono tnum">
-                      {rs(slip.grossPaise + slip.employerTotalPaise)}
-                    </span>
+                    The contributions are this month&apos;s. Cost to company is
+                    stated at the full monthly rate and includes the gratuity
+                    provision, so unpaid leave in one month does not read as a
+                    cut in the package.
                   </td>
                 )}
               </tr>
@@ -349,6 +349,18 @@ export function PayslipDocument({
               <td className={CELL}>Total employer contributions</td>
               <td className={NUM}>{rs(slip.employerTotalPaise)}</td>
             </tr>
+            {slip.monthlyCtcPaise > 0 && (
+              <>
+                <tr>
+                  <td className={CELL}>Monthly CTC</td>
+                  <td className={NUM}>{rs(slip.monthlyCtcPaise)}</td>
+                </tr>
+                <tr className="font-semibold bg-surface-2/60">
+                  <td className={CELL}>Annual CTC</td>
+                  <td className={NUM}>{rs(slip.annualCtcPaise)}</td>
+                </tr>
+              </>
+            )}
           </tbody>
         </table>
       )}

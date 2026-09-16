@@ -3,8 +3,16 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import type { PayFigures } from "./load";
-import { evaluateStructure } from "./compensation";
-import { loadStructureResolutionContext, resolveEmployeeStructure } from "./load";
+import {
+  employerCostFor,
+  evaluateStructure,
+  GRATUITY_ACCRUAL_BPS,
+} from "./compensation";
+import {
+  loadStatutoryConfig,
+  loadStructureResolutionContext,
+  resolveEmployeeStructure,
+} from "./load";
 import { rupeesInWords } from "./amount-in-words";
 import { formatDate } from "@/lib/format/date";
 
@@ -69,6 +77,16 @@ export type PayslipData = {
    */
   employerContributions: SlipLine[];
   employerTotalPaise: number;
+  /**
+   * Cost to company at the full monthly rate — gross, the employer's
+   * statutory share and the gratuity provision.
+   *
+   * Stated at the rate rather than at what this month happened to cost, so
+   * a month with unpaid leave does not read as a cut in the package. The
+   * contributions above are this month's; these two are the contract.
+   */
+  monthlyCtcPaise: number;
+  annualCtcPaise: number;
   netPaise: number;
   netInWords: string;
   warnings: string[];
@@ -132,6 +150,7 @@ export async function loadPayslips(args: {
           departmentName: s.departments.name,
           branchName: s.branches.name,
           branchCity: s.branches.city,
+          branchStateCode: s.branches.stateCode,
         })
         .from(s.employees)
         .leftJoin(s.departments, eq(s.employees.departmentId, s.departments.id))
@@ -158,6 +177,10 @@ export async function loadPayslips(args: {
   }
 
   const structureCtx = await loadStructureResolutionContext(companyId);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const statutory = await loadStatutoryConfig(
+    `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`,
+  );
 
   const companyAddressLines = [
     company?.registeredAddress,
@@ -197,6 +220,39 @@ export async function loadPayslips(args: {
     const employerContributions: SlipLine[] = r.lines
       .filter((l) => l.kind === "employer_contribution" && l.amountPaise !== 0)
       .map((l) => ({ label: l.label, amountPaise: l.amountPaise }));
+
+    /* Cost to company at the full monthly rate, so unpaid leave in this
+       month does not read as a cut in the package. The gratuity provision
+       belongs in it — it is money set aside for this employee — even
+       though no run line pays it out. */
+    let monthlyCtcPaise = 0;
+    if (salary && emp) {
+      const resolved = resolveEmployeeStructure(structureCtx, {
+        employeeStructureId: salary.structureId,
+        employeeDepartmentId: emp.departmentId,
+      });
+      const full = evaluateStructure(resolved.components, salary.monthlyGrossPaise);
+      const cost = employerCostFor(full, {
+        epfCeilingPaise: statutory.epf.wageCeilingPaise,
+        epfEmployerBps: statutory.epf.employerBps,
+        epfOnActualBasic: company?.epfOnActualBasic ?? false,
+        esicThresholdPaise: statutory.esic.wageThresholdPaise,
+        esicEmployerBps: statutory.esic.employerBps,
+        gratuityAccrualBps: GRATUITY_ACCRUAL_BPS,
+        pfOptedIn: emp.pfOptedIn,
+        hadPriorPfMembership: emp.hadPriorPfMembership,
+      });
+      /* Labour welfare fund falls in named months, so a monthly package
+         carries its share of the year rather than the whole charge. */
+      const stateCode = row?.branchStateCode ?? "";
+      const lwfRate = statutory.lwfByState[stateCode] ?? null;
+      const lwfEmployerMonthly =
+        lwfRate && (statutory.lwfApplicableByState[stateCode] ?? false)
+          ? Math.round((lwfRate.employerPaise * lwfRate.deductionMonths.length) / 12)
+          : 0;
+      monthlyCtcPaise =
+        full.grossPaise + cost.pf + cost.esic + cost.gratuity + cost.other + lwfEmployerMonthly;
+    }
 
     /* The rate card only where it says something the earnings column does
        not. Paid in full with no arrear, the two are the same figures. */
@@ -242,6 +298,8 @@ export async function loadPayslips(args: {
       deductionsTotalPaise: r.deductionsPaise,
       employerContributions,
       employerTotalPaise: employerContributions.reduce((a, x) => a + x.amountPaise, 0),
+      monthlyCtcPaise,
+      annualCtcPaise: monthlyCtcPaise * 12,
       netPaise: r.netPaise,
       netInWords: rupeesInWords(r.netPaise).replace(/^Rupees/, "Indian Rupees"),
       warnings: r.warnings,
