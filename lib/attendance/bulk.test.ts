@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseAttendanceCsv, punchesForBulkStatus } from "./bulk";
+import {
+  parseAttendanceCsv,
+  punchesForBulkStatus,
+  dayTypeFor,
+  BULK_STATUSES,
+  BULK_STATUS_LABELS,
+} from "./bulk";
 import { toCsv } from "../statutory/summaries";
 
 test("parses valid rows and skips a header row by name", () => {
@@ -86,4 +92,97 @@ test("the downloadable template is itself a valid import file", () => {
   assert.deepEqual(errors, [], "the template must parse without complaint");
   assert.equal(rows.length, 2, "the header is skipped, both data rows are kept");
   assert.deepEqual(rows[0], { empCode: "KA0001", date: "2026-09-01", status: "present" });
+});
+
+/* ==================================================================
+   What a register actually says
+   ================================================================== */
+
+test('a register that writes "Weekly off" imports, it does not error', () => {
+  /* The file that sent us here: a hand-kept month with Sundays written
+     out in words. It failed on exactly those lines. */
+  const csv = [
+    "empCode,date,status",
+    "JM0010,2026-09-05,present",
+    "JM0010,2026-09-06,Weekly off",
+    "JM0010,2026-09-13,Weekly off",
+  ].join("\n");
+  const r = parseAttendanceCsv(csv);
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.rows.length, 3);
+  assert.deepEqual(
+    r.rows.map((x) => x.status),
+    ["present", "weekly_off", "weekly_off"],
+  );
+});
+
+test("the shorthand a register is written in is understood", () => {
+  const cases: [string, string][] = [
+    ["P", "present"],
+    ["p", "present"],
+    ["A", "absent"],
+    ["HD", "half_day"],
+    ["half day", "half_day"],
+    ["OD", "on_duty"],
+    ["On Duty", "on_duty"],
+    ["WO", "weekly_off"],
+    ["W/O", "weekly_off"],
+    ["week off", "weekly_off"],
+    ["Holiday", "holiday"],
+    ["PH", "holiday"],
+    ["  Present  ", "present"],
+  ];
+  for (const [written, expected] of cases) {
+    const r = parseAttendanceCsv(`E1,2026-09-01,${written}`);
+    assert.deepEqual(r.errors, [], `${written}: ${r.errors.map((e) => e.message).join("")}`);
+    assert.equal(r.rows[0].status, expected, written);
+  }
+});
+
+test("leave is refused with what to do instead, not with a list", () => {
+  /* Guessing whether a leave is paid would either pay somebody who
+     should not be paid or dock somebody who should not be docked, and
+     the balance would not move either way. */
+  const r = parseAttendanceCsv("E1,2026-09-01,CL");
+  assert.equal(r.rows.length, 0);
+  assert.match(r.errors[0].message, /Attendance → Leave/);
+});
+
+test('a bare "H" is asked about rather than guessed', () => {
+  const r = parseAttendanceCsv("E1,2026-09-01,H");
+  assert.equal(r.rows.length, 0);
+  assert.match(r.errors[0].message, /half day or a holiday/);
+});
+
+test("something genuinely unknown still fails, and says what is accepted", () => {
+  const r = parseAttendanceCsv("E1,2026-09-01,banana");
+  assert.equal(r.rows.length, 0);
+  assert.match(r.errors[0].message, /weekly_off/);
+  assert.match(r.errors[0].message, /shorthand/);
+});
+
+test("an off mark is stored as an off day, not a working day", () => {
+  /* The two disagreeing is what made a marked weekly off come back from
+     the recompute as absence. */
+  assert.equal(dayTypeFor("weekly_off"), "weekly_off");
+  assert.equal(dayTypeFor("holiday"), "holiday");
+  assert.equal(dayTypeFor("present"), "working");
+  assert.equal(dayTypeFor("absent"), "working");
+  assert.equal(dayTypeFor("on_duty"), "working");
+});
+
+test("an off mark carries no worked minutes", () => {
+  const shift = { startMinute: 570, fullDayMinutes: 480, halfDayMinutes: 240 };
+  for (const st of ["weekly_off", "holiday"] as const) {
+    const { punches, recordStatus } = punchesForBulkStatus(st, shift);
+    assert.deepEqual(punches, []);
+    assert.equal(recordStatus, st);
+  }
+});
+
+test("every status has a label, so nothing shows a raw key in a menu", () => {
+  for (const st of BULK_STATUSES) {
+    assert.ok(BULK_STATUS_LABELS[st], st);
+    assert.ok(!BULK_STATUS_LABELS[st].includes("_"), st);
+  }
 });

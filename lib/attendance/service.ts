@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gte, lte, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, lte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import {
@@ -155,9 +155,30 @@ export async function deriveMonth(args: {
       );
       const isWeeklyOff = weeklyOffs.includes(weekday(date));
 
-      const dayType = holiday ? "holiday" : isWeeklyOff ? "weekly_off" : "working";
-
       const rec = punchByKey.get(`${emp.id}|${date}`);
+
+      /*
+       * A day marked off on the record beats the calendar.
+       *
+       * The calendar knows Sundays and the holiday list; it does not know
+       * a rotating shift, a factory shutdown, or a register that simply
+       * says this person was off. Without this the mark was stored and
+       * then thrown away on the next recompute, and the day came back as
+       * absence — unpaid, for somebody who was never expected in.
+       */
+      const markedOff =
+        rec?.status === "weekly_off" || rec?.status === "holiday"
+          ? (rec.status as "weekly_off" | "holiday")
+          : null;
+
+      const dayType = markedOff
+        ? markedOff
+        : holiday
+          ? "holiday"
+          : isWeeklyOff
+            ? "weekly_off"
+            : "working";
+
       const punches: Punch[] = rec ? (JSON.parse(rec.punchesJson) as Punch[]) : [];
 
       const leave = leaveRows.find(
@@ -208,85 +229,98 @@ export async function persistMonth(args: {
 }) {
   const months = await deriveMonth(args);
 
+  /*
+   * Written in whole statements rather than a row at a time.
+   *
+   * This was a SELECT and then an INSERT or UPDATE for every employee for
+   * every day: sixty round trips per person per month, which on a hosted
+   * database took most of a minute for a single employee and would have
+   * timed out long before a real company's payroll month finished. The
+   * unique indexes on (employee, date) and (employee, period) already say
+   * which row a value belongs to, so the read was never needed — the
+   * upsert decides.
+   */
+  const dayRows = months.flatMap((m) =>
+    m.days.map((d) => ({
+      id: randomUUID(),
+      employeeId: m.employeeId,
+      date: d.date,
+      punchesJson: "[]",
+      source: "derived" as const,
+      regularised: false,
+      dayType:
+        d.status === "holiday"
+          ? ("holiday" as const)
+          : d.status === "weekly_off"
+            ? ("weekly_off" as const)
+            : ("working" as const),
+      status: d.status,
+      workedMinutes: d.workedMinutes,
+      lateMinutes: d.lateMinutes,
+      lopUnits: d.lopUnits,
+      basis: d.basis,
+    })),
+  );
+
+  const inputRows = months.map((m) => ({
+    id: randomUUID(),
+    employeeId: m.employeeId,
+    periodYear: args.year,
+    periodMonth: args.month,
+    lopDays: m.summary.lopDays,
+    offDaysWorked: m.summary.offDaysWorked,
+  }));
+
+  /* Postgres binds each column of each row as its own parameter, and the
+     protocol stops at 65535 of them. A thousand rows of a dozen columns
+     sits well inside that and still turns a month for fifty people into
+     two statements. */
+  const chunk = <T,>(xs: T[], size: number): T[][] => {
+    const out: T[][] = [];
+    for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size));
+    return out;
+  };
+
   await db.transaction(async (tx) => {
-    for (const m of months) {
-      for (const d of m.days) {
-        const existing = await tx
-          .select()
-          .from(s.attendanceRecords)
-          .where(
-            and(
-              eq(s.attendanceRecords.employeeId, m.employeeId),
-              eq(s.attendanceRecords.date, d.date),
-            ),
-          );
+    for (const batch of chunk(dayRows, 1000)) {
+      await tx
+        .insert(s.attendanceRecords)
+        .values(batch)
+        .onConflictDoUpdate({
+          target: [s.attendanceRecords.employeeId, s.attendanceRecords.date],
+          /* Only the derived figures. The punches and where they came
+             from belong to whoever recorded them, and a recompute that
+             overwrote them would destroy the input it derives from. */
+          set: {
+            dayType: sql`excluded.day_type`,
+            status: sql`excluded.status`,
+            workedMinutes: sql`excluded.worked_minutes`,
+            lateMinutes: sql`excluded.late_minutes`,
+            lopUnits: sql`excluded.lop_units`,
+            basis: sql`excluded.basis`,
+          },
+        });
+    }
 
-        const values = {
-          dayType:
-            d.status === "holiday"
-              ? ("holiday" as const)
-              : d.status === "weekly_off"
-                ? ("weekly_off" as const)
-                : ("working" as const),
-          status: d.status,
-          workedMinutes: d.workedMinutes,
-          lateMinutes: d.lateMinutes,
-          lopUnits: d.lopUnits,
-          basis: d.basis,
-        };
-
-        if (existing.length > 0) {
-          await tx.update(s.attendanceRecords)
-            .set(values)
-            .where(eq(s.attendanceRecords.id, existing[0].id));
-        } else {
-          await tx.insert(s.attendanceRecords)
-            .values({
-              id: randomUUID(),
-              employeeId: m.employeeId,
-              date: d.date,
-              punchesJson: "[]",
-              source: "derived",
-              regularised: false,
-              ...values,
-            });
-        }
-      }
-
-      /* Refresh the payroll input. */
-      const lop = m.summary.lopDays;
-      const offWorked = m.summary.offDaysWorked;
-      const existingInput = await tx
-        .select()
-        .from(s.attendanceInputs)
-        .where(
-          and(
-            eq(s.attendanceInputs.employeeId, m.employeeId),
-            eq(s.attendanceInputs.periodYear, args.year),
-            eq(s.attendanceInputs.periodMonth, args.month),
-          ),
-        );
-
-      if (existingInput.length > 0) {
-        // A hand override stands until someone explicitly clears it —
-        // recomputing from punches must not quietly erase a correction
-        // made right before running payroll.
-        if (!existingInput[0].overridden) {
-          await tx.update(s.attendanceInputs)
-            .set({ lopDays: lop, offDaysWorked: offWorked })
-            .where(eq(s.attendanceInputs.id, existingInput[0].id));
-        }
-      } else {
-        await tx.insert(s.attendanceInputs)
-          .values({
-            id: randomUUID(),
-            employeeId: m.employeeId,
-            periodYear: args.year,
-            periodMonth: args.month,
-            lopDays: lop,
-            offDaysWorked: offWorked,
-          });
-      }
+    for (const batch of chunk(inputRows, 1000)) {
+      await tx
+        .insert(s.attendanceInputs)
+        .values(batch)
+        .onConflictDoUpdate({
+          target: [
+            s.attendanceInputs.employeeId,
+            s.attendanceInputs.periodYear,
+            s.attendanceInputs.periodMonth,
+          ],
+          set: {
+            lopDays: sql`excluded.lop_days`,
+            offDaysWorked: sql`excluded.off_days_worked`,
+          },
+          /* A hand override stands until somebody clears it — recomputing
+             from punches must not quietly erase a correction made right
+             before running payroll. */
+          setWhere: eq(s.attendanceInputs.overridden, false),
+        });
     }
   });
 

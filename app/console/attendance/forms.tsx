@@ -14,6 +14,7 @@ import {
   type AttendanceState,
   type BulkAttendanceState,
 } from "./actions";
+import { BULK_STATUSES, BULK_STATUS_LABELS } from "@/lib/attendance/bulk";
 import { Input, Textarea, Select, SubmitButton, FormFeedback, Popover } from "@/components/console/ui";
 
 export function RecomputeForm({
@@ -61,7 +62,8 @@ export function BulkUploadForm({
       </div>
       <p className="text-xs text-ink-3">
         Columns: <code className="font-mono">empCode,date,status</code> — status is
-        one of present, half_day, absent, on_duty. A header row is optional.{" "}
+        one of {BULK_STATUSES.join(", ")} — or the shorthand a register
+        actually uses: P, A, HD, OD, WO, Holiday. A header row is optional.{" "}
         <a
           href={`/console/attendance/template?company=${companyId}&year=${year}&month=${month}`}
           className="text-brass hover:underline whitespace-nowrap"
@@ -123,6 +125,9 @@ export function DepartmentBulkMarkForm({
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
+      {/* Who this covers, said outright. The action used to infer it from
+          which fields were empty, which made "Everyone" unsubmittable. */}
+      <input type="hidden" name="scope" value={scope} />
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
@@ -160,10 +165,11 @@ export function DepartmentBulkMarkForm({
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Mark as</span>
           <Select name="status" className="w-36" defaultValue="present">
-            <option value="present">Present</option>
-            <option value="half_day">Half day</option>
-            <option value="absent">Absent</option>
-            <option value="on_duty">On duty</option>
+            {BULK_STATUSES.map((v) => (
+              <option key={v} value={v}>
+                {BULK_STATUS_LABELS[v]}
+              </option>
+            ))}
           </Select>
         </label>
 
@@ -185,9 +191,16 @@ export function DepartmentBulkMarkForm({
       )}
 
       <p className="text-xs text-ink-3 max-w-[80ch]">
-        Sundays and holidays inside the range are marked too, and then
-        ignored — attendance is re-derived afterwards and a weekly off stays
-        a weekly off, paid, whatever the mark says.
+        {scope === "company"
+          ? "Everybody active in this company."
+          : scope === "department"
+            ? "Everybody active in the department chosen."
+            : "Only the people ticked below."}{" "}
+        Sundays and holidays inside the range keep being Sundays and
+        holidays — attendance is re-derived afterwards, and an off day
+        stays off and paid whatever the mark says. Marking a range as
+        Weekly off makes those days off for these people even where the
+        calendar says otherwise.
       </p>
 
       <FormFeedback state={state} />

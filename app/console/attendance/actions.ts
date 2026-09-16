@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray} from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import {
@@ -13,7 +13,14 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { persistMonth } from "@/lib/attendance/service";
-import { parseAttendanceCsv, punchesForBulkStatus, type BulkStatus, BULK_STATUSES } from "@/lib/attendance/bulk";
+import {
+  parseAttendanceCsv,
+  punchesForBulkStatus,
+  dayTypeFor,
+  type BulkStatus,
+  BULK_STATUSES,
+  BULK_STATUS_LABELS,
+} from "@/lib/attendance/bulk";
 import { DEFAULT_SHIFT } from "@/lib/attendance/rules";
 import { daysInMonth } from "@/lib/payroll/proration";
 
@@ -190,42 +197,51 @@ export async function bulkUploadAttendance(
     .limit(1);
   const shift = shiftRow ?? DEFAULT_SHIFT;
 
-  await db.transaction(async (tx) => {
-    for (const row of rows) {
-      const employeeId = byCode.get(row.empCode)!;
-      const { punches, recordStatus } = punchesForBulkStatus(row.status, shift);
-      const values = {
-        id: randomUUID(),
-        employeeId,
-        date: row.date,
-        punchesJson: JSON.stringify(punches),
-        dayType: "working" as const,
-        status: recordStatus,
-        workedMinutes: punches.reduce((a, p) => a + Math.max(0, p.outMinute - p.inMinute), 0),
-        lateMinutes: 0,
-        lopUnits: 0,
-        basis: "Bulk import",
-        regularised: false,
-        source: "manual" as const,
-      };
-      await tx.insert(s.attendanceRecords)
-        .values(values)
-        .onConflictDoUpdate({
-          target: [s.attendanceRecords.employeeId, s.attendanceRecords.date],
-          set: {
-            punchesJson: values.punchesJson,
-            status: values.status,
-            workedMinutes: values.workedMinutes,
-            basis: values.basis,
-            source: values.source,
-          },
-        });
-    }
+  /* One statement, not one per row. Against a hosted database a row at a
+     time meant a round trip per day per person, which is where a month
+     for one employee took the better part of a minute. */
+  const values = rows.map((row) => {
+    const { punches, recordStatus } = punchesForBulkStatus(row.status, shift);
+    return {
+      id: randomUUID(),
+      employeeId: byCode.get(row.empCode)!,
+      date: row.date,
+      punchesJson: JSON.stringify(punches),
+      /* A day marked off is stored as an off day, not as a working day
+         that happens to carry an off status — the derivation reads this
+         back, and the two disagreeing is how a marked weekly off came
+         back as absence. */
+      dayType: dayTypeFor(row.status),
+      status: recordStatus,
+      workedMinutes: punches.reduce((a, p) => a + Math.max(0, p.outMinute - p.inMinute), 0),
+      lateMinutes: 0,
+      lopUnits: 0,
+      basis: "Bulk import",
+      regularised: false,
+      source: "manual" as const,
+    };
   });
+
+  for (let i = 0; i < values.length; i += 1000) {
+    await db
+      .insert(s.attendanceRecords)
+      .values(values.slice(i, i + 1000))
+      .onConflictDoUpdate({
+        target: [s.attendanceRecords.employeeId, s.attendanceRecords.date],
+        set: {
+          punchesJson: sql`excluded.punches_json`,
+          dayType: sql`excluded.day_type`,
+          status: sql`excluded.status`,
+          workedMinutes: sql`excluded.worked_minutes`,
+          basis: sql`excluded.basis`,
+          source: sql`excluded.source`,
+        },
+      });
+  }
 
   // Punches alone are raw input — recompute so LOP, sandwich rule and
   // leave interaction all apply the same way a device punch would.
-  const months = await persistMonth({ companyId, year, month });
+  await persistMonth({ companyId, year, month });
 
   await audit({
     actor: user.email,
@@ -238,9 +254,16 @@ export async function bulkUploadAttendance(
   revalidatePath("/console/attendance");
   revalidatePath("/console/payroll");
 
-  const skippedNote = parseErrors.length > 0 ? ` ${parseErrors.length} row(s) were skipped for bad formatting.` : "";
+  const skippedNote =
+    parseErrors.length > 0
+      ? ` ${parseErrors.length} row(s) were skipped — see below.`
+      : "";
+  /* The file's employees, not the company's. `months` is everybody the
+     recompute touched, which made a one-person import read as though it
+     had covered the whole company. */
+  const importedFor = new Set(rows.map((r) => r.empCode)).size;
   return {
-    ok: `Imported ${rows.length} row(s) across ${months.length} employee(s).${skippedNote}`,
+    ok: `Imported ${rows.length} row(s) for ${importedFor} employee(s), and recomputed the month.${skippedNote}`,
     parseErrors: parseErrors.length > 0 ? parseErrors : undefined,
   };
 }
@@ -270,17 +293,36 @@ export async function bulkMarkDepartment(
   const month = Number(fd.get("month"));
   const status = String(fd.get("status") ?? "") as BulkStatus;
 
+  const scope = String(fd.get("scope") ?? "");
+
   if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
   if (!year || !month) return { error: "Invalid period." };
-  if (!departmentId) return { error: "Choose a department." };
   if (!BULK_STATUSES.includes(status)) return { error: "Choose a valid status." };
 
-  const [department] = await db
-    .select({ id: s.departments.id, companyId: s.departments.companyId })
-    .from(s.departments)
-    .where(eq(s.departments.id, departmentId))
-    .limit(1);
-  if (!department || department.companyId !== companyId) return { error: "Department not found." };
+  /* Who this covers has to be said, not inferred from what is missing.
+     The guard here used to demand a department outright, which meant the
+     two other choices the form offers — everyone, and a hand-picked few
+     — could never be submitted at all. */
+  if (scope === "department" && !departmentId) {
+    return { error: "Choose a department." };
+  }
+  if (scope === "people" && employeeIds.length === 0) {
+    return { error: "Tick at least one person, or switch to marking everyone." };
+  }
+  if (scope !== "company" && scope !== "department" && scope !== "people") {
+    return { error: "Say who this covers." };
+  }
+
+  if (scope === "department") {
+    const [department] = await db
+      .select({ id: s.departments.id, companyId: s.departments.companyId })
+      .from(s.departments)
+      .where(eq(s.departments.id, departmentId))
+      .limit(1);
+    if (!department || department.companyId !== companyId) {
+      return { error: "Department not found." };
+    }
+  }
 
   const locked = await db
     .select({ id: s.payrollRuns.id, status: s.payrollRuns.status })
@@ -306,10 +348,8 @@ export async function bulkMarkDepartment(
       and(
         eq(s.employees.companyId, companyId),
         eq(s.employees.status, "active"),
-        ...(employeeIds.length > 0 ? [inArray(s.employees.id, employeeIds)] : []),
-        ...(employeeIds.length === 0 && departmentId
-          ? [eq(s.employees.departmentId, departmentId)]
-          : []),
+        ...(scope === "people" ? [inArray(s.employees.id, employeeIds)] : []),
+        ...(scope === "department" ? [eq(s.employees.departmentId, departmentId)] : []),
       ),
     );
   if (employees.length === 0) return { error: "Nobody matches that selection." };
@@ -353,37 +393,39 @@ export async function bulkMarkDepartment(
   const punchesJson = JSON.stringify(punches);
   const workedMinutes = punches.reduce((a, p) => a + Math.max(0, p.outMinute - p.inMinute), 0);
 
-  await db.transaction(async (tx) => {
-    for (const emp of employees) {
-      for (const date of dates) {
-        await tx.insert(s.attendanceRecords)
-          .values({
-            id: randomUUID(),
-            employeeId: emp.id,
-            date,
-            punchesJson,
-            dayType: "working" as const,
-            status: recordStatus,
-            workedMinutes,
-            lateMinutes: 0,
-            lopUnits: 0,
-            basis: "Bulk mark",
-            regularised: false,
-            source: "manual" as const,
-          })
-          .onConflictDoUpdate({
-            target: [s.attendanceRecords.employeeId, s.attendanceRecords.date],
-            set: {
-              punchesJson,
-              status: recordStatus,
-              workedMinutes,
-              basis: "Bulk department mark",
-              source: "manual" as const,
-            },
-          });
-      }
-    }
-  });
+  const markRows = employees.flatMap((emp) =>
+    dates.map((date) => ({
+      id: randomUUID(),
+      employeeId: emp.id,
+      date,
+      punchesJson,
+      dayType: dayTypeFor(status),
+      status: recordStatus,
+      workedMinutes,
+      lateMinutes: 0,
+      lopUnits: 0,
+      basis: "Bulk mark",
+      regularised: false,
+      source: "manual" as const,
+    })),
+  );
+
+  for (let i = 0; i < markRows.length; i += 1000) {
+    await db
+      .insert(s.attendanceRecords)
+      .values(markRows.slice(i, i + 1000))
+      .onConflictDoUpdate({
+        target: [s.attendanceRecords.employeeId, s.attendanceRecords.date],
+        set: {
+          punchesJson: sql`excluded.punches_json`,
+          dayType: sql`excluded.day_type`,
+          status: sql`excluded.status`,
+          workedMinutes: sql`excluded.worked_minutes`,
+          basis: sql`excluded.basis`,
+          source: sql`excluded.source`,
+        },
+      });
+  }
 
   const months = await persistMonth({ companyId, year, month });
 
@@ -391,15 +433,18 @@ export async function bulkMarkDepartment(
     actor: user.email,
     action: "attendance.bulk_marked_department",
     entity: "attendance",
-    entityId: `${companyId}:${year}-${month}:${departmentId}`,
-    after: { departmentId, status, employees: employees.length, days: dates.length },
+    entityId: `${companyId}:${year}-${month}:${scope}`,
+    after: { scope, departmentId: departmentId || null, status, employees: employees.length, days: dates.length },
   });
 
   revalidatePath("/console/attendance");
   revalidatePath("/console/payroll");
 
   return {
-    ok: `Marked ${status} for ${employees.length} employee(s) across ${dates.length} day(s), recomputed for ${months.length} employee(s).`,
+    ok:
+      `Marked ${BULK_STATUS_LABELS[status].toLowerCase()} for ${employees.length} employee(s) ` +
+      `from ${fromDate} to ${toDate} — ${dates.length} day(s). ` +
+      `Recomputed for ${months.length} employee(s).`,
   };
 }
 
