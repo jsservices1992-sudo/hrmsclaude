@@ -4,15 +4,15 @@ import * as s from "@/db/schema";
 import {
   buildFromGross,
   buildFromTargetCtc,
-  buildFromTargetTakeHome,
   evaluateStructure,
+  grossForTargetTakeHome,
   takeHomeFor,
+  GRATUITY_ACCRUAL_BPS,
   type CtcBreakdown,
   type ComponentSpec,
   type EmployerCostParams,
   type TakeHomeParams,
 } from "./compensation";
-import { computeProfessionalTax } from "./statutory";
 import { loadStatutoryConfig, loadStructureResolutionContext, resolveEmployeeStructure } from "./load";
 
 /**
@@ -22,13 +22,11 @@ import { loadStatutoryConfig, loadStructureResolutionContext, resolveEmployeeStr
 import { type PayMode, PAY_MODES, isPayMode } from "./pay-mode";
 export { type PayMode, PAY_MODES, isPayMode };
 
-/**
- * 15 days' wages a year over 26 working days, spread monthly — the
- * standard gratuity accrual.
- */
-const GRATUITY_ACCRUAL_BPS = 481;
-
 export type ResolvedPay = {
+  /** How the amount was entered, so a salary record can keep the promise. */
+  mode: PayMode;
+  /** The figure as entered, in the mode above. */
+  enteredAmountPaise: number;
   monthlyGrossPaise: number;
   /** The whole gross-to-CTC build-up for the resolved gross. */
   breakdown: CtcBreakdown;
@@ -45,6 +43,18 @@ export type ResolvedPay = {
   derivation: string;
   warnings: string[];
 };
+
+/**
+ * The two columns a salary record keeps so it can honour how the pay was
+ * agreed. Only take-home needs the amount: every other mode is already
+ * fully described by the gross that was stored.
+ */
+export function payAgreementColumns(pay: ResolvedPay) {
+  return {
+    payMode: pay.mode,
+    targetTakeHomePaise: pay.mode === "take_home" ? pay.enteredAmountPaise : null,
+  };
+}
 
 /**
  * Turns an amount entered in any mode into the monthly gross it implies,
@@ -114,52 +124,21 @@ export async function resolvePay(args: {
           .where(eq(s.branches.id, args.branchId))
           .limit(1)
       : [];
-    const stateCode = branch?.stateCode ?? "";
-    const month = Number(args.asOf.slice(5, 7));
-
-    const ptFor = (ptBasePaise: number) =>
-      computeProfessionalTax({
-        stateCode,
-        ptBasePaise,
-        month,
-        gender: args.gender ?? "other",
-        slabs: statutory.ptSlabsByState[stateCode] ?? [],
-        applicable: statutory.ptApplicableByState[stateCode] ?? false,
-      }).amountPaise;
-
-    const paramsFor = (professionalTaxPaise: number): TakeHomeParams => ({
-      epfCeilingPaise: statutory.epf.wageCeilingPaise,
-      epfEmployeeBps: statutory.epf.employeeBps,
-      epfOnActualBasic: employer.epfOnActualBasic,
-      esicThresholdPaise: statutory.esic.wageThresholdPaise,
-      esicEmployeeBps: statutory.esic.employeeBps,
-      professionalTaxPaise,
-    });
-
-    /* Professional tax is a step function of the PT base, which itself
-       depends on the gross being solved for. So the search runs twice:
-       once with PT taken at the target take-home, then again with PT
-       recomputed from the gross that produced. The slabs are coarse
-       enough that the second pass lands on the right step. */
-    const firstPass = buildFromTargetTakeHome({
+    const solved = grossForTargetTakeHome({
       targetMonthlyTakeHomePaise: args.amountPaise,
       components,
       employer,
-      takeHome: paramsFor(ptFor(args.amountPaise)),
+      stateCode: branch?.stateCode ?? "",
+      gender: args.gender ?? null,
+      month: Number(args.asOf.slice(5, 7)),
+      statutory,
     });
-    takeHomeParams = paramsFor(
-      ptFor(evaluateStructure(components, firstPass.monthlyGrossPaise).ptBasePaise),
-    );
-    const settled = buildFromTargetTakeHome({
-      targetMonthlyTakeHomePaise: args.amountPaise,
-      components,
-      employer,
-      takeHome: takeHomeParams,
-    });
-    monthlyGrossPaise = settled.monthlyGrossPaise;
+    monthlyGrossPaise = solved.monthlyGrossPaise;
+    takeHomeParams = solved.takeHome;
     derivation =
       `Worked back from a target take-home of ₹${rupees} a month` +
-      ` (after PF, ESIC and professional tax; income tax is deducted separately once declarations are in)`;
+      ` (after PF, ESIC and professional tax; income tax is deducted separately once declarations are in).` +
+      ` This net is held: every run re-solves the gross against that period's rates, so the amount in hand does not drift`;
   }
 
   const breakdown = buildFromGross({ monthlyGrossPaise, components, employer });
@@ -179,6 +158,8 @@ export async function resolvePay(args: {
   );
 
   return {
+    mode: args.mode,
+    enteredAmountPaise: args.amountPaise,
     monthlyGrossPaise,
     breakdown,
     takeHomePaise: takeHome,

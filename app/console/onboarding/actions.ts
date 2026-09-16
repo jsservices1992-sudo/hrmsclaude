@@ -36,7 +36,7 @@ import { formatEmployeeCode } from "@/lib/onboarding/rules";
 import { parseJoinerCsv, unresolvedJoinerReferences } from "@/lib/hris/joiner-bulk";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { checkUpload, storageKeyFor, MAX_FILE_BYTES } from "@/lib/storage/rules";
-import { resolvePay, isPayMode, type ResolvedPay } from "@/lib/payroll/pay-resolution";
+import { resolvePay, isPayMode, payAgreementColumns, type ResolvedPay } from "@/lib/payroll/pay-resolution";
 import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
 import { ensureEmployeeAccount } from "@/lib/auth/employee-account";
 import { currentOrigin } from "@/lib/http/origin";
@@ -816,11 +816,17 @@ export async function setJoinerPay(
   const before = {
     offeredCtcPaise: j.offeredCtcPaise,
     offeredMonthlyGrossPaise: j.offeredMonthlyGrossPaise,
+    offerPayMode: j.offerPayMode,
+    offeredTakeHomePaise: j.offeredTakeHomePaise,
     structureId: j.structureId,
   };
+  /* The mode is kept, not just the figures it produced. An offer made as
+     "₹22,000 in hand" has to still mean that at conversion, and after it. */
   const after = {
     offeredCtcPaise: pay.breakdown.annualCtcPaise,
     offeredMonthlyGrossPaise: pay.monthlyGrossPaise,
+    offerPayMode: pay.mode,
+    offeredTakeHomePaise: pay.mode === "take_home" ? pay.enteredAmountPaise : null,
     structureId,
   };
 
@@ -897,8 +903,15 @@ export async function convertJoiner(
       companyId: j.companyId,
       structureId: j.structureId,
       departmentId: j.departmentId,
-      mode: j.offeredMonthlyGrossPaise ? "gross" : "ctc",
-      amountPaise: j.offeredMonthlyGrossPaise ?? j.offeredCtcPaise!,
+      /* An offer agreed in in-hand terms converts as in-hand terms, so the
+         employee's salary record keeps the promise rather than freezing
+         whatever gross that net happened to imply on the offer date. */
+      ...(j.offerPayMode === "take_home" && j.offeredTakeHomePaise
+        ? { mode: "take_home" as const, amountPaise: j.offeredTakeHomePaise }
+        : {
+            mode: j.offeredMonthlyGrossPaise ? ("gross" as const) : ("ctc" as const),
+            amountPaise: j.offeredMonthlyGrossPaise ?? j.offeredCtcPaise!,
+          }),
       asOf: j.proposedDoj,
       branchId: j.branchId,
       gender: j.gender,
@@ -981,6 +994,7 @@ export async function convertJoiner(
             employeeId,
             monthlyGrossPaise: pay.monthlyGrossPaise,
             annualCtcPaise: pay.breakdown.annualCtcPaise,
+            ...payAgreementColumns(pay),
             structureId: j.structureId,
             effectiveFrom: j.proposedDoj,
             effectiveTo: null,
@@ -1142,8 +1156,15 @@ export async function rehireJoiner(
       companyId: j.companyId,
       structureId: j.structureId,
       departmentId: j.departmentId,
-      mode: j.offeredMonthlyGrossPaise ? "gross" : "ctc",
-      amountPaise: j.offeredMonthlyGrossPaise ?? j.offeredCtcPaise!,
+      /* An offer agreed in in-hand terms converts as in-hand terms, so the
+         employee's salary record keeps the promise rather than freezing
+         whatever gross that net happened to imply on the offer date. */
+      ...(j.offerPayMode === "take_home" && j.offeredTakeHomePaise
+        ? { mode: "take_home" as const, amountPaise: j.offeredTakeHomePaise }
+        : {
+            mode: j.offeredMonthlyGrossPaise ? ("gross" as const) : ("ctc" as const),
+            amountPaise: j.offeredMonthlyGrossPaise ?? j.offeredCtcPaise!,
+          }),
       asOf: j.proposedDoj,
       branchId: j.branchId,
       gender: j.gender,
@@ -1229,6 +1250,7 @@ export async function rehireJoiner(
           employeeId,
           monthlyGrossPaise: pay.monthlyGrossPaise,
           annualCtcPaise: pay.breakdown.annualCtcPaise,
+          ...payAgreementColumns(pay),
           structureId: j.structureId,
           effectiveFrom: j.proposedDoj,
           effectiveTo: null,

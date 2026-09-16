@@ -17,6 +17,7 @@ const annual: AnnualComputation = {
     bands: [],
     taxBeforeRebatePaise: 9_000_000,
     rebatePaise: 0,
+    marginalReliefPaise: 0,
     taxAfterRebatePaise: 9_000_000,
     surchargePaise: 0,
     cessPaise: 360_000,

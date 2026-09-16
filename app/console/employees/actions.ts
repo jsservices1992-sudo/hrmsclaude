@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { resolvePay, isPayMode } from "@/lib/payroll/pay-resolution";
+import { resolvePay, isPayMode, payAgreementColumns } from "@/lib/payroll/pay-resolution";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
@@ -287,6 +287,7 @@ export async function createEmployee(
       employeeId: id,
       monthlyGrossPaise: pay.monthlyGrossPaise,
       annualCtcPaise: pay.breakdown.annualCtcPaise,
+      ...payAgreementColumns(pay),
       structureId,
       effectiveFrom: data.dateOfJoining,
       effectiveTo: null,

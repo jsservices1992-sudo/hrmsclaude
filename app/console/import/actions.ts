@@ -16,7 +16,7 @@ import {
   unknownLeaveReferences,
   missingLeaveTypes,
 } from "@/lib/hris/leave-bulk";
-import { resolvePay } from "@/lib/payroll/pay-resolution";
+import { resolvePay, payAgreementColumns } from "@/lib/payroll/pay-resolution";
 
 export type ImportState = {
   error?: string;
@@ -125,6 +125,7 @@ export async function importSalaries(
     employeeId: string;
     monthlyGrossPaise: number;
     annualCtcPaise: number | null;
+    agreement: ReturnType<typeof payAgreementColumns>;
     effectiveFrom: string;
     row: (typeof rows)[number];
   }[] = [];
@@ -170,6 +171,7 @@ export async function importSalaries(
         employeeId: employee.id,
         monthlyGrossPaise: pay.monthlyGrossPaise,
         annualCtcPaise: row.payMode === "ctc" ? row.amountPaise : null,
+        agreement: payAgreementColumns(pay),
         effectiveFrom,
         row,
       });
@@ -196,6 +198,7 @@ export async function importSalaries(
         employeeId: r.employeeId,
         monthlyGrossPaise: r.monthlyGrossPaise,
         annualCtcPaise: r.annualCtcPaise,
+        ...r.agreement,
         effectiveFrom: r.effectiveFrom,
         effectiveTo: null,
         reason: r.row.reason ?? "Salary on joining, migrated from previous system",

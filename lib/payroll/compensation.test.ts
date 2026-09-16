@@ -7,6 +7,7 @@ import {
   buildFromGross,
   buildFromTargetCtc,
   buildFromTargetTakeHome,
+  grossForTargetTakeHome,
   takeHomeFor,
   checkMinimumWage,
   computeStatutoryBonus,
@@ -323,6 +324,138 @@ describe("Take-home", () => {
       `take-home ${b.takeHomePaise} vs target ${target}`,
     );
     assert.ok(b.monthlyGrossPaise > target, "gross exceeds take-home");
+  });
+});
+
+/* ============== a promised net, held across periods ============== */
+
+describe("Fixed take-home", () => {
+  /* Maharashtra's shape: a flat slab, and a higher charge in February.
+     That February step is the smallest real thing that moves a net which
+     was solved once and stored as a gross. */
+  const MH_SLABS = [
+    {
+      minPaise: R(25000),
+      maxPaise: null,
+      amountPaise: R(200),
+      overrideMonth: 2,
+      overrideAmountPaise: R(300),
+    },
+  ];
+
+  const statutoryAt = (epfCeilingRupees: number) => ({
+    epf: { wageCeilingPaise: R(epfCeilingRupees), employeeBps: 1200 },
+    esic: { wageThresholdPaise: R(21000), employeeBps: 75 },
+    ptSlabsByState: { MH: MH_SLABS },
+    ptApplicableByState: { MH: true },
+  });
+
+  const netAt = (gross: number, statutory: ReturnType<typeof statutoryAt>, month: number) => {
+    const evaluation = evaluateStructure(STRUCTURE, gross);
+    const pt = month === 2 ? R(300) : R(200);
+    return takeHomeFor(evaluation, {
+      epfCeilingPaise: statutory.epf.wageCeilingPaise,
+      epfEmployeeBps: statutory.epf.employeeBps,
+      epfOnActualBasic: false,
+      esicThresholdPaise: statutory.esic.wageThresholdPaise,
+      esicEmployeeBps: statutory.esic.employeeBps,
+      professionalTaxPaise: pt,
+    }).takeHome;
+  };
+
+  const target = R(45000);
+
+  test("lands on the promised net", () => {
+    const solved = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: target,
+      components: STRUCTURE,
+      employer: EMPLOYER,
+      stateCode: "MH",
+      gender: "female",
+      month: 6,
+      statutory: statutoryAt(15000),
+    });
+    assert.ok(
+      Math.abs(netAt(solved.monthlyGrossPaise, statutoryAt(15000), 6) - target) <= R(2),
+      "net misses the target",
+    );
+  });
+
+  test("the net holds in February, and the gross is what moves", () => {
+    const june = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: target,
+      components: STRUCTURE,
+      employer: EMPLOYER,
+      stateCode: "MH",
+      gender: "female",
+      month: 6,
+      statutory: statutoryAt(15000),
+    });
+    const february = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: target,
+      components: STRUCTURE,
+      employer: EMPLOYER,
+      stateCode: "MH",
+      gender: "female",
+      month: 2,
+      statutory: statutoryAt(15000),
+    });
+
+    assert.ok(
+      february.monthlyGrossPaise > june.monthlyGrossPaise,
+      "February's higher PT has to be absorbed by a higher gross",
+    );
+    assert.ok(
+      Math.abs(netAt(february.monthlyGrossPaise, statutoryAt(15000), 2) - target) <= R(2),
+      "February's net drifted off the promise",
+    );
+  });
+
+  test("a PF ceiling revision moves the gross, not the net", () => {
+    const before = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: target,
+      components: STRUCTURE,
+      employer: EMPLOYER,
+      stateCode: "MH",
+      gender: "female",
+      month: 6,
+      statutory: statutoryAt(15000),
+    });
+    const after = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: target,
+      components: STRUCTURE,
+      employer: { ...EMPLOYER, epfCeilingPaise: R(21000) },
+      stateCode: "MH",
+      gender: "female",
+      month: 6,
+      statutory: statutoryAt(21000),
+    });
+
+    /* The old behaviour: keep last year's gross and let the net fall by
+       the extra PF. That is the drift this exists to prevent. */
+    const driftIfGrossWereFrozen = netAt(before.monthlyGrossPaise, statutoryAt(21000), 6);
+    assert.ok(driftIfGrossWereFrozen < target, "the test's premise needs a real drift");
+
+    assert.ok(after.monthlyGrossPaise > before.monthlyGrossPaise);
+    assert.ok(
+      Math.abs(netAt(after.monthlyGrossPaise, statutoryAt(21000), 6) - target) <= R(2),
+      "net drifted after the ceiling moved",
+    );
+  });
+
+  test("a state that does not levy PT still lands on the net", () => {
+    const solved = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: target,
+      components: STRUCTURE,
+      employer: EMPLOYER,
+      stateCode: "DL",
+      gender: null,
+      month: 6,
+      statutory: statutoryAt(15000),
+    });
+    const evaluation = evaluateStructure(STRUCTURE, solved.monthlyGrossPaise);
+    const net = takeHomeFor(evaluation, { ...TAKEHOME, professionalTaxPaise: 0 }).takeHome;
+    assert.ok(Math.abs(net - target) <= R(2), `net ${net} vs target ${target}`);
   });
 });
 

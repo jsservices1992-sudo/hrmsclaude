@@ -791,6 +791,16 @@ export const employeeSalaries = pgTable(
     structureId: text("structure_id").references(() => salaryStructures.id),
     /** Annual CTC this gross was derived from, kept for the offer letter. */
     annualCtcPaise: bigint("annual_ctc_paise", { mode: "number" }),
+    /**
+     * How the figure was agreed with the employee. Only "take_home" changes
+     * what a run does: the gross above becomes a derived number, re-solved
+     * every period so the net in hand stays exactly what was promised.
+     */
+    payMode: text("pay_mode", {
+      enum: ["gross", "annual_gross", "ctc", "take_home"],
+    }),
+    /** The promised monthly net, when payMode is take_home. */
+    targetTakeHomePaise: bigint("target_take_home_paise", { mode: "number" }),
     effectiveFrom: text("effective_from").notNull(),
     effectiveTo: text("effective_to"),
     reason: text("reason"),
@@ -1358,6 +1368,13 @@ export const joiners = pgTable(
        Null on joiners offered before this was captured; conversion falls
        back to solving from the CTC. */
     offeredMonthlyGrossPaise: bigint("offered_monthly_gross_paise", { mode: "number" }),
+    /* How the offer was agreed, and the promised net where that is what was
+       agreed. Both carry onto the salary record at conversion, so an offer
+       made in in-hand terms keeps paying that in-hand figure. */
+    offerPayMode: text("offer_pay_mode", {
+      enum: ["gross", "annual_gross", "ctc", "take_home"],
+    }),
+    offeredTakeHomePaise: bigint("offered_take_home_paise", { mode: "number" }),
     /* An explicit salary-structure pin for this joiner, carried onto the
        employee at conversion. Null means resolve from the department. */
     structureId: text("structure_id").references(() => salaryStructures.id),

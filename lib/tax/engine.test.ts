@@ -82,6 +82,44 @@ test("new regime: ₹12,00,000 is fully rebated", () => {
   assert.equal(r.totalTaxPaise, 0);
 });
 
+test("new regime: marginal relief caps the tax at the excess over ₹12L", () => {
+  /* A raise of ₹10,000 past the rebate limit must not cost ₹61,500 in tax.
+     Relief holds the tax at the excess itself until the slab tax falls
+     back below it. */
+  const justOver = computeSlabTax(L(1210000), NEW_REGIME_2026);
+  assert.equal(justOver.rebatePaise, 0, "the rebate itself is gone");
+  assert.ok(justOver.marginalReliefPaise > 0);
+  assert.equal(
+    justOver.taxAfterRebatePaise,
+    L(10000),
+    "tax is held at the amount by which income exceeds the limit",
+  );
+});
+
+test("new regime: earning one rupee more never costs more than one rupee", () => {
+  const atLimit = computeSlabTax(L(1200000), NEW_REGIME_2026);
+  const oneOver = computeSlabTax(L(1200000) + 100, NEW_REGIME_2026);
+  assert.equal(atLimit.totalTaxPaise, 0);
+  assert.ok(
+    oneOver.totalTaxPaise <= 100 + Math.round(100 * 0.04),
+    `a rupee over cost ${oneOver.totalTaxPaise} paise in tax`,
+  );
+});
+
+test("marginal relief stops once the slab tax falls below the excess", () => {
+  /* Well past the limit the ordinary slab tax is the lower figure, so
+     relief is not given and the tax is simply the slab tax. */
+  const wellOver = computeSlabTax(L(1500000), NEW_REGIME_2026);
+  assert.equal(wellOver.marginalReliefPaise, 0);
+  assert.equal(wellOver.taxAfterRebatePaise, wellOver.taxBeforeRebatePaise);
+});
+
+test("the old regime's 87A has no marginal relief", () => {
+  const justOver = computeSlabTax(L(510000), OLD_REGIME_2026);
+  assert.equal(justOver.marginalReliefPaise, 0);
+  assert.equal(justOver.taxAfterRebatePaise, justOver.taxBeforeRebatePaise);
+});
+
 test("surcharge applies only above the band and takes the highest band", () => {
   const below = computeSlabTax(L(4900000), OLD_REGIME_2026);
   assert.equal(below.surchargePaise, 0);

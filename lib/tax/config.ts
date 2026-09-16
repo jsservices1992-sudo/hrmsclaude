@@ -31,6 +31,7 @@ export const OLD_REGIME_2026: RegimeConfig = {
   standardDeductionPaise: L(50000),
   rebateIncomeLimitPaise: L(500000),
   rebateMaxPaise: L(12500),
+  rebateMarginalRelief: false,
   surcharge: [
     { abovePaise: L(5000000), rateBps: 1000 },
     { abovePaise: L(10000000), rateBps: 1500 },
@@ -57,6 +58,7 @@ export const NEW_REGIME_2026: RegimeConfig = {
   standardDeductionPaise: L(75000),
   rebateIncomeLimitPaise: L(1200000),
   rebateMaxPaise: L(60000),
+  rebateMarginalRelief: true,
   // The 37% band does not apply under the new regime; it caps at 25%.
   surcharge: [
     { abovePaise: L(5000000), rateBps: 1000 },

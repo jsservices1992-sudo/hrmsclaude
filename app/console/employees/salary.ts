@@ -21,14 +21,12 @@ import {
 import {
   buildFromGross,
   buildFromTargetCtc,
-  buildFromTargetTakeHome,
   computeArrears,
-  evaluateStructure,
+  grossForTargetTakeHome,
   type CtcBreakdown,
   type EmployerCostParams,
-  type TakeHomeParams,
 } from "@/lib/payroll/compensation";
-import { computeProfessionalTax } from "@/lib/payroll/statutory";
+import { isPayMode } from "@/lib/payroll/pay-mode";
 
 export type SalaryState = {
   error?: string;
@@ -238,54 +236,30 @@ export async function reviseSalary(
           .where(eq(s.branches.id, employee.branchId))
           .limit(1)
       : [];
-    const stateCode = branch?.stateCode ?? "";
-    const revisionMonth = Number(effectiveFrom.slice(5, 7));
-
-    /* Professional tax is a step function of the PT base, which itself
-       depends on the gross being solved for, so the search is run twice:
-       once with PT taken at the target take-home, then again with PT
-       recomputed from the gross that produced. The slabs are coarse
-       enough that the second pass lands on the right step. */
-    const ptFor = (ptBasePaise: number) =>
-      computeProfessionalTax({
-        stateCode,
-        ptBasePaise,
-        month: revisionMonth,
-        gender: employee.gender,
-        slabs: statutory.ptSlabsByState[stateCode] ?? [],
-        applicable: statutory.ptApplicableByState[stateCode] ?? false,
-      }).amountPaise;
-
-    const takeHomeParamsFor = (professionalTaxPaise: number): TakeHomeParams => ({
-      epfCeilingPaise: statutory.epf.wageCeilingPaise,
-      epfEmployeeBps: statutory.epf.employeeBps,
-      epfOnActualBasic: employerParams.epfOnActualBasic,
-      esicThresholdPaise: statutory.esic.wageThresholdPaise,
-      esicEmployeeBps: statutory.esic.employeeBps,
-      professionalTaxPaise,
-    });
-
-    const firstPass = buildFromTargetTakeHome({
+    const settled = grossForTargetTakeHome({
       targetMonthlyTakeHomePaise: amountPaise,
       components: structure,
       employer: employerParams,
-      takeHome: takeHomeParamsFor(ptFor(amountPaise)),
-    });
-    const settled = buildFromTargetTakeHome({
-      targetMonthlyTakeHomePaise: amountPaise,
-      components: structure,
-      employer: employerParams,
-      takeHome: takeHomeParamsFor(
-        ptFor(evaluateStructure(structure, firstPass.monthlyGrossPaise).ptBasePaise),
-      ),
+      stateCode: branch?.stateCode ?? "",
+      gender: employee.gender,
+      month: Number(effectiveFrom.slice(5, 7)),
+      statutory,
     });
 
     monthlyGrossPaise = settled.monthlyGrossPaise;
     derivation =
       `Derived from a target take-home of ₹${amountRupees.toLocaleString("en-IN")} a month` +
-      ` (lands at ₹${(settled.takeHomePaise / 100).toLocaleString("en-IN")} after PF, ESIC and professional tax;` +
-      ` income tax is deducted separately once declarations are in)`;
+      ` (after PF, ESIC and professional tax; income tax is deducted separately once declarations are in).` +
+      ` Every run re-solves the gross against that period's rates, so the amount in hand holds`;
   }
+
+  /* What was agreed, not just what it worked out to. A take-home revision
+     is re-solved every run so the net holds; every other mode is already
+     described by the gross. */
+  const agreement = {
+    payMode: isPayMode(mode) ? mode : "gross",
+    targetTakeHomePaise: mode === "take_home" ? amountPaise : null,
+  };
 
   const evaluated = buildFromGross({
     monthlyGrossPaise,
@@ -438,6 +412,7 @@ export async function reviseSalary(
         .set({
           monthlyGrossPaise,
           annualCtcPaise: mode === "ctc" ? amountPaise : evaluated.annualCtcPaise,
+          ...agreement,
           effectiveFrom,
           reason: reason ?? "Opening salary corrected",
           structureId:
@@ -476,6 +451,7 @@ export async function reviseSalary(
         // it is the real cost to company — gross plus employer PF, ESIC and
         // gratuity accrual — rather than merely annualised gross.
         annualCtcPaise: mode === "ctc" ? amountPaise : evaluated.annualCtcPaise,
+        ...agreement,
         effectiveFrom,
         effectiveTo: null,
         reason,

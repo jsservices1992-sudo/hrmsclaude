@@ -32,6 +32,13 @@ export type RegimeConfig = {
   /** Section 87A: full rebate where taxable income is at or below the limit. */
   rebateIncomeLimitPaise: Paise;
   rebateMaxPaise: Paise;
+  /**
+   * Whether marginal relief softens the edge of that rebate. Under the new
+   * regime it does: just above the limit, tax is capped at the amount by
+   * which income exceeds it, so earning one rupee more can never cost more
+   * than one rupee in tax. The old regime's 87A has no such relief.
+   */
+  rebateMarginalRelief: boolean;
   surcharge: SurchargeBand[];
   /** Health and education cess, basis points on tax plus surcharge. */
   cessBps: number;
@@ -57,6 +64,8 @@ export type TaxComputation = {
   bands: SlabBreakdown[];
   taxBeforeRebatePaise: Paise;
   rebatePaise: Paise;
+  /** Relief given just above the rebate limit, where the regime allows it. */
+  marginalReliefPaise: Paise;
   taxAfterRebatePaise: Paise;
   surchargePaise: Paise;
   cessPaise: Paise;
@@ -84,14 +93,23 @@ export function computeSlabTax(
     bands.push({ ...slab, taxableInBandPaise: inBand, taxPaise: bandTax });
   }
 
-  // Section 87A is a cliff, not a taper: one rupee over the limit and the
-  // whole rebate disappears.
   const rebate =
     income <= config.rebateIncomeLimitPaise
       ? Math.min(tax, config.rebateMaxPaise)
       : 0;
 
-  const afterRebate = Math.max(0, tax - rebate);
+  /* Section 87A is a cliff: one rupee over the limit and the whole rebate
+     goes. Marginal relief is what stops that cliff from taking more in tax
+     than the raise that crossed it — tax is capped at the excess over the
+     limit until the slab tax falls back below it. Without this, a taxable
+     income of ₹12,00,001 is taxed some ₹60,000 for that single rupee. */
+  const afterFullRebate = Math.max(0, tax - rebate);
+  const marginalRelief =
+    config.rebateMarginalRelief && rebate === 0 && income > config.rebateIncomeLimitPaise
+      ? Math.max(0, afterFullRebate - (income - config.rebateIncomeLimitPaise))
+      : 0;
+
+  const afterRebate = afterFullRebate - marginalRelief;
 
   const band = [...config.surcharge]
     .sort((a, b) => b.abovePaise - a.abovePaise)
@@ -106,6 +124,7 @@ export function computeSlabTax(
     bands,
     taxBeforeRebatePaise: tax,
     rebatePaise: rebate,
+    marginalReliefPaise: marginalRelief,
     taxAfterRebatePaise: afterRebate,
     surchargePaise: surcharge,
     cessPaise: cess,

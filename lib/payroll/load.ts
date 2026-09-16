@@ -21,7 +21,11 @@ import {
   type PayrollConventions,
 } from "./settings";
 import type { PtSlab, LwfRate } from "./statutory";
-import type { ComponentSpec } from "./compensation";
+import {
+  grossForTargetTakeHome,
+  GRATUITY_ACCRUAL_BPS,
+  type ComponentSpec,
+} from "./compensation";
 import {
   buildComponentSpecs,
   resolveStructureId,
@@ -568,6 +572,13 @@ export async function previewRun(args: {
 
   const departmentByEmployee = new Map(rowsSalary.map((r) => [r.emp.id, r.emp.departmentId]));
   const structureIdByEmployee = new Map(rowsSalary.map((r) => [r.emp.id, r.salary.structureId]));
+  /* Who was promised a net in hand rather than a gross. Their gross is a
+     derived figure, re-solved below against this period's rates. */
+  const lockedTakeHomeByEmployee = new Map(
+    rowsSalary
+      .filter((r) => r.salary.payMode === "take_home" && (r.salary.targetTakeHomePaise ?? 0) > 0)
+      .map((r) => [r.emp.id, r.salary.targetTakeHomePaise!]),
+  );
 
   /* The professionals, computed on their own terms and merged in. */
   const { loadTdsRateConfig, loadFyToDate } = await import("./professional-load");
@@ -654,8 +665,37 @@ export async function previewRun(args: {
         employeeDepartmentId: deptId ?? null,
       });
       const company: CompanyConfig = { ...baseConfig, structure: resolved.components };
+
+      /* A fixed net in hand is a promise about the bottom line, so the
+         gross has to move when the deductions under it move — a PF ceiling
+         revision, a PT slab step, the higher February PT some states
+         charge. Solving once at joining and storing the gross keeps the
+         gross still and lets the net drift, which is backwards. */
+      const lockedTakeHome = lockedTakeHomeByEmployee.get(employee.id);
+      const forRun = lockedTakeHome
+        ? {
+            ...employee,
+            monthlyGrossPaise: grossForTargetTakeHome({
+              targetMonthlyTakeHomePaise: lockedTakeHome,
+              components: resolved.components,
+              employer: {
+                epfCeilingPaise: statutory.epf.wageCeilingPaise,
+                epfEmployerBps: statutory.epf.employerBps,
+                epfOnActualBasic: company.epfOnActualBasic,
+                esicThresholdPaise: statutory.esic.wageThresholdPaise,
+                esicEmployerBps: statutory.esic.employerBps,
+                gratuityAccrualBps: GRATUITY_ACCRUAL_BPS,
+              },
+              stateCode: employee.stateCode,
+              gender: employee.gender,
+              month: args.month,
+              statutory,
+            }).monthlyGrossPaise,
+          }
+        : employee;
+
       return computeEmployeePay({
-        employee,
+        employee: forRun,
         company,
         statutory,
         year: args.year,

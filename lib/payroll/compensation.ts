@@ -1,4 +1,11 @@
 import { apportion, type Paise } from "./money";
+import { computeProfessionalTax, type PtSlab } from "./statutory";
+
+/**
+ * 15 days' wages a year over 26 working days, spread monthly — the
+ * standard gratuity accrual.
+ */
+export const GRATUITY_ACCRUAL_BPS = 481;
 
 /* ==================================================================
    Pay components — FR-PAY-2
@@ -469,6 +476,75 @@ export function buildFromTargetTakeHome(args: {
   const { takeHome } = takeHomeFor(evaluation, args.takeHome);
 
   return { ...breakdown, takeHomePaise: takeHome };
+}
+
+/**
+ * The gross that lands on an exact net in hand, for one period's rates.
+ *
+ * Professional tax is a step function of the PT base, which itself depends
+ * on the gross being solved for, so the search runs twice: once with PT
+ * taken at the target take-home, then again with PT recomputed from the
+ * gross that produced. The slabs are coarse enough that the second pass
+ * lands on the right step.
+ *
+ * Every input that can move between two periods — the PF ceiling, the ESIC
+ * threshold, PT slabs, the February PT override some states charge — is
+ * read as at the period being solved for. That is the whole point: a fixed
+ * net is only actually fixed if it is re-solved each month. Solve it once
+ * at joining and store the gross, and the net quietly drifts the first time
+ * any of those move.
+ */
+export function grossForTargetTakeHome(args: {
+  targetMonthlyTakeHomePaise: Paise;
+  components: ComponentSpec[];
+  employer: EmployerCostParams;
+  stateCode: string;
+  gender: "female" | "male" | "other" | null;
+  /** Calendar month 1-12, for states that charge a different February. */
+  month: number;
+  statutory: {
+    epf: { wageCeilingPaise: Paise; employeeBps: number };
+    esic: { wageThresholdPaise: Paise; employeeBps: number };
+    ptSlabsByState: Record<string, PtSlab[]>;
+    ptApplicableByState: Record<string, boolean>;
+  };
+}): { monthlyGrossPaise: Paise; takeHome: TakeHomeParams } {
+  const ptFor = (ptBasePaise: Paise) =>
+    computeProfessionalTax({
+      stateCode: args.stateCode,
+      ptBasePaise,
+      month: args.month,
+      gender: args.gender ?? "other",
+      slabs: args.statutory.ptSlabsByState[args.stateCode] ?? [],
+      applicable: args.statutory.ptApplicableByState[args.stateCode] ?? false,
+    }).amountPaise;
+
+  const paramsFor = (professionalTaxPaise: Paise): TakeHomeParams => ({
+    epfCeilingPaise: args.statutory.epf.wageCeilingPaise,
+    epfEmployeeBps: args.statutory.epf.employeeBps,
+    epfOnActualBasic: args.employer.epfOnActualBasic,
+    esicThresholdPaise: args.statutory.esic.wageThresholdPaise,
+    esicEmployeeBps: args.statutory.esic.employeeBps,
+    professionalTaxPaise,
+  });
+
+  const firstPass = buildFromTargetTakeHome({
+    targetMonthlyTakeHomePaise: args.targetMonthlyTakeHomePaise,
+    components: args.components,
+    employer: args.employer,
+    takeHome: paramsFor(ptFor(args.targetMonthlyTakeHomePaise)),
+  });
+  const takeHome = paramsFor(
+    ptFor(evaluateStructure(args.components, firstPass.monthlyGrossPaise).ptBasePaise),
+  );
+  const settled = buildFromTargetTakeHome({
+    targetMonthlyTakeHomePaise: args.targetMonthlyTakeHomePaise,
+    components: args.components,
+    employer: args.employer,
+    takeHome,
+  });
+
+  return { monthlyGrossPaise: settled.monthlyGrossPaise, takeHome };
 }
 
 /* ==================================================================

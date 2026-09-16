@@ -33,9 +33,13 @@ import EmployeeForm from "../employee-form";
 import CustomFieldsForm from "../custom-fields-form";
 import { loadEmployeeAssetHistory } from "@/lib/assets/load";
 import { RevokeAssetForm } from "@/app/console/assets/forms";
-import { SalaryBreakupTable } from "@/components/console/salary-breakup-table";
+import {
+  SalaryBreakupTable,
+  type TakeHomeSummary,
+} from "@/components/console/salary-breakup-table";
+import { loadWorksheet } from "@/lib/tax/load";
 import { Card, Badge, THead, TH, TBody, TR, TD, Tabs, TabLink } from "@/components/console/ui";
-import { computeProfessionalTax } from "@/lib/payroll/statutory";
+import { computeProfessionalTax, computeLwf } from "@/lib/payroll/statutory";
 import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Employee" };
@@ -117,9 +121,7 @@ export default async function EmployeeDetailPage(
   const isProfessional = detail.employee.paymentBasis === "professional_fee";
   let currentCtc: CtcBreakdown | null = null;
   let currentBreakupStructureId: string | null = null;
-  let currentTakeHome: {
-    takeHomePaise: number; epfPaise: number; esicPaise: number; ptPaise: number;
-  } | null = null;
+  let currentTakeHome: TakeHomeSummary | null = null;
   if (canSeeCompensation(user) && currentSalary) {
     const structureCtx = await loadStructureResolutionContext(company.id);
     const resolved = resolveEmployeeStructure(structureCtx, {
@@ -170,11 +172,37 @@ export default async function EmployeeDetailPage(
       esicEmployeeBps: statutory.esic.employeeBps,
       professionalTaxPaise,
     });
+    /* Labour welfare fund is charged in named months — half-yearly in most
+       states that levy it, annually in some — so its year is the rate times
+       the number of those months, not the monthly figure times twelve. */
+    const lwfRate = statutory.lwfByState[stateCode] ?? null;
+    const lwfMonths = lwfRate?.deductionMonths.length ?? 0;
+    const lwf = computeLwf({
+      stateCode,
+      month: lwfRate?.deductionMonths[0] ?? 1,
+      applicable: statutory.lwfApplicableByState[stateCode] ?? false,
+      rate: lwfRate,
+    });
+
+    /* Projected income tax, from the same worksheet a run deducts against.
+       Absent until declarations are in, which is what the table then says
+       rather than implying the tax is nil. */
+    const worksheet = await loadWorksheet(e.id);
+
     currentTakeHome = {
       takeHomePaise: th.takeHome,
       epfPaise: th.epf,
       esicPaise: th.esic,
       ptPaise: th.pt,
+      lwfPaise: lwf.employeePaise,
+      lwfAnnualPaise: lwf.employeePaise * lwfMonths,
+      lwfBasis: `${stateCode} — ${lwf.reason}, charged in ${lwfMonths} month(s) a year`,
+      incomeTaxPaise: worksheet?.projection.monthlyTdsPaise ?? 0,
+      /* The projection's own annual figure, not the slab tax: without a
+         valid PAN section 206AA deducts at a flat rate that can exceed the
+         slab liability, and it is the deducted amount this line is for. */
+      incomeTaxAnnualPaise: worksheet?.projection.annualTaxPaise ?? 0,
+      incomeTaxBasis: worksheet?.projection.basis,
     };
   }
 
