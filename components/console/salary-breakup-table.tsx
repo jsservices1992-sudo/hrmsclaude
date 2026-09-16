@@ -14,10 +14,13 @@ export type TakeHomeSummary = {
   epfPaise: number;
   esicPaise: number;
   ptPaise: number;
-  /** Employee share of labour welfare fund, per deduction, and per year. */
+  /** Employee share of labour welfare fund, per deduction. */
   lwfPaise?: number;
   lwfEmployerPaise?: number;
+  /** The months it falls in. Twelve of them means it is simply monthly. */
   lwfMonths?: number[];
+  /** True where the salary is held at a net, so LWF months raise the gross. */
+  netIsHeld?: boolean;
   /** Projected income tax for the month, once declarations are in. */
   incomeTaxPaise?: number;
   incomeTaxAnnualPaise?: number;
@@ -114,6 +117,9 @@ export function SalaryBreakupTable({
     note: c.basis,
   }));
 
+  const lwfMonths = takeHome?.lwfMonths ?? [];
+  const lwfIsMonthly = lwfMonths.length === 12 && (takeHome?.lwfPaise ?? 0) > 0;
+
   const employeeRows: Row[] = takeHome
     ? [
         { label: "Employee PF", monthly: takeHome.epfPaise, negative: true, note: "12% of PF wages" },
@@ -124,6 +130,19 @@ export function SalaryBreakupTable({
           note: "State slab — varies by the state the branch sits in",
         },
         { label: "ESIC", monthly: takeHome.esicPaise, negative: true, note: "0.75% of gross, where ESIC applies" },
+        /* Where the fund is charged every month it is an ordinary
+           deduction and belongs in the arithmetic. Where it falls in named
+           months it is not, and the note below carries it instead. */
+        ...(lwfIsMonthly
+          ? [
+              {
+                label: "Labour welfare fund",
+                monthly: takeHome.lwfPaise ?? 0,
+                negative: true,
+                note: "State labour welfare fund, charged every month",
+              } satisfies Row,
+            ]
+          : []),
         {
           label: "TDS (income tax)",
           monthly: takeHome.incomeTaxPaise ? takeHome.incomeTaxPaise : "As applicable",
@@ -136,13 +155,15 @@ export function SalaryBreakupTable({
       ]
     : [];
 
-  const lwfMonths = takeHome?.lwfMonths ?? [];
   const lwfNote =
-    takeHome && (takeHome.lwfPaise ?? 0) > 0 && lwfMonths.length > 0
+    takeHome && !lwfIsMonthly && (takeHome.lwfPaise ?? 0) > 0 && lwfMonths.length > 0
       ? `Labour welfare fund: ₹${((takeHome.lwfPaise ?? 0) / 100).toFixed(0)} from the employee` +
         ` and ₹${((takeHome.lwfEmployerPaise ?? 0) / 100).toFixed(0)} from the employer,` +
-        ` deducted in ${lwfMonths.map((m) => MONTH_NAMES[m - 1]).join(" and ")} only.` +
-        " It is left out of the monthly figures above because it is not charged every month."
+        ` deducted in ${lwfMonths.map((m) => MONTH_NAMES[m - 1]).join(" and ")} only —` +
+        " which is why it is not in the monthly figures above." +
+        (takeHome.netIsHeld
+          ? " In those months the gross rises to carry it, so the net in hand is unchanged."
+          : " In those months the net in hand is lower by that much.")
       : null;
 
   const employerRows: Row[] = [

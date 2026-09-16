@@ -192,19 +192,9 @@ export default async function EmployeeDetailPage(
       applicable: statutory.ptApplicableByState[stateCode] ?? false,
     }).amountPaise;
 
-    const th = takeHomeFor(evaluation, {
-      epfCeilingPaise: statutory.epf.wageCeilingPaise,
-      epfEmployeeBps: statutory.epf.employeeBps,
-      epfOnActualBasic: company.epfOnActualBasic,
-      esicThresholdPaise: statutory.esic.wageThresholdPaise,
-      esicEmployeeBps: statutory.esic.employeeBps,
-      professionalTaxPaise,
-      pfOptedIn: e.pfOptedIn,
-      hadPriorPfMembership: e.hadPriorPfMembership,
-    });
     /* Labour welfare fund is charged in named months — half-yearly in most
-       states that levy it, annually in some — so its year is the rate times
-       the number of those months, not the monthly figure times twelve. */
+       states that levy it, monthly in a few. Priced at a month it actually
+       falls in, so the figure shown is the real one rather than a nil. */
     const lwfRate = statutory.lwfByState[stateCode] ?? null;
     const lwf = computeLwf({
       stateCode,
@@ -212,7 +202,21 @@ export default async function EmployeeDetailPage(
       applicable: statutory.lwfApplicableByState[stateCode] ?? false,
       rate: lwfRate,
     });
+    /* Only where it falls every month does it belong in a monthly net. */
+    const lwfMonthlyPaise =
+      lwfRate?.frequency === "monthly" ? lwf.employeePaise : 0;
 
+    const th = takeHomeFor(evaluation, {
+      epfCeilingPaise: statutory.epf.wageCeilingPaise,
+      epfEmployeeBps: statutory.epf.employeeBps,
+      epfOnActualBasic: company.epfOnActualBasic,
+      esicThresholdPaise: statutory.esic.wageThresholdPaise,
+      esicEmployeeBps: statutory.esic.employeeBps,
+      professionalTaxPaise,
+      lwfEmployeePaise: lwfMonthlyPaise,
+      pfOptedIn: e.pfOptedIn,
+      hadPriorPfMembership: e.hadPriorPfMembership,
+    });
     /* Projected income tax, from the same worksheet a run deducts against.
        Absent until declarations are in, which is what the table then says
        rather than implying the tax is nil. */
@@ -226,6 +230,7 @@ export default async function EmployeeDetailPage(
       lwfPaise: lwf.employeePaise,
       lwfEmployerPaise: lwf.employerPaise,
       lwfMonths: lwfRate?.deductionMonths ?? [],
+      netIsHeld: currentSalary.payMode === "take_home",
       incomeTaxPaise: worksheet?.projection.monthlyTdsPaise ?? 0,
       /* The projection's own annual figure, not the slab tax: without a
          valid PAN section 206AA deducts at a flat rate that can exceed the

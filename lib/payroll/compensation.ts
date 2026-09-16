@@ -1,5 +1,11 @@
 import { apportion, type Paise } from "./money";
-import { computeProfessionalTax, epfExcluded, type PtSlab } from "./statutory";
+import {
+  computeLwf,
+  computeProfessionalTax,
+  epfExcluded,
+  type LwfRate,
+  type PtSlab,
+} from "./statutory";
 
 /**
  * 15 days' wages a year over 26 working days, spread monthly — the
@@ -438,6 +444,12 @@ export type TakeHomeParams = {
   /** Flat monthly professional tax, where it applies. */
   professionalTaxPaise: Paise;
   /**
+   * Labour welfare fund for this month — nil in the months it is not
+   * charged. It comes out of the same pay as everything else, so a net
+   * that leaves it out is not the figure that reaches the bank.
+   */
+  lwfEmployeePaise?: Paise;
+  /**
    * The excluded-employee test, so a projected take-home does not show a
    * PF deduction the run will not make. Omitted, PF is taken to apply —
    * which is the answer for everyone who is not an excluded employee.
@@ -449,7 +461,7 @@ export type TakeHomeParams = {
 export function takeHomeFor(
   evaluation: EvaluationResult,
   p: TakeHomeParams,
-): { takeHome: Paise; epf: Paise; esic: Paise; pt: Paise } {
+): { takeHome: Paise; epf: Paise; esic: Paise; pt: Paise; lwf: Paise } {
   const excluded = epfExcluded({
     pfWagePaise: evaluation.epfBasePaise,
     wageCeilingPaise: p.epfCeilingPaise,
@@ -467,7 +479,14 @@ export function takeHomeFor(
       : 0;
 
   const pt = p.professionalTaxPaise;
-  return { takeHome: evaluation.grossPaise - epf - esic - pt, epf, esic, pt };
+  const lwf = p.lwfEmployeePaise ?? 0;
+  return {
+    takeHome: evaluation.grossPaise - epf - esic - pt - lwf,
+    epf,
+    esic,
+    pt,
+    lwf,
+  };
 }
 
 /** The same search, run backwards from a target monthly take-home. */
@@ -535,8 +554,19 @@ export function grossForTargetTakeHome(args: {
     esic: { wageThresholdPaise: Paise; employeeBps: number };
     ptSlabsByState: Record<string, PtSlab[]>;
     ptApplicableByState: Record<string, boolean>;
+    lwfByState: Record<string, LwfRate | null>;
+    lwfApplicableByState: Record<string, boolean>;
   };
 }): { monthlyGrossPaise: Paise; takeHome: TakeHomeParams } {
+  /* Labour welfare fund falls in named months only, and is a flat amount
+     rather than a function of pay — so in those months the gross has to
+     carry it too, or the promised net quietly arrives short by it. */
+  const lwfEmployeePaise = computeLwf({
+    stateCode: args.stateCode,
+    month: args.month,
+    applicable: args.statutory.lwfApplicableByState[args.stateCode] ?? false,
+    rate: args.statutory.lwfByState[args.stateCode] ?? null,
+  }).employeePaise;
   const ptFor = (ptBasePaise: Paise) =>
     computeProfessionalTax({
       stateCode: args.stateCode,
@@ -554,6 +584,7 @@ export function grossForTargetTakeHome(args: {
     esicThresholdPaise: args.statutory.esic.wageThresholdPaise,
     esicEmployeeBps: args.statutory.esic.employeeBps,
     professionalTaxPaise,
+    lwfEmployeePaise,
     pfOptedIn: args.pfOptedIn,
     hadPriorPfMembership: args.hadPriorPfMembership,
   });

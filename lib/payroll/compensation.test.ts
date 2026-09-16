@@ -386,6 +386,8 @@ describe("Excluded employees", () => {
         esic: { wageThresholdPaise: R(21000), employeeBps: 75 },
         ptSlabsByState: {},
         ptApplicableByState: {},
+        lwfByState: {},
+        lwfApplicableByState: {},
       },
     });
     const net = takeHomeFor(evaluateStructure(STRUCTURE, solved.monthlyGrossPaise), {
@@ -423,6 +425,8 @@ describe("Fixed take-home", () => {
     esic: { wageThresholdPaise: R(21000), employeeBps: 75 },
     ptSlabsByState: { MH: MH_SLABS },
     ptApplicableByState: { MH: true },
+    lwfByState: {},
+    lwfApplicableByState: {},
   });
 
   const netAt = (gross: number, statutory: ReturnType<typeof statutoryAt>, month: number) => {
@@ -515,6 +519,60 @@ describe("Fixed take-home", () => {
     assert.ok(
       Math.abs(netAt(after.monthlyGrossPaise, statutoryAt(21000), 6) - target) <= R(2),
       "net drifted after the ceiling moved",
+    );
+  });
+
+  test("a labour welfare fund month does not shave the promised net", () => {
+    /* The real report: ₹27,000 agreed, ₹26,966 paid. The missing ₹34 was
+       labour welfare fund — charged in named months, left out of the solve,
+       and so taken straight out of the promise. */
+    const lwf = {
+      employeePaise: R(34),
+      employerPaise: R(68),
+      frequency: "half_yearly" as const,
+      deductionMonths: [9, 3],
+    };
+    const statutory = {
+      epf: { wageCeilingPaise: R(15000), employeeBps: 1200 },
+      esic: { wageThresholdPaise: R(21000), employeeBps: 75 },
+      ptSlabsByState: {},
+      ptApplicableByState: {},
+      lwfByState: { HR: lwf },
+      lwfApplicableByState: { HR: true },
+    };
+    const solve = (month: number) =>
+      grossForTargetTakeHome({
+        targetMonthlyTakeHomePaise: target,
+        components: STRUCTURE,
+        employer: EMPLOYER,
+        stateCode: "HR",
+        gender: null,
+        month,
+        statutory,
+      });
+
+    const ordinary = solve(6);
+    const lwfMonth = solve(9);
+
+    const netIn = (month: number, gross: number) =>
+      takeHomeFor(evaluateStructure(STRUCTURE, gross), {
+        ...TAKEHOME,
+        professionalTaxPaise: 0,
+        lwfEmployeePaise: month === 9 ? R(34) : 0,
+      }).takeHome;
+
+    assert.ok(
+      Math.abs(netIn(6, ordinary.monthlyGrossPaise) - target) <= R(2),
+      "ordinary month misses the target",
+    );
+    assert.equal(
+      lwfMonth.monthlyGrossPaise - ordinary.monthlyGrossPaise,
+      R(34),
+      "the gross has to carry the fund in the month it falls",
+    );
+    assert.ok(
+      Math.abs(netIn(9, lwfMonth.monthlyGrossPaise) - target) <= R(2),
+      "the fund came out of the promised net instead of the gross",
     );
   });
 

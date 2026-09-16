@@ -33,25 +33,25 @@ export function payModeSummary(mode: PayMode | null): {
       return {
         label: "Net in hand",
         holds: "net",
-        note: "The net in hand is held. Gross and CTC are re-solved each period against that period's PF, ESIC and professional tax, so the amount that reaches the bank does not drift.",
+        note: "The net in hand is held. Gross and CTC are re-solved each period against that period's PF, ESIC, professional tax and labour welfare fund, so the amount that reaches the bank does not drift.",
       };
     case "ctc":
       return {
         label: "Annual CTC",
         holds: "ctc",
-        note: "The CTC is held. The net in hand moves with PF, ESIC and professional tax as those change.",
+        note: "The CTC is held. The net in hand moves with PF, ESIC, professional tax and labour welfare fund as those change.",
       };
     case "annual_gross":
       return {
         label: "Annual gross",
         holds: "gross",
-        note: "The gross is held. The net in hand moves with PF, ESIC and professional tax as those change.",
+        note: "The gross is held. The net in hand moves with PF, ESIC, professional tax and labour welfare fund as those change.",
       };
     case "gross":
       return {
         label: "Monthly gross",
         holds: "gross",
-        note: "The gross is held. The net in hand moves with PF, ESIC and professional tax as those change.",
+        note: "The gross is held. The net in hand moves with PF, ESIC, professional tax and labour welfare fund as those change.",
       };
     default:
       return {
