@@ -87,7 +87,7 @@ export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
           },
           {
             href: "/console/payroll/inputs",
-            label: "Variable pay",
+            label: "Incentives & deductions",
             icon: "sliders",
             needsCompensation: true,
           },
@@ -225,7 +225,7 @@ export const SEGMENT_LABELS: Record<string, string> = {
   audit: "Audit & controls",
   reports: "Reports",
   api: "API & webhooks",
-  inputs: "Variable pay",
+  inputs: "Incentives & deductions",
   run: "Run payroll",
   "master-data": "Master data",
   account: "My account",

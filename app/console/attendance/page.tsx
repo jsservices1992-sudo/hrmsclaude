@@ -337,7 +337,11 @@ export default async function AttendancePage(
         />
         <StatCard label="Holidays" value={holidayRows.filter((h) => !h.restricted).length} />
         <StatCard label="Pending approvals" value={pendingCount} />
-        <StatCard label="Adjustments" value={adjustments.length} hint="Incentives & deductions" />
+        <StatCard
+          label="Incentives &amp; deductions"
+          value={adjustments.length}
+          hint="one-off, this month only"
+        />
       </div>
 
       <Tabs>
@@ -352,7 +356,7 @@ export default async function AttendancePage(
         </TabLink>
         {canAct && (
           <TabLink href={`/console/attendance?${q}&tab=adjustments`} active={tab === "adjustments"}>
-            Adjustments
+            Incentives &amp; deductions
           </TabLink>
         )}
         {canAct && (
@@ -573,11 +577,30 @@ export default async function AttendancePage(
       {/* ---------------- adjustments ---------------- */}
       {tab === "adjustments" && canAct && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">One-off incentives &amp; deductions</span>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="label text-ink-2">
+              Incentives &amp; deductions for {MONTHS[month - 1]} {year}
+            </span>
+            <Link
+              href={`/console/payroll/inputs?company=${companyId}&year=${year}&month=${month}`}
+              className="label text-brass hover:underline whitespace-nowrap"
+            >
+              Add one →
+            </Link>
           </div>
           {adjustments.length === 0 ? (
-            <EmptyState title="No adjustments this period" description="Anything added here is folded in the next time this period is calculated." />
+            <EmptyState
+              title="Nothing added for this month"
+              description="A bonus, an incentive, overtime, or a one-off deduction — anything that applies to this month only and is not part of somebody's salary. It is folded in the next time the month is calculated."
+              action={
+                <Link
+                  href={`/console/payroll/inputs?company=${companyId}&year=${year}&month=${month}`}
+                  className="label text-brass hover:underline"
+                >
+                  Add an incentive or deduction →
+                </Link>
+              }
+            />
           ) : (
             <Table className="border-0 rounded-none">
               <THead>

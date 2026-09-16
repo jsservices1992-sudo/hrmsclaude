@@ -39,7 +39,7 @@ import {
   RemoveVariablePayForm,
 } from "./forms";
 
-export const metadata = { title: "Variable pay" };
+export const metadata = { title: "Incentives & deductions" };
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -152,7 +152,7 @@ export default async function VariablePayPage(
     <div className="flex flex-col gap-5">
       <PageHeader
         eyebrow="Payroll"
-        title="Variable pay"
+        title="Incentives &amp; deductions"
         description={`${company?.name ?? ""} · ${MONTHS[month - 1]} ${year}`}
         actions={
           <FilterBar action="/console/payroll/inputs" mode="switch">

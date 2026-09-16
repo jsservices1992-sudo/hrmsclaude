@@ -155,14 +155,14 @@ export function buildRunSteps(i: RunStatusInput, query: string): RunStep[] {
   /* 3 — this month's extras */
   steps.push({
     id: "variable",
-    title: "Variable pay",
+    title: "Incentives & deductions",
     state: i.variablePayCount === 0 ? "ready" : "done",
     detail:
       i.variablePayCount === 0
-        ? "Nothing entered — overtime, bonus, incentive or deduction"
+        ? "Nothing added — a bonus, an incentive, overtime, or a one-off deduction"
         : `${i.variablePayCount} entr${i.variablePayCount === 1 ? "y" : "ies"} · ${money(i.variablePayNetPaise)} net`,
     href: `/console/payroll/inputs?${query}`,
-    actionLabel: "Variable pay",
+    actionLabel: "Add one",
   });
 
   /* 4 — calculate */
