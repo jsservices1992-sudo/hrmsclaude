@@ -103,12 +103,20 @@ export async function saveGrade(_prev: MasterState, fd: FormData): Promise<Maste
   const level = num(fd.get("level"));
   const noticeDays = fd.get("noticeDays") ? num(fd.get("noticeDays")) : null;
   const probationMonths = fd.get("probationMonths") ? num(fd.get("probationMonths")) : null;
+  /* Which state minimum wage applies to people on this grade. Blank is a
+     real answer — it means nobody has decided, which the run reports
+     rather than passing over. */
+  const skillRaw = String(fd.get("skillCategory") ?? "").trim();
+  const SKILLS = ["unskilled", "semi_skilled", "skilled", "highly_skilled"];
+  const skillCategory = SKILLS.includes(skillRaw)
+    ? (skillRaw as "unskilled" | "semi_skilled" | "skilled" | "highly_skilled")
+    : null;
   if (!name) return { error: "Name is required.", values: submitted(fd) };
 
   if (id) {
     const [existing] = await db.select().from(s.grades).where(eq(s.grades.id, id)).limit(1);
     if (!existing || existing.companyId !== companyId) return { error: "Grade not found.", values: submitted(fd) };
-    await db.update(s.grades).set({ name, level, noticeDays, probationMonths }).where(eq(s.grades.id, id));
+    await db.update(s.grades).set({ name, level, noticeDays, probationMonths, skillCategory }).where(eq(s.grades.id, id));
     await audit({ actor: user.email, action: "grade.updated", entity: "grade", entityId: id, before: existing, after: { name, level } });
     revalidate();
     return { ok: "Grade updated." };
@@ -118,7 +126,7 @@ export async function saveGrade(_prev: MasterState, fd: FormData): Promise<Maste
   if (clash.length > 0) return { error: "That grade name is already in use.", values: submitted(fd) };
 
   const newId = randomUUID();
-  await db.insert(s.grades).values({ id: newId, companyId, name, level, noticeDays, probationMonths });
+  await db.insert(s.grades).values({ id: newId, companyId, name, level, noticeDays, probationMonths, skillCategory });
   await audit({ actor: user.email, action: "grade.created", entity: "grade", entityId: newId, after: { name, level } });
   revalidate();
   return { ok: "Grade added." };

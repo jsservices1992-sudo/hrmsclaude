@@ -71,6 +71,7 @@ const AUDITED_FIELDS = [
   "designation",
   "departmentId",
   "gradeId",
+  "skillCategory",
   "managerId",
   "branchId",
   "employmentType",
@@ -78,6 +79,7 @@ const AUDITED_FIELDS = [
   "dateOfJoining",
   "pan",
   "uan",
+  "esicIp",
   "bankAccount",
   "ifsc",
 ] as const;
@@ -100,12 +102,23 @@ const EmployeeSchema = z.object({
   mobile: z.string().regex(MOBILE_RE, MSG.mobile).nullable(),
   pan: z.string().regex(PAN_RE, MSG.pan).nullable(),
   uan: z.string().regex(UAN_RE, MSG.uan).nullable(),
+  /* The ESIC insurance number. The return will not accept a line
+     without one, so it is asked for rather than left to be discovered
+     when the return is filed. */
+  esicIp: z
+    .string()
+    .regex(/^\d{10}$|^\d{17}$/, "An ESIC IP number is 10 or 17 digits")
+    .nullable(),
   ifsc: z.string().regex(IFSC_RE, MSG.ifsc).nullable(),
   bankAccount: z.string().regex(BANK_ACCOUNT_RE, MSG.bankAccount).nullable(),
   designation: z.string().max(80).nullable(),
   branchId: z.string().min(1, "Branch is required"),
   departmentId: z.string().nullable(),
   gradeId: z.string().nullable(),
+  /* Overrides the grade's, for somebody the grade does not describe. */
+  skillCategory: z
+    .enum(["unskilled", "semi_skilled", "skilled", "highly_skilled"])
+    .nullable(),
   managerId: z.string().nullable(),
   gender: z.enum(["female", "male", "other"]),
   employmentType: z.enum([
@@ -135,12 +148,14 @@ function parseForm(formData: FormData) {
     mobile: normaliseMobile(nullable(formData.get("mobile"))),
     pan: normalisePan(nullable(formData.get("pan"))),
     uan: normaliseUan(nullable(formData.get("uan"))),
+    esicIp: nullable(formData.get("esicIp"))?.replace(/\s|-/g, "") ?? null,
     ifsc: normaliseIfsc(nullable(formData.get("ifsc"))),
     bankAccount: normaliseBankAccount(nullable(formData.get("bankAccount"))),
     designation: nullable(formData.get("designation")),
     branchId: String(formData.get("branchId") ?? ""),
     departmentId: nullable(formData.get("departmentId")),
     gradeId: nullable(formData.get("gradeId")),
+    skillCategory: nullable(formData.get("skillCategory")),
     managerId: nullable(formData.get("managerId")),
     gender: String(formData.get("gender") ?? "other"),
     employmentType: String(formData.get("employmentType") ?? "permanent"),
@@ -283,6 +298,7 @@ export async function createEmployee(
     designation: data.designation,
     departmentId: data.departmentId,
     gradeId: data.gradeId,
+    skillCategory: data.skillCategory,
     managerId: data.managerId,
     gender: data.gender,
     employmentType: data.employmentType,
@@ -290,6 +306,7 @@ export async function createEmployee(
     status: "active",
     pan: data.pan,
     uan: data.uan,
+    esicIp: data.esicIp,
     bankAccount: data.bankAccount,
     ifsc: data.ifsc,
     hadPriorPfMembership: formData.get("hadPriorPfMembership") === "on",
@@ -456,12 +473,14 @@ export async function updateEmployee(
       designation: data.designation,
       departmentId: data.departmentId,
       gradeId: data.gradeId,
+      skillCategory: data.skillCategory,
       managerId: data.managerId,
       gender: data.gender,
       employmentType: data.employmentType,
       dateOfJoining: data.dateOfJoining,
       pan: data.pan,
       uan: data.uan,
+      esicIp: data.esicIp,
       bankAccount: data.bankAccount,
       ifsc: data.ifsc,
     })

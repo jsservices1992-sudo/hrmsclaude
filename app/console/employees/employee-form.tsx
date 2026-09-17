@@ -31,11 +31,13 @@ const EMPLOYEE_LABELS: Record<string, string> = {
   branchId: "Branch",
   departmentId: "Department",
   gradeId: "Grade",
+  skillCategory: "Skill category",
   managerId: "Reporting manager",
   employmentType: "Employment type",
   dateOfJoining: "Date of joining",
   pan: "PAN",
   uan: "UAN",
+  esicIp: "ESIC IP number",
   bankAccount: "Bank account",
   ifsc: "IFSC",
   structureId: "Salary structure",
@@ -63,6 +65,7 @@ export type EmployeeValues = Partial<{
   branchId: string;
   departmentId: string | null;
   gradeId: string | null;
+  skillCategory: string | null;
   managerId: string | null;
   gender: string;
   employmentType: string;
@@ -75,6 +78,7 @@ export type EmployeeValues = Partial<{
   emergencyContactPhone: string | null;
   pan: string | null;
   uan: string | null;
+  esicIp: string | null;
   bankAccount: string | null;
   ifsc: string | null;
   hadPriorPfMembership: boolean;
@@ -276,6 +280,18 @@ export default function EmployeeForm({
           error={err("gradeId")}
         />
         <Select
+          label="Skill category"
+          name="skillCategory"
+          defaultValue={val("skillCategory")}
+          options={[
+            { id: "unskilled", label: "Unskilled" },
+            { id: "semi_skilled", label: "Semi-skilled" },
+            { id: "skilled", label: "Skilled" },
+            { id: "highly_skilled", label: "Highly skilled" },
+          ]}
+          error={err("skillCategory")}
+        />
+        <Select
           label="Reporting manager"
           name="managerId"
           defaultValue={val("managerId")}
@@ -302,6 +318,7 @@ export default function EmployeeForm({
       <Section title="Statutory & banking">
         <Field label="PAN" name="pan" {...IDENTIFIER_INPUT.pan} defaultValue={val("pan")} error={err("pan")} hint="ABCDE1234F" />
         <Field label="UAN" name="uan" {...IDENTIFIER_INPUT.uan} defaultValue={val("uan")} error={err("uan")} hint="12 digits" />
+        <Field label="ESIC IP number" name="esicIp" defaultValue={val("esicIp")} error={err("esicIp")} hint="10 or 17 digits. The ESIC return will not accept a line without it." />
         <Field label="Bank account" name="bankAccount" {...IDENTIFIER_INPUT.bankAccount} defaultValue={val("bankAccount")} error={err("bankAccount")} />
         <Field label="IFSC" name="ifsc" {...IDENTIFIER_INPUT.ifsc} defaultValue={val("ifsc")} error={err("ifsc")} hint="HDFC0000123" />
         <label className="flex items-center gap-2.5 self-end pb-2">

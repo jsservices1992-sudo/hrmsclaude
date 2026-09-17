@@ -63,7 +63,7 @@ export function GradeForm({
   editing,
 }: {
   companyId: string;
-  editing?: { id: string; name: string; level: number; noticeDays: number | null; probationMonths: number | null };
+  editing?: { id: string; name: string; level: number; noticeDays: number | null; probationMonths: number | null; skillCategory: string | null };
 }) {
   const [state, action] = useActionState<MasterState, FormData>(saveGrade, {});
   return (
@@ -94,6 +94,20 @@ export function GradeForm({
         <span className="text-xs text-ink-3">
           Recorded for reference. Nothing computes from it yet — set the
           probation end date on the employee.
+        </span>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="label text-ink-3">Skill category</span>
+        <Select name="skillCategory" defaultValue={state.values?.skillCategory ?? editing?.skillCategory ?? ""}>
+          <option value="">Not set</option>
+          <option value="unskilled">Unskilled</option>
+          <option value="semi_skilled">Semi-skilled</option>
+          <option value="skilled">Skilled</option>
+          <option value="highly_skilled">Highly skilled</option>
+        </Select>
+        <span className="text-xs text-ink-3 max-w-[28ch]">
+          Which state minimum wage people on this grade are measured against.
+          Left unset, the run reports that it could not check them.
         </span>
       </label>
       <SubmitButton size="sm" pendingText="Saving…">{editing ? "Save" : "Add grade"}</SubmitButton>
