@@ -8,7 +8,7 @@ import { getSessionUser, canAccessConsole, canSeeCompensation, scopeCompanies } 
 
 /**
  * CSV export of the run history list on the runs page, mirroring exactly
- * the company/year/status filters applied there. Gross/net totals are
+ * the company/year/month/status filters applied there. Gross/net totals are
  * only included when this user is allowed to see compensation — the same
  * gate the page itself applies before rendering those figures.
  */
@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const companyFilter = url.searchParams.get("company") ?? "";
   const yearFilter = url.searchParams.get("year") ?? "";
+  const monthFilter = url.searchParams.get("month") ?? "";
   const statusFilter = url.searchParams.get("status") ?? "";
 
   const companies = scopeCompanies(user, await listCompanies());
@@ -41,6 +42,7 @@ export async function GET(request: Request) {
   const runs = allRuns.filter((r) => {
     if (companyFilter && r.companyId !== companyFilter) return false;
     if (yearFilter && String(r.periodYear) !== yearFilter) return false;
+    if (monthFilter && String(r.periodMonth) !== monthFilter) return false;
     if (statusFilter && r.status !== statusFilter) return false;
     return true;
   });

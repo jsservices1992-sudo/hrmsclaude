@@ -17,14 +17,21 @@ import { RunOutputs } from "@/components/console/run-outputs";
 import {
   PageHeader, Card, Badge, Select, FilterBar, FilterField, StatCard, EmptyState,
 } from "@/components/console/ui";
-import { MONTHS, STATUS_TONE, canApproveRun } from "@/lib/payroll/run-status";
+import { MONTHS, STATUS_TONE, canApproveRun, isRecalculable } from "@/lib/payroll/run-status";
+import { periodState, selectablePeriods } from "@/lib/payroll/period-lock";
+import { currentPeriod } from "@/lib/clock";
 import { loadFinalCheck, type FinalCheckResult } from "@/lib/payroll/finalcheck";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 
-const CALC_YEAR = 2026;
-const CALC_MONTH = 9;
-
 export const metadata = { title: "Runs" };
+
+/** "2026-8" from the period picker, or nothing if it was not sent. */
+function parsePeriod(raw: unknown): { year: number; month: number } | null {
+  const m = typeof raw === "string" ? /^(\d{4})-(\d{1,2})$/.exec(raw) : null;
+  if (!m) return null;
+  const month = Number(m[2]);
+  return month >= 1 && month <= 12 ? { year: Number(m[1]), month } : null;
+}
 
 export default async function RunsPage(props: PageProps<"/console/runs">) {
   const user = (await getSessionUser())!;
@@ -48,19 +55,63 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
 
   const companyFilter = typeof sp.company === "string" ? sp.company : "";
   const yearFilter = typeof sp.year === "string" ? sp.year : "";
+  const monthFilter = typeof sp.month === "string" ? sp.month : "";
   const statusFilter = typeof sp.status === "string" ? sp.status : "";
   const runs = allRuns.filter((r) => {
     if (companyFilter && r.companyId !== companyFilter) return false;
     if (yearFilter && String(r.periodYear) !== yearFilter) return false;
+    if (monthFilter && String(r.periodMonth) !== monthFilter) return false;
     if (statusFilter && r.status !== statusFilter) return false;
     return true;
   });
   const yearOptions = [...new Set(allRuns.map((r) => r.periodYear))].sort((a, b) => b - a);
-  const hasFilters = companyFilter || yearFilter || statusFilter;
+  const hasFilters = companyFilter || yearFilter || monthFilter || statusFilter;
   const exportQuery = new URLSearchParams();
   if (companyFilter) exportQuery.set("company", companyFilter);
   if (yearFilter) exportQuery.set("year", yearFilter);
+  if (monthFilter) exportQuery.set("month", monthFilter);
   if (statusFilter) exportQuery.set("status", statusFilter);
+
+  /*
+   * The period being worked on, which is not the same thing as the
+   * filters over what has already been saved. It used to be two
+   * constants in this file, so this screen could only ever calculate
+   * September 2026 — on the 17th, with August's salary due, there was
+   * nothing here that would run August.
+   */
+  const chosen =
+    parsePeriod(sp.period) ??
+    /* "Run payroll" links here with the period it was showing as year and
+       month, so arriving from it lands on that period rather than the
+       default one. The picker writes `period`, which wins over both. */
+    parsePeriod(yearFilter && monthFilter ? `${yearFilter}-${monthFilter}` : null) ??
+    currentPeriod();
+  const calcYear = chosen.year;
+  const calcMonth = chosen.month;
+  const calcState = periodState(calcYear, calcMonth);
+  const periods = selectablePeriods();
+  /* Which company gets run: the one being filtered on, so that somebody
+     with two companies can run the second. */
+  const calcCompany = companies.find((c) => c.id === companyFilter) ?? companies[0];
+  /* allRuns is ordered newest version first, so the first match is the
+     one that stands for this period. */
+  const latestForPeriod =
+    allRuns.find(
+      (r) =>
+        r.companyId === calcCompany?.id &&
+        r.periodYear === calcYear &&
+        r.periodMonth === calcMonth,
+    ) ?? null;
+  const hasRunForPeriod = latestForPeriod !== null;
+  const signedOff = latestForPeriod !== null && !isRecalculable(latestForPeriod.status);
+  /* The filters travel with the period picker, so choosing a month to
+     run does not silently throw away what the list was showing. */
+  const carried = {
+    company: companyFilter || undefined,
+    year: yearFilter || undefined,
+    month: monthFilter || undefined,
+    status: statusFilter || undefined,
+  };
 
   const summaries = runs.length
     ? await db
@@ -87,11 +138,11 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
   const companyName = Object.fromEntries(companies.map((c) => [c.id, c.name]));
 
   const finalCheck =
-    canMutate(user) && companies[0]
-      ? await loadFinalCheck({ companyId: companies[0].id, year: CALC_YEAR, month: CALC_MONTH })
+    canMutate(user) && calcCompany
+      ? await loadFinalCheck({ companyId: calcCompany.id, year: calcYear, month: calcMonth })
       : null;
-  const attendanceLink = companies[0]
-    ? `/console/attendance?company=${companies[0].id}&year=${CALC_YEAR}&month=${CALC_MONTH}`
+  const attendanceLink = calcCompany
+    ? `/console/attendance?company=${calcCompany.id}&year=${calcYear}&month=${calcMonth}`
     : "#";
 
   const awaiting = allRuns.filter((r) => ["calculated", "in_review", "draft"].includes(r.status)).length;
@@ -109,12 +160,19 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
             : "Read-only role — you can review runs but not calculate, approve or reopen."
         }
         actions={
-          canMutate(user) && companies[0] ? (
+          canMutate(user) && calcCompany ? (
             <div className="flex flex-wrap items-end gap-3">
               <span className="text-xs text-ink-2">
-                {MONTHS[CALC_MONTH - 1]} {CALC_YEAR} · {companies[0].name}
+                {MONTHS[calcMonth - 1]} {calcYear} · {calcCompany.name}
               </span>
-              <CalculateForm companyId={companies[0].id} year={CALC_YEAR} month={CALC_MONTH} />
+              {calcState.open && !signedOff && (
+                <CalculateForm
+                  companyId={calcCompany.id}
+                  year={calcYear}
+                  month={calcMonth}
+                  label={hasRunForPeriod ? "Recalculate run" : "Calculate & save run"}
+                />
+              )}
             </div>
           ) : undefined
         }
@@ -127,19 +185,49 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
         <StatCard label="Pre-flight flags" value={finalCheck ? flags : "—"} />
       </div>
 
-      {finalCheck && (
+      {calcCompany && (
         <Card padded={false}>
           <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="label text-ink-2">
-              Pre-flight — {MONTHS[CALC_MONTH - 1]} {CALC_YEAR}
-            </span>
-            {companies[0] && (
-              <Link href={attendanceLink} className="label text-brass hover:underline whitespace-nowrap">
-                Attendance →
-              </Link>
-            )}
+            <FilterBar action="/console/runs" mode="switch" hidden={carried}>
+              <FilterField label="Run period" showLabel={false}>
+                <Select
+                  name="period"
+                  defaultValue={`${calcYear}-${calcMonth}`}
+                  className="w-48"
+                >
+                  {periods.map((p) => (
+                    <option key={`${p.year}-${p.month}`} value={`${p.year}-${p.month}`}>
+                      {p.label}
+                      {p.open ? "" : " · locked"}
+                    </option>
+                  ))}
+                </Select>
+              </FilterField>
+            </FilterBar>
+            <Link href={attendanceLink} className="label text-brass hover:underline whitespace-nowrap">
+              Attendance →
+            </Link>
           </div>
-          <FinalCheckPanel finalCheck={finalCheck} attendanceLink={attendanceLink} />
+
+          <p
+            className={`px-4 py-2.5 text-sm border-b border-line-2 ${
+              calcState.open ? "text-ink-2" : "text-brass"
+            }`}
+          >
+            {calcState.reason}
+            {calcState.open && signedOff && (
+              <>
+                {" "}
+                Version {latestForPeriod!.version} is{" "}
+                {latestForPeriod!.status.replace("_", " ")} — reverse it from the row
+                below to recalculate.
+              </>
+            )}
+          </p>
+
+          {finalCheck && (
+            <FinalCheckPanel finalCheck={finalCheck} attendanceLink={attendanceLink} />
+          )}
         </Card>
       )}
 
@@ -147,6 +235,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
         <FilterBar
           action="/console/runs"
           mode="filter"
+          hidden={{ period: `${calcYear}-${calcMonth}` }}
           clearHref={hasFilters ? "/console/runs" : null}
           trailing={
             <a
@@ -172,6 +261,14 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
               <option value="">All years</option>
               {yearOptions.map((y) => (
                 <option key={y} value={y}>{y}</option>
+              ))}
+            </Select>
+          </FilterField>
+          <FilterField label="Month">
+            <Select name="month" defaultValue={monthFilter} className="w-36">
+              <option value="">All months</option>
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i + 1}>{m}</option>
               ))}
             </Select>
           </FilterField>
@@ -222,6 +319,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
             {runs.map((run) => {
               const t = totalsByRun[run.id] ?? { count: 0, net: 0, gross: 0 };
               const canApprove = canApproveRun(user, run, canMutate(user));
+              const rowOpen = periodState(run.periodYear, run.periodMonth).open;
               const isPreparer = run.preparedBy === user.email;
               const asOf = JSON.parse(run.configSnapshot ?? "{}").asOf ?? "—";
 
@@ -248,8 +346,34 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                   <td className="px-3 py-1.5 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2">
                       {canApprove && <ApproveForm runId={run.id} />}
-                      {canMutate(user) && run.status === "approved" && (
-                        <RowPopover label="Reopen" title={`Reopen run v${run.version}`} panelClassName="p-3 w-80">
+                      {canMutate(user) && rowOpen && isRecalculable(run.status) && (
+                        <RowPopover
+                          label="Recalculate"
+                          title={`Recalculate ${MONTHS[run.periodMonth - 1]} ${run.periodYear}`}
+                          panelClassName="p-3 w-80"
+                        >
+                          <div className="flex flex-col gap-2">
+                            <p className="text-xs text-ink-2">
+                              Runs the period again on today&rsquo;s attendance, salaries
+                              and adjustments, replacing v{run.version}. Nothing has been
+                              approved, so no new version is created.
+                            </p>
+                            <CalculateForm
+                              companyId={run.companyId}
+                              year={run.periodYear}
+                              month={run.periodMonth}
+                              label="Recalculate"
+                              variant="default"
+                            />
+                          </div>
+                        </RowPopover>
+                      )}
+                      {canMutate(user) && rowOpen && !isRecalculable(run.status) && (
+                        <RowPopover
+                          label="Reverse"
+                          title={`Reverse run v${run.version}`}
+                          panelClassName="p-3 w-80"
+                        >
                           <ReopenForm runId={run.id} />
                         </RowPopover>
                       )}

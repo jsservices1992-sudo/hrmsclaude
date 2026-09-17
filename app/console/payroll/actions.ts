@@ -23,6 +23,7 @@ import { checkRunApproval } from "@/lib/audit/controls";
 import { recordAuditAs } from "@/lib/audit/log";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { isRecalculable } from "@/lib/payroll/run-status";
+import { periodState } from "@/lib/payroll/period-lock";
 
 /**
  * Delegates to the shared recorder so every entry carries the actor's
@@ -70,6 +71,11 @@ export async function calculateRun(
   if (!year || !month || month < 1 || month > 12) {
     return { error: "Invalid period." };
   }
+
+  /* Checked here and not only on the screen: a Server Function is
+     reachable by direct POST, and a closed month is the whole point. */
+  const state = periodState(year, month);
+  if (!state.open) return { error: state.reason };
 
   const preview = await previewRun({ companyId, year, month });
   if (!preview) return { error: "Company not found." };
@@ -400,6 +406,9 @@ export async function reopenRun(
     .limit(1);
   if (!run) return { error: "Run not found." };
   if (!canAccessCompany(user, run.companyId)) return { error: "Not authorised." };
+
+  const state = periodState(run.periodYear, run.periodMonth);
+  if (!state.open) return { error: state.reason };
 
   /*
    * Reverse the old run's loan recoveries BEFORE recalculating.
