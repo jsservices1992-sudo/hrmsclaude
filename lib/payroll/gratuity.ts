@@ -5,6 +5,8 @@ import type { ExitType } from "../exit/notice";
 export type GratuityParams = {
   /** Qualifying continuous service, in years. */
   qualifyingYears: number;
+  /** The shorter period fixed-term employment qualifies after. */
+  fixedTermQualifyingYears: number;
   /** Days of wages per completed year. */
   daysPerYear: number;
   /** Divisor representing working days in a month. */
@@ -16,6 +18,7 @@ export type GratuityParams = {
 
 export const GRATUITY_DEFAULTS: GratuityParams = {
   qualifyingYears: 5,
+  fixedTermQualifyingYears: 1,
   daysPerYear: 15,
   monthDivisor: 26,
   ceilingPaise: 2_000_000_00, // ₹20,00,000
@@ -47,6 +50,31 @@ export function serviceYears(dateOfJoining: string, lastWorkingDay: string): num
 }
 
 /**
+ * Whole years of service, counted by anniversary.
+ *
+ * The decimal above divides by 365.25 so that leap years do not shift a
+ * boundary, which is right for proportions and wrong for the question
+ * "has this person completed five years" — an exact five calendar years
+ * comes to 4.9993 and would be refused a day short of the anniversary
+ * it actually fell on. Eligibility asks about anniversaries, so it is
+ * counted in anniversaries.
+ */
+export function completedYears(dateOfJoining: string, lastWorkingDay: string): number {
+  const from = new Date(dateOfJoining + "T00:00:00Z");
+  const to = new Date(lastWorkingDay + "T00:00:00Z");
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from) return 0;
+
+  let years = to.getUTCFullYear() - from.getUTCFullYear();
+  const anniversary = Date.UTC(
+    from.getUTCFullYear() + years,
+    from.getUTCMonth(),
+    from.getUTCDate(),
+  );
+  if (to.getTime() < anniversary) years -= 1;
+  return Math.max(0, years);
+}
+
+/**
  * Gratuity = last drawn wages × 15/26 × completed years.
  * Six months or more of a part year rounds up — the rule that decides
  * whether someone at 4 years 7 months qualifies at all.
@@ -58,6 +86,15 @@ export function computeGratuity(input: {
   lastDrawnWagePaise: Paise;
   exitType: ExitType;
   params?: GratuityParams;
+  /**
+   * A fixed-term employee, who qualifies on a different footing.
+   *
+   * The labour codes give fixed-term employment gratuity pro rata after a
+   * year, rather than nothing until five. Someone on a two-year term who
+   * served it out would otherwise leave with nothing, which is the case
+   * the provision exists to answer.
+   */
+  fixedTerm?: boolean;
   /** Forfeiture requires an explicit, reasoned decision — never a default. */
   forfeited?: boolean;
   forfeitureReason?: string;
@@ -67,7 +104,17 @@ export function computeGratuity(input: {
 
   const whole = Math.floor(raw);
   const partYear = raw - whole;
-  const countedYears = partYear >= 0.5 ? whole + 1 : whole;
+  /*
+   * Pro rata means proportionate, so a fixed-term term is counted as it
+   * was actually served. Rounding a part year up is the rule for regular
+   * service and would overpay here — and rounding it down would be the
+   * same error in the other direction.
+   */
+  const countedYears = input.fixedTerm
+    ? Number(raw.toFixed(4))
+    : partYear >= 0.5
+      ? whole + 1
+      : whole;
 
   const empty = {
     completedYears: Number(raw.toFixed(2)),
@@ -91,12 +138,20 @@ export function computeGratuity(input: {
 
   // The five-year qualifying period does not apply on death or disablement.
   const waivesQualifying = input.exitType === "death_in_service";
+  const qualifying = input.fixedTerm
+    ? p.fixedTermQualifyingYears
+    : p.qualifyingYears;
 
-  if (!waivesQualifying && raw < p.qualifyingYears) {
+  if (
+    !waivesQualifying &&
+    completedYears(input.dateOfJoining, input.lastWorkingDay) < qualifying
+  ) {
     return {
       eligible: false,
       ...empty,
-      reason: `Service of ${raw.toFixed(2)} years is below the ${p.qualifyingYears}-year qualifying period`,
+      reason: input.fixedTerm
+        ? `Fixed-term service of ${raw.toFixed(2)} years is below the ${qualifying}-year qualifying period`
+        : `Service of ${raw.toFixed(2)} years is below the ${qualifying}-year qualifying period`,
     };
   }
 

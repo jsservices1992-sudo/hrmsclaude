@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { computeGratuity, computeLeaveEncashment, serviceYears } from "./gratuity";
+import { computeGratuity, computeLeaveEncashment, serviceYears, completedYears } from "./gratuity";
 import { computeSettlement, type SettlementInput } from "./settlement";
 import {
   computeNotice,
@@ -411,5 +411,93 @@ describe("Full and final settlement", () => {
     assert.ok(adj);
     assert.equal(adj.kind, "recovery");
     assert.match(adj.basis, /Bond period not served/);
+  });
+});
+
+describe("Gratuity for fixed-term employment", () => {
+  const base = {
+    dateOfJoining: "2024-04-01",
+    lastDrawnWagePaise: 20_000_00,
+    exitType: "resignation" as const,
+  };
+
+  test("a regular employee under five years gets nothing", () => {
+    const g = computeGratuity({ ...base, lastWorkingDay: "2026-09-30" });
+    assert.equal(g.eligible, false);
+    assert.match(g.reason, /5-year qualifying period/);
+  });
+
+  test("the same service on a fixed term qualifies", () => {
+    /* Two and a half years served out. Without this the person leaves
+       with nothing, which is the case the provision exists to answer. */
+    const g = computeGratuity({ ...base, lastWorkingDay: "2026-09-30", fixedTerm: true });
+    assert.equal(g.eligible, true);
+    assert.ok(g.grossPaise > 0);
+  });
+
+  test("under a year on a fixed term still gets nothing", () => {
+    const g = computeGratuity({ ...base, lastWorkingDay: "2025-01-31", fixedTerm: true });
+    assert.equal(g.eligible, false);
+    assert.match(g.reason, /Fixed-term service/);
+    assert.match(g.reason, /1-year/);
+  });
+
+  test("pro rata counts the term as served, not rounded up", () => {
+    /* 2.5 years: a regular employee's part year would round to 3. */
+    const fixed = computeGratuity({ ...base, lastWorkingDay: "2026-09-30", fixedTerm: true });
+    const rounded = Math.round((20_000_00 * 15 * 3) / 26);
+    assert.ok(
+      fixed.grossPaise < rounded,
+      `pro rata ${fixed.grossPaise} should be under the rounded-up ${rounded}`,
+    );
+    assert.ok(fixed.countedYears < 3 && fixed.countedYears > 2);
+  });
+
+  test("a completed fixed term of exactly one year qualifies", () => {
+    const g = computeGratuity({ ...base, lastWorkingDay: "2025-04-01", fixedTerm: true });
+    assert.equal(g.eligible, true);
+  });
+
+  test("death in service still waives the qualifying period either way", () => {
+    const g = computeGratuity({
+      ...base,
+      lastWorkingDay: "2024-06-30",
+      exitType: "death_in_service",
+      fixedTerm: true,
+    });
+    assert.equal(g.eligible, true);
+  });
+});
+
+describe("Completed years are counted by anniversary", () => {
+  test("exactly five calendar years qualifies, though the decimal reads 4.99", () => {
+    const g = computeGratuity({
+      dateOfJoining: "2020-04-01",
+      lastWorkingDay: "2025-04-01",
+      lastDrawnWagePaise: 20_000_00,
+      exitType: "resignation",
+    });
+    assert.ok(serviceYears("2020-04-01", "2025-04-01") < 5, "the decimal is short of five");
+    assert.equal(completedYears("2020-04-01", "2025-04-01"), 5);
+    assert.equal(g.eligible, true, "a day before the anniversary is not five years, this is");
+  });
+
+  test("a day before the anniversary is still four years", () => {
+    assert.equal(completedYears("2020-04-01", "2025-03-31"), 4);
+    const g = computeGratuity({
+      dateOfJoining: "2020-04-01",
+      lastWorkingDay: "2025-03-31",
+      lastDrawnWagePaise: 20_000_00,
+      exitType: "resignation",
+    });
+    assert.equal(g.eligible, false);
+  });
+
+  test("a leap day joiner is not penalised", () => {
+    assert.equal(completedYears("2024-02-29", "2029-03-01"), 5);
+  });
+
+  test("service that has not started counts as nothing", () => {
+    assert.equal(completedYears("2026-01-01", "2025-01-01"), 0);
   });
 });

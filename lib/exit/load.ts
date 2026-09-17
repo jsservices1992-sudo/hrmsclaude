@@ -152,6 +152,7 @@ export async function loadExitCase(
     name: `${row.employee.firstName} ${row.employee.lastName}`,
     exitType: row.exit.exitType,
     dateOfJoining: row.employee.dateOfJoining,
+    employmentType: row.employee.employmentType,
     lastWorkingDay: row.exit.lastWorkingDay,
     resignationDate: row.exit.resignationDate,
     finalMonthSalaryPaise: line?.grossPaise ?? 0,

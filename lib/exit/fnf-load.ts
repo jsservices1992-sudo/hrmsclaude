@@ -188,6 +188,7 @@ export async function loadFnfCase(
     name: `${employee.firstName} ${employee.lastName}`,
     exitType: exitCase.exitType,
     dateOfJoining: employee.dateOfJoining,
+    employmentType: employee.employmentType,
     lastWorkingDay: exitCase.lastWorkingDay,
     resignationDate: exitCase.resignationDate,
     finalMonthSalaryPaise: prorate(monthlyGross, finalMonth),

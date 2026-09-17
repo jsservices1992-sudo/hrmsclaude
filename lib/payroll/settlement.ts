@@ -31,6 +31,13 @@ export type SettlementInput = {
   dateOfJoining: string;
   lastWorkingDay: string;
   resignationDate: string;
+  /**
+   * Fixed-term employment qualifies for gratuity after a year, pro rata,
+   * rather than after five. "contract" is this system's fixed-term
+   * employee — somebody engaged through a contractor is a professional
+   * payee instead, and never reaches here.
+   */
+  employmentType?: string;
 
   /** Salary for days worked in the final month, already prorated. */
   finalMonthSalaryPaise: Paise;
@@ -153,6 +160,7 @@ export function computeSettlement(input: SettlementInput): SettlementResult {
     lastWorkingDay: input.lastWorkingDay,
     lastDrawnWagePaise: input.monthlyBasicPaise,
     exitType: input.exitType,
+    fixedTerm: input.employmentType === "contract",
     forfeited: input.gratuityForfeited,
     forfeitureReason: input.gratuityForfeitureReason,
   });
