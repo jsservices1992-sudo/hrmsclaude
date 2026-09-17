@@ -514,6 +514,21 @@ export async function setBgvStatus(_prev: OnboardState, fd: FormData): Promise<O
 
 /* ==================== checklist & tasks ==================== */
 
+/**
+ * A document or task is reached by its own id, so the company it belongs
+ * to has to be resolved through its joiner before anything is done to
+ * it. Without this an HR manager could verify — or overwrite, which
+ * removes the stored original — another company's candidate documents.
+ */
+async function joinerOf(joinerId: string) {
+  const [j] = await db
+    .select({ companyId: s.joiners.companyId })
+    .from(s.joiners)
+    .where(eq(s.joiners.id, joinerId))
+    .limit(1);
+  return j ?? null;
+}
+
 export async function reviewDocument(_prev: OnboardState, fd: FormData): Promise<OnboardState> {
   const { user, error } = await requireHr();
   if (error || !user) return { error: error ?? "Not authorised." };
@@ -528,6 +543,10 @@ export async function reviewDocument(_prev: OnboardState, fd: FormData): Promise
 
   const [doc] = await db.select().from(s.joinerDocuments).where(eq(s.joinerDocuments.id, docId)).limit(1);
   if (!doc) return { error: "Document not found." };
+  const owner = await joinerOf(doc.joinerId);
+  if (!owner || !canAccessCompany(user, owner.companyId)) {
+    return { error: "Document not found." };
+  }
   if (decision === "verified" && !doc.storageRef) {
     return { error: "Nothing has been uploaded for this item yet — there is nothing to verify." };
   }
@@ -572,6 +591,10 @@ export async function uploadJoinerDocument(
   const docId = String(fd.get("docId") ?? "");
   const [doc] = await db.select().from(s.joinerDocuments).where(eq(s.joinerDocuments.id, docId)).limit(1);
   if (!doc) return { error: "Document not found." };
+  const owner = await joinerOf(doc.joinerId);
+  if (!owner || !canAccessCompany(user, owner.companyId)) {
+    return { error: "Document not found." };
+  }
 
   const file = fd.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file." };
@@ -635,6 +658,10 @@ export async function completeTask(_prev: OnboardState, fd: FormData): Promise<O
   const status = String(fd.get("status") ?? "done") as "done" | "waived" | "blocked";
   const [task] = await db.select().from(s.joinerTasks).where(eq(s.joinerTasks.id, taskId)).limit(1);
   if (!task) return { error: "Task not found." };
+  const owner = await joinerOf(task.joinerId);
+  if (!owner || !canAccessCompany(user, owner.companyId)) {
+    return { error: "Task not found." };
+  }
 
   await db
     .update(s.joinerTasks)
@@ -727,6 +754,16 @@ export async function acceptOffer(_prev: OnboardState, fd: FormData): Promise<On
   const token = String(fd.get("token") ?? "");
   const [j] = await db.select().from(s.joiners).where(eq(s.joiners.portalToken, token)).limit(1);
   if (!j) return { error: "This link is not valid." };
+  /* The same three guards the profile form applies. Without them a
+     revoked link still accepts: HR withdraws an offer by expiring the
+     token, and anyone still holding the URL could flip the joiner to
+     accepted — firing the webhook that tells everything downstream. */
+  if (j.status === "joined" || j.status === "dropped") {
+    return { error: "This link is no longer active." };
+  }
+  if (j.portalTokenExpiresAt && j.portalTokenExpiresAt < new Date().toISOString()) {
+    return { error: "This link has expired. Ask your HR contact for a new one." };
+  }
   if (j.offerStatus !== "sent") return { error: "There is no offer awaiting a response." };
 
   await db

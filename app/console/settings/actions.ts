@@ -286,6 +286,11 @@ export async function setDefaultCompany(
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const companyId = String(fd.get("companyId") ?? "");
+  /* This clears the flag on every company on the instance before setting
+     it, so an administrator confined to one company must not reach it —
+     they would be changing another tenant's default entity. */
+  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+
   await db.transaction(async (tx) => {
     await tx.update(s.companies)
       .set({ isDefault: false })

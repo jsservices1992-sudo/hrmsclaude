@@ -13,7 +13,7 @@ import {
   IDENTIFIER_MESSAGES as MSG,
 } from "@/lib/hris/identifiers";
 import * as s from "@/db/schema";
-import { getSessionUser, canAccessCompany } from "@/lib/auth/session";
+import { getSessionUser, canAccessCompany, isTenantWide } from "@/lib/auth/session";
 import { submitted } from "@/lib/forms/submitted";
 import {
   starterComponents,
@@ -54,6 +54,37 @@ async function audit(e: {
     after: e.after ? JSON.stringify(e.after) : null,
     reason: e.reason ?? null,
   });
+}
+
+/**
+ * Statutory reference data is the law of the land, not one company's
+ * configuration: the professional tax slabs, welfare fund rates,
+ * minimum wages and central parameters are keyed by state and carry no
+ * company. Editing one changes what *every* company on the instance
+ * computes, so an administrator of a single company must not be able to
+ * — they would be setting another business's payroll.
+ *
+ * Only an operator of the instance may, which is what a null company
+ * means. The bootstrap administrator is created that way.
+ */
+async function requireTenantWide() {
+  const { user, error } = await requireAdmin();
+  if (error || !user) return { user, error };
+  if (!isTenantWide(user)) {
+    await audit({
+      actor: user.email,
+      action: "statutory_reference.denied",
+      entity: "statutory_param",
+      entityId: "-",
+      reason: "Statutory reference data is shared by every company and is not one company's to change",
+    });
+    return {
+      user,
+      error:
+        "Professional tax, welfare fund, minimum wage and central statutory figures are shared by every company on this instance. Only an operator of the instance can change them." as const,
+    };
+  }
+  return { user, error: null };
 }
 
 async function requireAdmin() {
@@ -208,7 +239,7 @@ export async function updateStatutoryParam(
   _prev: PayrollSettingsState,
   fd: FormData,
 ): Promise<PayrollSettingsState> {
-  const { user, error } = await requireAdmin();
+  const { user, error } = await requireTenantWide();
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const key = String(fd.get("paramKey") ?? "");
@@ -644,7 +675,7 @@ export async function saveMinimumWage(
   _prev: PayrollSettingsState,
   fd: FormData,
 ): Promise<PayrollSettingsState> {
-  const { user, error } = await requireAdmin();
+  const { user, error } = await requireTenantWide();
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const stateCode = String(fd.get("stateCode") ?? "").trim();
@@ -747,7 +778,7 @@ export async function saveLwfRate(
   _prev: PayrollSettingsState,
   fd: FormData,
 ): Promise<PayrollSettingsState> {
-  const { user, error } = await requireAdmin();
+  const { user, error } = await requireTenantWide();
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const stateCode = String(fd.get("stateCode") ?? "").trim();
@@ -854,7 +885,7 @@ export async function savePtSlab(
   _prev: PayrollSettingsState,
   fd: FormData,
 ): Promise<PayrollSettingsState> {
-  const { user, error } = await requireAdmin();
+  const { user, error } = await requireTenantWide();
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const stateCode = String(fd.get("stateCode") ?? "").trim();
@@ -931,7 +962,7 @@ export async function retirePtSlab(
   _prev: PayrollSettingsState,
   fd: FormData,
 ): Promise<PayrollSettingsState> {
-  const { user, error } = await requireAdmin();
+  const { user, error } = await requireTenantWide();
   if (error || !user) return { error: error ?? "Not authorised." };
 
   const id = String(fd.get("slabId") ?? "");

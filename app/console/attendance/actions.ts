@@ -790,6 +790,25 @@ export async function decideLeave(
     .where(eq(s.leaveRequests.id, id))
     .limit(1);
   if (!req) return { error: "Request not found." };
+
+  /*
+   * The role check above says this person may decide leave; it does not
+   * say whose. A request is reached by its id alone, so without this an
+   * HR manager could approve another company's leave — and an approval
+   * feeds loss of pay straight into that company's payroll.
+   *
+   * A request outside the caller's company is reported as not found
+   * rather than refused, so the reply does not confirm the id exists.
+   */
+  const [subject] = await db
+    .select({ companyId: s.employees.companyId })
+    .from(s.employees)
+    .where(eq(s.employees.id, req.employeeId))
+    .limit(1);
+  if (!subject || !canAccessCompany(user, subject.companyId)) {
+    return { error: "Request not found." };
+  }
+
   if (req.status !== "pending") {
     return { error: `This request is already ${req.status}.` };
   }
@@ -851,14 +870,22 @@ export async function decideRegularisation(
      the check is the reporting line — and it has to be, because the
      person who knows whether someone was at the client site is not
      usually in HR. */
+  const [subject] = await db
+    .select({ managerId: s.employees.managerId, companyId: s.employees.companyId })
+    .from(s.employees)
+    .where(eq(s.employees.id, req.employeeId))
+    .limit(1);
+
+  /* Approving rewrites the day's attendance and re-derives the month, so
+     an unscoped decision changes what another company pays. Reported as
+     not found rather than refused, so the reply does not confirm the id. */
+  if (!subject || !canAccessCompany(user, subject.companyId)) {
+    return { error: "Request not found." };
+  }
+
   const isHr = canActOnPeople(user);
   if (!isHr) {
-    const [subject] = await db
-      .select({ managerId: s.employees.managerId })
-      .from(s.employees)
-      .where(eq(s.employees.id, req.employeeId))
-      .limit(1);
-    if (!user.employeeId || subject?.managerId !== user.employeeId) {
+    if (!user.employeeId || subject.managerId !== user.employeeId) {
       return { error: "That correction is not from someone who reports to you." };
     }
   }

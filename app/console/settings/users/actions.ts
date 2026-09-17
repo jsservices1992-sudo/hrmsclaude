@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { getSessionUser, isTenantWide } from "@/lib/auth/session";
+import { getSessionUser, isTenantWide, canAccessCompany } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
 import { recordAudit } from "@/lib/audit/log";
 import {
@@ -72,6 +72,26 @@ function draftFrom(fd: FormData): UserDraft {
  * an administrator choosing a colleague's password means they know it,
  * and "please change it later" is not a control.
  */
+/**
+ * An account may be linked to an employee record, and self-service then
+ * serves that person's profile, payslips and documents straight from the
+ * link. The company on the form is already forced to the caller's, but
+ * the employee id is not — so without this an administrator could point
+ * a new account at another company's employee and read their pay.
+ */
+async function employeeIsReachable(
+  actor: { companyId: string | null },
+  employeeId: string | null,
+): Promise<boolean> {
+  if (!employeeId) return true;
+  const [emp] = await db
+    .select({ companyId: s.employees.companyId })
+    .from(s.employees)
+    .where(eq(s.employees.id, employeeId))
+    .limit(1);
+  return Boolean(emp) && canAccessCompany(actor, emp.companyId);
+}
+
 export async function createUser(
   _prev: UserAdminState,
   fd: FormData,
@@ -92,6 +112,10 @@ export async function createUser(
 
   const issues = checkUserDraft(draft);
   if (issues.length > 0) return { error: issues.join(" ") };
+
+  if (!(await employeeIsReachable(user, draft.employeeId))) {
+    return { error: "That employee record is not one you can link an account to." };
+  }
 
   const [clash] = await db
     .select({ id: s.users.id })
@@ -183,6 +207,10 @@ export async function updateUser(
     ),
   ];
   if (issues.length > 0) return { error: issues.join(" ") };
+
+  if (!(await employeeIsReachable(user, draft.employeeId))) {
+    return { error: "That employee record is not one you can link an account to." };
+  }
 
   await db
     .update(s.users)

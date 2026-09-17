@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser, isTenantWide } from "@/lib/auth/session";
 import { recordAuditAs } from "@/lib/audit/log";
 
 export type ComplianceState = { error?: string; ok?: string };
@@ -15,11 +15,29 @@ export type ComplianceState = { error?: string; ok?: string };
  * company on the platform, not one. That is why it is admin-only rather
  * than the payroll-manager threshold most console mutations use.
  */
+/**
+ * Everything in this file writes statutory reference data — the
+ * jurisdictions, professional tax slabs, welfare fund rates and central
+ * parameters. None of those tables carries a company: they are the law
+ * of the land, shared by every company on the instance.
+ *
+ * So an administrator of one company must not be able to change them.
+ * They would be deciding what another business deducts from its people,
+ * and the other business would have no way of knowing. Only an operator
+ * of the instance may, which is what a null company means.
+ */
 async function requireAdmin() {
   const user = await getSessionUser();
   if (!user) return { user: null, error: "Not authorised." as const };
   if (user.role !== "admin") {
     return { user, error: "Only an administrator can change statutory rules." as const };
+  }
+  if (!isTenantWide(user)) {
+    return {
+      user,
+      error:
+        "These figures are shared by every company on this instance. Only an operator of the instance can change them." as const,
+    };
   }
   return { user, error: null };
 }
