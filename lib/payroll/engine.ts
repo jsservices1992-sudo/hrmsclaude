@@ -379,6 +379,9 @@ export function computeEmployeePay(args: {
     month,
     applicable: s.lwfApplicableByState[e.stateCode] ?? false,
     rate: s.lwfByState[e.stateCode] ?? null,
+    /* "salary or wages or any remuneration" in the Haryana notification,
+       which is the whole of what is paid rather than a statutory base. */
+    monthlyWagePaise: ptBase,
   });
 
   if (lwf.employeePaise > 0) {

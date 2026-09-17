@@ -7,6 +7,7 @@ import {
   createPayrollGroup,
   createBankAccount,
   saveMinimumWage,
+  saveLwfRate,
   saveDepartmentPayrollOverride,
   clearDepartmentPayrollOverride,
   type PayrollSettingsState,
@@ -582,6 +583,89 @@ export function MinimumWageForm({ states }: { states: { id: string; label: strin
       </div>
       <FormFeedback state={state} labels={MIN_WAGE_LABELS} />
       <div><SubmitButton pendingText="Saving…">Save minimum wage</SubmitButton></div>
+    </form>
+  );
+}
+
+const LWF_LABELS: Record<string, string> = {
+  stateCode: "State",
+  employee: "Employee amount",
+  employer: "Employer amount",
+  percent: "Percentage of wages",
+  effectiveFrom: "Effective from",
+  deductionMonths: "Months collected",
+};
+
+export function LwfRateForm({ states }: { states: { id: string; label: string }[] }) {
+  const [state, action] = useActionState<PayrollSettingsState, FormData>(saveLwfRate, {});
+  const err = (k: string) => state.fieldErrors?.[k];
+  const val = (k: string, fallback = "") => state.values?.[k] ?? fallback;
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <p className="text-xs text-ink-2 max-w-[72ch]">
+        Most states charge a flat sum. Where one charges a share of wages
+        &ldquo;subject to a limit&rdquo; — Haryana does — put the percentage in
+        and the amount becomes the cap, with the employer owing its multiple of
+        what the employee actually paid.
+      </p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <FormField label="State" required error={err("stateCode")}>
+          <UiSelect name="stateCode" defaultValue={val("stateCode")} invalid={!!err("stateCode")}>
+            <option value="">Choose a state…</option>
+            {states.map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </UiSelect>
+        </FormField>
+        <FormField label="Employee (₹)" required error={err("employee")} hint="The cap, where a percentage applies">
+          <Input name="employee" type="number" step="0.01" className="tnum"
+            defaultValue={val("employee")} invalid={!!err("employee")} />
+        </FormField>
+        <FormField label="Employer (₹)" required error={err("employer")}>
+          <Input name="employer" type="number" step="0.01" className="tnum"
+            defaultValue={val("employer")} invalid={!!err("employer")} />
+        </FormField>
+        <FormField label="Percentage of wages" error={err("percent")} hint="Leave blank for a flat amount">
+          <Input name="percent" type="number" step="0.01" placeholder="0.2" className="tnum"
+            defaultValue={val("percent")} invalid={!!err("percent")} />
+        </FormField>
+        <FormField label="Employer multiple" hint="e.g. 2 where the employer owes twice">
+          <Input name="multiple" type="number" step="0.01" placeholder="2" className="tnum"
+            defaultValue={val("multiple")} />
+        </FormField>
+        <FormField label="Frequency">
+          <UiSelect name="frequency" defaultValue={val("frequency", "monthly")}>
+            <option value="monthly">Monthly</option>
+            <option value="half_yearly">Half-yearly</option>
+            <option value="annual">Annual</option>
+          </UiSelect>
+        </FormField>
+        <FormField label="Months collected" required error={err("deductionMonths")}
+          hint="Numbers, e.g. 6,12 — or all twelve">
+          <Input name="deductionMonths" placeholder="1,2,3,4,5,6,7,8,9,10,11,12"
+            defaultValue={val("deductionMonths", "1,2,3,4,5,6,7,8,9,10,11,12")}
+            invalid={!!err("deductionMonths")} />
+        </FormField>
+        <FormField label="Effective from" required error={err("effectiveFrom")}>
+          <Input name="effectiveFrom" type="date" defaultValue={val("effectiveFrom")}
+            invalid={!!err("effectiveFrom")} />
+        </FormField>
+        <FormField label="Source" hint="The notification this came from">
+          <Input name="source" defaultValue={val("source")} placeholder="Gazette / notification number" />
+        </FormField>
+        <label className="flex items-start gap-2.5 self-end pb-2">
+          <input type="checkbox" name="verified" className="h-4 w-4 mt-0.5" />
+          <span className="text-sm">
+            Verified
+            <span className="block text-xs text-ink-3 mt-0.5">
+              Tick only if this was checked against the notification itself.
+            </span>
+          </span>
+        </label>
+      </div>
+      <FormFeedback state={state} labels={LWF_LABELS} />
+      <div><SubmitButton pendingText="Saving…">Save labour welfare fund</SubmitButton></div>
     </form>
   );
 }

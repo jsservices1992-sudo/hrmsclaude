@@ -901,8 +901,23 @@ export const lwfRates = pgTable(
   {
     id: text("id").primaryKey(),
     stateCode: text("state_code").notNull(),
+    /**
+     * The employee's contribution — a flat amount in most states, and the
+     * *cap* where `employeePercentBps` is set.
+     */
     employeePaise: bigint("employee_paise", { mode: "number" }).notNull(),
     employerPaise: bigint("employer_paise", { mode: "number" }).notNull(),
+    /**
+     * Where a state levies a share of wages rather than a flat sum.
+     *
+     * Haryana is the case: "zero point two percent of his salary or
+     * wages subject to a limit of rupees thirty-five". Treating that as
+     * a flat ₹35 over-deducts from everybody earning under ₹17,500, by a
+     * few rupees a month that nobody would ever query.
+     */
+    employeePercentBps: integer("employee_percent_bps"),
+    /** The employer's multiple of what the employee actually paid. */
+    employerMultiple: real("employer_multiple"),
     frequency: text("frequency", {
       enum: ["monthly", "half_yearly", "annual"],
     }).notNull(),

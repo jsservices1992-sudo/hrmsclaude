@@ -87,6 +87,8 @@ export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig
     lwfByState[row.stateCode] = {
       employeePaise: row.employeePaise,
       employerPaise: row.employerPaise,
+      employeePercentBps: row.employeePercentBps,
+      employerMultiple: row.employerMultiple,
       frequency: row.frequency,
       deductionMonths: row.deductionMonths.split(",").map(Number),
     };

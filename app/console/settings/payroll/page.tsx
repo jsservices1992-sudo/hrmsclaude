@@ -22,6 +22,7 @@ import {
   GroupForm,
   BankForm,
   MinimumWageForm,
+  LwfRateForm,
   DepartmentOverrideForm,
   ClearDeptOverrideForm,
 } from "./forms";
@@ -85,10 +86,12 @@ export default async function PayrollSettingsPage(
 
   const isAdmin = user.role === "admin";
 
-  const [params, minWages, jurisdictions, groups, banks, calendars, employees, branches, departments, grades] =
+  const [params, minWages, lwfRates, ptSlabs, jurisdictions, groups, banks, calendars, employees, branches, departments, grades] =
     await Promise.all([
       db.select().from(s.statutoryParams).orderBy(asc(s.statutoryParams.key)),
       db.select().from(s.minimumWages).orderBy(asc(s.minimumWages.stateCode)),
+      db.select().from(s.lwfRates).orderBy(asc(s.lwfRates.stateCode)),
+      db.select().from(s.ptSlabs).orderBy(asc(s.ptSlabs.stateCode), asc(s.ptSlabs.minPaise)),
       db.select().from(s.jurisdictions).orderBy(asc(s.jurisdictions.name)),
       db.select().from(s.payrollGroups).where(eq(s.payrollGroups.companyId, companyId)).orderBy(asc(s.payrollGroups.sequence)),
       db.select().from(s.bankAccounts).where(eq(s.bankAccounts.companyId, companyId)),
@@ -700,6 +703,81 @@ export default async function PayrollSettingsPage(
                 />
               </div>
             )}
+          </Card>
+
+          <Card padded={false}>
+            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-baseline justify-between gap-2">
+              <span className="label text-ink-2">Labour welfare fund by state</span>
+              <span className="label text-ink-3 tnum">{lwfRates.length}</span>
+            </div>
+            <ul className="divide-y divide-line-2">
+              {lwfRates.map((r) => (
+                <li key={r.id} className="px-4 py-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <span className="text-sm">
+                    <span className="font-medium">{r.stateCode}</span>{" "}
+                    <span className="text-ink-2">
+                      {r.employeePercentBps
+                        ? `${(r.employeePercentBps / 100).toFixed(2)}% of wages, capped at ${formatINR(r.employeePaise)}`
+                        : formatINR(r.employeePaise)}
+                      {" · employer "}
+                      {r.employerMultiple ? `${r.employerMultiple}×` : formatINR(r.employerPaise)}
+                    </span>
+                  </span>
+                  <span className="flex flex-wrap items-baseline gap-x-3 text-xs">
+                    <span className="font-mono text-ink-3">
+                      {r.frequency.replace("_", "-")} · from {formatDate(r.effectiveFrom)}
+                      {r.effectiveTo ? ` to ${formatDate(r.effectiveTo)}` : ""}
+                    </span>
+                    <Badge tone={r.verified ? "teal" : "brass"}>
+                      {r.verified ? "verified" : "unverified"}
+                    </Badge>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {isAdmin && (
+              <div className="p-4 border-t border-line">
+                <LwfRateForm
+                  states={jurisdictions.map((j) => ({
+                    id: j.stateCode,
+                    label: `${j.name} (${j.stateCode})`,
+                  }))}
+                />
+              </div>
+            )}
+          </Card>
+
+          <Card padded={false}>
+            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-baseline justify-between gap-2">
+              <span className="label text-ink-2">Professional tax slabs</span>
+              <span className="label text-ink-3 tnum">{ptSlabs.length}</span>
+            </div>
+            <p className="px-4 py-2.5 text-xs text-ink-2 border-b border-line-2 max-w-[72ch]">
+              Seeded figures, none of them checked against a state Act. A state
+              that levies professional tax with no slab here is reported on the
+              run rather than passed over.
+            </p>
+            <ul className="divide-y divide-line-2 max-h-96 overflow-y-auto">
+              {ptSlabs.map((p) => (
+                <li key={p.id} className="px-4 py-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs">
+                  <span>
+                    <span className="font-medium">{p.stateCode}</span>{" "}
+                    <span className="font-mono text-ink-2 tnum">
+                      {formatINR(p.minPaise)} — {p.maxPaise === null ? "above" : formatINR(p.maxPaise)}
+                    </span>
+                    {p.gender && p.gender !== "all" && (
+                      <span className="text-ink-3"> · {p.gender}</span>
+                    )}
+                  </span>
+                  <span className="flex items-baseline gap-3">
+                    <span className="font-mono tnum">{formatINR(p.amountPaise)}</span>
+                    <Badge tone={p.verified ? "teal" : "brass"}>
+                      {p.verified ? "verified" : "unverified"}
+                    </Badge>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </Card>
 
           <Card padded={false}>

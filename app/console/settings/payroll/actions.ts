@@ -730,3 +730,114 @@ export async function saveMinimumWage(
     ok: `${stateCode} ${skillCategory.replace("_", " ")} set to ₹${monthly.toLocaleString("en-IN")} from ${effectiveFrom}.`,
   };
 }
+
+/**
+ * Record a state's labour welfare fund contribution.
+ *
+ * Versioned like every other statutory figure, and for a reason this one
+ * demonstrates: Haryana's limit rose from ₹34 to ₹35 on 1 January 2026,
+ * so a run of December has to keep charging ₹34.
+ *
+ * A state may levy a flat sum or a share of wages subject to a limit.
+ * Where a percentage is given, the amount below is the cap rather than
+ * the charge, and the employer owes its multiple of what the employee
+ * actually paid.
+ */
+export async function saveLwfRate(
+  _prev: PayrollSettingsState,
+  fd: FormData,
+): Promise<PayrollSettingsState> {
+  const { user, error } = await requireAdmin();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const stateCode = String(fd.get("stateCode") ?? "").trim();
+  const effectiveFrom = String(fd.get("effectiveFrom") ?? "").trim();
+  const frequency = String(fd.get("frequency") ?? "monthly");
+  const months = String(fd.get("deductionMonths") ?? "").trim();
+  const source = nullable(fd.get("source"));
+  const verified = fd.get("verified") !== null;
+
+  const num = (k: string) => {
+    const raw = String(fd.get(k) ?? "").trim();
+    return raw === "" ? null : Number(raw);
+  };
+  const employee = num("employee");
+  const employer = num("employer");
+  const percent = num("percent");
+  const multiple = num("multiple");
+
+  const fieldErrors: Record<string, string> = {};
+  if (!stateCode) fieldErrors.stateCode = "Required";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) fieldErrors.effectiveFrom = "Use YYYY-MM-DD";
+  if (employee === null || Number.isNaN(employee) || employee < 0) {
+    fieldErrors.employee = "Enter the amount, or the cap where a percentage applies";
+  }
+  if (employer === null || Number.isNaN(employer) || employer < 0) {
+    fieldErrors.employer = "Enter the employer's amount";
+  }
+  if (percent !== null && (Number.isNaN(percent) || percent < 0 || percent > 100)) {
+    fieldErrors.percent = "A percentage between 0 and 100";
+  }
+  if (!/^[\d,]+$/.test(months)) fieldErrors.deductionMonths = "Months as numbers, e.g. 6,12";
+  if (Object.keys(fieldErrors).length > 0) {
+    return { error: "Fix the highlighted fields.", fieldErrors, values: submitted(fd) };
+  }
+
+  const [current] = await db
+    .select()
+    .from(s.lwfRates)
+    .where(and(eq(s.lwfRates.stateCode, stateCode), isNull(s.lwfRates.effectiveTo)))
+    .limit(1);
+
+  if (current && current.effectiveFrom >= effectiveFrom) {
+    return {
+      error: `A rate already runs from ${current.effectiveFrom}. A new one must start after that.`,
+      fieldErrors: { effectiveFrom: "Must be later than the current rate" },
+      values: submitted(fd),
+    };
+  }
+
+  const dayBefore = (() => {
+    const d = new Date(effectiveFrom + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  await db.transaction(async (tx) => {
+    if (current) {
+      await tx
+        .update(s.lwfRates)
+        .set({ effectiveTo: dayBefore })
+        .where(eq(s.lwfRates.id, current.id));
+    }
+    await tx.insert(s.lwfRates).values({
+      id: randomUUID(),
+      stateCode,
+      employeePaise: Math.round(employee! * 100),
+      employerPaise: Math.round(employer! * 100),
+      employeePercentBps: percent === null ? null : Math.round(percent * 100),
+      employerMultiple: multiple,
+      frequency: frequency as "monthly",
+      deductionMonths: months,
+      effectiveFrom,
+      effectiveTo: null,
+      verified,
+      source,
+    });
+  });
+
+  await audit({
+    actor: user.email,
+    action: "lwf_rate.versioned",
+    entity: "lwf_rate",
+    entityId: stateCode,
+    before: current
+      ? { employeePaise: current.employeePaise, effectiveFrom: current.effectiveFrom }
+      : null,
+    after: { employeePaise: Math.round(employee! * 100), effectiveFrom, percent, verified },
+    reason: source,
+  });
+
+  revalidatePath("/console/settings/payroll");
+  return { ok: `${stateCode} labour welfare fund set from ${effectiveFrom}.` };
+}

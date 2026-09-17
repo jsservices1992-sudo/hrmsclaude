@@ -588,3 +588,59 @@ describe("Which statutory rows are in force", () => {
     assert.equal(effectiveAsOf(open, "2099-01-01").length, 1);
   });
 });
+
+describe("Labour welfare fund charged as a share of wages", () => {
+  /* Haryana: 0.2% of wages subject to a limit of ₹35, employer twice. */
+  const hr = {
+    employeePaise: 3500,
+    employerPaise: 7000,
+    employeePercentBps: 20,
+    employerMultiple: 2,
+    frequency: "monthly" as const,
+    deductionMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  };
+  const at = (monthlyWagePaise: number) =>
+    computeLwf({ stateCode: "HR", month: 8, applicable: true, rate: hr, monthlyWagePaise });
+
+  test("wages above the cap pay the cap", () => {
+    const r = at(20_375_34);
+    assert.equal(r.employeePaise, 3500);
+    assert.equal(r.employerPaise, 7000);
+    assert.match(r.reason, /at the 0.20% cap/);
+  });
+
+  test("wages below the cap pay the percentage, not the cap", () => {
+    /* ₹15,013.42 × 0.2% = ₹30.03. Charging ₹35 takes too much, every
+       month, from the lowest paid — and nobody would ever query it. */
+    const r = at(15_013_42);
+    assert.equal(r.employeePaise, 3003);
+    assert.match(r.reason, /under the cap/);
+  });
+
+  test("the employer owes twice what the employee actually paid", () => {
+    const r = at(15_013_42);
+    assert.equal(r.employerPaise, 6006, "twice the charge, not twice the cap");
+  });
+
+  test("the cap binds at the wage that reaches it, and not below", () => {
+    assert.equal(at(17_500_00).employeePaise, 3500, "0.2% of 17,500 is exactly the cap");
+    assert.equal(at(17_000_00).employeePaise, 3400, "0.2% of 17,000, under the cap");
+  });
+
+  test("a flat state is unchanged by any of this", () => {
+    const flat = { ...hr, employeePercentBps: null, employerMultiple: null };
+    const r = computeLwf({
+      stateCode: "MH", month: 6, applicable: true, rate: flat, monthlyWagePaise: 15_000_00,
+    });
+    assert.equal(r.employeePaise, 3500, "the stored amount, charged flat");
+    assert.equal(r.employerPaise, 7000);
+  });
+
+  test("a month the fund is not collected in charges nothing", () => {
+    const r = computeLwf({
+      stateCode: "HR", month: 8, applicable: true,
+      rate: { ...hr, deductionMonths: [12] }, monthlyWagePaise: 20_000_00,
+    });
+    assert.equal(r.employeePaise, 0);
+  });
+});

@@ -367,8 +367,13 @@ export function computeProfessionalTax(input: PtInput): PtResult {
    ================================================================== */
 
 export type LwfRate = {
+  /** A flat contribution, or the cap when a percentage is set. */
   employeePaise: Paise;
   employerPaise: Paise;
+  /** A share of wages rather than a flat sum, where the state levies one. */
+  employeePercentBps?: number | null;
+  /** The employer's multiple of what the employee actually paid. */
+  employerMultiple?: number | null;
   frequency: "monthly" | "half_yearly" | "annual";
   /** Months (1-12) in which the deduction falls. */
   deductionMonths: number[];
@@ -379,6 +384,8 @@ export type LwfInput = {
   month: number;
   applicable: boolean;
   rate: LwfRate | null;
+  /** The wages the percentage applies to, where a state levies one. */
+  monthlyWagePaise?: Paise;
 };
 
 export type LwfResult = {
@@ -407,10 +414,36 @@ export function computeLwf(input: LwfInput): LwfResult {
     };
   }
 
+  const frequency = input.rate.frequency.replace("_", "-");
+  const bps = input.rate.employeePercentBps ?? null;
+
+  /*
+   * A percentage state charges a share of wages "subject to a limit", so
+   * the stored amount is the cap rather than the charge. Paying the cap
+   * regardless takes too much from everybody below it.
+   */
+  if (bps !== null && input.monthlyWagePaise !== undefined) {
+    const share = Math.round((input.monthlyWagePaise * bps) / 10000);
+    const employee = Math.min(share, input.rate.employeePaise);
+    const multiple = input.rate.employerMultiple ?? null;
+    return {
+      applicable: true,
+      employeePaise: employee,
+      /* The employer owes a multiple of what the employee actually paid,
+         which is not the same as a multiple of the cap. */
+      employerPaise:
+        multiple !== null ? Math.round(employee * multiple) : input.rate.employerPaise,
+      reason:
+        share < input.rate.employeePaise
+          ? `${frequency} contribution — ${(bps / 100).toFixed(2)}% of wages, under the cap`
+          : `${frequency} contribution — at the ${(bps / 100).toFixed(2)}% cap`,
+    };
+  }
+
   return {
     applicable: true,
     employeePaise: input.rate.employeePaise,
     employerPaise: input.rate.employerPaise,
-    reason: `${input.rate.frequency.replace("_", "-")} contribution`,
+    reason: `${frequency} contribution`,
   };
 }
