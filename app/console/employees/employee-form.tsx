@@ -11,6 +11,37 @@ import { Card, Input, Select as UiSelect, SubmitButton, FormFeedback } from "@/c
 
 type Option = { id: string; label: string };
 
+/** What the refusal calls a field, so the summary names it as the form does. */
+const EMPLOYEE_LABELS: Record<string, string> = {
+  empCode: "Employee code",
+  firstName: "First name",
+  middleName: "Middle name",
+  lastName: "Last name",
+  gender: "Gender",
+  dateOfBirth: "Date of birth",
+  email: "Work email",
+  personalEmail: "Personal email",
+  mobile: "Mobile",
+  addressLine: "Address",
+  city: "City",
+  pincode: "Pincode",
+  emergencyContactName: "Emergency contact",
+  emergencyContactPhone: "Emergency phone",
+  designation: "Designation",
+  branchId: "Branch",
+  departmentId: "Department",
+  gradeId: "Grade",
+  managerId: "Reporting manager",
+  employmentType: "Employment type",
+  dateOfJoining: "Date of joining",
+  pan: "PAN",
+  uan: "UAN",
+  bankAccount: "Bank account",
+  ifsc: "IFSC",
+  structureId: "Salary structure",
+  payAmount: "Amount",
+};
+
 export type FormOptions = {
   departments: { id: string; name: string; code: string }[];
   grades: { id: string; name: string; level: number }[];
@@ -152,11 +183,14 @@ export default function EmployeeForm({
   companyId,
   values,
   options,
+  setupStep,
 }: {
   mode: "create" | "edit";
   companyId: string;
   values: EmployeeValues;
   options: FormOptions;
+  /** Set when this is a step of the guided setup, which it returns to. */
+  setupStep?: string;
 }) {
   const action = mode === "create" ? createEmployee : updateEmployee;
   const [state, formAction] = useActionState<EmployeeFormState, FormData>(
@@ -164,21 +198,33 @@ export default function EmployeeForm({
     {},
   );
   const err = (k: string) => state.fieldErrors?.[k];
+  /* What was typed beats what is on record: a refused form has to come
+     back with the person's own work in it. */
+  const val = (k: keyof EmployeeValues, fallback = "") =>
+    state.values?.[k] ?? (values[k] as string | null | undefined) ?? fallback;
+  const checked = (k: keyof EmployeeValues) =>
+    state.values ? state.values[k] === "on" : Boolean(values[k]);
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
       <input type="hidden" name="companyId" value={companyId} />
       {values.id && <input type="hidden" name="employeeId" value={values.id} />}
+      {setupStep && <input type="hidden" name="setupStep" value={setupStep} />}
+
+      <p className="text-xs text-ink-3">
+        <span className="text-rust">*</span> is required. Everything else can be
+        filled in later — what you have typed is kept if something is refused.
+      </p>
 
       <Section title="Identity">
-        <Field label="Employee code" name="empCode" defaultValue={values.empCode} required error={err("empCode")} hint="Your own staff number — EMP001, JM0010. It identifies this person in every import file." />
-        <Field label="First name" name="firstName" defaultValue={values.firstName} required error={err("firstName")} />
-        <Field label="Middle name" name="middleName" defaultValue={values.middleName} error={err("middleName")} />
-        <Field label="Last name" name="lastName" defaultValue={values.lastName} required error={err("lastName")} />
+        <Field label="Employee code" name="empCode" defaultValue={val("empCode")} required error={err("empCode")} hint="Your own staff number — EMP001, JM0010. It identifies this person in every import file." />
+        <Field label="First name" name="firstName" defaultValue={val("firstName")} required error={err("firstName")} />
+        <Field label="Middle name" name="middleName" defaultValue={val("middleName")} error={err("middleName")} />
+        <Field label="Last name" name="lastName" defaultValue={val("lastName")} required error={err("lastName")} />
         <Select
           label="Gender"
           name="gender"
-          defaultValue={values.gender ?? "other"}
+          defaultValue={val("gender", "other")}
           allowEmpty={false}
           options={[
             { id: "female", label: "Female" },
@@ -187,26 +233,26 @@ export default function EmployeeForm({
           ]}
           error={err("gender")}
         />
-        <Field label="Date of birth" name="dateOfBirth" type="date" defaultValue={values.dateOfBirth} error={err("dateOfBirth")} />
+        <Field label="Date of birth" name="dateOfBirth" type="date" defaultValue={val("dateOfBirth")} error={err("dateOfBirth")} />
       </Section>
 
       <Section title="Contact">
-        <Field label="Work email" name="email" type="email" defaultValue={values.email} error={err("email")} />
-        <Field label="Personal email" name="personalEmail" type="email" defaultValue={values.personalEmail} error={err("personalEmail")} />
-        <Field label="Mobile" name="mobile" {...IDENTIFIER_INPUT.mobile} defaultValue={values.mobile} error={err("mobile")} hint="10 digits" />
-        <Field label="Address" name="addressLine" defaultValue={values.addressLine} error={err("addressLine")} />
-        <Field label="City" name="city" defaultValue={values.city} error={err("city")} />
-        <Field label="Pincode" name="pincode" defaultValue={values.pincode} error={err("pincode")} />
-        <Field label="Emergency contact" name="emergencyContactName" defaultValue={values.emergencyContactName} error={err("emergencyContactName")} />
-        <Field label="Emergency phone" name="emergencyContactPhone" defaultValue={values.emergencyContactPhone} error={err("emergencyContactPhone")} />
+        <Field label="Work email" name="email" type="email" defaultValue={val("email")} error={err("email")} />
+        <Field label="Personal email" name="personalEmail" type="email" defaultValue={val("personalEmail")} error={err("personalEmail")} />
+        <Field label="Mobile" name="mobile" {...IDENTIFIER_INPUT.mobile} defaultValue={val("mobile")} error={err("mobile")} hint="10 digits" />
+        <Field label="Address" name="addressLine" defaultValue={val("addressLine")} error={err("addressLine")} />
+        <Field label="City" name="city" defaultValue={val("city")} error={err("city")} />
+        <Field label="Pincode" name="pincode" defaultValue={val("pincode")} error={err("pincode")} />
+        <Field label="Emergency contact" name="emergencyContactName" defaultValue={val("emergencyContactName")} error={err("emergencyContactName")} />
+        <Field label="Emergency phone" name="emergencyContactPhone" defaultValue={val("emergencyContactPhone")} error={err("emergencyContactPhone")} />
       </Section>
 
       <Section title="Employment">
-        <Field label="Designation" name="designation" defaultValue={values.designation} error={err("designation")} />
+        <Field label="Designation" name="designation" defaultValue={val("designation")} error={err("designation")} />
         <Select
           label="Branch"
           name="branchId"
-          defaultValue={values.branchId}
+          defaultValue={val("branchId")}
           required
           allowEmpty={false}
           options={options.branches.map((b) => ({
@@ -218,28 +264,28 @@ export default function EmployeeForm({
         <Select
           label="Department"
           name="departmentId"
-          defaultValue={values.departmentId}
+          defaultValue={val("departmentId")}
           options={options.departments.map((d) => ({ id: d.id, label: `${d.code} — ${d.name}` }))}
           error={err("departmentId")}
         />
         <Select
           label="Grade"
           name="gradeId"
-          defaultValue={values.gradeId}
+          defaultValue={val("gradeId")}
           options={options.grades.map((g) => ({ id: g.id, label: g.name }))}
           error={err("gradeId")}
         />
         <Select
           label="Reporting manager"
           name="managerId"
-          defaultValue={values.managerId}
+          defaultValue={val("managerId")}
           options={options.managers.filter((m) => m.id !== values.id)}
           error={err("managerId")}
         />
         <Select
           label="Employment type"
           name="employmentType"
-          defaultValue={values.employmentType ?? "permanent"}
+          defaultValue={val("employmentType", "permanent")}
           allowEmpty={false}
           options={[
             { id: "permanent", label: "Permanent" },
@@ -250,19 +296,19 @@ export default function EmployeeForm({
           ]}
           error={err("employmentType")}
         />
-        <Field label="Date of joining" name="dateOfJoining" type="date" defaultValue={values.dateOfJoining} required error={err("dateOfJoining")} />
+        <Field label="Date of joining" name="dateOfJoining" type="date" defaultValue={val("dateOfJoining")} required error={err("dateOfJoining")} />
       </Section>
 
       <Section title="Statutory & banking">
-        <Field label="PAN" name="pan" {...IDENTIFIER_INPUT.pan} defaultValue={values.pan} error={err("pan")} hint="ABCDE1234F" />
-        <Field label="UAN" name="uan" {...IDENTIFIER_INPUT.uan} defaultValue={values.uan} error={err("uan")} hint="12 digits" />
-        <Field label="Bank account" name="bankAccount" {...IDENTIFIER_INPUT.bankAccount} defaultValue={values.bankAccount} error={err("bankAccount")} />
-        <Field label="IFSC" name="ifsc" {...IDENTIFIER_INPUT.ifsc} defaultValue={values.ifsc} error={err("ifsc")} hint="HDFC0000123" />
+        <Field label="PAN" name="pan" {...IDENTIFIER_INPUT.pan} defaultValue={val("pan")} error={err("pan")} hint="ABCDE1234F" />
+        <Field label="UAN" name="uan" {...IDENTIFIER_INPUT.uan} defaultValue={val("uan")} error={err("uan")} hint="12 digits" />
+        <Field label="Bank account" name="bankAccount" {...IDENTIFIER_INPUT.bankAccount} defaultValue={val("bankAccount")} error={err("bankAccount")} />
+        <Field label="IFSC" name="ifsc" {...IDENTIFIER_INPUT.ifsc} defaultValue={val("ifsc")} error={err("ifsc")} hint="HDFC0000123" />
         <label className="flex items-center gap-2.5 self-end pb-2">
           <input
             type="checkbox"
             name="hadPriorPfMembership"
-            defaultChecked={values.hadPriorPfMembership}
+            defaultChecked={checked("hadPriorPfMembership")}
             className="h-4 w-4"
           />
           <span className="text-sm">Has prior PF membership</span>
@@ -274,6 +320,7 @@ export default function EmployeeForm({
           <Select
             label="Salary structure"
             name="structureId"
+            defaultValue={state.values?.structureId}
             options={options.structures.map((x) => ({
               id: x.id,
               label: x.isDefault ? `${x.name} (default)` : x.name,
@@ -284,7 +331,7 @@ export default function EmployeeForm({
           <Select
             label="Enter pay as"
             name="payMode"
-            defaultValue="gross"
+            defaultValue={state.values?.payMode ?? "gross"}
             allowEmpty={false}
             options={[
               { id: "gross", label: "Monthly gross" },
@@ -300,6 +347,7 @@ export default function EmployeeForm({
             type="number"
             min="0"
             step="0.01"
+            defaultValue={state.values?.payAmount}
             hint="Leave blank to set it later. Without it they are in no payroll run."
             error={err("payAmount")}
           />
@@ -316,7 +364,7 @@ export default function EmployeeForm({
         </label>
       )}
 
-      <FormFeedback state={state} />
+      <FormFeedback state={state} labels={EMPLOYEE_LABELS} />
 
       <div>
         <SubmitButton pendingText="Saving…">

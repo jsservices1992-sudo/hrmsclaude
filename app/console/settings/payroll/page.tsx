@@ -48,6 +48,7 @@ import {
   Badge,
   Tooltip,
 } from "@/components/console/ui";
+import { SetupWizard } from "@/components/console/setup-wizard";
 import { loadSodPolicies } from "@/lib/audit/log";
 import { SodToggle } from "../../audit/forms";
 import { formatDate } from "@/lib/format/date";
@@ -65,6 +66,7 @@ export default async function PayrollSettingsPage(
   const user = (await getSessionUser())!;
   const sp = await props.searchParams;
   const tab = typeof sp.tab === "string" ? sp.tab : "conventions";
+  const setupStep = typeof sp.setup === "string" ? sp.setup : undefined;
   const deptParam = typeof sp.dept === "string" ? sp.dept : null;
 
   const companies = scopeCompanies(user, await listCompanies());
@@ -215,6 +217,8 @@ export default async function PayrollSettingsPage(
 
   return (
     <div className="flex flex-col gap-6">
+      <SetupWizard companyId={companyId} stepId={setupStep} />
+
       <div>
         <Link href="/console/settings" className="label text-brass hover:underline">
           ← Settings
@@ -247,7 +251,7 @@ export default async function PayrollSettingsPage(
         {TABS.map((t) => (
           <TabLink
             key={t.id}
-            href={`/console/settings/payroll?company=${companyId}&tab=${t.id}`}
+            href={`/console/settings/payroll?company=${companyId}&tab=${t.id}${setupStep ? `&setup=${setupStep}` : ""}`}
             active={tab === t.id}
           >
             {t.label}

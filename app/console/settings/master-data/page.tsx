@@ -14,6 +14,7 @@ import {
 } from "./forms";
 import { PageHeader, Card, Select, FilterBar, FilterField, Tabs, TabLink, Table, THead, TH, TBody, TR, TD, Badge, EmptyState } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
+import { SetupWizard } from "@/components/console/setup-wizard";
 
 export const metadata = { title: "Master data" };
 
@@ -43,10 +44,14 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
   const companies = scopeCompanies(user, await listCompanies());
   const requested = typeof sp.company === "string" ? sp.company : null;
   const companyId = requested && canAccessCompany(user, requested) ? requested : companies[0]?.id;
+  const setupStep = typeof sp.setup === "string" ? sp.setup : undefined;
   const canEdit = canMutate(user);
 
   if (!companyId) return <p className="text-ink-3">No company available.</p>;
-  const query = (t: string) => `company=${companyId}&tab=${t}`;
+  /* The wizard travels with the tab: switching tabs inside a step should
+     not quietly drop somebody out of the path they are following. */
+  const query = (t: string) =>
+    `company=${companyId}&tab=${t}${setupStep ? `&setup=${setupStep}` : ""}`;
 
   const [departments, grades, leaveTypes, holidays, branches, shifts, payComponents, loanSchemes, glAccounts, glMappings, variablePayTypes] =
     await Promise.all([
@@ -98,6 +103,8 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           )
         }
       />
+
+      <SetupWizard companyId={companyId} stepId={setupStep} />
 
       <Tabs>
         {TABS.map((t) => (

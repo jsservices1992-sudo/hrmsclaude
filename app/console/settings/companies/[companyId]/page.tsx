@@ -11,6 +11,7 @@ import {
   CompanyLogoForm,
 } from "../../forms";
 import { Badge, Card, Tabs, TabLink, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { SetupWizard } from "@/components/console/setup-wizard";
 
 export const metadata = { title: "Company settings" };
 
@@ -28,6 +29,7 @@ export default async function CompanySettingsPage(
   const sp = await props.searchParams;
   const tab = typeof sp.tab === "string" ? sp.tab : "profile";
   const editBranch = typeof sp.branch === "string" ? sp.branch : null;
+  const setupStep = typeof sp.setup === "string" ? sp.setup : undefined;
 
   if (!canAccessCompany(user, companyId)) redirect("/console/settings");
 
@@ -92,6 +94,8 @@ export default async function CompanySettingsPage(
 
   return (
     <div className="flex flex-col gap-6">
+      <SetupWizard companyId={companyId} stepId={setupStep} />
+
       <div>
         <Link href="/console/settings" className="label text-brass hover:underline">
           ← Settings
@@ -121,7 +125,7 @@ export default async function CompanySettingsPage(
         {TABS.map((t) => (
           <TabLink
             key={t.id}
-            href={`/console/settings/companies/${companyId}?tab=${t.id}`}
+            href={`/console/settings/companies/${companyId}?tab=${t.id}${setupStep ? `&setup=${setupStep}` : ""}`}
             active={tab === t.id}
           >
             {t.label}

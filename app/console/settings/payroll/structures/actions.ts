@@ -8,11 +8,14 @@ import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany } from "@/lib/auth/session";
 import { buildComponentSpecs, type StructureLineJoined } from "@/lib/payroll/structures";
 import { validateStructure } from "@/lib/payroll/compensation";
+import { submitted } from "@/lib/forms/submitted";
 
 export type PayrollSettingsState = {
   error?: string;
   ok?: string;
   fieldErrors?: Record<string, string>;
+  /** What was submitted, so a refused form comes back filled in. */
+  values?: Record<string, string>;
 };
 
 const nullable = (v: FormDataEntryValue | null) => {
@@ -69,7 +72,13 @@ export async function createStructure(
   if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
 
   const name = String(fd.get("name") ?? "").trim();
-  if (!name) return { error: "Name is required." };
+  if (!name) {
+    return {
+      error: "Name is required.",
+      fieldErrors: { name: "Required" },
+      values: submitted(fd),
+    };
+  }
 
   const description = nullable(fd.get("description"));
   const gradeIdRaw = nullable(fd.get("gradeId"));
@@ -80,13 +89,23 @@ export async function createStructure(
       .from(s.grades)
       .where(and(eq(s.grades.id, gradeIdRaw), eq(s.grades.companyId, companyId)))
       .limit(1);
-    if (!grade) return { error: "Grade not found." };
+    if (!grade) {
+      return {
+        error: "Grade not found.",
+        fieldErrors: { gradeId: "No longer exists" },
+        values: submitted(fd),
+      };
+    }
   }
 
   const minBasicRaw = String(fd.get("minBasicPercentOfGross") ?? "").trim();
   const minBasicPercentOfGross = minBasicRaw ? Number(minBasicRaw) : 40;
   if (!Number.isFinite(minBasicPercentOfGross) || minBasicPercentOfGross < 0 || minBasicPercentOfGross > 100) {
-    return { error: "Minimum basic must be a percentage between 0 and 100." };
+    return {
+      error: "Minimum basic must be a percentage between 0 and 100.",
+      fieldErrors: { minBasicPercentOfGross: "A percentage between 0 and 100" },
+      values: submitted(fd),
+    };
   }
 
   const id = randomUUID();

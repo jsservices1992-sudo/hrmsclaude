@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth/session";
 import EmployeeForm from "../employee-form";
 import { PageHeader, Select, FilterBar, FilterField } from "@/components/console/ui";
+import { SetupWizard } from "@/components/console/setup-wizard";
 
 export const metadata = { title: "New employee" };
 
@@ -34,8 +35,12 @@ export default async function NewEmployeePage(
   const options = await loadFormOptions(companyId);
   const company = companies.find((c) => c.id === companyId)!;
 
+  const setupStep = typeof sp.setup === "string" ? sp.setup : undefined;
+
   return (
     <div className="flex flex-col gap-6">
+      <SetupWizard companyId={companyId} stepId={setupStep} />
+
       <div>
         <Link href="/console/employees" className="label text-brass hover:underline">
           ← Employees
@@ -71,6 +76,7 @@ export default async function NewEmployeePage(
         companyId={companyId}
         values={{ gender: "other", employmentType: "permanent" }}
         options={options}
+        setupStep={setupStep}
       />
     </div>
   );

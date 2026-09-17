@@ -12,7 +12,14 @@ import {
   type PayrollSettingsState,
 } from "./actions";
 import { createStarterStructure } from "../actions";
-import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
+import { Input, Select, SubmitButton, FormFeedback, FormField } from "@/components/console/ui";
+
+const STRUCTURE_LABELS: Record<string, string> = {
+  name: "Name",
+  description: "Description",
+  gradeId: "Grade",
+  minBasicPercentOfGross: "Min basic",
+};
 
 export function CreateStructureForm({
   companyId,
@@ -22,34 +29,44 @@ export function CreateStructureForm({
   grades: { id: string; name: string }[];
 }) {
   const [state, action] = useActionState<PayrollSettingsState, FormData>(createStructure, {});
+  const err = (k: string) => state.fieldErrors?.[k];
+  const val = (k: string) => state.values?.[k] ?? "";
 
   return (
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="companyId" value={companyId} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Name</span>
-          <Input name="name" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Description</span>
-          <Input name="description" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Grade</span>
-          <Select name="gradeId" defaultValue="">
+        <FormField label="Name" required error={err("name")}>
+          <Input name="name" defaultValue={val("name")} invalid={!!err("name")} />
+        </FormField>
+        <FormField label="Description" error={err("description")}>
+          <Input name="description" defaultValue={val("description")} invalid={!!err("description")} />
+        </FormField>
+        <FormField label="Grade" error={err("gradeId")}>
+          <Select name="gradeId" defaultValue={val("gradeId")} invalid={!!err("gradeId")}>
             <option value="">No grade</option>
             {grades.map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </Select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Min basic (% of gross)</span>
-          <Input name="minBasicPercentOfGross" type="number" step="any" placeholder="40" className="tnum" />
-        </label>
+        </FormField>
+        <FormField
+          label="Min basic (% of gross)"
+          error={err("minBasicPercentOfGross")}
+          hint="40 unless your state says otherwise"
+        >
+          <Input
+            name="minBasicPercentOfGross"
+            type="number"
+            step="any"
+            placeholder="40"
+            className="tnum"
+            defaultValue={val("minBasicPercentOfGross")}
+            invalid={!!err("minBasicPercentOfGross")}
+          />
+        </FormField>
       </div>
-      <FormFeedback state={state} />
+      <FormFeedback state={state} labels={STRUCTURE_LABELS} />
       <div><SubmitButton pendingText="Creating…">Create structure</SubmitButton></div>
     </form>
   );

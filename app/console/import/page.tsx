@@ -7,6 +7,7 @@ import { getSessionUser, scopeCompanies, canMutate } from "@/lib/auth/session";
 import { listCompanies } from "@/lib/payroll/load";
 import { PageHeader, Card, Badge } from "@/components/console/ui";
 import { SalaryImportForm, LeaveBalanceImportForm } from "./forms";
+import { SetupWizard } from "@/components/console/setup-wizard";
 
 export const metadata = { title: "Migrate" };
 export const dynamic = "force-dynamic";
@@ -67,11 +68,14 @@ function Step({
   );
 }
 
-export default async function ImportPage() {
+export default async function ImportPage(props: PageProps<"/console/import">) {
   const user = (await getSessionUser())!;
   const companies = scopeCompanies(user, await listCompanies());
   const companyId = companies[0]?.id;
   if (!companyId) redirect("/console");
+
+  const sp = await props.searchParams;
+  const setupStep = typeof sp.setup === "string" ? sp.setup : undefined;
 
   const [branches, departments, leaveTypes, employees] = await Promise.all([
     db.select({ id: s.branches.id }).from(s.branches).where(eq(s.branches.companyId, companyId)),
@@ -99,6 +103,8 @@ export default async function ImportPage() {
 
   return (
     <div className="flex flex-col gap-5 max-w-4xl">
+      <SetupWizard companyId={companyId} stepId={setupStep} />
+
       <PageHeader
         eyebrow={companies[0].name}
         title="Bring your people across"

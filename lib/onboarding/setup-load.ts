@@ -2,6 +2,7 @@ import { and, eq, gte, isNull, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import type { SetupFacts } from "./setup";
+import type { WizardFacts } from "./wizard";
 
 /** Counts for one company: what exists, not what it contains. */
 export async function loadSetupFacts(companyId: string): Promise<SetupFacts> {
@@ -93,4 +94,21 @@ export async function loadSetupFacts(companyId: string): Promise<SetupFacts> {
     bankAccounts,
     employeesWithoutSalary,
   };
+}
+
+/** The same counts, plus the ones only the guided path asks about. */
+export async function loadWizardFacts(companyId: string): Promise<WizardFacts> {
+  const size = (rows: { id: string }[]) => rows.length;
+  const [base, registrations, variablePayTypes, loanSchemes, glAccounts] = await Promise.all([
+    loadSetupFacts(companyId),
+    db.select({ id: s.companyRegistrations.id }).from(s.companyRegistrations)
+      .where(eq(s.companyRegistrations.companyId, companyId)).then(size),
+    db.select({ id: s.variablePayTypes.id }).from(s.variablePayTypes)
+      .where(eq(s.variablePayTypes.companyId, companyId)).then(size),
+    db.select({ id: s.loanSchemes.id }).from(s.loanSchemes)
+      .where(eq(s.loanSchemes.companyId, companyId)).then(size),
+    db.select({ id: s.glAccounts.id }).from(s.glAccounts)
+      .where(eq(s.glAccounts.companyId, companyId)).then(size),
+  ]);
+  return { ...base, registrations, variablePayTypes, loanSchemes, glAccounts };
 }

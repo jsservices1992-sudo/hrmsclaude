@@ -10,7 +10,13 @@ import {
   clearDepartmentPayrollOverride,
   type PayrollSettingsState,
 } from "./actions";
-import { Input, Select as UiSelect, SubmitButton, FormFeedback, Card } from "@/components/console/ui";
+import { Input, Select as UiSelect, SubmitButton, FormFeedback, FormField, Card } from "@/components/console/ui";
+
+const BANK_LABELS: Record<string, string> = {
+  bankName: "Bank name",
+  accountNumber: "Account number",
+  ifsc: "IFSC",
+};
 
 function Group({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -353,13 +359,19 @@ export function BankForm({ companyId }: { companyId: string }) {
   const [state, action] = useActionState<PayrollSettingsState, FormData>(
     createBankAccount, {},
   );
+  const err = (k: string) => state.fieldErrors?.[k];
+  const val = (k: string, fallback = "") => state.values?.[k] ?? fallback;
 
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="companyId" value={companyId} />
+      <p className="text-xs text-ink-3">
+        <span className="text-rust">*</span> is required — what you have typed
+        is kept if something is refused.
+      </p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Select
-          label="Purpose" name="purpose" defaultValue="salary"
+          label="Purpose" name="purpose" defaultValue={val("purpose", "salary")}
           options={[
             { id: "salary", label: "Salary disbursement" },
             { id: "pf", label: "Provident fund" },
@@ -370,21 +382,17 @@ export function BankForm({ companyId }: { companyId: string }) {
             { id: "reimbursement", label: "Reimbursements" },
           ]}
         />
-        <label className="flex flex-col gap-1.5">
-          <span className="label text-ink-3">Bank name</span>
-          <Input name="bankName" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="label text-ink-3">Account number</span>
-          <Input name="accountNumber" className="font-mono" />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="label text-ink-3">IFSC</span>
-          <Input name="ifsc" placeholder="HDFC0000123" className="font-mono" invalid={!!state.fieldErrors?.ifsc} />
-          {state.fieldErrors?.ifsc && <span className="text-xs text-rust">{state.fieldErrors.ifsc}</span>}
-        </label>
+        <FormField label="Bank name" required error={err("bankName")}>
+          <Input name="bankName" defaultValue={val("bankName")} invalid={!!err("bankName")} />
+        </FormField>
+        <FormField label="Account number" required error={err("accountNumber")}>
+          <Input name="accountNumber" className="font-mono" defaultValue={val("accountNumber")} invalid={!!err("accountNumber")} />
+        </FormField>
+        <FormField label="IFSC" required error={err("ifsc")}>
+          <Input name="ifsc" placeholder="HDFC0000123" className="font-mono" defaultValue={val("ifsc")} invalid={!!err("ifsc")} />
+        </FormField>
         <Select
-          label="File format" name="fileFormat" defaultValue="neft_generic"
+          label="File format" name="fileFormat" defaultValue={val("fileFormat", "neft_generic")}
           options={[
             { id: "neft_generic", label: "Generic NEFT" },
             { id: "hdfc", label: "HDFC" },
@@ -395,7 +403,7 @@ export function BankForm({ companyId }: { companyId: string }) {
           ]}
         />
       </div>
-      <FormFeedback state={state} />
+      <FormFeedback state={state} labels={BANK_LABELS} />
       <div><SubmitButton pendingText="Saving…">Add account</SubmitButton></div>
     </form>
   );

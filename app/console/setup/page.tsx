@@ -2,8 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser, scopeCompanies } from "@/lib/auth/session";
 import { listCompanies } from "@/lib/payroll/load";
-import { setupProgress } from "@/lib/onboarding/setup";
-import { loadSetupFacts } from "@/lib/onboarding/setup-load";
+import { wizardSteps, withWizard } from "@/lib/onboarding/wizard";
+import { loadWizardFacts } from "@/lib/onboarding/setup-load";
 import { PageHeader, Card, Badge } from "@/components/console/ui";
 
 export const metadata = { title: "Set up" };
@@ -23,8 +23,18 @@ export default async function SetupPage() {
   const companyId = companies[0]?.id;
   if (!companyId) redirect("/console");
 
-  const facts = await loadSetupFacts(companyId);
-  const progress = setupProgress(facts);
+  const facts = await loadWizardFacts(companyId);
+  const steps = wizardSteps(companyId, facts);
+  const done = steps.filter((x) => x.done).length;
+  const progress = {
+    steps,
+    done,
+    total: steps.length,
+    percent: Math.round((done / steps.length) * 100),
+    complete: done === steps.length,
+    next: steps.find((x) => !x.done) ?? null,
+    blockers: steps.filter((x) => !x.done && x.required),
+  };
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
@@ -81,7 +91,7 @@ export default async function SetupPage() {
               <div className="min-w-0">
                 <p className="text-sm font-medium">
                   {step.title}
-                  {!step.done && step.blocking && (
+                  {!step.done && step.required && (
                     <Badge tone="brass" className="ml-2">needed first</Badge>
                   )}
                 </p>
@@ -89,7 +99,7 @@ export default async function SetupPage() {
               </div>
             </div>
             <Link
-              href={step.href}
+              href={withWizard(step.href, step.id)}
               className={`label whitespace-nowrap hover:underline ${
                 step.done ? "text-ink-3" : "text-brass"
               }`}

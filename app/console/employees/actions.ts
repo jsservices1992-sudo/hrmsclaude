@@ -44,8 +44,22 @@ import {
   unresolvedReferences,
   missingReferences,
 } from "@/lib/hris/employee-bulk";
+import { submitted } from "@/lib/forms/submitted";
+import { wizardPosition, nextStop, withWizard } from "@/lib/onboarding/wizard";
+import { loadWizardFacts } from "@/lib/onboarding/setup-load";
 
-export type EmployeeFormState = { error?: string; ok?: string; fieldErrors?: Record<string, string> };
+export type EmployeeFormState = {
+  error?: string;
+  ok?: string;
+  fieldErrors?: Record<string, string>;
+  /**
+   * What was submitted, so a refused form redisplays what the person
+   * typed rather than reverting to what is on record. Thirty fields
+   * cleared by one mistyped PAN is how a half-filled employee record
+   * gets saved and never finished.
+   */
+  values?: Record<string, string>;
+};
 
 /** Fields whose changes are recorded individually — FR-HRIS-5. */
 const AUDITED_FIELDS = [
@@ -185,6 +199,7 @@ export async function createEmployee(
     return {
       error: "Fix the highlighted fields.",
       fieldErrors: fieldErrorsOf(parsed.error),
+      values: submitted(formData),
     };
   }
   const data = parsed.data;
@@ -203,6 +218,7 @@ export async function createEmployee(
     return {
       error: "That employee code is already in use.",
       fieldErrors: { empCode: "Already in use in this company" },
+      values: submitted(formData),
     };
   }
 
@@ -241,6 +257,7 @@ export async function createEmployee(
       return {
         error: `The salary structure cannot express this pay: ${pay.warnings.join("; ")}`,
         fieldErrors: { payAmount: "Not expressible on the chosen structure" },
+        values: submitted(formData),
       };
     }
   }
@@ -335,6 +352,18 @@ export async function createEmployee(
   });
 
   revalidatePath("/console/employees");
+
+  /* Creating an employee ends in a redirect rather than a message, so
+     this is the one step of the guided setup that cannot announce
+     itself and be moved on like the others. It carries the person to
+     the next step itself. */
+  const setupStep = String(formData.get("setupStep") ?? "");
+  if (setupStep) {
+    const at = wizardPosition(companyId, await loadWizardFacts(companyId), setupStep);
+    const next = at && nextStop(at.steps, at.index);
+    redirect(next ? withWizard(next.href, next.id) : "/console/setup");
+  }
+
   redirect(`/console/employees/${id}`);
 }
 
@@ -370,6 +399,7 @@ export async function updateEmployee(
     return {
       error: "Fix the highlighted fields.",
       fieldErrors: fieldErrorsOf(parsed.error),
+      values: submitted(formData),
     };
   }
   const data = parsed.data;
@@ -383,6 +413,7 @@ export async function updateEmployee(
         return {
           error: "That reporting line would create a cycle.",
           fieldErrors: { managerId: "Creates a reporting cycle" },
+          values: submitted(formData),
         };
       }
       seen.add(cursor);

@@ -1,3 +1,10 @@
+"use client";
+
+import { useEffect } from "react";
+
+/** Announced when any form on the page reports a success. */
+export const SAVED_EVENT = "lekha:saved";
+
 export type ActionState = {
   ok?: string;
   error?: string;
@@ -21,6 +28,12 @@ export function FormFeedback({
   labels?: Record<string, string>;
 }) {
   const fields = Object.entries(state.fieldErrors ?? {});
+
+  /* Said out loud so the guided setup can move on without every form
+     having to know that it exists. */
+  useEffect(() => {
+    if (state.ok) window.dispatchEvent(new CustomEvent(SAVED_EVENT));
+  }, [state.ok]);
 
   if (state.error) {
     return (

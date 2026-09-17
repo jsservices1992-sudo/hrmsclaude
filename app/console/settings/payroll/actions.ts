@@ -14,6 +14,7 @@ import {
 } from "@/lib/hris/identifiers";
 import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany } from "@/lib/auth/session";
+import { submitted } from "@/lib/forms/submitted";
 import {
   starterComponents,
   STARTER_STRUCTURE_NAME,
@@ -24,6 +25,8 @@ export type PayrollSettingsState = {
   error?: string;
   ok?: string;
   fieldErrors?: Record<string, string>;
+  /** What was submitted, so a refused form comes back filled in. */
+  values?: Record<string, string>;
 };
 
 const nullable = (v: FormDataEntryValue | null) => {
@@ -146,7 +149,7 @@ export async function updatePayrollSettings(
       const k = String(i.path[0] ?? "form");
       if (!fieldErrors[k]) fieldErrors[k] = i.message;
     }
-    return { error: "Fix the highlighted fields.", fieldErrors };
+    return { error: "Fix the highlighted fields.", fieldErrors, values: submitted(fd) };
   }
   const d = parsed.data;
 
@@ -169,6 +172,7 @@ export async function updatePayrollSettings(
       error:
         "This company has saved payroll runs. Changing a payroll setting requires a reason, which is recorded in the audit log.",
       fieldErrors: { changeReason: "Required once runs exist" },
+      values: submitted(fd),
     };
   }
 
@@ -332,18 +336,25 @@ export async function createBankAccount(
 
   const ifsc = normaliseIfsc(String(fd.get("ifsc") ?? "")) ?? "";
   if (!IFSC_RE.test(ifsc)) {
-    return { error: MSG.ifsc, fieldErrors: { ifsc: "Invalid IFSC" } };
+    return { error: MSG.ifsc, fieldErrors: { ifsc: "Invalid IFSC" }, values: submitted(fd) };
   }
 
   const accountNumber = normaliseBankAccount(String(fd.get("accountNumber") ?? "")) ?? "";
   const bankName = String(fd.get("bankName") ?? "").trim();
   if (!accountNumber || !bankName) {
-    return { error: "Bank name and account number are required." };
+    return {
+      error: "Bank name and account number are required.",
+      fieldErrors: {
+        ...(bankName ? {} : { bankName: "Required" }),
+        ...(accountNumber ? {} : { accountNumber: "Required" }),
+      },
+      values: submitted(fd),
+    };
   }
   /* This is the account the salary file is drawn on. A wrong one is not
      a form error, it is a failed batch discovered on payday. */
   if (!BANK_ACCOUNT_RE.test(accountNumber)) {
-    return { error: MSG.bankAccount, fieldErrors: { accountNumber: "Invalid account number" } };
+    return { error: MSG.bankAccount, fieldErrors: { accountNumber: "Invalid account number" }, values: submitted(fd) };
   }
 
   const id = randomUUID();
