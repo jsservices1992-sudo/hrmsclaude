@@ -27,6 +27,16 @@ export const companies = pgTable("companies", {
   tan: text("tan"),
   pfCode: text("pf_code"),
   esicCode: text("esic_code"),
+  /**
+   * Employees on the rolls, as the company declares it.
+   *
+   * Several Acts turn on a headcount — bonus at twenty, gratuity at ten —
+   * and none of them mean the number of active rows in this table. The
+   * tests count contractors and look across the year, so this is the
+   * company's own declaration. Null means nobody has said, which is
+   * reported rather than assumed either way.
+   */
+  declaredHeadcount: integer("declared_headcount"),
   /* Printed on payslips and letters. A URL or a data: URI — the payslip
      falls back to a monogram of the company name when it is not set, so
      a slip never prints with a hole where a logo should be. */
@@ -314,6 +324,17 @@ export const grades = pgTable(
     level: integer("level").notNull(),
     noticeDays: integer("notice_days"),
     probationMonths: integer("probation_months"),
+    /**
+     * Which minimum wage applies to people on this grade.
+     *
+     * A state notifies its floor per skill category, so without this
+     * there is nothing to compare a salary against. It lives on the
+     * grade because that is already the job-level concept; an employee
+     * may override it where the grade does not fit.
+     */
+    skillCategory: text("skill_category", {
+      enum: ["unskilled", "semi_skilled", "skilled", "highly_skilled"],
+    }),
   },
   (t) => [uniqueIndex("grades_company_name_idx").on(t.companyId, t.name)],
 );
@@ -351,6 +372,10 @@ export const employees = pgTable(
     department: text("department"),
     departmentId: text("department_id").references(() => departments.id),
     gradeId: text("grade_id").references(() => grades.id),
+    /** Overrides the grade's, for somebody the grade does not describe. */
+    skillCategory: text("skill_category", {
+      enum: ["unskilled", "semi_skilled", "skilled", "highly_skilled"],
+    }),
     /** Self-reference: the reporting line that generates the org chart. */
     managerId: text("manager_id"),
     probationEndDate: text("probation_end_date"),
@@ -564,6 +589,20 @@ export const payComponents = pgTable(
     ptBase: boolean("pt_base").notNull().default(true),
     /** Counts toward the Payment of Bonus Act wage. */
     bonusBase: boolean("bonus_base").notNull().default(false),
+    /**
+     * What this component discharges, where it pays a bonus at all.
+     *
+     * Distinct from `bonusBase`, which says a component counts toward the
+     * wage the bonus is computed on. This says the component *is* the
+     * payment — so that the Act's entitlement can be compared against
+     * what is already being paid, instead of being added on top of it and
+     * paying somebody twice.
+     *
+     * Left null deliberately for existing components. Guessing which of a
+     * company's components was meant as the statutory bonus is exactly
+     * the assumption that would cause the double payment.
+     */
+    bonusRole: text("bonus_role", { enum: ["statutory_bonus", "ex_gratia"] }),
     /** Counts toward gratuity's "last drawn wages". */
     gratuityBase: boolean("gratuity_base")
       .notNull()

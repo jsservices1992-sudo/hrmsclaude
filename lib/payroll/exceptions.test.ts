@@ -1,4 +1,4 @@
-import test from "node:test";
+import test, { describe } from "node:test";
 import assert from "node:assert/strict";
 import {
   detectExceptions,
@@ -36,6 +36,14 @@ function row(p: Partial<ExceptionInput> = {}): ExceptionInput {
     dateOfExit: null,
     salaryChangedInPeriod: false,
     engineWarnings: [],
+    monthlyGrossPaise: 35_000_00,
+    monthlyBasicPaise: 17_500_00,
+    minimumWagePaise: null,
+    minimumWageUnknown: null,
+    bonusShortfallPaise: null,
+    bonusEntitlementPaise: null,
+    wageCodeShortfallPaise: null,
+    wageCodeShare: null,
     ...p,
   };
 }
@@ -145,4 +153,136 @@ test("an engine warning about recovery is typed as a shortfall, not swallowed", 
     ctx,
   );
   assert.equal(found.find((x) => x.code === "loan_recovery_shortfall")?.severity, "warning");
+});
+
+describe("Minimum wage", () => {
+  const floor = { minimumWagePaise: 20_000_00 };
+
+  test("pay below the floor blocks the run", () => {
+    const found = detectExceptions(
+      [row({ ...floor, monthlyGrossPaise: 19_999_00 })],
+      ctx,
+    );
+    const hit = found.find((e) => e.code === "below_minimum_wage");
+    assert.ok(hit, "expected a minimum wage exception");
+    assert.equal(hit.severity, "critical", "it must stop approval, not merely warn");
+    assert.match(hit.message, /₹19,999.00/);
+    assert.match(hit.message, /₹20,000.00/);
+  });
+
+  test("pay exactly at the floor is compliant", () => {
+    const found = detectExceptions(
+      [row({ ...floor, monthlyGrossPaise: 20_000_00, monthlyBasicPaise: 20_000_00 })],
+      ctx,
+    );
+    assert.equal(found.length, 0);
+  });
+
+  test("the floor is tested on the contracted rate, not what a part month paid", () => {
+    /* Half the month unpaid: the rate still clears the floor, and
+       reporting this person as underpaid would bury the real cases. */
+    const found = detectExceptions(
+      [row({ ...floor, monthlyGrossPaise: 22_000_00, grossPaise: 11_000_00, lopDays: 15, paidDays: 15 })],
+      ctx,
+    );
+    assert.equal(found.filter((e) => e.code === "below_minimum_wage").length, 0);
+  });
+
+  test("basic under the floor is raised, but does not block", () => {
+    const found = detectExceptions(
+      [row({ ...floor, monthlyGrossPaise: 30_000_00, monthlyBasicPaise: 15_000_00 })],
+      ctx,
+    );
+    const hit = found.find((e) => e.code === "basic_below_minimum_wage");
+    assert.ok(hit);
+    assert.equal(hit.severity, "warning", "an interpretation is for a human, not a gate");
+  });
+
+  test("a prorated month says nothing about basic rather than guessing", () => {
+    const found = detectExceptions(
+      [row({ ...floor, monthlyGrossPaise: 30_000_00, monthlyBasicPaise: null, lopDays: 3, paidDays: 27 })],
+      ctx,
+    );
+    assert.equal(found.filter((e) => e.code === "basic_below_minimum_wage").length, 0);
+  });
+
+  test("being unable to check is reported, not skipped in silence", () => {
+    const found = detectExceptions(
+      [row({ minimumWagePaise: null, minimumWageUnknown: "No skill category on this person." })],
+      ctx,
+    );
+    const hit = found.find((e) => e.code === "minimum_wage_unverifiable");
+    assert.ok(hit, "silence is what let an unchecked salary go out");
+    assert.equal(hit.severity, "warning");
+    assert.match(hit.message, /skill category/i);
+  });
+
+  test("the worst case is reported once, not twice", () => {
+    /* Gross below the floor implies basic is too — one clear message. */
+    const found = detectExceptions(
+      [row({ ...floor, monthlyGrossPaise: 10_000_00, monthlyBasicPaise: 5_000_00 })],
+      ctx,
+    );
+    assert.equal(found.filter((e) => e.code.includes("minimum_wage")).length, 1);
+  });
+});
+
+describe("Statutory bonus on a run", () => {
+  test("a shortfall is raised against the person, and does not block", () => {
+    const found = detectExceptions(
+      [row({ bonusEntitlementPaise: 583_10, bonusShortfallPaise: 483_10 })],
+      ctx,
+    );
+    const hit = found.find((e) => e.code === "statutory_bonus_short");
+    assert.ok(hit);
+    assert.equal(hit.severity, "warning", "an annual liability is not a reason to stop a month");
+    assert.match(hit.message, /₹583.10/);
+    assert.match(hit.message, /₹100.00/, "says what is already paid");
+    assert.match(hit.message, /₹483.10/);
+  });
+
+  test("a structure already paying enough raises nothing", () => {
+    const found = detectExceptions(
+      [row({ bonusEntitlementPaise: 583_10, bonusShortfallPaise: 0 })],
+      ctx,
+    );
+    assert.equal(found.length, 0);
+  });
+
+  test("an unassessable company is told once, not once per employee", () => {
+    const found = detectExceptions(
+      [row(), row({ employeeId: "e2", empCode: "KA0002" })],
+      { ...ctx, bonusUnassessable: "No pay component is marked as paying the statutory bonus." },
+    );
+    assert.equal(found.filter((e) => e.code === "statutory_bonus_unassessable").length, 1);
+    assert.equal(found[0].employeeId, undefined, "it is the company's answer, not a person's");
+  });
+});
+
+describe("Code on Wages split on a run", () => {
+  test("wages under half are raised, and do not block", () => {
+    const found = detectExceptions(
+      [row({ wageCodeShare: 0.4, wageCodeShortfallPaise: 2_000_00 })],
+      ctx,
+    );
+    const hit = found.find((e) => e.code === "wage_code_below_share");
+    assert.ok(hit);
+    assert.equal(hit.severity, "warning", "stage one reports; it does not correct");
+    assert.match(hit.message, /40.0%/);
+    assert.match(hit.message, /₹2,000.00/);
+    assert.match(hit.message, /provident fund, gratuity and bonus/, "says what else would move");
+  });
+
+  test("a compliant split raises nothing", () => {
+    const found = detectExceptions(
+      [row({ wageCodeShare: 0.5, wageCodeShortfallPaise: 0 })],
+      ctx,
+    );
+    assert.equal(found.length, 0);
+  });
+
+  test("a month with nothing to judge is left alone", () => {
+    const found = detectExceptions([row({ wageCodeShortfallPaise: null })], ctx);
+    assert.equal(found.filter((e) => e.code === "wage_code_below_share").length, 0);
+  });
 });

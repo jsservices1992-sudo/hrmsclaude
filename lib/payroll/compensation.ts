@@ -688,6 +688,83 @@ export type MinimumWageCheck = {
   message: string;
 };
 
+/** The floor in force for a state and skill on a date, if one is set. */
+export function applicableMinimumWage(
+  rules: MinimumWageRule[],
+  stateCode: string,
+  skillCategory: MinimumWageRule["skillCategory"],
+  asOf: string,
+): MinimumWageRule | null {
+  return (
+    rules
+      .filter(
+        (r) =>
+          r.stateCode === stateCode &&
+          r.skillCategory === skillCategory &&
+          r.effectiveFrom <= asOf,
+      )
+      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] ?? null
+  );
+}
+
+const SKILL_LABEL: Record<MinimumWageRule["skillCategory"], string> = {
+  unskilled: "unskilled",
+  semi_skilled: "semi-skilled",
+  skilled: "skilled",
+  highly_skilled: "highly skilled",
+};
+
+/**
+ * What the exception rules need to judge one person against the floor —
+ * and, where they cannot be judged, the reason in words worth showing.
+ *
+ * Every path returns a reason rather than nothing. A salary that was
+ * never checked should not be indistinguishable from one that passed.
+ */
+export function minimumWageFacts(args: {
+  stateCode: string | null;
+  skillCategory: MinimumWageRule["skillCategory"] | null;
+  monthlyGrossPaise: number | null;
+  monthlyBasicPaise: number | null;
+  rules: MinimumWageRule[];
+  asOf: string;
+}): {
+  monthlyGrossPaise: number | null;
+  monthlyBasicPaise: number | null;
+  minimumWagePaise: number | null;
+  minimumWageUnknown: string | null;
+} {
+  const base = {
+    monthlyGrossPaise: args.monthlyGrossPaise,
+    monthlyBasicPaise: args.monthlyBasicPaise,
+    minimumWagePaise: null,
+  };
+
+  if (!args.stateCode) {
+    return { ...base, minimumWageUnknown: "No branch on record, so no state's minimum wage could be applied." };
+  }
+  if (!args.skillCategory) {
+    return {
+      ...base,
+      minimumWageUnknown:
+        "No skill category on this person or their grade, so no minimum wage could be matched to them.",
+    };
+  }
+  if (args.monthlyGrossPaise === null) {
+    return { ...base, minimumWageUnknown: "No salary on record to compare against the minimum wage." };
+  }
+
+  const rule = applicableMinimumWage(args.rules, args.stateCode, args.skillCategory, args.asOf);
+  if (!rule) {
+    return {
+      ...base,
+      minimumWageUnknown: `No minimum wage is on file for ${SKILL_LABEL[args.skillCategory]} work in ${args.stateCode}.`,
+    };
+  }
+
+  return { ...base, minimumWagePaise: rule.monthlyPaise, minimumWageUnknown: null };
+}
+
 export function checkMinimumWage(args: {
   stateCode: string;
   skillCategory: MinimumWageRule["skillCategory"];
@@ -732,8 +809,178 @@ export function checkMinimumWage(args: {
 }
 
 /* ==================================================================
+   Code on Wages — the 50% split
+   ================================================================== */
+
+export type WageCodeCheck = {
+  wagesPaise: Paise;
+  remunerationPaise: Paise;
+  /** Wages as a share of total remuneration, 0 to 1. */
+  share: number;
+  compliant: boolean;
+  /** What wages would have to rise by to reach the floor. */
+  shortfallPaise: Paise;
+  reason: string;
+};
+
+/**
+ * Whether wages are at least half of what a person is paid.
+ *
+ * The Code on Wages caps the allowances that sit outside "wages" at half
+ * of total remuneration; the same rule read from the other side is that
+ * wages must be at least half. Which half you measure does not matter,
+ * but *what you measure against* does, and it is the common mistake:
+ * the test is against remuneration — what the person is paid — not
+ * against cost to company. Employer provident fund and the gratuity
+ * provision are costs the employer carries, never remuneration paid to
+ * the employee, and including them lowers the required basic.
+ *
+ * Reported rather than enforced. Raising basic to satisfy this moves the
+ * base for provident fund, gratuity and bonus all at once, which is a
+ * decision about somebody's pay and not a correction a payroll run
+ * should make on its own.
+ */
+export function checkWageCodeSplit(args: {
+  /** Basic, dearness allowance — what the Code counts as wages. */
+  wagesPaise: Paise;
+  /** Everything the person is paid: gross earnings. */
+  remunerationPaise: Paise;
+  /** The share wages must reach, in basis points. 5000 = 50%. */
+  minimumShareBps: number;
+}): WageCodeCheck {
+  const share = args.remunerationPaise > 0 ? args.wagesPaise / args.remunerationPaise : 0;
+  const required = Math.round((args.remunerationPaise * args.minimumShareBps) / 10000);
+  const shortfall = Math.max(0, required - args.wagesPaise);
+  const pct = (args.minimumShareBps / 100).toFixed(args.minimumShareBps % 100 === 0 ? 0 : 2);
+
+  if (args.remunerationPaise <= 0) {
+    return {
+      wagesPaise: args.wagesPaise,
+      remunerationPaise: args.remunerationPaise,
+      share: 0,
+      compliant: true,
+      shortfallPaise: 0,
+      reason: "Nothing was paid this period, so there is no split to test.",
+    };
+  }
+
+  return {
+    wagesPaise: args.wagesPaise,
+    remunerationPaise: args.remunerationPaise,
+    share,
+    compliant: shortfall === 0,
+    shortfallPaise: shortfall,
+    reason:
+      shortfall === 0
+        ? `Wages are ${(share * 100).toFixed(1)}% of pay, at or above the ${pct}% the Code requires.`
+        : `Wages are ${(share * 100).toFixed(1)}% of pay, under the ${pct}% the Code requires.`,
+  };
+}
+
+/* ==================================================================
    Statutory bonus — FR-CMP-5
    ================================================================== */
+
+export type BonusAssessment = {
+  /** Null where it could not be decided, with the reason saying why. */
+  eligible: boolean | null;
+  /** The Act's floor for this month, once eligibility is settled. */
+  entitlementPaise: Paise;
+  /** What the salary structure already pays toward it this month. */
+  paidPaise: Paise;
+  /** Entitlement not covered by what is paid. Never negative. */
+  shortfallPaise: Paise;
+  /** The wage the calculation ran on, after the ceiling. */
+  wageConsideredPaise: Paise;
+  reason: string;
+};
+
+/**
+ * What the Payment of Bonus Act requires this month, set against what is
+ * already being paid.
+ *
+ * Deliberately an assessment and not a pay line. A company that pays a
+ * monthly bonus component is already discharging this liability; an
+ * engine that added its own line on top would pay twice, and doing that
+ * silently to a live payroll is worse than not checking at all. So the
+ * figure is compared, and a shortfall is reported for somebody to act
+ * on.
+ *
+ * Three separate numbers decide it, and conflating any two is the
+ * common error: eligibility is tested on actual wages, the calculation
+ * is capped at a much lower ceiling, and that ceiling is itself raised
+ * to the state minimum wage where the minimum wage is higher.
+ */
+export function assessStatutoryBonus(args: {
+  /** Wages as the Code defines them — basic and dearness allowance. */
+  monthlyBonusWagePaise: Paise;
+  /** What the structure pays toward the bonus this month. */
+  paidPaise: Paise;
+  /** The state floor, where one is on file, which can lift the ceiling. */
+  minimumWagePaise: Paise | null;
+  /** The company's declared headcount, or null if nobody has said. */
+  declaredHeadcount: number | null;
+  /** Below this many employees the Act does not apply. */
+  headcountThreshold: number;
+  /** Days worked in the year — under thirty earns nothing. */
+  daysWorkedInYear: number;
+  params: BonusParams;
+}): BonusAssessment {
+  const p = args.params;
+  const nil = (reason: string, eligible: boolean | null): BonusAssessment => ({
+    eligible,
+    entitlementPaise: 0,
+    paidPaise: args.paidPaise,
+    shortfallPaise: 0,
+    wageConsideredPaise: 0,
+    reason,
+  });
+
+  if (args.declaredHeadcount === null) {
+    return nil(
+      "The company has not declared how many people it employs, so whether the Act applies cannot be determined.",
+      null,
+    );
+  }
+  if (args.declaredHeadcount < args.headcountThreshold) {
+    return nil(
+      `Declared headcount of ${args.declaredHeadcount} is under the ${args.headcountThreshold} the Act applies at.`,
+      false,
+    );
+  }
+  if (args.daysWorkedInYear < 30) {
+    return nil(`Worked ${args.daysWorkedInYear} days this year, under the thirty required.`, false);
+  }
+  if (args.monthlyBonusWagePaise > p.eligibilityWagePaise) {
+    return nil(
+      `Wages are above the ${rupeeWord(p.eligibilityWagePaise)} eligibility ceiling.`,
+      false,
+    );
+  }
+
+  /* The calculation ceiling is a floor as much as a cap: where the state
+     minimum wage is higher, the Act computes on that instead. */
+  const ceiling = Math.max(p.calculationCeilingPaise, args.minimumWagePaise ?? 0);
+  const wage = Math.min(args.monthlyBonusWagePaise, ceiling);
+  const entitlement = Math.round((wage * p.minPercent) / 100);
+  const shortfall = Math.max(0, entitlement - args.paidPaise);
+
+  return {
+    eligible: true,
+    entitlementPaise: entitlement,
+    paidPaise: args.paidPaise,
+    shortfallPaise: shortfall,
+    wageConsideredPaise: wage,
+    reason:
+      args.minimumWagePaise !== null && args.minimumWagePaise > p.calculationCeilingPaise
+        ? `Computed on the ${rupeeWord(ceiling)} state minimum wage, which is above the statutory ceiling.`
+        : args.monthlyBonusWagePaise > p.calculationCeilingPaise
+          ? `Computed on the ${rupeeWord(p.calculationCeilingPaise)} ceiling rather than actual wages.`
+          : "Computed on actual wages.",
+  };
+}
+
+const rupeeWord = (paise: Paise) => `₹${Math.round(paise / 100).toLocaleString("en-IN")}`;
 
 export type BonusParams = {
   /** Eligibility ceiling on monthly wages. */

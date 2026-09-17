@@ -335,7 +335,7 @@ export function PayComponentForm({
     id: string; code: string; name: string; kind: string; calcMethod: string;
     percentValue: number; percentOfCode: string | null; fixedPaise: number;
     taxable: boolean; epfBase: boolean; esicBase: boolean; ptBase: boolean;
-    bonusBase: boolean; gratuityBase: boolean; prorates: boolean; active: boolean; sequence: number;
+    bonusBase: boolean; bonusRole: string | null; gratuityBase: boolean; prorates: boolean; active: boolean; sequence: number;
   };
 }) {
   const [state, action] = useActionState<MasterState, FormData>(savePayComponent, {});
@@ -403,6 +403,19 @@ export function PayComponentForm({
         <label className={check}><input type="checkbox" name="prorates" defaultChecked={editing?.prorates ?? true} />Prorates for partial months</label>
         <label className={check}><input type="checkbox" name="active" defaultChecked={editing?.active ?? true} />Active</label>
       </div>
+      <label className="flex flex-col gap-1 max-w-md">
+        <span className="label text-ink-3">Pays the bonus?</span>
+        <Select name="bonusRole" defaultValue={editing?.bonusRole ?? ""}>
+          <option value="">Not a bonus payment</option>
+          <option value="statutory_bonus">This is the statutory bonus</option>
+          <option value="ex_gratia">Ex-gratia, on top of the statutory bonus</option>
+        </Select>
+        <span className="text-xs text-ink-3 max-w-[60ch]">
+          Only a component marked as the statutory bonus counts toward what the
+          Payment of Bonus Act requires. Leaving it unset means the run cannot
+          tell whether the Act is satisfied, and says so.
+        </span>
+      </label>
       <div className="flex items-center gap-2">
         <SubmitButton size="sm" pendingText="Saving…">{editing ? "Save" : "Add component"}</SubmitButton>
         <FormFeedback state={state} />

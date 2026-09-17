@@ -21,6 +21,7 @@ import {
   StatutoryParamForm,
   GroupForm,
   BankForm,
+  MinimumWageForm,
   DepartmentOverrideForm,
   ClearDeptOverrideForm,
 } from "./forms";
@@ -84,9 +85,11 @@ export default async function PayrollSettingsPage(
 
   const isAdmin = user.role === "admin";
 
-  const [params, groups, banks, calendars, employees, branches, departments, grades] =
+  const [params, minWages, jurisdictions, groups, banks, calendars, employees, branches, departments, grades] =
     await Promise.all([
       db.select().from(s.statutoryParams).orderBy(asc(s.statutoryParams.key)),
+      db.select().from(s.minimumWages).orderBy(asc(s.minimumWages.stateCode)),
+      db.select().from(s.jurisdictions).orderBy(asc(s.jurisdictions.name)),
       db.select().from(s.payrollGroups).where(eq(s.payrollGroups.companyId, companyId)).orderBy(asc(s.payrollGroups.sequence)),
       db.select().from(s.bankAccounts).where(eq(s.bankAccounts.companyId, companyId)),
       db.select().from(s.payrollCalendars).where(eq(s.payrollCalendars.companyId, companyId)),
@@ -655,6 +658,50 @@ export default async function PayrollSettingsPage(
             writes a new version from the date you give. Runs already saved keep
             the version they used, so history stays reproducible.
           </div>
+          <Card padded={false}>
+            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-baseline justify-between gap-2">
+              <span className="label text-ink-2">State minimum wages</span>
+              <span className="label text-ink-3 tnum">{minWages.length}</span>
+            </div>
+            {minWages.length === 0 ? (
+              <p className="px-4 py-3 text-sm text-rust max-w-[70ch]">
+                None on file. Until a state&rsquo;s floor is recorded here, no salary
+                is checked against one — a run will say so rather than pass quietly.
+              </p>
+            ) : (
+              <ul className="divide-y divide-line-2">
+                {minWages.map((w) => (
+                  <li key={w.id} className="px-4 py-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <span className="text-sm">
+                      <span className="font-medium">{w.stateCode}</span>{" "}
+                      <span className="text-ink-2">{w.skillCategory.replace("_", " ")}</span>
+                    </span>
+                    <span className="flex flex-wrap items-baseline gap-x-3 text-xs">
+                      <span className="font-mono tnum">{formatINR(w.monthlyPaise)}</span>
+                      <span className="font-mono text-ink-3">
+                        from {formatDate(w.effectiveFrom)}
+                        {w.effectiveTo ? ` to ${formatDate(w.effectiveTo)}` : ""}
+                      </span>
+                      <Badge tone={w.verified ? "teal" : "brass"}>
+                        {w.verified ? "verified" : "unverified"}
+                      </Badge>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {isAdmin && (
+              <div className="p-4 border-t border-line">
+                <MinimumWageForm
+                  states={jurisdictions.map((j) => ({
+                    id: j.stateCode,
+                    label: `${j.name} (${j.stateCode})`,
+                  }))}
+                />
+              </div>
+            )}
+          </Card>
+
           <Card padded={false}>
             <div className="px-4 py-2.5 border-b border-line bg-surface-2">
               <span className="label text-ink-2">Central statutory parameters</span>

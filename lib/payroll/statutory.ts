@@ -1,5 +1,24 @@
 import type { Paise } from "./money";
 
+/**
+ * The rows in force on a given date.
+ *
+ * Every statutory figure is stored as a dated row rather than edited in
+ * place, and this is what picks between them. It is the reason a run of
+ * an earlier month reproduces the figures that month was actually paid
+ * on: raising a ceiling from a date in September leaves August alone.
+ * Superseding a row means closing it with an `effectiveTo`, never
+ * changing what it said.
+ */
+export function effectiveAsOf<T extends { effectiveFrom: string; effectiveTo: string | null }>(
+  rows: T[],
+  asOf: string,
+): T[] {
+  return rows.filter(
+    (r) => r.effectiveFrom <= asOf && (r.effectiveTo === null || r.effectiveTo >= asOf),
+  );
+}
+
 /* ==================================================================
    EPF — Employees' Provident Fund
    ================================================================== */

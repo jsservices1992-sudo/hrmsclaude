@@ -164,6 +164,7 @@ export default async function CompanySettingsPage(
                 tan: company.tan,
                 pfCode: company.pfCode,
                 esicCode: company.esicCode,
+                declaredHeadcount: company.declaredHeadcount,
                 logoUrl: company.logoUrl,
                 otRatePaisePerHour: company.otRatePaisePerHour,
                 registeredAddress: company.registeredAddress,

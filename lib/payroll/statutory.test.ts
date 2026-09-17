@@ -6,6 +6,7 @@ import {
   computeProfessionalTax,
   computeLwf,
   contributionPeriodOf,
+  effectiveAsOf,
   type EpfParams,
   type EsicParams,
   type PtSlab,
@@ -547,5 +548,43 @@ describe("Proration", () => {
       dateOfExit: "2026-01-31",
     });
     assert.equal(days, 0);
+  });
+});
+
+describe("Which statutory rows are in force", () => {
+  /* A ceiling raised from 25 August 2026, superseding the old one. */
+  const ceilings = [
+    { key: "epf.wage_ceiling", value: 1_500_000, effectiveFrom: "2020-04-01", effectiveTo: "2026-08-24" },
+    { key: "epf.wage_ceiling", value: 2_500_000, effectiveFrom: "2026-08-25", effectiveTo: null },
+  ];
+
+  const inForce = (asOf: string) => effectiveAsOf(ceilings, asOf)[0]?.value;
+
+  test("a month before the change still runs at the old ceiling", () => {
+    assert.equal(inForce("2026-07-31"), 1_500_000);
+  });
+
+  test("the day the change takes effect is the first day of the new one", () => {
+    assert.equal(inForce("2026-08-24"), 1_500_000, "the day before");
+    assert.equal(inForce("2026-08-25"), 2_500_000, "the day itself");
+  });
+
+  test("after the change the new ceiling stands", () => {
+    assert.equal(inForce("2026-09-30"), 2_500_000);
+  });
+
+  test("exactly one row is ever in force", () => {
+    for (const asOf of ["2020-04-01", "2026-08-24", "2026-08-25", "2030-01-01"]) {
+      assert.equal(effectiveAsOf(ceilings, asOf).length, 1, asOf);
+    }
+  });
+
+  test("a date before anything was in force matches nothing", () => {
+    assert.deepEqual(effectiveAsOf(ceilings, "2019-12-31"), []);
+  });
+
+  test("an open-ended row has no end", () => {
+    const open = [{ effectiveFrom: "2020-04-01", effectiveTo: null }];
+    assert.equal(effectiveAsOf(open, "2099-01-01").length, 1);
   });
 });

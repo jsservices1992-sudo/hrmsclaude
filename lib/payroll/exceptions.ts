@@ -29,7 +29,13 @@ export type PayrollExceptionCode =
   | "new_joiner"
   | "exit_in_period"
   | "salary_changed_mid_period"
-  | "loan_recovery_shortfall";
+  | "loan_recovery_shortfall"
+  | "below_minimum_wage"
+  | "basic_below_minimum_wage"
+  | "minimum_wage_unverifiable"
+  | "statutory_bonus_short"
+  | "statutory_bonus_unassessable"
+  | "wage_code_below_share";
 
 export type PayrollException = {
   code: PayrollExceptionCode;
@@ -65,11 +71,50 @@ export type ExceptionInput = {
   salaryChangedInPeriod: boolean;
   /** Warnings the engine itself raised for this employee. */
   engineWarnings: string[];
+  /**
+   * The contracted monthly rate, not what this month happened to pay.
+   *
+   * A minimum wage is a rate of pay. Someone who took unpaid leave earns
+   * less than the monthly floor quite legitimately, so testing the
+   * earned figure would report every such person as underpaid and the
+   * real cases would be lost among them.
+   */
+  monthlyGrossPaise: number | null;
+  /**
+   * Full-month basic, where it can be known exactly. Null where this
+   * month was prorated, because un-prorating it would be a guess and a
+   * guess is not worth raising against somebody's salary.
+   */
+  monthlyBasicPaise: number | null;
+  /** The floor that applies, once state and skill category are known. */
+  minimumWagePaise: number | null;
+  /** Why no floor could be found, when none could. */
+  minimumWageUnknown: string | null;
+  /**
+   * What the Payment of Bonus Act requires of this person this month
+   * against what the structure already pays, or null where the company
+   * is not yet set up to answer it.
+   */
+  bonusShortfallPaise: number | null;
+  bonusEntitlementPaise: number | null;
+  /**
+   * Wages as a share of total pay, against the Code on Wages floor.
+   * Null where this month paid nothing, so there is no split to judge.
+   */
+  wageCodeShortfallPaise: number | null;
+  wageCodeShare: number | null;
 };
 
 export type RunContext = {
   year: number;
   month: number;
+  /**
+   * Why the Bonus Act cannot be assessed for this company at all —
+   * nobody has declared a headcount, or no pay component has been said
+   * to be the one that pays it. Raised once for the run rather than
+   * against every employee, because it is one decision, not many.
+   */
+  bonusUnassessable?: string | null;
   /** False when attendance has not been recomputed since it last changed. */
   attendanceFinalised: boolean;
   /** Statutory parameters resolved for the period. */
@@ -77,6 +122,9 @@ export type RunContext = {
   /** Above this share of the period, loss of pay is worth a second look. */
   excessiveLopRatio?: number;
 };
+
+const rupees = (paise: number) =>
+  `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function inPeriod(date: string | null, year: number, month: number): boolean {
   if (!date) return false;
@@ -97,6 +145,13 @@ export function detectExceptions(
       severity: "critical",
       message:
         "No statutory parameters resolve for this period. PF, ESIC and PT cannot be computed correctly.",
+    });
+  }
+  if (ctx.bonusUnassessable) {
+    out.push({
+      code: "statutory_bonus_unassessable",
+      severity: "warning",
+      message: ctx.bonusUnassessable,
     });
   }
   if (!ctx.attendanceFinalised) {
@@ -201,6 +256,90 @@ export function detectExceptions(
       });
     }
 
+    /*
+     * Minimum wage.
+     *
+     * Paying below a state's notified floor is not a figure to review,
+     * it is an offence, so it blocks approval rather than warning. The
+     * second test — basic against the floor — is the reading provident
+     * fund authorities commonly take, that contributions are owed on at
+     * least the minimum wage. That is an interpretation rather than
+     * settled law, so it is raised for a human and does not block.
+     *
+     * Being unable to check at all is itself reported. Skipping in
+     * silence is what let a salary go out unchecked in the first place.
+     */
+    if (r.minimumWagePaise !== null && r.monthlyGrossPaise !== null) {
+      if (r.monthlyGrossPaise < r.minimumWagePaise) {
+        out.push({
+          ...who,
+          code: "below_minimum_wage",
+          severity: "critical",
+          message:
+            `Monthly pay of ${rupees(r.monthlyGrossPaise)} is below the minimum wage of ` +
+            `${rupees(r.minimumWagePaise)} that applies to this person.`,
+        });
+      } else if (
+        r.monthlyBasicPaise !== null &&
+        r.monthlyBasicPaise < r.minimumWagePaise
+      ) {
+        out.push({
+          ...who,
+          code: "basic_below_minimum_wage",
+          severity: "warning",
+          message:
+            `Total pay clears the minimum wage, but basic of ${rupees(r.monthlyBasicPaise)} ` +
+            `is under the ${rupees(r.minimumWagePaise)} floor. Provident fund is commonly ` +
+            `held to be due on at least the minimum wage — confirm the basis.`,
+        });
+      }
+    } else if (r.minimumWageUnknown) {
+      out.push({
+        ...who,
+        code: "minimum_wage_unverifiable",
+        severity: "warning",
+        message: r.minimumWageUnknown,
+      });
+    }
+
+    /*
+     * Statutory bonus. Reported rather than paid: where a company's
+     * structure already carries a bonus component, adding the Act's
+     * figure on top would pay it twice. The Act creates an annual
+     * liability payable within eight months of the year closing, so
+     * falling short in one month is something to put right, not a
+     * reason to stop the run.
+     */
+    /*
+     * The Code on Wages split. Reported, never corrected: raising basic
+     * to satisfy it moves the base for provident fund, gratuity and
+     * bonus together, and that is a decision about somebody's pay rather
+     * than an arithmetic fix a run should apply on its own.
+     */
+    if (r.wageCodeShortfallPaise !== null && r.wageCodeShortfallPaise > 0) {
+      out.push({
+        ...who,
+        code: "wage_code_below_share",
+        severity: "warning",
+        message:
+          `Wages are ${((r.wageCodeShare ?? 0) * 100).toFixed(1)}% of total pay, under the half the ` +
+          `Code on Wages requires. Basic would have to rise by ${rupees(r.wageCodeShortfallPaise)} ` +
+          `a month, which also raises provident fund, gratuity and bonus.`,
+      });
+    }
+
+    if (r.bonusShortfallPaise !== null && r.bonusShortfallPaise > 0) {
+      out.push({
+        ...who,
+        code: "statutory_bonus_short",
+        severity: "warning",
+        message:
+          `The Payment of Bonus Act works out at ${rupees(r.bonusEntitlementPaise ?? 0)} for this ` +
+          `month and the structure pays ${rupees((r.bonusEntitlementPaise ?? 0) - r.bonusShortfallPaise)}. ` +
+          `${rupees(r.bonusShortfallPaise)} is outstanding.`,
+      });
+    }
+
     for (const w of r.engineWarnings) {
       // Negative net already has its own typed entry above.
       if (/negative net/i.test(w)) continue;
@@ -244,6 +383,12 @@ export function blockingSummary(list: PayrollException[]): string | null {
     exit_in_period: "exit in period",
     salary_changed_mid_period: "salary changed mid-period",
     loan_recovery_shortfall: "loan recovery shortfall",
+    below_minimum_wage: "below the minimum wage",
+    basic_below_minimum_wage: "basic below the minimum wage",
+    minimum_wage_unverifiable: "minimum wage could not be checked",
+    statutory_bonus_short: "statutory bonus short",
+    statutory_bonus_unassessable: "statutory bonus could not be assessed",
+    wage_code_below_share: "wages under half of pay",
   };
 
   const parts = [...byCode.entries()].map(([code, n]) => `${n} × ${label[code]}`);

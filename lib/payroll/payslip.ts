@@ -6,7 +6,6 @@ import type { PayFigures } from "./load";
 import {
   employerCostFor,
   evaluateStructure,
-  GRATUITY_ACCRUAL_BPS,
 } from "./compensation";
 import {
   loadStatutoryConfig,
@@ -238,7 +237,7 @@ export async function loadPayslips(args: {
         epfOnActualBasic: company?.epfOnActualBasic ?? false,
         esicThresholdPaise: statutory.esic.wageThresholdPaise,
         esicEmployerBps: statutory.esic.employerBps,
-        gratuityAccrualBps: GRATUITY_ACCRUAL_BPS,
+        gratuityAccrualBps: statutory.gratuity.accrualBps,
         pfOptedIn: emp.pfOptedIn,
         hadPriorPfMembership: emp.hadPriorPfMembership,
       });

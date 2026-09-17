@@ -22,6 +22,7 @@ const COMPANY_LABELS: Record<string, string> = {
   tan: "TAN",
   pfCode: "PF establishment code",
   esicCode: "ESIC code",
+  declaredHeadcount: "Employees on the rolls",
   registeredAddress: "Address",
   registeredCity: "City",
   registeredStateCode: "State code",
@@ -70,6 +71,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 export type CompanyValues = Partial<{
   id: string; name: string; legalName: string; cin: string | null;
   pan: string | null; tan: string | null; pfCode: string | null; esicCode: string | null;
+  declaredHeadcount: number | null;
   logoUrl: string | null;
   registeredAddress: string | null; registeredCity: string | null;
   registeredStateCode: string | null; registeredPincode: string | null;
@@ -122,6 +124,21 @@ export function CompanyForm({
         </FormField>
         <FormField label="ESIC code" error={err("esicCode")} needed="needed to file ESIC returns">
           <Input name="esicCode" defaultValue={val("esicCode")} invalid={!!err("esicCode")} />
+        </FormField>
+        <FormField
+          label="Employees on the rolls"
+          error={err("declaredHeadcount")}
+          hint="Your own count, including contractors. Bonus applies at 20, gratuity at 10 — the Acts do not mean the number of records in this system."
+          needed="needed to decide if the Bonus Act applies"
+        >
+          <Input
+            name="declaredHeadcount"
+            type="number"
+            min="0"
+            className="tnum"
+            defaultValue={val("declaredHeadcount")}
+            invalid={!!err("declaredHeadcount")}
+          />
         </FormField>
       </Group>
 

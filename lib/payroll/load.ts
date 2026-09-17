@@ -20,10 +20,11 @@ import {
   type DepartmentOverride,
   type PayrollConventions,
 } from "./settings";
-import type { PtSlab, LwfRate } from "./statutory";
+import { effectiveAsOf, type PtSlab, type LwfRate } from "./statutory";
 import {
   anchorsFrom,
   grossForTargetTakeHome,
+  BONUS_DEFAULTS,
   GRATUITY_ACCRUAL_BPS,
   type ComponentSpec,
 } from "./compensation";
@@ -52,15 +53,15 @@ export function contributionPeriodKey(year: number, month: number) {
 
 /** Statutory config as at a date — the effective-dated lookup. */
 export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig> {
-  const effective = <T extends { effectiveFrom: string; effectiveTo: string | null }>(
-    rows: T[],
-  ) => rows.filter((r) => r.effectiveFrom <= asOf && (r.effectiveTo === null || r.effectiveTo >= asOf));
+  const effective = <T extends { effectiveFrom: string; effectiveTo: string | null }>(rows: T[]) =>
+    effectiveAsOf(rows, asOf);
 
-  const [params, slabs, lwf, juris] = await Promise.all([
+  const [params, slabs, lwf, juris, minWages] = await Promise.all([
     db.select().from(s.statutoryParams),
     db.select().from(s.ptSlabs).orderBy(asc(s.ptSlabs.minPaise)),
     db.select().from(s.lwfRates),
     db.select().from(s.jurisdictions),
+    db.select().from(s.minimumWages),
   ]);
 
   const p = Object.fromEntries(effective(params).map((r) => [r.key, r.value]));
@@ -104,6 +105,27 @@ export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig
       employeeBps: p["esic.employee_bps"] ?? 75,
       employerBps: p["esic.employer_bps"] ?? 325,
     },
+    gratuity: {
+      accrualBps: p["gratuity.accrual_bps"] ?? GRATUITY_ACCRUAL_BPS,
+    },
+    minimumWages: effective(minWages).map((r) => ({
+      stateCode: r.stateCode,
+      skillCategory: r.skillCategory,
+      monthlyPaise: r.monthlyPaise,
+      effectiveFrom: r.effectiveFrom,
+    })),
+    /* Percentages are held in basis points like every other rate here,
+       so 8.33% is 833 and nobody has to remember which keys are which. */
+    bonus: {
+      eligibilityWagePaise:
+        p["bonus.eligibility_wage"] ?? BONUS_DEFAULTS.eligibilityWagePaise,
+      calculationCeilingPaise:
+        p["bonus.calculation_ceiling"] ?? BONUS_DEFAULTS.calculationCeilingPaise,
+      minPercent: (p["bonus.min_bps"] ?? BONUS_DEFAULTS.minPercent * 100) / 100,
+      maxPercent: (p["bonus.max_bps"] ?? BONUS_DEFAULTS.maxPercent * 100) / 100,
+    },
+    bonusHeadcountThreshold: p["bonus.headcount_threshold"] ?? 20,
+    wageCodeMinimumShareBps: p["wage_code.minimum_share_bps"] ?? 5000,
     ptSlabsByState,
     ptApplicableByState: Object.fromEntries(juris.map((j) => [j.stateCode, j.ptApplicable])),
     lwfByState,
@@ -700,7 +722,7 @@ export async function previewRun(args: {
                 epfOnActualBasic: company.epfOnActualBasic,
                 esicThresholdPaise: statutory.esic.wageThresholdPaise,
                 esicEmployerBps: statutory.esic.employerBps,
-                gratuityAccrualBps: GRATUITY_ACCRUAL_BPS,
+                gratuityAccrualBps: statutory.gratuity.accrualBps,
                 pfOptedIn: employee.pfOptedIn,
                 hadPriorPfMembership: employee.hadPriorPfMembership,
               },

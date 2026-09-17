@@ -7,7 +7,9 @@ import {
 import { applyRounding } from "./settings";
 import {
   evaluateStructure,
+  type BonusParams,
   type ComponentSpec,
+  type MinimumWageRule,
 } from "./compensation";
 import {
   computeProration,
@@ -117,6 +119,20 @@ export type CompanyConfig = {
 export type StatutoryConfig = {
   epf: EpfParams;
   esic: EsicParams;
+  /**
+   * Rates that used to be constants in source. They are here so that a
+   * change to one is a dated row like every other statutory figure —
+   * which is also what keeps an old month recalculating at the rate that
+   * was in force then, rather than at today's.
+   */
+  gratuity: { accrualBps: number };
+  bonus: BonusParams;
+  /** Employees an establishment must have before the Bonus Act applies. */
+  bonusHeadcountThreshold: number;
+  /** The share of pay that must be wages, in basis points. */
+  wageCodeMinimumShareBps: number;
+  /** State floors in force, for the check that a salary clears one. */
+  minimumWages: MinimumWageRule[];
   ptSlabsByState: Record<string, PtSlab[]>;
   ptApplicableByState: Record<string, boolean>;
   lwfByState: Record<string, LwfRate | null>;

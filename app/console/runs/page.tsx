@@ -458,7 +458,11 @@ function countFlags(f: FinalCheckResult) {
     f.missingSalary.length +
     f.exitsInPeriod.filter((e) => !e.settled).length +
     f.loanShortfallWarnings.length +
-    f.openAdjustments
+    f.openAdjustments +
+    f.minimumWageBreaches.length +
+    f.minimumWageUncheckable.length +
+    (f.bonusUnassessable ? 1 : 0) +
+    f.wageCodeBreaches.length
   );
 }
 
@@ -482,6 +486,10 @@ function FinalCheckPanel({
     exitsInPeriod,
     loanShortfallWarnings,
     openAdjustments,
+    minimumWageBreaches,
+    minimumWageUncheckable,
+    bonusUnassessable,
+    wageCodeBreaches,
   } = finalCheck;
 
   const unsettledExits = exitsInPeriod.filter((e) => !e.settled);
@@ -520,6 +528,81 @@ function FinalCheckPanel({
           <Link href={attendanceLink} className="label text-brass hover:underline whitespace-nowrap">
             Review →
           </Link>
+        </FinalCheckRow>
+      )}
+      {wageCodeBreaches.length > 0 && (
+        <FinalCheckRow>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              <Badge tone="brass">{wageCodeBreaches.length}</Badge> with wages under half
+              of pay — the Code on Wages share. Reported only; nothing is changed.
+            </span>
+            <span className="flex flex-col gap-0.5 text-xs">
+              {wageCodeBreaches.slice(0, 8).map((e) => (
+                <Link
+                  key={e.id}
+                  href={`/console/employees/${e.id}?tab=salary`}
+                  className="text-ink-3 hover:text-brass hover:underline"
+                >
+                  {e.empCode} — {e.name}: {(e.share * 100).toFixed(1)}%, short by{" "}
+                  {formatINR(e.shortfallPaise)}
+                </Link>
+              ))}
+              {wageCodeBreaches.length > 8 && (
+                <span className="text-ink-3">and {wageCodeBreaches.length - 8} more</span>
+              )}
+            </span>
+          </span>
+        </FinalCheckRow>
+      )}
+      {bonusUnassessable && (
+        <FinalCheckRow>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Badge tone="brass">Bonus</Badge>
+            <span className="max-w-[70ch]">{bonusUnassessable}</span>
+          </span>
+        </FinalCheckRow>
+      )}
+      {minimumWageBreaches.length > 0 && (
+        <FinalCheckRow>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              <Badge tone="rust">{minimumWageBreaches.length}</Badge> paid below the
+              state minimum wage — approval will be refused
+            </span>
+            <span className="flex flex-col gap-0.5 text-xs">
+              {minimumWageBreaches.map((e) => (
+                <Link
+                  key={e.id}
+                  href={`/console/employees/${e.id}?tab=salary`}
+                  className="text-ink-3 hover:text-rust hover:underline"
+                >
+                  {e.empCode} — {e.name}: {formatINR(e.monthlyGrossPaise)} against a floor of{" "}
+                  {formatINR(e.minimumWagePaise)}
+                </Link>
+              ))}
+            </span>
+          </span>
+        </FinalCheckRow>
+      )}
+      {minimumWageUncheckable.length > 0 && (
+        <FinalCheckRow>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              <Badge tone="brass">{minimumWageUncheckable.length}</Badge> could not be
+              checked against a minimum wage
+            </span>
+            <span className="flex flex-col gap-0.5 text-xs text-ink-3">
+              {minimumWageUncheckable.slice(0, 6).map((e) => (
+                <span key={e.id}>
+                  {e.empCode} — {e.name}: {e.reason}
+                </span>
+              ))}
+              {minimumWageUncheckable.length > 6 && (
+                <span>and {minimumWageUncheckable.length - 6} more</span>
+              )}
+            </span>
+          </span>
         </FinalCheckRow>
       )}
       {missingSalary.length > 0 && (

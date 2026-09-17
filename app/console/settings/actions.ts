@@ -93,6 +93,7 @@ const CompanySchema = z.object({
     .nullable(),
   pfCode: z.string().max(40).nullable(),
   esicCode: z.string().max(40).nullable(),
+  declaredHeadcount: z.number().int().min(0).max(1_000_000).nullable(),
   logoUrl: z.string().max(2000).nullable(),
   otRatePaisePerHour: z.number().int().min(0).max(100_000_00).nullable(),
   registeredAddress: z.string().max(200).nullable(),
@@ -116,6 +117,10 @@ function parseCompany(fd: FormData) {
     tan: nullable(fd.get("tan"))?.toUpperCase() ?? null,
     pfCode: nullable(fd.get("pfCode")),
     esicCode: nullable(fd.get("esicCode")),
+    declaredHeadcount: (() => {
+      const raw = nullable(fd.get("declaredHeadcount"));
+      return raw === null ? null : Number(raw);
+    })(),
     logoUrl: nullable(fd.get("logoUrl")),
     otRatePaisePerHour: (() => {
       const raw = nullable(fd.get("otRatePaisePerHour"));
@@ -189,6 +194,7 @@ const AUDITED_COMPANY_FIELDS = [
   "tan",
   "pfCode",
   "esicCode",
+  "declaredHeadcount",
   "roundingMode",
   "sandwichRule",
   "epfOnActualBasic",

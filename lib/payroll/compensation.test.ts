@@ -13,6 +13,8 @@ import {
   takeHomeFor,
   checkMinimumWage,
   computeStatutoryBonus,
+  assessStatutoryBonus,
+  checkWageCodeSplit,
   computeArrears,
   type ComponentSpec,
   type EmployerCostParams,
@@ -869,4 +871,152 @@ test("a second balance component is always zero, which is why only one is allowe
     16_000_00,
     "the total is still right, which is what makes it hard to notice",
   );
+});
+
+describe("Statutory bonus, assessed against what is already paid", () => {
+  const params = {
+    eligibilityWagePaise: 21_000_00,
+    calculationCeilingPaise: 7_000_00,
+    minPercent: 8.33,
+    maxPercent: 20,
+  };
+  const base = {
+    monthlyBonusWagePaise: 10_000_00,
+    paidPaise: 0,
+    minimumWagePaise: null,
+    declaredHeadcount: 25,
+    headcountThreshold: 20,
+    daysWorkedInYear: 365,
+    params,
+  };
+
+  test("the entitlement is computed on the ceiling, not on actual wages", () => {
+    const a = assessStatutoryBonus(base);
+    assert.equal(a.eligible, true);
+    assert.equal(a.wageConsideredPaise, 7_000_00);
+    assert.equal(a.entitlementPaise, 583_10, "8.33% of ₹7,000");
+  });
+
+  test("a component already paying more than the Act leaves no shortfall", () => {
+    /* 8.33% of a ₹10,000 basic is ₹833 — more than the Act's ₹583.10. */
+    const a = assessStatutoryBonus({ ...base, paidPaise: 833_00 });
+    assert.equal(a.shortfallPaise, 0);
+    assert.equal(a.entitlementPaise, 583_10);
+  });
+
+  test("paying less than the Act leaves the difference outstanding", () => {
+    const a = assessStatutoryBonus({ ...base, paidPaise: 100_00 });
+    assert.equal(a.shortfallPaise, 483_10);
+  });
+
+  test("a state minimum wage above the ceiling raises the base", () => {
+    const a = assessStatutoryBonus({ ...base, minimumWagePaise: 9_000_00 });
+    assert.equal(a.wageConsideredPaise, 9_000_00);
+    assert.equal(a.entitlementPaise, 749_70, "8.33% of ₹9,000");
+    assert.match(a.reason, /state minimum wage/);
+  });
+
+  test("a minimum wage below the ceiling does not lower it", () => {
+    const a = assessStatutoryBonus({ ...base, minimumWagePaise: 5_000_00 });
+    assert.equal(a.wageConsideredPaise, 7_000_00);
+  });
+
+  test("wages over the eligibility ceiling earn nothing", () => {
+    const a = assessStatutoryBonus({ ...base, monthlyBonusWagePaise: 21_000_01 });
+    assert.equal(a.eligible, false);
+    assert.equal(a.entitlementPaise, 0);
+    assert.match(a.reason, /eligibility ceiling/);
+  });
+
+  test("eligibility is tested on actual wages, the calculation on the ceiling", () => {
+    /* Just inside the eligibility ceiling still computes on ₹7,000. */
+    const a = assessStatutoryBonus({ ...base, monthlyBonusWagePaise: 21_000_00 });
+    assert.equal(a.eligible, true);
+    assert.equal(a.wageConsideredPaise, 7_000_00);
+  });
+
+  test("a company under the headcount threshold is outside the Act", () => {
+    const a = assessStatutoryBonus({ ...base, declaredHeadcount: 19 });
+    assert.equal(a.eligible, false);
+    assert.match(a.reason, /19/);
+  });
+
+  test("an undeclared headcount is undecided, not assumed either way", () => {
+    const a = assessStatutoryBonus({ ...base, declaredHeadcount: null });
+    assert.equal(a.eligible, null, "neither eligible nor exempt — nobody has said");
+    assert.match(a.reason, /has not declared/);
+  });
+
+  test("under thirty days worked earns nothing", () => {
+    const a = assessStatutoryBonus({ ...base, daysWorkedInYear: 29 });
+    assert.equal(a.eligible, false);
+    assert.match(a.reason, /thirty/);
+  });
+
+  test("a shortfall is never negative", () => {
+    const a = assessStatutoryBonus({ ...base, paidPaise: 5_000_00 });
+    assert.equal(a.shortfallPaise, 0);
+  });
+});
+
+describe("The Code on Wages 50% split", () => {
+  const half = { minimumShareBps: 5000 };
+
+  test("basic at exactly half of pay complies", () => {
+    const r = checkWageCodeSplit({ wagesPaise: 10_000_00, remunerationPaise: 20_000_00, ...half });
+    assert.equal(r.compliant, true);
+    assert.equal(r.shortfallPaise, 0);
+    assert.equal(r.share, 0.5);
+  });
+
+  test("basic under half reports what it would take to reach the floor", () => {
+    const r = checkWageCodeSplit({ wagesPaise: 8_000_00, remunerationPaise: 20_000_00, ...half });
+    assert.equal(r.compliant, false);
+    assert.equal(r.shortfallPaise, 2_000_00);
+    assert.match(r.reason, /40.0%/);
+  });
+
+  /* The payslip that started this: basic 10,187.67 of a 20,375.34 gross. */
+  test("a real split is measured against pay, not cost to company", () => {
+    const onPay = checkWageCodeSplit({
+      wagesPaise: 10_187_67,
+      remunerationPaise: 20_375_34,
+      ...half,
+    });
+    assert.equal(onPay.compliant, true, "50.0% of what the person is paid");
+
+    /* The same split measured against CTC, which includes employer PF and
+       the gratuity provision, appears to need less basic — which is why
+       the Code tests remuneration and not CTC. */
+    const onCtc = checkWageCodeSplit({
+      wagesPaise: 10_187_67,
+      remunerationPaise: 22_818_09,
+      ...half,
+    });
+    assert.equal(onCtc.compliant, false);
+    assert.ok(onCtc.shortfallPaise > 0, "CTC is the larger base, so it demands more basic");
+  });
+
+  test("a threshold other than half is honoured", () => {
+    const r = checkWageCodeSplit({
+      wagesPaise: 10_000_00,
+      remunerationPaise: 20_000_00,
+      minimumShareBps: 6000,
+    });
+    assert.equal(r.compliant, false);
+    assert.equal(r.shortfallPaise, 2_000_00);
+    assert.match(r.reason, /60%/);
+  });
+
+  test("a fully unpaid month has no split to judge", () => {
+    const r = checkWageCodeSplit({ wagesPaise: 0, remunerationPaise: 0, ...half });
+    assert.equal(r.compliant, true);
+    assert.match(r.reason, /Nothing was paid/);
+  });
+
+  test("the shortfall never goes negative when wages exceed the floor", () => {
+    const r = checkWageCodeSplit({ wagesPaise: 18_000_00, remunerationPaise: 20_000_00, ...half });
+    assert.equal(r.shortfallPaise, 0);
+    assert.equal(r.compliant, true);
+  });
 });

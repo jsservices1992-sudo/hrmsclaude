@@ -6,6 +6,7 @@ import {
   updateStatutoryParam,
   createPayrollGroup,
   createBankAccount,
+  saveMinimumWage,
   saveDepartmentPayrollOverride,
   clearDepartmentPayrollOverride,
   type PayrollSettingsState,
@@ -492,6 +493,95 @@ export function ClearDeptOverrideForm({ id }: { id: string }) {
       <input type="hidden" name="id" value={id} />
       <SubmitButton variant="ghost" size="sm" className="underline" pendingText="Working…">Clear</SubmitButton>
       {state.error && <span className="text-xs text-rust">{state.error}</span>}
+    </form>
+  );
+}
+
+const MIN_WAGE_LABELS: Record<string, string> = {
+  stateCode: "State",
+  skillCategory: "Skill category",
+  monthly: "Monthly amount",
+  effectiveFrom: "Effective from",
+};
+
+const SKILL_OPTIONS = [
+  { id: "unskilled", label: "Unskilled" },
+  { id: "semi_skilled", label: "Semi-skilled" },
+  { id: "skilled", label: "Skilled" },
+  { id: "highly_skilled", label: "Highly skilled" },
+];
+
+export function MinimumWageForm({ states }: { states: { id: string; label: string }[] }) {
+  const [state, action] = useActionState<PayrollSettingsState, FormData>(saveMinimumWage, {});
+  const err = (k: string) => state.fieldErrors?.[k];
+  const val = (k: string, fallback = "") => state.values?.[k] ?? fallback;
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <FormField label="State" required error={err("stateCode")}>
+          <UiSelect name="stateCode" defaultValue={val("stateCode")} invalid={!!err("stateCode")}>
+            <option value="">Choose a state…</option>
+            {states.map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </UiSelect>
+        </FormField>
+        <FormField label="Skill category" required error={err("skillCategory")}>
+          <UiSelect
+            name="skillCategory"
+            defaultValue={val("skillCategory")}
+            invalid={!!err("skillCategory")}
+          >
+            <option value="">Choose one…</option>
+            {SKILL_OPTIONS.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </UiSelect>
+        </FormField>
+        <FormField
+          label="Monthly amount (₹)"
+          required
+          error={err("monthly")}
+          hint="As notified, for a full month"
+        >
+          <Input
+            name="monthly"
+            type="number"
+            step="0.01"
+            className="tnum"
+            defaultValue={val("monthly")}
+            invalid={!!err("monthly")}
+          />
+        </FormField>
+        <FormField
+          label="Effective from"
+          required
+          error={err("effectiveFrom")}
+          hint="The date the notification applies from"
+        >
+          <Input
+            name="effectiveFrom"
+            type="date"
+            defaultValue={val("effectiveFrom")}
+            invalid={!!err("effectiveFrom")}
+          />
+        </FormField>
+        <FormField label="Source" hint="The notification this came from">
+          <Input name="source" defaultValue={val("source")} placeholder="e.g. Haryana Labour Dept notification" />
+        </FormField>
+        <label className="flex items-start gap-2.5 self-end pb-2">
+          <input type="checkbox" name="verified" className="h-4 w-4 mt-0.5" />
+          <span className="text-sm">
+            Verified
+            <span className="block text-xs text-ink-3 mt-0.5">
+              Tick only if this was checked against the notification itself.
+            </span>
+          </span>
+        </label>
+      </div>
+      <FormFeedback state={state} labels={MIN_WAGE_LABELS} />
+      <div><SubmitButton pendingText="Saving…">Save minimum wage</SubmitButton></div>
     </form>
   );
 }

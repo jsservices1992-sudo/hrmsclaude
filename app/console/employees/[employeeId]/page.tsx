@@ -12,7 +12,6 @@ import {
   evaluateStructure,
   grossForTargetTakeHome,
   takeHomeFor,
-  GRATUITY_ACCRUAL_BPS,
   type CtcBreakdown,
 } from "@/lib/payroll/compensation";
 import { formatINR } from "@/lib/payroll/money";
@@ -150,7 +149,7 @@ export default async function EmployeeDetailPage(
       esicEmployerBps: statutory.esic.employerBps,
       // 15 days' wages a year over 26 working days, spread monthly — the
       // standard accrual, same rate the CTC-mode revision solves against.
-      gratuityAccrualBps: GRATUITY_ACCRUAL_BPS,
+      gratuityAccrualBps: statutory.gratuity.accrualBps,
       pfOptedIn: e.pfOptedIn,
       hadPriorPfMembership: e.hadPriorPfMembership,
     };

@@ -327,6 +327,11 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
   const esicBase = bool(fd.get("esicBase"));
   const ptBase = bool(fd.get("ptBase"));
   const bonusBase = bool(fd.get("bonusBase"));
+  /* Empty means nobody has said, which the run reports rather than
+     guessing at. Only these two values are accepted. */
+  const bonusRoleRaw = String(fd.get("bonusRole") ?? "").trim();
+  const bonusRole: "statutory_bonus" | "ex_gratia" | null =
+    bonusRoleRaw === "statutory_bonus" || bonusRoleRaw === "ex_gratia" ? bonusRoleRaw : null;
   const gratuityBase = bool(fd.get("gratuityBase"));
   const prorates = bool(fd.get("prorates"));
   const active = bool(fd.get("active"));
@@ -362,7 +367,7 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
 
   const values = {
     code, name, kind, calcMethod, percentValue, percentOfCode, fixedPaise,
-    taxable, epfBase, esicBase, ptBase, bonusBase, gratuityBase, prorates, active, sequence,
+    taxable, epfBase, esicBase, ptBase, bonusBase, bonusRole, gratuityBase, prorates, active, sequence,
   };
 
   if (id) {

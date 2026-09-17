@@ -7,7 +7,6 @@ import {
   evaluateStructure,
   grossForTargetTakeHome,
   takeHomeFor,
-  GRATUITY_ACCRUAL_BPS,
   type CtcBreakdown,
   type ComponentSpec,
   type EmployerCostParams,
@@ -98,7 +97,7 @@ export async function resolvePay(args: {
     epfOnActualBasic: companyConfig?.epfOnActualBasic ?? false,
     esicThresholdPaise: statutory.esic.wageThresholdPaise,
     esicEmployerBps: statutory.esic.employerBps,
-    gratuityAccrualBps: GRATUITY_ACCRUAL_BPS,
+    gratuityAccrualBps: statutory.gratuity.accrualBps,
   };
 
   const rupees = (args.amountPaise / 100).toLocaleString("en-IN");

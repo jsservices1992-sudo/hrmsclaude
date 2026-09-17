@@ -6,6 +6,13 @@ import {
   type ExceptionInput,
   type PayrollException,
 } from "./exceptions";
+import { minimumWageFacts, assessStatutoryBonus, checkWageCodeSplit } from "./compensation";
+import { loadStatutoryConfig } from "./load";
+
+function periodEndDate(year: number, month: number) {
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${year}-${String(month).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+}
 
 /**
  * Gathers what the exception rules need for a saved run and evaluates
@@ -30,7 +37,9 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
   if (employeeIds.length === 0) return [];
 
   // Bulk reads only — one query per concern, never one per employee.
-  const [employees, lines, salaries, statutoryParams] = await Promise.all([
+  const asOf = periodEndDate(run.periodYear, run.periodMonth);
+  const [employees, lines, salaries, statutoryParams, statutory, branches, grades, components, companyRow] =
+    await Promise.all([
     db.select().from(s.employees).where(inArray(s.employees.id, employeeIds)),
     db
       .select({
@@ -46,9 +55,78 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
       .from(s.employeeSalaries)
       .where(inArray(s.employeeSalaries.employeeId, employeeIds)),
     db.select().from(s.statutoryParams),
+    loadStatutoryConfig(asOf),
+    db.select().from(s.branches).where(eq(s.branches.companyId, run.companyId)),
+    db.select().from(s.grades).where(eq(s.grades.companyId, run.companyId)),
+    db.select().from(s.payComponents).where(eq(s.payComponents.companyId, run.companyId)),
+    db
+      .select({ declaredHeadcount: s.companies.declaredHeadcount })
+      .from(s.companies)
+      .where(eq(s.companies.id, run.companyId))
+      .limit(1),
   ]);
 
   const empById = new Map(employees.map((e) => [e.id, e]));
+  const stateByBranch = new Map(branches.map((b) => [b.id, b.stateCode]));
+  const skillByGrade = new Map(grades.map((g) => [g.id, g.skillCategory]));
+
+  /* The contracted rate in force at period end — what a minimum wage is
+     actually compared against. */
+  const rateByEmployee = new Map<string, number>();
+  for (const row of salaries
+    .filter((r) => r.effectiveFrom <= asOf)
+    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))) {
+    if (!rateByEmployee.has(row.employeeId)) {
+      rateByEmployee.set(row.employeeId, row.monthlyGrossPaise);
+    }
+  }
+
+  const basicByEmployee = new Map<string, number>();
+  for (const l of lines) {
+    if (l.code === "BASIC") basicByEmployee.set(l.employeeId, l.amountPaise);
+  }
+
+  /*
+   * Statutory bonus. Which codes make up the wage it is computed on, and
+   * which code is the payment itself, both come from how the company has
+   * classified its own components — never from the code's name. Guessing
+   * that "BNS" is the statutory bonus is how somebody gets paid twice.
+   */
+  const bonusWageCodes = new Set(components.filter((c) => c.bonusBase).map((c) => c.code));
+  const bonusPayingCodes = new Set(
+    components.filter((c) => c.bonusRole === "statutory_bonus").map((c) => c.code),
+  );
+  const declaredHeadcount = companyRow[0]?.declaredHeadcount ?? null;
+
+  const bonusUnassessable =
+    declaredHeadcount === null
+      ? "Nobody has declared how many people this company employs, so whether the Payment of Bonus Act applies cannot be decided. Set it in company settings."
+      : bonusPayingCodes.size === 0
+        ? "No pay component is marked as the one that pays the statutory bonus, so the Act's figure cannot be set against what is already paid. Classify the components in master data."
+        : null;
+
+  /* "Wages" under the Code is basic and dearness allowance — the same
+     set the Act computes provident fund on, which is what epfBase marks.
+     Everything else the person is paid is the allowance side of the
+     test. */
+  const wageCodes = new Set(components.filter((c) => c.epfBase).map((c) => c.code));
+  const wagesByEmployee = new Map<string, number>();
+  for (const l of lines) {
+    if (wageCodes.has(l.code)) {
+      wagesByEmployee.set(l.employeeId, (wagesByEmployee.get(l.employeeId) ?? 0) + l.amountPaise);
+    }
+  }
+
+  const bonusWageByEmployee = new Map<string, number>();
+  const bonusPaidByEmployee = new Map<string, number>();
+  for (const l of lines) {
+    if (bonusWageCodes.has(l.code)) {
+      bonusWageByEmployee.set(l.employeeId, (bonusWageByEmployee.get(l.employeeId) ?? 0) + l.amountPaise);
+    }
+    if (bonusPayingCodes.has(l.code)) {
+      bonusPaidByEmployee.set(l.employeeId, (bonusPaidByEmployee.get(l.employeeId) ?? 0) + l.amountPaise);
+    }
+  }
 
   /* PF and ESIC only actually apply where the run deducted them, so the
      identifier checks follow the money rather than a policy flag that may
@@ -72,6 +150,39 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
   );
   const hasSalary = new Set(salaries.map((r) => r.employeeId));
 
+  /* Assessed per person, but only once the company has answered the two
+     questions that make an assessment possible at all. */
+  const bonusFacts = (employeeId: string) => {
+    if (bonusUnassessable) {
+      return { bonusShortfallPaise: null, bonusEntitlementPaise: null };
+    }
+    const a = assessStatutoryBonus({
+      monthlyBonusWagePaise: bonusWageByEmployee.get(employeeId) ?? 0,
+      paidPaise: bonusPaidByEmployee.get(employeeId) ?? 0,
+      minimumWagePaise: null,
+      declaredHeadcount,
+      headcountThreshold: statutory.bonusHeadcountThreshold,
+      daysWorkedInYear: 365,
+      params: statutory.bonus,
+    });
+    return {
+      bonusShortfallPaise: a.eligible ? a.shortfallPaise : null,
+      bonusEntitlementPaise: a.eligible ? a.entitlementPaise : null,
+    };
+  };
+
+  const wageCodeFacts = (employeeId: string, grossPaise: number) => {
+    if (wageCodes.size === 0 || grossPaise <= 0) {
+      return { wageCodeShortfallPaise: null, wageCodeShare: null };
+    }
+    const r = checkWageCodeSplit({
+      wagesPaise: wagesByEmployee.get(employeeId) ?? 0,
+      remunerationPaise: grossPaise,
+      minimumShareBps: statutory.wageCodeMinimumShareBps,
+    });
+    return { wageCodeShortfallPaise: r.shortfallPaise, wageCodeShare: r.share };
+  };
+
   const rows: ExceptionInput[] = summaries.map((sm) => {
     const e = empById.get(sm.employeeId);
     return {
@@ -94,6 +205,22 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
       dateOfExit: e?.dateOfExit ?? null,
       salaryChangedInPeriod: salaryChanged.has(sm.employeeId),
       engineWarnings: warningsByEmployee.get(sm.employeeId) ?? [],
+      ...minimumWageFacts({
+        stateCode: e?.branchId ? stateByBranch.get(e.branchId) ?? null : null,
+        skillCategory:
+          e?.skillCategory ?? (e?.gradeId ? skillByGrade.get(e.gradeId) ?? null : null),
+        monthlyGrossPaise: rateByEmployee.get(sm.employeeId) ?? null,
+        /* The basic on the run is what this month paid. It equals the
+           full-month rate only when nothing was prorated. */
+        monthlyBasicPaise:
+          sm.lopDays === 0 && sm.paidDays === sm.totalDays
+            ? basicByEmployee.get(sm.employeeId) ?? null
+            : null,
+        rules: statutory.minimumWages,
+        asOf,
+      }),
+      ...bonusFacts(sm.employeeId),
+      ...wageCodeFacts(sm.employeeId, sm.grossPaise),
     };
   });
 
@@ -122,6 +249,7 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
   return detectExceptions(rows, {
     year: run.periodYear,
     month: run.periodMonth,
+    bonusUnassessable,
     attendanceFinalised,
     statutoryConfigured: statutoryParams.length > 0,
   });

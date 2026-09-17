@@ -209,8 +209,7 @@ export async function reviseSalary(
     epfOnActualBasic: companyConfig?.epfOnActualBasic ?? false,
     esicThresholdPaise: statutory.esic.wageThresholdPaise,
     esicEmployerBps: statutory.esic.employerBps,
-    // 15 days' wages a year over 26 working days, spread monthly.
-    gratuityAccrualBps: 481,
+    gratuityAccrualBps: statutory.gratuity.accrualBps,
   };
 
   // From a target CTC or take-home, work back to the gross that produces it.

@@ -628,3 +628,105 @@ export async function createStarterStructure(
       ". Basic is half of gross and special allowance takes the balance — edit either if this company pays differently.",
   };
 }
+
+/**
+ * Record a state's minimum wage for a skill category.
+ *
+ * Versioned the same way as every other statutory figure: a revision
+ * closes the row in force and opens a new one, so a run of an earlier
+ * month still checks against the floor that applied then.
+ *
+ * `verified` is the point of the whole thing. A rate nobody has checked
+ * against the notification is a number, not a compliance position, and
+ * the screen says which of the two it is holding.
+ */
+export async function saveMinimumWage(
+  _prev: PayrollSettingsState,
+  fd: FormData,
+): Promise<PayrollSettingsState> {
+  const { user, error } = await requireAdmin();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const stateCode = String(fd.get("stateCode") ?? "").trim();
+  const skillCategory = String(fd.get("skillCategory") ?? "").trim();
+  const effectiveFrom = String(fd.get("effectiveFrom") ?? "").trim();
+  const raw = String(fd.get("monthly") ?? "").trim();
+  const source = nullable(fd.get("source"));
+  const verified = fd.get("verified") !== null;
+
+  const SKILLS = ["unskilled", "semi_skilled", "skilled", "highly_skilled"];
+  const fieldErrors: Record<string, string> = {};
+  if (!stateCode) fieldErrors.stateCode = "Required";
+  if (!SKILLS.includes(skillCategory)) fieldErrors.skillCategory = "Required";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) fieldErrors.effectiveFrom = "Use YYYY-MM-DD";
+  const monthly = Number(raw);
+  if (!raw || Number.isNaN(monthly) || monthly <= 0) {
+    fieldErrors.monthly = "Enter the notified monthly amount";
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    return { error: "Fix the highlighted fields.", fieldErrors, values: submitted(fd) };
+  }
+
+  const monthlyPaise = Math.round(monthly * 100);
+
+  const [current] = await db
+    .select()
+    .from(s.minimumWages)
+    .where(
+      and(
+        eq(s.minimumWages.stateCode, stateCode),
+        eq(s.minimumWages.skillCategory, skillCategory as "unskilled"),
+        isNull(s.minimumWages.effectiveTo),
+      ),
+    )
+    .limit(1);
+
+  if (current && current.effectiveFrom >= effectiveFrom) {
+    return {
+      error: `A rate is already in force from ${current.effectiveFrom}. A new one must start after that.`,
+      fieldErrors: { effectiveFrom: "Must be later than the current rate" },
+      values: submitted(fd),
+    };
+  }
+
+  const dayBefore = (() => {
+    const d = new Date(effectiveFrom + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  await db.transaction(async (tx) => {
+    if (current) {
+      await tx
+        .update(s.minimumWages)
+        .set({ effectiveTo: dayBefore })
+        .where(eq(s.minimumWages.id, current.id));
+    }
+    await tx.insert(s.minimumWages).values({
+      id: randomUUID(),
+      stateCode,
+      skillCategory: skillCategory as "unskilled",
+      monthlyPaise,
+      effectiveFrom,
+      effectiveTo: null,
+      verified,
+      source,
+    });
+  });
+
+  await audit({
+    actor: user.email,
+    action: "minimum_wage.versioned",
+    entity: "minimum_wage",
+    entityId: `${stateCode}:${skillCategory}`,
+    before: current ? { monthlyPaise: current.monthlyPaise, effectiveFrom: current.effectiveFrom } : null,
+    after: { monthlyPaise, effectiveFrom, verified },
+    reason: source,
+  });
+
+  revalidatePath("/console/settings/payroll");
+  revalidatePath("/console/runs");
+  return {
+    ok: `${stateCode} ${skillCategory.replace("_", " ")} set to ₹${monthly.toLocaleString("en-IN")} from ${effectiveFrom}.`,
+  };
+}

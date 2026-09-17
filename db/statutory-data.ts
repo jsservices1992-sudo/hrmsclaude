@@ -189,6 +189,18 @@ export const STATUTORY_PARAMS = [
   { key: "esic.employer_bps", value: 325, unit: "bps" as const, note: "3.25% employer share" },
   { key: "pt.default_annual_cap", value: R(2500), unit: "paise" as const, note: "Constitutional ceiling on PT" },
 
+  /* Gratuity and bonus. These were constants in the payroll source until
+     they were moved here, which is what lets a revised ceiling be a dated
+     row rather than a release — and what keeps an already-paid month
+     recalculating at the figures that were in force when it ran. */
+  { key: "gratuity.accrual_bps", value: 481, unit: "bps" as const, note: "4.81% — 15 days' wages a year over 26 working days, spread monthly", source: "Payment of Gratuity Act, s.4" },
+  { key: "bonus.eligibility_wage", value: R(21000), unit: "paise" as const, note: "Monthly wages above this earn no statutory bonus", source: "Payment of Bonus Act, s.2(13)" },
+  { key: "bonus.calculation_ceiling", value: R(7000), unit: "paise" as const, note: "Wages are capped at this for the calculation, separately from eligibility", source: "Payment of Bonus Act, s.12" },
+  { key: "bonus.min_bps", value: 833, unit: "bps" as const, note: "8.33% — the minimum payable", source: "Payment of Bonus Act, s.10" },
+  { key: "bonus.max_bps", value: 2000, unit: "bps" as const, note: "20% — the maximum payable", source: "Payment of Bonus Act, s.11" },
+  { key: "bonus.headcount_threshold", value: 20, unit: "count" as const, note: "The Act applies to establishments employing at least this many", source: "Payment of Bonus Act, s.1(3)" },
+  { key: "wage_code.minimum_share_bps", value: 5000, unit: "bps" as const, note: "Wages must be at least this share of total remuneration", source: "Code on Wages 2019, s.2(y) proviso" },
+
   /* TDS on payments that are not salary — consultants and contractors.
      Rates are per section; thresholds are per financial year, and the
      one on 194C applies to a single payment as well as to the year's
