@@ -278,6 +278,81 @@ export type PtResult = {
   reason: string;
 };
 
+const RUPEE = 100;
+
+export type SlabProblem = { kind: "gap" | "overlap" | "empty"; message: string };
+
+/**
+ * Whether a state's slabs actually cover every wage, once.
+ *
+ * Slabs are a set, not a list of independent rows: together they have to
+ * run from nothing to unbounded with no gap and no overlap. A gap means
+ * somebody in it is charged nothing; an overlap means two bands claim
+ * them and the higher is taken. Neither shows up as an error at run
+ * time — the payroll simply deducts the wrong professional tax and
+ * nobody finds out until an assessment.
+ *
+ * Gendered sets are judged separately, because a state that exempts
+ * women to a higher threshold has two complete ladders rather than one.
+ */
+export function checkSlabCoverage(slabs: PtSlab[]): SlabProblem[] {
+  if (slabs.length === 0) return [{ kind: "empty", message: "No slab is configured." }];
+
+  const genders = [...new Set(slabs.map((s) => s.gender ?? "all"))];
+  const problems: SlabProblem[] = [];
+  const rupees = (p: number) => `₹${(p / 100).toLocaleString("en-IN")}`;
+
+  for (const gender of genders) {
+    const set = slabs
+      .filter((s) => (s.gender ?? "all") === gender)
+      .sort((a, b) => a.minPaise - b.minPaise);
+    const who = gender === "all" ? "" : ` (${gender})`;
+
+    if (set[0].minPaise > 0) {
+      problems.push({
+        kind: "gap",
+        message: `Nothing covers wages below ${rupees(set[0].minPaise)}${who}.`,
+      });
+    }
+
+    for (let i = 0; i < set.length - 1; i++) {
+      const current = set[i];
+      const next = set[i + 1];
+      if (current.maxPaise === null) {
+        problems.push({
+          kind: "overlap",
+          message: `An unbounded band starting ${rupees(current.minPaise)}${who} sits under a later one.`,
+        });
+        continue;
+      }
+      if (next.minPaise <= current.maxPaise) {
+        problems.push({
+          kind: "overlap",
+          message: `${rupees(next.minPaise)} to ${rupees(current.maxPaise)}${who} falls in two bands.`,
+        });
+      } else if (next.minPaise - current.maxPaise > RUPEE) {
+        /* Notifications are written in rupees — "up to ₹24,999" followed
+           by "₹25,000 and above" leaves ninety-nine paise between them
+           that no state means as a band. A gap has to be at least a
+           rupee wide before it is one. */
+        problems.push({
+          kind: "gap",
+          message: `${rupees(current.maxPaise + 1)} to ${rupees(next.minPaise - 1)}${who} falls in none.`,
+        });
+      }
+    }
+
+    if (set[set.length - 1].maxPaise !== null) {
+      problems.push({
+        kind: "gap",
+        message: `Nothing covers wages above ${rupees(set[set.length - 1].maxPaise!)}${who}.`,
+      });
+    }
+  }
+
+  return problems;
+}
+
 export function computeProfessionalTax(input: PtInput): PtResult {
   if (!input.applicable) {
     return {

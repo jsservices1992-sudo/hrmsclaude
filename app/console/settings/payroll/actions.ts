@@ -841,3 +841,121 @@ export async function saveLwfRate(
   revalidatePath("/console/settings/payroll");
   return { ok: `${stateCode} labour welfare fund set from ${effectiveFrom}.` };
 }
+
+/**
+ * Add one professional tax slab for a state.
+ *
+ * Slabs are added a row at a time because that is how a notification
+ * prints them, and the screen shows whether the set they form actually
+ * covers every wage once. A row is never edited: a wrong one is retired
+ * below, which closes it from a date and leaves what it charged intact.
+ */
+export async function savePtSlab(
+  _prev: PayrollSettingsState,
+  fd: FormData,
+): Promise<PayrollSettingsState> {
+  const { user, error } = await requireAdmin();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const stateCode = String(fd.get("stateCode") ?? "").trim();
+  const effectiveFrom = String(fd.get("effectiveFrom") ?? "").trim();
+  const gender = String(fd.get("gender") ?? "all");
+  const source = nullable(fd.get("source"));
+  const verified = fd.get("verified") !== null;
+
+  const num = (k: string) => {
+    const raw = String(fd.get(k) ?? "").trim();
+    return raw === "" ? null : Number(raw);
+  };
+  const min = num("min");
+  const max = num("max");
+  const amount = num("amount");
+  const overrideMonth = num("overrideMonth");
+  const overrideAmount = num("overrideAmount");
+  const annualCap = num("annualCap");
+
+  const fieldErrors: Record<string, string> = {};
+  if (!stateCode) fieldErrors.stateCode = "Required";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) fieldErrors.effectiveFrom = "Use YYYY-MM-DD";
+  if (min === null || Number.isNaN(min) || min < 0) fieldErrors.min = "From what wage";
+  if (max !== null && (Number.isNaN(max) || max < (min ?? 0))) {
+    fieldErrors.max = "Must be above the lower bound, or blank for unbounded";
+  }
+  if (amount === null || Number.isNaN(amount) || amount < 0) fieldErrors.amount = "Monthly amount";
+  if (overrideMonth !== null && (overrideMonth < 1 || overrideMonth > 12)) {
+    fieldErrors.overrideMonth = "A month from 1 to 12";
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    return { error: "Fix the highlighted fields.", fieldErrors, values: submitted(fd) };
+  }
+
+  const rupees = (n: number | null) => (n === null ? null : Math.round(n * 100));
+
+  const id = randomUUID();
+  await db.insert(s.ptSlabs).values({
+    id,
+    stateCode,
+    minPaise: rupees(min)!,
+    maxPaise: rupees(max),
+    amountPaise: rupees(amount)!,
+    overrideMonth,
+    overrideAmountPaise: rupees(overrideAmount),
+    gender: gender as "all",
+    annualCapPaise: rupees(annualCap) ?? 250000,
+    effectiveFrom,
+    effectiveTo: null,
+    verified,
+    source,
+  });
+
+  await audit({
+    actor: user.email,
+    action: "pt_slab.created",
+    entity: "pt_slab",
+    entityId: id,
+    after: { stateCode, min, max, amount, gender, effectiveFrom, verified },
+    reason: source,
+  });
+
+  revalidatePath("/console/settings/payroll");
+  return { ok: `${stateCode} slab added from ${effectiveFrom}.` };
+}
+
+/**
+ * Retire a slab from a date rather than deleting it.
+ *
+ * A run of an earlier month has to reproduce what that month charged, so
+ * the row stays and is closed. Deleting it would quietly change history.
+ */
+export async function retirePtSlab(
+  _prev: PayrollSettingsState,
+  fd: FormData,
+): Promise<PayrollSettingsState> {
+  const { user, error } = await requireAdmin();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const id = String(fd.get("slabId") ?? "");
+  const effectiveTo = String(fd.get("effectiveTo") ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveTo)) {
+    return { error: "Give the last date this slab applied, as YYYY-MM-DD." };
+  }
+
+  const [slab] = await db.select().from(s.ptSlabs).where(eq(s.ptSlabs.id, id)).limit(1);
+  if (!slab) return { error: "Slab not found." };
+  if (slab.effectiveFrom > effectiveTo) {
+    return { error: `It started on ${slab.effectiveFrom} — it cannot end before that.` };
+  }
+
+  await db.update(s.ptSlabs).set({ effectiveTo }).where(eq(s.ptSlabs.id, id));
+  await audit({
+    actor: user.email,
+    action: "pt_slab.retired",
+    entity: "pt_slab",
+    entityId: id,
+    before: { effectiveTo: slab.effectiveTo },
+    after: { effectiveTo },
+  });
+
+  revalidatePath("/console/settings/payroll");
+  return { ok: `${slab.stateCode} slab closed at ${effectiveTo}.` };
+}

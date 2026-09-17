@@ -23,6 +23,8 @@ import {
   BankForm,
   MinimumWageForm,
   LwfRateForm,
+  PtSlabForm,
+  RetireSlabForm,
   DepartmentOverrideForm,
   ClearDeptOverrideForm,
 } from "./forms";
@@ -51,6 +53,8 @@ import {
   Tooltip,
 } from "@/components/console/ui";
 import { SetupWizard } from "@/components/console/setup-wizard";
+import { checkSlabCoverage } from "@/lib/payroll/statutory";
+import { RowPopover } from "@/app/console/runs/row-actions";
 import { loadSodPolicies } from "@/lib/audit/log";
 import { SodToggle } from "../../audit/forms";
 import { formatDate } from "@/lib/format/date";
@@ -220,6 +224,30 @@ export default async function PayrollSettingsPage(
   const hiddenAdvanced = ADVANCED_TABS.filter(
     (a) => !a.configured && tab !== a.id,
   );
+
+  /* Slabs grouped by state, each set judged on whether it covers every
+     wage once. Only the bands in force today are judged: a retired one
+     is history, not a hole. */
+  const today = new Date().toISOString().slice(0, 10);
+  const liveSlabs = ptSlabs.filter(
+    (p) => p.effectiveFrom <= today && (p.effectiveTo === null || p.effectiveTo >= today),
+  );
+  const ptByState = [...new Set(ptSlabs.map((p) => p.stateCode))].sort().map((stateCode) => ({
+    stateCode,
+    slabs: ptSlabs
+      .filter((p) => p.stateCode === stateCode)
+      .sort((a, b) => a.minPaise - b.minPaise),
+    problems: checkSlabCoverage(
+      liveSlabs
+        .filter((p) => p.stateCode === stateCode)
+        .map((p) => ({
+          minPaise: p.minPaise,
+          maxPaise: p.maxPaise,
+          amountPaise: p.amountPaise,
+          gender: p.gender,
+        })),
+    ),
+  }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -753,31 +781,70 @@ export default async function PayrollSettingsPage(
               <span className="label text-ink-3 tnum">{ptSlabs.length}</span>
             </div>
             <p className="px-4 py-2.5 text-xs text-ink-2 border-b border-line-2 max-w-[72ch]">
-              Seeded figures, none of them checked against a state Act. A state
-              that levies professional tax with no slab here is reported on the
-              run rather than passed over.
+              Seeded figures, none of them checked against a state Act. The
+              bands for a state have to cover every wage once between them —
+              a hole charges somebody nothing and an overlap charges them
+              twice, and neither shows up as an error when payroll runs.
             </p>
-            <ul className="divide-y divide-line-2 max-h-96 overflow-y-auto">
-              {ptSlabs.map((p) => (
-                <li key={p.id} className="px-4 py-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs">
-                  <span>
-                    <span className="font-medium">{p.stateCode}</span>{" "}
-                    <span className="font-mono text-ink-2 tnum">
-                      {formatINR(p.minPaise)} — {p.maxPaise === null ? "above" : formatINR(p.maxPaise)}
-                    </span>
-                    {p.gender && p.gender !== "all" && (
-                      <span className="text-ink-3"> · {p.gender}</span>
+            <div className="max-h-[32rem] overflow-y-auto divide-y divide-line">
+              {ptByState.map(({ stateCode, slabs, problems }) => (
+                <div key={stateCode} className="px-4 py-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1.5">
+                    <span className="text-sm font-medium">{stateCode}</span>
+                    {problems.length === 0 ? (
+                      <Badge tone="teal">covers every wage</Badge>
+                    ) : (
+                      <Badge tone="rust">{problems.length} problem(s)</Badge>
                     )}
-                  </span>
-                  <span className="flex items-baseline gap-3">
-                    <span className="font-mono tnum">{formatINR(p.amountPaise)}</span>
-                    <Badge tone={p.verified ? "teal" : "brass"}>
-                      {p.verified ? "verified" : "unverified"}
-                    </Badge>
-                  </span>
-                </li>
+                  </div>
+                  {problems.length > 0 && (
+                    <ul className="mb-2 flex flex-col gap-0.5">
+                      {problems.map((x, i) => (
+                        <li key={i} className="text-xs text-rust">{x.message}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <ul className="flex flex-col gap-1">
+                    {slabs.map((p) => (
+                      <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs">
+                        <span className="font-mono text-ink-2 tnum">
+                          {formatINR(p.minPaise)} — {p.maxPaise === null ? "above" : formatINR(p.maxPaise)}
+                          {p.gender && p.gender !== "all" && (
+                            <span className="text-ink-3"> · {p.gender}</span>
+                          )}
+                          {p.overrideMonth && (
+                            <span className="text-ink-3">
+                              {" "}· {formatINR(p.overrideAmountPaise ?? 0)} in month {p.overrideMonth}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex items-baseline gap-3">
+                          <span className="font-mono tnum">{formatINR(p.amountPaise)}</span>
+                          <Badge tone={p.verified ? "teal" : "brass"}>
+                            {p.verified ? "verified" : "unverified"}
+                          </Badge>
+                          {isAdmin && (
+                            <RowPopover label="Retire" title={`Retire ${p.stateCode} slab`} panelClassName="p-3 w-72">
+                              <RetireSlabForm slabId={p.id} />
+                            </RowPopover>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
+            {isAdmin && (
+              <div className="p-4 border-t border-line">
+                <PtSlabForm
+                  states={jurisdictions.map((j) => ({
+                    id: j.stateCode,
+                    label: `${j.name} (${j.stateCode})`,
+                  }))}
+                />
+              </div>
+            )}
           </Card>
 
           <Card padded={false}>

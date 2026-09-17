@@ -8,6 +8,8 @@ import {
   createBankAccount,
   saveMinimumWage,
   saveLwfRate,
+  savePtSlab,
+  retirePtSlab,
   saveDepartmentPayrollOverride,
   clearDepartmentPayrollOverride,
   type PayrollSettingsState,
@@ -666,6 +668,108 @@ export function LwfRateForm({ states }: { states: { id: string; label: string }[
       </div>
       <FormFeedback state={state} labels={LWF_LABELS} />
       <div><SubmitButton pendingText="Saving…">Save labour welfare fund</SubmitButton></div>
+    </form>
+  );
+}
+
+const PT_LABELS: Record<string, string> = {
+  stateCode: "State",
+  min: "From",
+  max: "To",
+  amount: "Monthly amount",
+  effectiveFrom: "Effective from",
+  overrideMonth: "Override month",
+};
+
+export function PtSlabForm({ states }: { states: { id: string; label: string }[] }) {
+  const [state, action] = useActionState<PayrollSettingsState, FormData>(savePtSlab, {});
+  const err = (k: string) => state.fieldErrors?.[k];
+  const val = (k: string, fallback = "") => state.values?.[k] ?? fallback;
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <p className="text-xs text-ink-2 max-w-[72ch]">
+        One band at a time, as the notification prints them. The bands for a
+        state have to cover every wage once between them — anything missing or
+        claimed twice is reported above.
+      </p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <FormField label="State" required error={err("stateCode")}>
+          <UiSelect name="stateCode" defaultValue={val("stateCode")} invalid={!!err("stateCode")}>
+            <option value="">Choose a state…</option>
+            {states.map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </UiSelect>
+        </FormField>
+        <FormField label="From (₹)" required error={err("min")} hint="Inclusive">
+          <Input name="min" type="number" step="0.01" className="tnum"
+            defaultValue={val("min")} invalid={!!err("min")} />
+        </FormField>
+        <FormField label="To (₹)" error={err("max")} hint="Blank means no upper bound">
+          <Input name="max" type="number" step="0.01" className="tnum"
+            defaultValue={val("max")} invalid={!!err("max")} />
+        </FormField>
+        <FormField label="Monthly amount (₹)" required error={err("amount")}>
+          <Input name="amount" type="number" step="0.01" className="tnum"
+            defaultValue={val("amount")} invalid={!!err("amount")} />
+        </FormField>
+        <FormField label="Applies to" hint="Some states exempt women to a higher wage">
+          <UiSelect name="gender" defaultValue={val("gender", "all")}>
+            <option value="all">Everyone</option>
+            <option value="female">Women</option>
+            <option value="male">Men</option>
+          </UiSelect>
+        </FormField>
+        <FormField label="Different in month" error={err("overrideMonth")}
+          hint="e.g. 2 where February differs">
+          <Input name="overrideMonth" type="number" min="1" max="12" className="tnum"
+            defaultValue={val("overrideMonth")} invalid={!!err("overrideMonth")} />
+        </FormField>
+        <FormField label="That month's amount (₹)">
+          <Input name="overrideAmount" type="number" step="0.01" className="tnum"
+            defaultValue={val("overrideAmount")} />
+        </FormField>
+        <FormField label="Annual cap (₹)" hint="₹2,500 unless the state says otherwise">
+          <Input name="annualCap" type="number" step="0.01" placeholder="2500" className="tnum"
+            defaultValue={val("annualCap")} />
+        </FormField>
+        <FormField label="Effective from" required error={err("effectiveFrom")}>
+          <Input name="effectiveFrom" type="date" defaultValue={val("effectiveFrom")}
+            invalid={!!err("effectiveFrom")} />
+        </FormField>
+        <FormField label="Source" hint="The notification this came from">
+          <Input name="source" defaultValue={val("source")} placeholder="Gazette / notification number" />
+        </FormField>
+        <label className="flex items-start gap-2.5 self-end pb-2">
+          <input type="checkbox" name="verified" className="h-4 w-4 mt-0.5" />
+          <span className="text-sm">
+            Verified
+            <span className="block text-xs text-ink-3 mt-0.5">
+              Tick only if checked against the notification itself.
+            </span>
+          </span>
+        </label>
+      </div>
+      <FormFeedback state={state} labels={PT_LABELS} />
+      <div><SubmitButton pendingText="Saving…">Add slab</SubmitButton></div>
+    </form>
+  );
+}
+
+/** Closes a slab from a date. The row stays; history keeps its figures. */
+export function RetireSlabForm({ slabId }: { slabId: string }) {
+  const [state, action] = useActionState<PayrollSettingsState, FormData>(retirePtSlab, {});
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <input type="hidden" name="slabId" value={slabId} />
+      <p className="text-xs text-ink-2">
+        The last date this band applied. It stays on record so an earlier month
+        still reproduces what it charged.
+      </p>
+      <Input name="effectiveTo" type="date" />
+      <SubmitButton size="sm" variant="default" pendingText="Closing…">Retire slab</SubmitButton>
+      <FormFeedback state={state} />
     </form>
   );
 }

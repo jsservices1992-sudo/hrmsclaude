@@ -7,6 +7,7 @@ import {
   computeLwf,
   contributionPeriodOf,
   effectiveAsOf,
+  checkSlabCoverage,
   type EpfParams,
   type EsicParams,
   type PtSlab,
@@ -642,5 +643,76 @@ describe("Labour welfare fund charged as a share of wages", () => {
       rate: { ...hr, deductionMonths: [12] }, monthlyWagePaise: 20_000_00,
     });
     assert.equal(r.employeePaise, 0);
+  });
+});
+
+describe("Whether a state's PT slabs cover every wage once", () => {
+  const slab = (min: number, max: number | null, amount: number, gender?: "all" | "female" | "male") =>
+    ({ minPaise: min, maxPaise: max, amountPaise: amount, gender }) as PtSlab;
+
+  test("a complete ladder has nothing wrong with it", () => {
+    const ok = [slab(0, R(24999), 0), slab(R(25000), null, R(200))];
+    assert.deepEqual(checkSlabCoverage(ok), []);
+  });
+
+  test("a hole between two bands is reported", () => {
+    /* Nobody between 10,000 and 12,000 is charged anything, and the run
+       would not say so — it would simply deduct nothing. */
+    const holed = [slab(0, R(10000), 0), slab(R(12000), null, R(200))];
+    const found = checkSlabCoverage(holed);
+    assert.equal(found.length, 1);
+    assert.equal(found[0].kind, "gap");
+    assert.match(found[0].message, /falls in none/);
+  });
+
+  test("two bands claiming the same wage are reported", () => {
+    const doubled = [slab(0, R(20000), R(100)), slab(R(15000), null, R(200))];
+    const found = checkSlabCoverage(doubled);
+    assert.equal(found[0].kind, "overlap");
+    assert.match(found[0].message, /falls in two bands/);
+  });
+
+  test("a ladder that does not start at nothing is reported", () => {
+    const found = checkSlabCoverage([slab(R(5000), null, R(200))]);
+    assert.equal(found[0].kind, "gap");
+    assert.match(found[0].message, /below/);
+  });
+
+  test("a ladder that stops short of unbounded is reported", () => {
+    const found = checkSlabCoverage([slab(0, R(50000), R(200))]);
+    assert.equal(found[0].kind, "gap");
+    assert.match(found[0].message, /above/);
+  });
+
+  test("bands that meet exactly at the rupee are not a gap", () => {
+    const tight = [slab(0, R(10000), 0), slab(R(10000) + 1, null, R(200))];
+    assert.deepEqual(checkSlabCoverage(tight), []);
+  });
+
+  test("gendered ladders are judged separately, not merged", () => {
+    /* Each set is complete on its own; merging them would read as a
+       pile of overlaps. */
+    const gendered = [
+      slab(0, R(7500), 0, "male"),
+      slab(R(7500) + 1, null, R(200), "male"),
+      slab(0, R(25000), 0, "female"),
+      slab(R(25000) + 1, null, R(200), "female"),
+    ];
+    assert.deepEqual(checkSlabCoverage(gendered), []);
+  });
+
+  test("an incomplete gendered ladder is caught within its own set", () => {
+    const gendered = [
+      slab(0, R(7500), 0, "male"),
+      slab(R(9000), null, R(200), "male"),
+      slab(0, null, 0, "female"),
+    ];
+    const found = checkSlabCoverage(gendered);
+    assert.equal(found.length, 1);
+    assert.match(found[0].message, /male/);
+  });
+
+  test("no slab at all is its own problem", () => {
+    assert.equal(checkSlabCoverage([])[0].kind, "empty");
   });
 });
