@@ -63,7 +63,7 @@ export function GradeForm({
   editing,
 }: {
   companyId: string;
-  editing?: { id: string; name: string; level: number; noticeDays: number | null; probationMonths: number | null; skillCategory: string | null };
+  editing?: { id: string; name: string; level: number; noticeDays: number | null; probationMonths: number | null; skillCategory: string | null; lwfCategory: string | null };
 }) {
   const [state, action] = useActionState<MasterState, FormData>(saveGrade, {});
   return (
@@ -108,6 +108,20 @@ export function GradeForm({
         <span className="text-xs text-ink-3 max-w-[28ch]">
           Which state minimum wage people on this grade are measured against.
           Left unset, the run reports that it could not check them.
+        </span>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="label text-ink-3">Labour welfare fund category</span>
+        <Select name="lwfCategory" defaultValue={state.values?.lwfCategory ?? editing?.lwfCategory ?? ""}>
+          <option value="">Not set</option>
+          <option value="managerial">Managerial</option>
+          <option value="supervisory">Supervisory</option>
+          <option value="other">Neither</option>
+        </Select>
+        <span className="text-xs text-ink-3 max-w-[28ch]">
+          Madhya Pradesh and Chhattisgarh exclude managerial and supervisory
+          staff earning over ₹10,000 a month. Left unset, they keep
+          contributing and the run says so.
         </span>
       </label>
       <SubmitButton size="sm" pendingText="Saving…">{editing ? "Save" : "Add grade"}</SubmitButton>

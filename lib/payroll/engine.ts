@@ -47,6 +47,20 @@ export type EmployeeInput = {
   empCode: string;
   gender: "female" | "male" | "other";
   stateCode: string;
+  /**
+   * Whether the job is managerial or supervisory, for the welfare funds
+   * that exclude those above a wage. Null means nobody has recorded it,
+   * which is not an exclusion — the person contributes and the run
+   * reports the gap.
+   */
+  lwfCategory?: "managerial" | "supervisory" | "other" | null;
+  /**
+   * People employed at this person's branch. Delhi does not apply the
+   * welfare fund below five, and a company may run one branch over the
+   * line and another under it, so the count is the establishment's
+   * rather than the company's.
+   */
+  establishmentHeadcount?: number | null;
   esicImplementedArea: boolean;
   monthlyGrossPaise: Paise;
   dateOfJoining: string;
@@ -382,7 +396,15 @@ export function computeEmployeePay(args: {
     /* "salary or wages or any remuneration" in the Haryana notification,
        which is the whole of what is paid rather than a statutory base. */
     monthlyWagePaise: ptBase,
+    category: e.lwfCategory ?? null,
+    establishmentHeadcount: e.establishmentHeadcount ?? null,
   });
+
+  if (lwf.categoryUnknown) {
+    warnings.push(
+      `${e.stateCode} excludes managerial and supervisory staff above a wage, and this employee's job is not recorded. They are contributing meanwhile.`,
+    );
+  }
 
   if (lwf.employeePaise > 0) {
     lines.push({

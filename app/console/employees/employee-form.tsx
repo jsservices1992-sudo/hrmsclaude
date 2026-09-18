@@ -32,6 +32,7 @@ const EMPLOYEE_LABELS: Record<string, string> = {
   departmentId: "Department",
   gradeId: "Grade",
   skillCategory: "Skill category",
+  lwfCategory: "Labour welfare fund category",
   managerId: "Reporting manager",
   employmentType: "Employment type",
   dateOfJoining: "Date of joining",
@@ -66,6 +67,7 @@ export type EmployeeValues = Partial<{
   departmentId: string | null;
   gradeId: string | null;
   skillCategory: string | null;
+  lwfCategory: string | null;
   managerId: string | null;
   gender: string;
   employmentType: string;
@@ -290,6 +292,17 @@ export default function EmployeeForm({
             { id: "highly_skilled", label: "Highly skilled" },
           ]}
           error={err("skillCategory")}
+        />
+        <Select
+          label="Labour welfare fund category"
+          name="lwfCategory"
+          defaultValue={val("lwfCategory")}
+          options={[
+            { id: "managerial", label: "Managerial" },
+            { id: "supervisory", label: "Supervisory" },
+            { id: "other", label: "Neither" },
+          ]}
+          error={err("lwfCategory")}
         />
         <Select
           label="Reporting manager"

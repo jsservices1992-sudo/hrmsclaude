@@ -796,6 +796,16 @@ export async function saveLwfRate(
   const employer = num("employer");
   const percent = num("percent");
   const multiple = num("multiple");
+  /* The rules a two-column rate table cannot hold: a floor below which
+     the Act does not apply, a minimum the employer owes per
+     establishment, and the jobs excluded above a wage. */
+  const minHeadcount = num("minHeadcount");
+  const employerMinimum = num("employerMinimum");
+  const government = num("government");
+  const excludeAboveWage = num("excludeAboveWage");
+  const excludedCategories = ["managerial", "supervisory"]
+    .filter((c) => fd.get(`exclude_${c}`) !== null)
+    .join(",");
 
   const fieldErrors: Record<string, string> = {};
   if (!stateCode) fieldErrors.stateCode = "Required";
@@ -810,6 +820,14 @@ export async function saveLwfRate(
     fieldErrors.percent = "A percentage between 0 and 100";
   }
   if (!/^[\d,]+$/.test(months)) fieldErrors.deductionMonths = "Months as numbers, e.g. 6,12";
+  /* An excluded job with no wage, or a wage with no job, would exclude
+     either everybody or nobody — both silently. */
+  if (excludedCategories !== "" && excludeAboveWage === null) {
+    fieldErrors.excludeAboveWage = "Give the wage the exclusion starts above";
+  }
+  if (excludeAboveWage !== null && excludedCategories === "") {
+    fieldErrors.excludeAboveWage = "Tick the jobs this wage excludes, or clear the wage";
+  }
   if (Object.keys(fieldErrors).length > 0) {
     return { error: "Fix the highlighted fields.", fieldErrors, values: submitted(fd) };
   }
@@ -850,6 +868,12 @@ export async function saveLwfRate(
       employerMultiple: multiple,
       frequency: frequency as "monthly",
       deductionMonths: months,
+      minEstablishmentHeadcount: minHeadcount === null ? null : Math.round(minHeadcount),
+      employerMinimumPaise: employerMinimum === null ? null : Math.round(employerMinimum * 100),
+      governmentPaise: government === null ? null : Math.round(government * 100),
+      excludeAboveWagePaise:
+        excludeAboveWage === null ? null : Math.round(excludeAboveWage * 100),
+      excludedCategories: excludedCategories === "" ? null : excludedCategories,
       effectiveFrom,
       effectiveTo: null,
       verified,

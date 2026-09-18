@@ -286,3 +286,52 @@ test("a comma in a value is quoted", () => {
   const csv = toCsv(["a"], [["Nair, Aarav"]]);
   assert.ok(csv.includes('"Nair, Aarav"'));
 });
+
+test("an establishment minimum tops the employer up without touching pay", () => {
+  const rules = new Map([
+    [
+      "MP",
+      {
+        frequency: "half-yearly",
+        collectionMonths: [6, 12],
+        employerMinimumPaise: L(2500),
+      },
+    ],
+  ]);
+  // Ten people at ₹50 come to ₹500, against the ₹2,500 the establishment owes.
+  const s = summariseLwf({
+    lines: Array.from({ length: 10 }, (_, i) =>
+      line({ employeeId: `e${i}`, stateCode: "MP", amounts: { LWF_EE: L(10), LWF_ER: L(50) } }),
+    ),
+    stateRules: rules,
+    month: 6,
+  });
+
+  assert.equal(s.states[0].employerSharePaise, L(500), "the per-head sum is unchanged");
+  assert.equal(s.states[0].employerTopUpPaise, L(2000));
+  assert.equal(s.states[0].employerPayablePaise, L(2500), "what goes to the board");
+  assert.equal(s.employeeSharePaise, L(100), "and nobody's deduction moved");
+  assert.ok(s.warnings.some((w) => w.includes("not recovered from anybody")));
+});
+
+test("the minimum is not owed in a month the state does not collect", () => {
+  const rules = new Map([
+    ["MP", { frequency: "half-yearly", collectionMonths: [6, 12], employerMinimumPaise: L(2500) }],
+  ]);
+  const s = summariseLwf({
+    lines: [line({ stateCode: "MP", amounts: { LWF_EE: L(10), LWF_ER: L(50) } })],
+    stateRules: rules,
+    month: 9,
+  });
+  assert.equal(s.states[0].employerTopUpPaise, 0);
+});
+
+test("a state without a minimum is left alone", () => {
+  const s = summariseLwf({
+    lines: [line({ stateCode: "MH", amounts: { LWF_EE: L(25), LWF_ER: L(75) } })],
+    stateRules: lwfRules,
+    month: 6,
+  });
+  assert.equal(s.states[0].employerTopUpPaise, 0);
+  assert.equal(s.states[0].employerPayablePaise, L(75));
+});

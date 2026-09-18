@@ -482,6 +482,7 @@ export default async function EmployeeDetailPage(
             departmentId: e.departmentId,
             gradeId: e.gradeId,
             skillCategory: e.skillCategory,
+            lwfCategory: e.lwfCategory,
             managerId: e.managerId,
             gender: e.gender,
             employmentType: e.employmentType,

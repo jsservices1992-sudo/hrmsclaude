@@ -223,25 +223,42 @@ export type LwfRateSeed = {
   employer: number;
   frequency: "monthly" | "half_yearly" | "annual";
   months: number[];
+  /** The Act does not reach an establishment smaller than this. */
+  minHeadcount?: number;
+  /** The least the employer owes per establishment per period. */
+  employerMinimum?: number;
+  /** The state's own share, for the return. Nobody pays it. */
+  government?: number;
+  /** Jobs excluded above `excludeAboveWage`, both conditions together. */
+  excludedCategories?: ("managerial" | "supervisory")[];
+  excludeAboveWage?: number;
 };
 
 /** UNVERIFIED — see file header. */
 export const LWF_RATES: LwfRateSeed[] = [
   { state: "MH", employee: R(25), employer: R(75), frequency: "half_yearly", months: [6, 12] },
   { state: "HR", employee: R(34), employer: R(68), frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  { state: "DL", employee: R(0.75), employer: R(2.25), frequency: "half_yearly", months: [6, 12] },
+  // Delhi does not apply the Act below five employees at all.
+  { state: "DL", employee: R(0.75), employer: R(2.25), frequency: "half_yearly", months: [6, 12], minHeadcount: 5 },
   { state: "KA", employee: R(20), employer: R(40), frequency: "annual", months: [12] },
   { state: "TN", employee: R(20), employer: R(40), frequency: "annual", months: [12] },
   { state: "AP", employee: R(30), employer: R(70), frequency: "annual", months: [12] },
   { state: "TG", employee: R(2), employer: R(5), frequency: "annual", months: [12] },
   { state: "GJ", employee: R(6), employer: R(12), frequency: "half_yearly", months: [6, 12] },
-  { state: "MP", employee: R(10), employer: R(30), frequency: "half_yearly", months: [6, 12] },
-  { state: "CG", employee: R(15), employer: R(45), frequency: "half_yearly", months: [6, 12] },
+  /* Madhya Pradesh is why this is not a per-employee rate table: the
+     employer owes ₹2,500 per establishment per half-year however few
+     people work there, and that difference is never recovered from pay. */
+  { state: "MP", employee: R(10), employer: R(50), frequency: "half_yearly", months: [6, 12],
+    employerMinimum: R(2500), excludedCategories: ["managerial", "supervisory"], excludeAboveWage: R(10_000) },
+  // Chhattisgarh shares the exclusion but sets no establishment minimum.
+  { state: "CG", employee: R(15), employer: R(45), frequency: "half_yearly", months: [6, 12],
+    excludedCategories: ["managerial", "supervisory"], excludeAboveWage: R(10_000) },
   { state: "OD", employee: R(10), employer: R(20), frequency: "half_yearly", months: [6, 12] },
   { state: "PB", employee: R(5), employer: R(20), frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
   { state: "WB", employee: R(3), employer: R(15), frequency: "half_yearly", months: [6, 12] },
-  { state: "GA", employee: R(60), employer: R(180), frequency: "half_yearly", months: [6, 12] },
-  { state: "KL", employee: R(50), employer: R(50), frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+  { state: "GA", employee: R(10), employer: R(30), government: R(20), frequency: "half_yearly", months: [6, 12] },
+  // The Board's current rate, not the ₹4/₹8 the Act's text still prints.
+  { state: "KL", employee: R(45), employer: R(45), frequency: "half_yearly", months: [6, 12] },
   { state: "CH", employee: R(5), employer: R(20), frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
 ];
 

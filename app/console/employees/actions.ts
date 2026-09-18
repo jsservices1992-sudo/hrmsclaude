@@ -72,6 +72,7 @@ const AUDITED_FIELDS = [
   "departmentId",
   "gradeId",
   "skillCategory",
+  "lwfCategory",
   "managerId",
   "branchId",
   "employmentType",
@@ -119,6 +120,9 @@ const EmployeeSchema = z.object({
   skillCategory: z
     .enum(["unskilled", "semi_skilled", "skilled", "highly_skilled"])
     .nullable(),
+  /* Whether the job is managerial or supervisory, for the welfare funds
+     that exclude those above a wage. Overrides the grade's. */
+  lwfCategory: z.enum(["managerial", "supervisory", "other"]).nullable(),
   managerId: z.string().nullable(),
   gender: z.enum(["female", "male", "other"]),
   employmentType: z.enum([
@@ -156,6 +160,7 @@ function parseForm(formData: FormData) {
     departmentId: nullable(formData.get("departmentId")),
     gradeId: nullable(formData.get("gradeId")),
     skillCategory: nullable(formData.get("skillCategory")),
+    lwfCategory: nullable(formData.get("lwfCategory")),
     managerId: nullable(formData.get("managerId")),
     gender: String(formData.get("gender") ?? "other"),
     employmentType: String(formData.get("employmentType") ?? "permanent"),
@@ -299,6 +304,7 @@ export async function createEmployee(
     departmentId: data.departmentId,
     gradeId: data.gradeId,
     skillCategory: data.skillCategory,
+    lwfCategory: data.lwfCategory,
     managerId: data.managerId,
     gender: data.gender,
     employmentType: data.employmentType,
@@ -474,6 +480,7 @@ export async function updateEmployee(
       departmentId: data.departmentId,
       gradeId: data.gradeId,
       skillCategory: data.skillCategory,
+    lwfCategory: data.lwfCategory,
       managerId: data.managerId,
       gender: data.gender,
       employmentType: data.employmentType,

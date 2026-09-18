@@ -20,7 +20,8 @@ import {
   type DepartmentOverride,
   type PayrollConventions,
 } from "./settings";
-import { effectiveAsOf, type PtSlab, type LwfRate } from "./statutory";
+import { effectiveAsOf, type PtSlab, type LwfCategory,
+  type LwfRate } from "./statutory";
 import {
   anchorsFrom,
   grossForTargetTakeHome,
@@ -91,6 +92,19 @@ export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig
       employerMultiple: row.employerMultiple,
       frequency: row.frequency,
       deductionMonths: row.deductionMonths.split(",").map(Number),
+      minEstablishmentHeadcount: row.minEstablishmentHeadcount,
+      employerMinimumPaise: row.employerMinimumPaise,
+      governmentPaise: row.governmentPaise,
+      exclusion:
+        row.excludeAboveWagePaise === null
+          ? null
+          : {
+              aboveWagePaise: row.excludeAboveWagePaise,
+              categories: (row.excludedCategories ?? "")
+                .split(",")
+                .map((c) => c.trim())
+                .filter((c): c is LwfCategory => c === "managerial" || c === "supervisory"),
+            },
     };
   }
 
@@ -410,6 +424,27 @@ export async function previewRun(args: {
   );
   const rowsSalary = rows.filter((r) => r.emp.paymentBasis !== "professional_fee");
 
+  /* Whether a job is managerial or supervisory decides some states'
+     welfare fund exclusions. It sits on the grade, which is the
+     job-level concept, and an employee may override it. */
+  const lwfByGrade = new Map(
+    (
+      await db
+        .select({ id: s.grades.id, lwfCategory: s.grades.lwfCategory })
+        .from(s.grades)
+        .where(eq(s.grades.companyId, args.companyId))
+    ).map((g) => [g.id, g.lwfCategory]),
+  );
+
+  /* The headcount that matters for a floor is the establishment's, and
+     the branch is the establishment: a company may run one branch over
+     the line and another under it. */
+  const headcountByBranch = new Map<string, number>();
+  for (const { emp } of rowsSalary) {
+    if (!emp.branchId) continue;
+    headcountByBranch.set(emp.branchId, (headcountByBranch.get(emp.branchId) ?? 0) + 1);
+  }
+
   const attendance = await db
     .select()
     .from(s.attendanceInputs)
@@ -662,6 +697,11 @@ export async function previewRun(args: {
         empCode: emp.empCode,
         gender: emp.gender,
         stateCode: branch.stateCode,
+        lwfCategory:
+          emp.lwfCategory ?? (emp.gradeId ? lwfByGrade.get(emp.gradeId) ?? null : null),
+        establishmentHeadcount: emp.branchId
+          ? headcountByBranch.get(emp.branchId) ?? 0
+          : null,
         esicImplementedArea: branch.esicImplementedArea,
         monthlyGrossPaise: gross,
         dateOfJoining: emp.dateOfJoining,

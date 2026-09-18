@@ -8,7 +8,10 @@ import {
   contributionPeriodOf,
   effectiveAsOf,
   checkSlabCoverage,
+  lwfEmployerTopUp,
   type EpfParams,
+  type LwfInput,
+  type LwfRate,
   type EsicParams,
   type PtSlab,
 } from "./statutory";
@@ -715,4 +718,110 @@ describe("Whether a state's PT slabs cover every wage once", () => {
   test("no slab at all is its own problem", () => {
     assert.equal(checkSlabCoverage([])[0].kind, "empty");
   });
+});
+
+/* ==================================================================
+   LWF — the rules a flat state→rate table cannot hold
+   ================================================================== */
+
+const R2 = (rupees: number) => Math.round(rupees * 100);
+
+const halfYearly = (employee: number, employer: number, extra: Partial<LwfRate> = {}): LwfRate => ({
+  employeePaise: R2(employee),
+  employerPaise: R2(employer),
+  frequency: "half_yearly",
+  deductionMonths: [6, 12],
+  ...extra,
+});
+
+const MP_RATE = halfYearly(10, 50, {
+  employerMinimumPaise: R2(2500),
+  exclusion: { categories: ["managerial", "supervisory"], aboveWagePaise: R2(10_000) },
+});
+
+const lwf = (rate: LwfRate | null, over: Partial<LwfInput> = {}) =>
+  computeLwf({ stateCode: "MP", month: 6, applicable: true, rate, ...over });
+
+test("a headcount floor makes the fund not apply at all", () => {
+  const delhi = halfYearly(0.75, 2.25, { minEstablishmentHeadcount: 5 });
+  const small = lwf(delhi, { stateCode: "DL", establishmentHeadcount: 4 });
+  assert.equal(small.applicable, false);
+  assert.equal(small.employeePaise, 0);
+  assert.equal(small.employerPaise, 0);
+
+  const big = lwf(delhi, { stateCode: "DL", establishmentHeadcount: 5 });
+  assert.equal(big.employeePaise, R2(0.75));
+  assert.equal(big.employerPaise, R2(2.25));
+});
+
+test("exclusion needs the job and the wage together, not either one", () => {
+  // A supervisor under the wage still contributes.
+  assert.equal(
+    lwf(MP_RATE, { category: "supervisory", monthlyWagePaise: R2(8_000) }).employeePaise,
+    R2(10),
+  );
+  // So does a well-paid person who is neither managerial nor supervisory.
+  assert.equal(
+    lwf(MP_RATE, { category: "other", monthlyWagePaise: R2(40_000) }).employeePaise,
+    R2(10),
+  );
+  // Both together excludes.
+  const out = lwf(MP_RATE, { category: "managerial", monthlyWagePaise: R2(40_000) });
+  assert.equal(out.excluded, true);
+  assert.equal(out.employeePaise, 0);
+  assert.equal(out.employerPaise, 0);
+});
+
+test("an unrecorded job contributes and is reported rather than guessed", () => {
+  const out = lwf(MP_RATE, { category: null, monthlyWagePaise: R2(40_000) });
+  assert.equal(out.excluded, undefined);
+  assert.equal(out.employeePaise, R2(10), "contributes while the question is open");
+  assert.equal(out.categoryUnknown, true, "and says the question is open");
+
+  // Below the wage there is nothing to decide, so nothing to report.
+  assert.equal(
+    lwf(MP_RATE, { category: null, monthlyWagePaise: R2(9_000) }).categoryUnknown,
+    false,
+  );
+});
+
+test("the employer minimum is per establishment, not per employee", () => {
+  // Ten people at ₹50 is ₹500 against the ₹2,500 Madhya Pradesh owes.
+  const short = lwfEmployerTopUp({
+    rate: MP_RATE,
+    month: 6,
+    perHeadTotalPaise: R2(500),
+    contributingCount: 10,
+  });
+  assert.equal(short.topUpPaise, R2(2000));
+  assert.match(short.reason!, /not deducted from anybody/);
+
+  // Sixty people clear it on their own.
+  assert.equal(
+    lwfEmployerTopUp({ rate: MP_RATE, month: 6, perHeadTotalPaise: R2(3000), contributingCount: 60 })
+      .topUpPaise,
+    0,
+  );
+
+  // And it is not owed in a month the fund is not collected.
+  assert.equal(
+    lwfEmployerTopUp({ rate: MP_RATE, month: 7, perHeadTotalPaise: 0, contributingCount: 0 })
+      .topUpPaise,
+    0,
+  );
+
+  // Chhattisgarh shares Madhya Pradesh's shape but sets no minimum.
+  const cg = halfYearly(15, 45);
+  assert.equal(
+    lwfEmployerTopUp({ rate: cg, month: 6, perHeadTotalPaise: R2(45), contributingCount: 1 })
+      .topUpPaise,
+    0,
+  );
+});
+
+test("a state that does not levy takes nothing", () => {
+  const out = lwf(null, { stateCode: "MN", applicable: false });
+  assert.equal(out.applicable, false);
+  assert.equal(out.employeePaise, 0);
+  assert.equal(out.employerPaise, 0);
 });

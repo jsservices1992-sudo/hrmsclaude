@@ -111,12 +111,20 @@ export async function saveGrade(_prev: MasterState, fd: FormData): Promise<Maste
   const skillCategory = SKILLS.includes(skillRaw)
     ? (skillRaw as "unskilled" | "semi_skilled" | "skilled" | "highly_skilled")
     : null;
+  /* Whether the job is managerial or supervisory. Some states' welfare
+     funds exclude those above a wage, and blank means nobody has said —
+     the run keeps contributing and reports it. */
+  const lwfRaw = String(fd.get("lwfCategory") ?? "").trim();
+  const LWF_CATS = ["managerial", "supervisory", "other"];
+  const lwfCategory = LWF_CATS.includes(lwfRaw)
+    ? (lwfRaw as "managerial" | "supervisory" | "other")
+    : null;
   if (!name) return { error: "Name is required.", values: submitted(fd) };
 
   if (id) {
     const [existing] = await db.select().from(s.grades).where(eq(s.grades.id, id)).limit(1);
     if (!existing || existing.companyId !== companyId) return { error: "Grade not found.", values: submitted(fd) };
-    await db.update(s.grades).set({ name, level, noticeDays, probationMonths, skillCategory }).where(eq(s.grades.id, id));
+    await db.update(s.grades).set({ name, level, noticeDays, probationMonths, skillCategory, lwfCategory }).where(eq(s.grades.id, id));
     await audit({ actor: user.email, action: "grade.updated", entity: "grade", entityId: id, before: existing, after: { name, level } });
     revalidate();
     return { ok: "Grade updated." };
@@ -126,7 +134,7 @@ export async function saveGrade(_prev: MasterState, fd: FormData): Promise<Maste
   if (clash.length > 0) return { error: "That grade name is already in use.", values: submitted(fd) };
 
   const newId = randomUUID();
-  await db.insert(s.grades).values({ id: newId, companyId, name, level, noticeDays, probationMonths, skillCategory });
+  await db.insert(s.grades).values({ id: newId, companyId, name, level, noticeDays, probationMonths, skillCategory, lwfCategory });
   await audit({ actor: user.email, action: "grade.created", entity: "grade", entityId: newId, after: { name, level } });
   revalidate();
   return { ok: "Grade added." };

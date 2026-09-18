@@ -157,7 +157,7 @@ export async function buildAuditPack(args: {
       })
     : null;
 
-  const summaries = register ? await buildSummaries(register, args.month) : null;
+  const summaries = register ? await buildSummaries(register, args.month, args.year) : null;
 
   // The approval trail and every exception, from the log itself.
   const periodStart = `${args.year}-${String(args.month).padStart(2, "0")}-01`;

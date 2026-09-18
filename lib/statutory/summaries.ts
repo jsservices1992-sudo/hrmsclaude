@@ -287,7 +287,17 @@ export type LwfStateSummary = {
   frequency: string;
   employeeCount: number;
   employeeSharePaise: Paise;
+  /** The per-head sum of what each employee's employer share came to. */
   employerSharePaise: Paise;
+  /**
+   * What the employer owes on top, where the state sets a minimum per
+   * establishment — Madhya Pradesh's ₹2,500 a half-year. It belongs to
+   * the establishment rather than to anybody's pay, so it is never
+   * deducted and is shown apart from the per-head sum.
+   */
+  employerTopUpPaise: Paise;
+  /** Per-head plus top-up: what actually goes to the board. */
+  employerPayablePaise: Paise;
   totalPaise: Paise;
   /** Whether this state actually collects in this month. */
   dueThisPeriod: boolean;
@@ -304,7 +314,15 @@ export type LwfSummary = {
 export function summariseLwf(args: {
   lines: RegisterLine[];
   /** Frequency and collection months per state. */
-  stateRules: Map<string, { frequency: string; collectionMonths: number[] }>;
+  stateRules: Map<
+    string,
+    {
+      frequency: string;
+      collectionMonths: number[];
+      /** The least the employer owes per establishment per period. */
+      employerMinimumPaise?: Paise | null;
+    }
+  >;
   month: number;
 }): LwfSummary {
   const warnings: string[] = [];
@@ -334,13 +352,23 @@ export function summariseLwf(args: {
       );
     }
 
+    const minimum = rule?.employerMinimumPaise ?? null;
+    const topUp = minimum !== null && due && employer < minimum ? minimum - employer : 0;
+    if (topUp > 0) {
+      warnings.push(
+        `${stateCode} sets a minimum of ₹${(minimum! / 100).toLocaleString("en-IN")} that the employer owes per establishment per period. The per-head shares come to ₹${(employer / 100).toLocaleString("en-IN")}, so ₹${(topUp / 100).toLocaleString("en-IN")} is added as the employer's own cost. It is not recovered from anybody's pay.`,
+      );
+    }
+
     states.push({
       stateCode,
       frequency: rule?.frequency ?? "unknown",
       employeeCount: stateLines.filter((l) => (l.amounts[CODE.lwfEmployee] ?? 0) > 0).length,
       employeeSharePaise: employee,
       employerSharePaise: employer,
-      totalPaise: employee + employer,
+      employerTopUpPaise: topUp,
+      employerPayablePaise: employer + topUp,
+      totalPaise: employee + employer + topUp,
       dueThisPeriod: due,
     });
   }
@@ -350,7 +378,10 @@ export function summariseLwf(args: {
   return {
     states,
     employeeSharePaise: states.reduce((a, s) => a + s.employeeSharePaise, 0),
-    employerSharePaise: states.reduce((a, s) => a + s.employerSharePaise, 0),
+    employerSharePaise: states.reduce(
+      (a, s) => a + s.employerSharePaise + s.employerTopUpPaise,
+      0,
+    ),
     totalPaise: states.reduce((a, s) => a + s.totalPaise, 0),
     warnings,
   };

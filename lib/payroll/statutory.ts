@@ -453,6 +453,22 @@ export function computeProfessionalTax(input: PtInput): PtResult {
    Labour welfare fund
    ================================================================== */
 
+/**
+ * Who a state's welfare fund does not reach.
+ *
+ * Several states exclude people in a managerial or supervisory job above
+ * a wage — Madhya Pradesh and Chhattisgarh at ₹10,000 a month. The test
+ * is both things at once: a supervisor on ₹8,000 still contributes, and
+ * so does a clerk on ₹40,000.
+ */
+export type LwfExclusion = {
+  /** Jobs the wage test applies to. Empty means the wage alone excludes. */
+  categories: LwfCategory[];
+  aboveWagePaise: Paise;
+};
+
+export type LwfCategory = "managerial" | "supervisory" | "other";
+
 export type LwfRate = {
   /** A flat contribution, or the cap when a percentage is set. */
   employeePaise: Paise;
@@ -464,6 +480,21 @@ export type LwfRate = {
   frequency: "monthly" | "half_yearly" | "annual";
   /** Months (1-12) in which the deduction falls. */
   deductionMonths: number[];
+  /**
+   * The Act does not apply below this headcount. Delhi's is five: a
+   * four-person shop owes nothing at all, not a smaller sum.
+   */
+  minEstablishmentHeadcount?: number | null;
+  /**
+   * The least the employer owes per establishment per period, whatever
+   * the per-head sum comes to. Madhya Pradesh's ₹2,500 is the reason
+   * this cannot be a per-employee rate table: a ten-person firm there
+   * owes ₹2,500, not ₹500.
+   */
+  employerMinimumPaise?: Paise | null;
+  /** The state's own share. Recorded for the return; nobody pays it. */
+  governmentPaise?: Paise | null;
+  exclusion?: LwfExclusion | null;
 };
 
 export type LwfInput = {
@@ -473,6 +504,16 @@ export type LwfInput = {
   rate: LwfRate | null;
   /** The wages the percentage applies to, where a state levies one. */
   monthlyWagePaise?: Paise;
+  /**
+   * Whether this person's job is managerial or supervisory. Null where
+   * nobody has said. An unanswered question is not an exclusion, so a
+   * null contributes — taking ₹10 from somebody exempt is a refund,
+   * whereas missing them is a shortfall at assessment. The run reports
+   * the null separately so it gets answered.
+   */
+  category?: LwfCategory | null;
+  /** People employed by the establishment, for a headcount floor. */
+  establishmentHeadcount?: number | null;
 };
 
 export type LwfResult = {
@@ -480,6 +521,13 @@ export type LwfResult = {
   employeePaise: Paise;
   employerPaise: Paise;
   reason: string;
+  /** True when this person is inside the Act but outside the levy. */
+  excluded?: boolean;
+  /**
+   * Set when the exclusion could not be decided because nobody recorded
+   * whether the job is managerial. The person contributes meanwhile.
+   */
+  categoryUnknown?: boolean;
 };
 
 export function computeLwf(input: LwfInput): LwfResult {
@@ -492,12 +540,55 @@ export function computeLwf(input: LwfInput): LwfResult {
     };
   }
 
+  const floor = input.rate.minEstablishmentHeadcount ?? null;
+  if (floor !== null && (input.establishmentHeadcount ?? 0) < floor) {
+    return {
+      applicable: false,
+      employeePaise: 0,
+      employerPaise: 0,
+      reason: `${input.stateCode} applies the fund to establishments of ${floor} or more; this one has ${input.establishmentHeadcount ?? 0}`,
+    };
+  }
+
+  const exclusion = input.rate.exclusion ?? null;
+  if (exclusion && (input.monthlyWagePaise ?? 0) > exclusion.aboveWagePaise) {
+    const wage = `above ₹${(exclusion.aboveWagePaise / 100).toLocaleString("en-IN")} a month`;
+    /* The wage alone excludes where no job is named. */
+    if (exclusion.categories.length === 0) {
+      return {
+        applicable: true,
+        excluded: true,
+        employeePaise: 0,
+        employerPaise: 0,
+        reason: `Excluded — ${wage}`,
+      };
+    }
+    if (input.category === null || input.category === undefined) {
+      /* Falls through and contributes; the flag is what gets reported. */
+    } else if (exclusion.categories.includes(input.category)) {
+      return {
+        applicable: true,
+        excluded: true,
+        employeePaise: 0,
+        employerPaise: 0,
+        reason: `Excluded — ${input.category} staff ${wage}`,
+      };
+    }
+  }
+
+  const categoryUnknown =
+    exclusion !== null &&
+    exclusion.categories.length > 0 &&
+    (input.monthlyWagePaise ?? 0) > exclusion.aboveWagePaise &&
+    (input.category === null || input.category === undefined);
+
   if (!input.rate.deductionMonths.includes(input.month)) {
     return {
       applicable: true,
       employeePaise: 0,
       employerPaise: 0,
       reason: `Not a ${input.rate.frequency.replace("_", "-")} deduction month`,
+      categoryUnknown,
     };
   }
 
@@ -524,6 +615,7 @@ export function computeLwf(input: LwfInput): LwfResult {
         share < input.rate.employeePaise
           ? `${frequency} contribution — ${(bps / 100).toFixed(2)}% of wages, under the cap`
           : `${frequency} contribution — at the ${(bps / 100).toFixed(2)}% cap`,
+      categoryUnknown,
     };
   }
 
@@ -532,5 +624,40 @@ export function computeLwf(input: LwfInput): LwfResult {
     employeePaise: input.rate.employeePaise,
     employerPaise: input.rate.employerPaise,
     reason: `${frequency} contribution`,
+    categoryUnknown,
+  };
+}
+
+/**
+ * What the employer still owes after the per-head sums are added up.
+ *
+ * A per-employee rate table cannot express Madhya Pradesh, where the
+ * employer owes ₹2,500 per establishment per half-year however few
+ * people work there. Ten employees at ₹50 come to ₹500, and the employer
+ * owes the ₹2,500 — so the shortfall is a cost of the establishment, not
+ * of any one employee, and is never recovered from anybody's pay.
+ *
+ * Returns zero where the state sets no minimum or the per-head sum
+ * already clears it.
+ */
+export function lwfEmployerTopUp(input: {
+  rate: LwfRate | null;
+  month: number;
+  /** Employer contributions already computed for this period, in paise. */
+  perHeadTotalPaise: Paise;
+  /** People the fund actually reached, for the explanation. */
+  contributingCount: number;
+}): { topUpPaise: Paise; reason: string | null } {
+  const minimum = input.rate?.employerMinimumPaise ?? null;
+  if (!input.rate || minimum === null) return { topUpPaise: 0, reason: null };
+  if (!input.rate.deductionMonths.includes(input.month)) {
+    return { topUpPaise: 0, reason: null };
+  }
+  if (input.perHeadTotalPaise >= minimum) return { topUpPaise: 0, reason: null };
+
+  const rupees = (p: Paise) => `₹${(p / 100).toLocaleString("en-IN")}`;
+  return {
+    topUpPaise: minimum - input.perHeadTotalPaise,
+    reason: `${input.contributingCount} employee(s) come to ${rupees(input.perHeadTotalPaise)}, below the ${rupees(minimum)} the employer owes per establishment. The difference is the employer's and is not deducted from anybody.`,
   };
 }

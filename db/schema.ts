@@ -335,6 +335,15 @@ export const grades = pgTable(
     skillCategory: text("skill_category", {
       enum: ["unskilled", "semi_skilled", "skilled", "highly_skilled"],
     }),
+    /**
+     * Whether the job is managerial or supervisory, for the labour
+     * welfare funds that exclude those above a wage. Null means nobody
+     * has said, which is not the same as "other": the payroll keeps
+     * contributing and reports the gap instead of assuming an answer.
+     */
+    lwfCategory: text("lwf_category", {
+      enum: ["managerial", "supervisory", "other"],
+    }),
   },
   (t) => [uniqueIndex("grades_company_name_idx").on(t.companyId, t.name)],
 );
@@ -375,6 +384,10 @@ export const employees = pgTable(
     /** Overrides the grade's, for somebody the grade does not describe. */
     skillCategory: text("skill_category", {
       enum: ["unskilled", "semi_skilled", "skilled", "highly_skilled"],
+    }),
+    /** Overrides the grade's, same reasoning. */
+    lwfCategory: text("lwf_category", {
+      enum: ["managerial", "supervisory", "other"],
     }),
     /** Self-reference: the reporting line that generates the org chart. */
     managerId: text("manager_id"),
@@ -923,6 +936,27 @@ export const lwfRates = pgTable(
     }).notNull(),
     /** Comma-separated months (1-12) in which the deduction is taken. */
     deductionMonths: text("deduction_months").notNull(),
+    /**
+     * The Act does not reach an establishment smaller than this. Delhi's
+     * is five: a four-person shop owes nothing, not a smaller sum.
+     */
+    minEstablishmentHeadcount: integer("min_establishment_headcount"),
+    /**
+     * The least the employer owes per establishment per period, whatever
+     * the per-head sum comes to — Madhya Pradesh's ₹2,500. This is the
+     * column that stops the table being a per-employee rate list.
+     */
+    employerMinimumPaise: bigint("employer_minimum_paise", { mode: "number" }),
+    /** The state's own share, recorded for the return. Nobody pays it. */
+    governmentPaise: bigint("government_paise", { mode: "number" }),
+    /**
+     * Wage above which the jobs in `excludedCategories` fall outside the
+     * levy. Both conditions must hold: a supervisor under the wage still
+     * contributes, and so does a clerk above it.
+     */
+    excludeAboveWagePaise: bigint("exclude_above_wage_paise", { mode: "number" }),
+    /** Comma-separated: managerial, supervisory. */
+    excludedCategories: text("excluded_categories"),
     effectiveFrom: text("effective_from").notNull(),
     effectiveTo: text("effective_to"),
     verified: boolean("verified").notNull().default(false),

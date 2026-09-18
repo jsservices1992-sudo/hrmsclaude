@@ -573,6 +573,54 @@ export function MinimumWageForm({ states }: { states: { id: string; label: strin
         <FormField label="Source" hint="The notification this came from">
           <Input name="source" defaultValue={val("source")} placeholder="e.g. Haryana Labour Dept notification" />
         </FormField>
+      </div>
+
+      <fieldset className="flex flex-col gap-4 border-t border-line pt-4">
+        <legend className="sr-only">Establishment rules</legend>
+        <p className="text-xs text-ink-2 max-w-[72ch]">
+          Some states do not levy per employee at all. Delhi does not apply the
+          Act below five employees; Madhya Pradesh sets a minimum the employer
+          owes per establishment however few people work there, which is the
+          establishment&rsquo;s own cost and is never deducted from pay; Madhya
+          Pradesh and Chhattisgarh exclude managerial and supervisory staff
+          above ₹10,000 a month. Leave these blank where they do not apply.
+        </p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <FormField label="Applies from (employees)" error={err("minHeadcount")}
+            hint="Below this, nothing is owed at all">
+            <Input name="minHeadcount" type="number" step="1" placeholder="5" className="tnum"
+              defaultValue={val("minHeadcount")} invalid={!!err("minHeadcount")} />
+          </FormField>
+          <FormField label="Employer minimum (₹)" error={err("employerMinimum")}
+            hint="Per establishment, per collection period">
+            <Input name="employerMinimum" type="number" step="0.01" placeholder="2500" className="tnum"
+              defaultValue={val("employerMinimum")} invalid={!!err("employerMinimum")} />
+          </FormField>
+          <FormField label="Government share (₹)" hint="Recorded for the return; nobody pays it">
+            <Input name="government" type="number" step="0.01" placeholder="20" className="tnum"
+              defaultValue={val("government")} />
+          </FormField>
+          <FormField label="Exclude above (₹ a month)" error={err("excludeAboveWage")}
+            hint="Only for the jobs ticked alongside">
+            <Input name="excludeAboveWage" type="number" step="0.01" placeholder="10000" className="tnum"
+              defaultValue={val("excludeAboveWage")} invalid={!!err("excludeAboveWage")} />
+          </FormField>
+          <fieldset className="flex flex-col gap-1.5 self-end pb-2">
+            <legend className="label text-ink-3 mb-1">Jobs excluded</legend>
+            {[
+              { name: "exclude_managerial", label: "Managerial" },
+              { name: "exclude_supervisory", label: "Supervisory" },
+            ].map((c) => (
+              <label key={c.name} className="flex items-center gap-2.5">
+                <input type="checkbox" name={c.name} className="h-4 w-4" />
+                <span className="text-sm">{c.label}</span>
+              </label>
+            ))}
+          </fieldset>
+        </div>
+      </fieldset>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <label className="flex items-start gap-2.5 self-end pb-2">
           <input type="checkbox" name="verified" className="h-4 w-4 mt-0.5" />
           <span className="text-sm">
@@ -596,6 +644,9 @@ const LWF_LABELS: Record<string, string> = {
   percent: "Percentage of wages",
   effectiveFrom: "Effective from",
   deductionMonths: "Months collected",
+  excludeAboveWage: "Exclusion wage",
+  minHeadcount: "Establishment floor",
+  employerMinimum: "Employer minimum",
 };
 
 export function LwfRateForm({ states }: { states: { id: string; label: string }[] }) {

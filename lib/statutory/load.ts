@@ -3,6 +3,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { validatePan } from "../tax/engine";
+import { effectiveAsOf } from "../payroll/statutory";
 import {
   buildEcrLine,
   formatEcrFile,
@@ -350,7 +351,7 @@ export async function loadHalfYearly(
    Summaries — FR-PAY-6, 9, 12
    ================================================================== */
 
-export async function buildSummaries(register: LoadedRegister, month: number) {
+export async function buildSummaries(register: LoadedRegister, month: number, year: number) {
   const employees = [...register.employees.values()];
 
   const uan = new Map(employees.map((e) => [e.id, e.uan]));
@@ -362,7 +363,11 @@ export async function buildSummaries(register: LoadedRegister, month: number) {
     jurisdictions.filter((j) => j.ptApplicable).map((j) => j.stateCode),
   );
 
-  const lwfRates = await db.select().from(s.lwfRates);
+  /* Only the rows in force for this period. Reading every row and
+     building a Map would let a superseded rate win on key collision,
+     silently, whenever its row happened to come back last. */
+  const asOf = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lwfRates = effectiveAsOf(await db.select().from(s.lwfRates), asOf);
   // The months each state actually collects in are configuration already,
   // so read them rather than re-deriving from the frequency label.
   const stateRules = new Map(
@@ -374,6 +379,7 @@ export async function buildSummaries(register: LoadedRegister, month: number) {
           .split(",")
           .map((m) => Number(m.trim()))
           .filter((m) => Number.isInteger(m) && m >= 1 && m <= 12),
+        employerMinimumPaise: r.employerMinimumPaise,
       },
     ]),
   );

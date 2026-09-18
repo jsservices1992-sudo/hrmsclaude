@@ -103,7 +103,7 @@ export default async function StatutoryPage(
 
   const epf = register ? await buildEpfReturn(register) : null;
   const esic = register ? buildEsicReturn(register) : null;
-  const summaries = register ? await buildSummaries(register, month) : null;
+  const summaries = register ? await buildSummaries(register, month, year) : null;
   const halfYearly = await loadHalfYearly(companyId, year, month);
 
   /* 26Q covers the quarter the chosen month falls in. The financial year
