@@ -127,11 +127,10 @@ test("Delhi's welfare fund carries all three shares and its headcount floor", ()
   assert.equal(dl.frequency, "half_yearly");
   assert.deepEqual(dl.months, [6, 12], "deducted 30 June and 31 December");
   assert.equal(dl.minHeadcount, 5, "the Act does not reach a smaller establishment at all");
-  /* Nobody is excluded: the Act excludes managerial staff and supervisory
-     staff above a wage, but that wage is not established here, so
-     everybody contributes rather than a guessed threshold excluding the
-     wrong people. Over-contributing is ₹1.50 a year; the other way is a
-     shortfall at assessment. */
-  assert.equal(dl.excludedCategories, undefined);
-  assert.equal(dl.excludeAboveWage, undefined);
+  /* Managerial and supervisory staff above ₹18,000 a month are
+     excluded — the Code on Wages 2019 "worker" ceiling, applied to this
+     LWF exclusion at the owner's explicit direction (19 September
+     2026), distinct from the LWF Act's own unestablished figure. */
+  assert.deepEqual(dl.excludedCategories, ["managerial", "supervisory"]);
+  assert.equal(dl.excludeAboveWage, R(18_000));
 });

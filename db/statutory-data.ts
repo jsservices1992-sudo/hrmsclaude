@@ -85,6 +85,8 @@ export type PtSlabSeed = {
   overrideMonth?: number;
   overrideAmount?: number;
   annualCap?: number;
+  /** Punjab: owed only by a person actually liable to income tax. */
+  requiresIncomeTaxLiability?: boolean;
 };
 
 /**
@@ -205,15 +207,17 @@ export const PT_SLABS: PtSlabSeed[] = [
   ]),
 
   /*
-   * Punjab's State Development Tax is a flat ₹200 a month on a salaried
-   * employee, capped at the ₹2,400 a year the Act allows — not a wage
-   * ladder, which is why a band table had nothing to say about it.
-   *
-   * NOTE: the Act reaches a person liable to income tax, and this charges
-   * every salaried employee regardless, at the owner's direction. Somebody
-   * below the taxable limit is therefore deducted ₹200 they may not owe.
+   * Punjab's State Development Tax is a flat ₹200 a month, capped at
+   * ₹2,400 a year, on a person actually liable to income tax — Punjab
+   * State Development Tax Act 2018, s.4(3): whether that year's taxable
+   * income exceeds the Income Tax Act's basic exemption limit, after
+   * deductions. Not a wage ladder itself, which is why a band table had
+   * nothing to say about it until the eligibility gate was added: the
+   * band still covers every wage (so the coverage check finds no gap),
+   * but the run zeroes it for anyone not shown as a payer — see
+   * `requiresIncomeTaxLiability` in lib/payroll/statutory.ts.
    */
-  { state: "PB", min: 0, max: null, amount: R(200), annualCap: R(2400) },
+  { state: "PB", min: 0, max: null, amount: R(200), annualCap: R(2400), requiresIncomeTaxLiability: true },
 
   // Monthly-wage states.
   ...MONTHLY("AS", [[10000, 0], [14999, 150], [24999, 180], [null, 208]]),
@@ -267,9 +271,22 @@ export const LWF_RATES: LwfRateSeed[] = [
   /* Delhi: ₹0.75 employee and ₹2.25 employer each half-year, with the
      government matching ₹1.50. Deducted 30 June and 31 December, remitted
      by 15 July and 15 January. The Act does not reach an establishment of
-     fewer than five at all. */
+     fewer than five at all.
+     
+     Exclusion wage: ₹18,000 a month, supplied by the owner on 19
+     September 2026 from the Central Government's Code on Wages 2019
+     s.2(z)(d) notification S.O. 454(E) dated 30 January 2026, which sets
+     the wage ceiling for who counts as a "worker" — a supervisory
+     employee drawing above this falls outside the definition. This is a
+     DIFFERENT statute from the Bombay Labour Welfare Fund Act (as
+     extended to Delhi) that actually governs this LWF row, whose own
+     wage figure was never independently found; the owner directed this
+     one be used for it regardless. It is not Delhi's minimum wage,
+     which is the separate ₹24,356 graduate-and-above figure already
+     held above — the owner flagged that distinction explicitly. */
   { state: "DL", employee: R(0.75), employer: R(2.25), government: R(1.5),
-    frequency: "half_yearly", months: [6, 12], minHeadcount: 5 },
+    frequency: "half_yearly", months: [6, 12], minHeadcount: 5,
+    excludedCategories: ["managerial", "supervisory"], excludeAboveWage: R(18_000) },
   // Karnataka Act No. 05 of 2025 raised these from ₹20/₹40.
   { state: "KA", employee: R(50), employer: R(100), frequency: "annual", months: [12] },
   { state: "TN", employee: R(20), employer: R(40), frequency: "annual", months: [12] },
@@ -324,7 +341,7 @@ export const PT_SOURCES: Record<string, string> = {
   MZ: "Mizoram schedule, monthly wage bands.",
   SK: "Sikkim schedule, monthly wage bands.",
   ML: "Meghalaya annual-income schedule, ceilings and amounts divided by twelve to the monthly equivalent this engine compares against. Supplied by the owner, 18 September 2026.",
-  PB: "Punjab State Development Tax — a flat ₹200 a month on a salaried employee, capped at ₹2,400 a year. Supplied by the owner, 18 September 2026. The Act reaches a person liable to income tax; this charges every salaried employee, at the owner's direction.",
+  PB: "Punjab State Development Tax — ₹200 a month, capped at ₹2,400 a year, on a person actually liable to income tax that year (Punjab State Development Tax Act 2018, s.4(3): taxable income above the Income Tax Act's basic exemption limit, after deductions), per the owner's precise rule supplied 19 September 2026. Not charged where the projected annual tax before the section 87A rebate is zero, or where liability could not be determined.",
 };
 
 export const LWF_SOURCES: Record<string, string> = {
@@ -334,7 +351,7 @@ export const LWF_SOURCES: Record<string, string> = {
   MP: "M.P. Shram Kalyan Nidhi Adhiniyam, rates after the 2026 amendment. The employer owes at least ₹2,500 per establishment per half-year — shramkalyanmandal.mp.gov.in",
   CG: "Chhattisgarh welfare fund — ₹15 employee, ₹45 employer per half-year. No establishment minimum applies here; Madhya Pradesh's ₹2,500 does not carry over.",
   KL: "Kerala Labour Welfare Fund Board's current published contribution rate, payable by 15 July and 15 January. The Act's own text still prints ₹4/₹8; the Board's current rate is what is collected.",
-  DL: "Delhi Labour Welfare Board. The Act reaches establishments of five or more only. Managerial and supervisory exclusions under the Delhi rules are NOT yet modelled here.",
+  DL: "Delhi Labour Welfare Board — ₹0.75 employee, ₹2.25 employer, ₹1.50 government, each half-year. The Act reaches establishments of five or more only. Managerial and supervisory staff drawing above ₹18,000 a month are excluded, per the owner's direction on 19 September 2026: this is the Code on Wages 2019 s.2(z)(d) \"worker\" ceiling (Central notification S.O. 454(E), 30 January 2026), applied here to the Bombay LWF Act's own exclusion test though it comes from a different statute — the LWF Act's own wage figure for Delhi was never independently sourced. Not to be confused with Delhi's minimum wage (₹24,356 for graduate-and-above), which is separate.",
   GA: "₹60 employee and ₹180 employer per HALF-YEAR, at the owner's explicit direction on 18 September 2026 (deducted 30 June and 31 December, remitted by 31 July and 31 January). CHECK THIS FIRST: Goa Act 6 of 2004 s.14(1) sets these same figures — ₹60 and ₹180 — PER YEAR, which is ₹30 and ₹90 a half-year, exactly half what is charged here. The owner has given three different figures for Goa across this project; this is the one currently held, and it is double the Gazette's half-yearly equivalent.",
 };
 

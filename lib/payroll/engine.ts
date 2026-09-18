@@ -90,6 +90,16 @@ export type EmployeeInput = {
   /** Shown on the payslip so the deduction can be explained. */
   tdsBasis?: string;
   /**
+   * Whether this person's projected annual income tax, before the
+   * section 87A rebate, is above zero — from the same tax worksheet
+   * `monthlyTdsPaise` comes from, and independent of it: a rebate can
+   * zero the final TDS while taxable income still exceeds the
+   * exemption limit. Only a PT slab that names
+   * `requiresIncomeTaxLiability` (Punjab) reads this; every other
+   * state's PT is unaffected.
+   */
+  incomeTaxPayee?: boolean;
+  /**
    * Live loans to recover this month — PRD §3.10. Recovery runs last,
    * against what is left after statutory deductions, and stops at the
    * floor below. Anything not recovered is reported as a shortfall for
@@ -370,6 +380,7 @@ export function computeEmployeePay(args: {
     slabs: s.ptSlabsByState[e.stateCode] ?? [],
     ytdDeductedPaise: e.ptYtdPaise,
     applicable: s.ptApplicableByState[e.stateCode] ?? false,
+    incomeTaxPayee: e.incomeTaxPayee,
   });
 
   if (pt.amountPaise > 0) {

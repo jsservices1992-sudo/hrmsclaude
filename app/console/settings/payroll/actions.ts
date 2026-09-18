@@ -961,6 +961,7 @@ export async function savePtSlab(
   const gender = String(fd.get("gender") ?? "all");
   const source = nullable(fd.get("source"));
   const verified = fd.get("verified") !== null;
+  const requiresIncomeTaxLiability = fd.get("requiresIncomeTaxLiability") !== null;
 
   const num = (k: string) => {
     const raw = String(fd.get(k) ?? "").trim();
@@ -1001,6 +1002,7 @@ export async function savePtSlab(
     overrideAmountPaise: rupees(overrideAmount),
     gender: gender as "all",
     annualCapPaise: rupees(annualCap) ?? 250000,
+    requiresIncomeTaxLiability,
     effectiveFrom,
     effectiveTo: null,
     verified,

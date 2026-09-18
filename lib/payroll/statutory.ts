@@ -259,6 +259,19 @@ export type PtSlab = {
   overrideAmountPaise?: Paise | null;
   gender?: "all" | "female" | "male";
   annualCapPaise?: Paise;
+  /**
+   * Punjab's State Development Tax is not owed by wage at all — only by
+   * a person actually liable to income tax (Punjab State Development
+   * Tax Act 2018, s.4(3)): whether that year's taxable income exceeds
+   * the Income Tax Act's basic exemption limit, after deductions.
+   *
+   * This stays a property of the SLAB, not a special case for one state
+   * code, so `checkSlabCoverage` still sees one band covering every
+   * wage — the gate is applied to the amount a matched band would
+   * charge, not to whether a band matches at all, which is what would
+   * turn "not liable this year" into a reportable coverage gap.
+   */
+  requiresIncomeTaxLiability?: boolean;
 };
 
 export type PtInput = {
@@ -270,6 +283,20 @@ export type PtInput = {
   /** PT already deducted this financial year, for cap enforcement. */
   ytdDeductedPaise?: Paise;
   applicable: boolean;
+  /**
+   * Whether this person's projected annual income tax, before the
+   * section 87A rebate, is above zero — the precise test for "liable to
+   * income tax" a rebate-zeroed final figure does not answer, since
+   * somebody rebated to nil tax can still have taxable income above the
+   * exemption limit. Only a slab with `requiresIncomeTaxLiability` reads
+   * this; every other state's PT is unaffected by it.
+   *
+   * Undefined is treated the same as false: a state that conditions its
+   * levy on this and gets no answer charges nothing, on the same
+   * reasoning `PT_UNMODELLED` uses everywhere else in this file — a
+   * visible zero gets noticed and fixed, a guessed charge does not.
+   */
+  incomeTaxPayee?: boolean;
 };
 
 export type PtResult = {
@@ -421,6 +448,14 @@ export function computeProfessionalTax(input: PtInput): PtResult {
       applicable: true,
       amountPaise: 0,
       reason: "Below the lowest taxable slab",
+    };
+  }
+
+  if (slab.requiresIncomeTaxLiability && !input.incomeTaxPayee) {
+    return {
+      applicable: true,
+      amountPaise: 0,
+      reason: `${input.stateCode} applies only to a person liable to income tax, and this person is not — or that could not be determined this period`,
     };
   }
 

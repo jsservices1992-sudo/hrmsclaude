@@ -937,6 +937,14 @@ export const ptSlabs = pgTable(
       .notNull()
       .default("all"),
     annualCapPaise: bigint("annual_cap_paise", { mode: "number" }).notNull().default(250000),
+    /**
+     * Punjab: this band is owed only by a person actually liable to
+     * income tax (Punjab State Development Tax Act 2018, s.4(3)), not
+     * by wage. See `requiresIncomeTaxLiability` in
+     * lib/payroll/statutory.ts for why this lives on the band rather
+     * than being special-cased by state code.
+     */
+    requiresIncomeTaxLiability: boolean("requires_income_tax_liability").notNull().default(false),
     effectiveFrom: text("effective_from").notNull(),
     effectiveTo: text("effective_to"),
     verified: boolean("verified").notNull().default(false),

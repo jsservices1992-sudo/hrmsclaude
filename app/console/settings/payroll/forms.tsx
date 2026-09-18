@@ -839,6 +839,17 @@ export function PtSlabForm({ states }: { states: { id: string; label: string }[]
           <Input name="source" defaultValue={val("source")} placeholder="Gazette / notification number" />
         </FormField>
         <label className="flex items-start gap-2.5 self-end pb-2">
+          <input type="checkbox" name="requiresIncomeTaxLiability" className="h-4 w-4 mt-0.5" />
+          <span className="text-sm">
+            Only on a person liable to income tax
+            <span className="block text-xs text-ink-3 mt-0.5">
+              Punjab's State Development Tax: this band still covers every
+              wage, so the coverage check finds no gap, but the run charges
+              ₹0 for anybody not shown as an income-tax payer that year.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-2.5 self-end pb-2">
           <input type="checkbox" name="verified" className="h-4 w-4 mt-0.5" />
           <span className="text-sm">
             Verified

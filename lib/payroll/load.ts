@@ -92,6 +92,7 @@ export async function loadStatutoryConfig(
       overrideAmountPaise: row.overrideAmountPaise,
       gender: row.gender,
       annualCapPaise: row.annualCapPaise,
+      requiresIncomeTaxLiability: row.requiresIncomeTaxLiability,
     });
   }
   for (const code of Object.keys(ptSlabsByState)) {
@@ -556,6 +557,14 @@ export async function previewRun(args: {
   const { loadWorksheetsFor } = await import("../tax/load");
   const worksheets = await loadWorksheetsFor(rowsSalary.map(({ emp }) => emp.id));
   const tdsByEmployee = new Map<string, { paise: number; basis: string }>();
+  /*
+   * Independent of the TDS map above: a rebate under section 87A can
+   * zero the final figure while taxable income still exceeds the
+   * exemption limit, which is the actual test Punjab's PSDT asks — so
+   * this reads `taxBeforeRebatePaise`, not whether anything was
+   * deducted. See `incomeTaxPayee` on EmployeeInput.
+   */
+  const incomeTaxPayeeByEmployee = new Map<string, boolean>();
   for (const [employeeId, worksheet] of worksheets) {
     if (worksheet.projection.monthlyTdsPaise > 0) {
       tdsByEmployee.set(employeeId, {
@@ -563,6 +572,7 @@ export async function previewRun(args: {
         basis: worksheet.projection.basis,
       });
     }
+    incomeTaxPayeeByEmployee.set(employeeId, worksheet.annual.tax.taxBeforeRebatePaise > 0);
   }
 
   /* Live loans and the scheme floor for each — PRD §3.10. The engine
@@ -737,6 +747,7 @@ export async function previewRun(args: {
         ptYtdPaise: 0,
         monthlyTdsPaise: tdsByEmployee.get(emp.id)?.paise ?? 0,
         tdsBasis: tdsByEmployee.get(emp.id)?.basis,
+        incomeTaxPayee: incomeTaxPayeeByEmployee.get(emp.id) ?? false,
         loans: loansByEmployee.get(emp.id),
         minNetPayPaise: floorByEmployee.get(emp.id) ?? 0,
         oneOffLines: adjustmentsByEmployee.get(emp.id),

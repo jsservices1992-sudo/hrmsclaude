@@ -104,6 +104,7 @@ try {
         overrideAmountPaise: r.overrideAmount ?? null,
         gender: r.gender ?? ("all" as const),
         annualCapPaise: r.annualCap ?? 250000,
+        requiresIncomeTaxLiability: r.requiresIncomeTaxLiability ?? false,
         effectiveFrom: EFFECTIVE_FROM,
         effectiveTo: null,
         verified: false,

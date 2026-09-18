@@ -825,3 +825,53 @@ test("a state that does not levy takes nothing", () => {
   assert.equal(out.employeePaise, 0);
   assert.equal(out.employerPaise, 0);
 });
+
+describe("A state levying PT only on a person liable to income tax", () => {
+  // Punjab's State Development Tax: ₹200 flat, but only if the person
+  // actually owes income tax that year.
+  const pbSlab = { minPaise: 0, maxPaise: null, amountPaise: R(200), annualCapPaise: R(2400), requiresIncomeTaxLiability: true };
+
+  test("a payer is charged", () => {
+    const r = computeProfessionalTax({
+      stateCode: "PB", ptBasePaise: R(35000), month: 6, gender: "male",
+      slabs: [pbSlab], applicable: true, incomeTaxPayee: true,
+    });
+    assert.equal(r.amountPaise, R(200));
+  });
+
+  test("a non-payer is charged nothing, though the band still matched their wage", () => {
+    const r = computeProfessionalTax({
+      stateCode: "PB", ptBasePaise: R(35000), month: 6, gender: "male",
+      slabs: [pbSlab], applicable: true, incomeTaxPayee: false,
+    });
+    assert.equal(r.amountPaise, 0);
+    assert.match(r.reason, /liable to income tax/);
+  });
+
+  test("an unanswered question is treated the same as not liable, not charged by default", () => {
+    /*
+     * This is the regression: every salaried employee used to be
+     * charged Punjab's ₹200 regardless, because nothing tracked
+     * liability at all. Leaving `incomeTaxPayee` unset must not silently
+     * fall back to the old behaviour.
+     */
+    const r = computeProfessionalTax({
+      stateCode: "PB", ptBasePaise: R(35000), month: 6, gender: "male",
+      slabs: [pbSlab], applicable: true,
+    });
+    assert.equal(r.amountPaise, 0);
+  });
+
+  test("a slab with no such condition is never affected by it", () => {
+    const ordinary = { minPaise: 0, maxPaise: null, amountPaise: R(200) };
+    const r = computeProfessionalTax({
+      stateCode: "GJ", ptBasePaise: R(35000), month: 6, gender: "male",
+      slabs: [ordinary], applicable: true, incomeTaxPayee: false,
+    });
+    assert.equal(r.amountPaise, R(200), "an ordinary slab does not care about income tax status");
+  });
+
+  test("checkSlabCoverage still sees one band over every wage — the condition is not a gap", () => {
+    assert.deepEqual(checkSlabCoverage([pbSlab]), []);
+  });
+});
