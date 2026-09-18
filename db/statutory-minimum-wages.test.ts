@@ -171,3 +171,27 @@ test("Delhi carries the rates its own notification prints", () => {
   assert.match(row.source, /graduate and above/i, "the mapping must be stated on the row");
   assert.match(row.source, /7% higher/, "and the workbook's disagreement recorded");
 });
+
+test("Delhi's monthly rates still agree with the day rates it publishes", () => {
+  /*
+   * Delhi notifies both a monthly and a daily figure, and the daily one
+   * is the monthly over 26. Only the monthly is stored, because the
+   * daily is derived from it — but checking them against each other is
+   * the one independent test available on these numbers, and a digit
+   * wrong in any monthly figure breaks it.
+   */
+  const published: Record<(typeof SKILLS)[number], number> = {
+    unskilled: 710,
+    semi_skilled: 784,
+    skilled: 862,
+    highly_skilled: 937,
+  };
+  for (const skill of SKILLS) {
+    const monthly = applicableMinimumWage(rules, "DL", skill, ASOF, null)!.monthlyPaise / 100;
+    assert.equal(
+      Math.round(monthly / 26),
+      published[skill],
+      `DL ${skill}: ₹${monthly} over 26 days should be ₹${published[skill]} a day`,
+    );
+  }
+});
