@@ -34,6 +34,9 @@ import {
   summariseLwf,
   wageRegister,
   employeeRegister,
+  attendanceRegister,
+  leaveRegister,
+  bonusRegister,
   CODE,
   type RegisterLine,
 } from "./summaries";
@@ -423,6 +426,184 @@ export async function buildEmployeeRegister(companyId: string): Promise<string> 
       uan: emp.uan,
       esicIp: emp.esicIp,
     })),
+  );
+}
+
+/**
+ * The attendance register — days worked, paid and lost, for one period.
+ * Drawn from the same per-employee summary payroll itself was
+ * calculated from, so it and the payslip can never disagree.
+ */
+export function buildAttendanceRegister(register: LoadedRegister): string {
+  return attendanceRegister(
+    [...register.employees.values()].map((emp) => {
+      const sm = register.summaries.get(emp.id);
+      return {
+        empCode: emp.empCode,
+        name: `${emp.firstName} ${emp.lastName}`,
+        branchName:
+          register.lines.find((l) => l.employeeId === emp.id)?.branchName ?? "",
+        totalDays: sm?.totalDays ?? 0,
+        paidDays: sm?.paidDays ?? 0,
+        lopDays: sm?.lopDays ?? 0,
+        offDaysWorked: sm?.offDaysWorked ?? 0,
+      };
+    }),
+  );
+}
+
+/**
+ * The leave register for one period — every employee and leave type
+ * with any approved activity in it, alongside the balance as it stands
+ * today. See `leaveRegister`'s own comment for why the balance is not
+ * reconstructed as of the period.
+ */
+export async function buildLeaveRegister(
+  companyId: string,
+  year: number,
+  month: number,
+): Promise<string> {
+  const from = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const to = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  const employees = await db
+    .select({ id: s.employees.id, empCode: s.employees.empCode, firstName: s.employees.firstName, lastName: s.employees.lastName })
+    .from(s.employees)
+    .where(eq(s.employees.companyId, companyId));
+  const empById = new Map(employees.map((e) => [e.id, e]));
+  if (employees.length === 0) return leaveRegister([]);
+
+  const empIds = employees.map((e) => e.id);
+
+  const requests = await db
+    .select({ req: s.leaveRequests, type: s.leaveTypes })
+    .from(s.leaveRequests)
+    .innerJoin(s.leaveTypes, eq(s.leaveRequests.leaveTypeId, s.leaveTypes.id))
+    .where(
+      and(inArray(s.leaveRequests.employeeId, empIds), eq(s.leaveRequests.status, "approved")),
+    );
+
+  /* Overlaps the period rather than falling entirely inside it — a
+     leave spanning the month boundary is still this period's activity
+     for the days that fall within it. The set is already narrowed to
+     this company's employees and is small, so filtering here rather
+     than in the query is not a real cost. */
+  const inPeriod = requests.filter((r) => r.req.fromDate <= to && r.req.toDate >= from);
+
+  const balances = await db
+    .select()
+    .from(s.leaveBalances)
+    .where(inArray(s.leaveBalances.employeeId, empIds));
+  const balanceByKey = new Map(balances.map((b) => [`${b.employeeId}|${b.leaveType}`, b]));
+
+  const rows = new Map<string, { empCode: string; name: string; leaveTypeName: string; leaveTypeCode: string; employeeId: string; daysTakenInPeriod: number; lopDaysInPeriod: number }>();
+  for (const { req, type } of inPeriod) {
+    const emp = empById.get(req.employeeId);
+    if (!emp) continue;
+    const key = `${req.employeeId}|${type.code}`;
+    const row = rows.get(key) ?? {
+      empCode: emp.empCode,
+      name: `${emp.firstName} ${emp.lastName}`,
+      leaveTypeName: type.name,
+      leaveTypeCode: type.code,
+      employeeId: req.employeeId,
+      daysTakenInPeriod: 0,
+      lopDaysInPeriod: 0,
+    };
+    row.daysTakenInPeriod += req.days;
+    row.lopDaysInPeriod += req.lopDays;
+    rows.set(key, row);
+  }
+
+  return leaveRegister(
+    [...rows.values()]
+      .sort((a, b) => a.empCode.localeCompare(b.empCode) || a.leaveTypeName.localeCompare(b.leaveTypeName))
+      .map((r) => {
+        const bal = balanceByKey.get(`${r.employeeId}|${r.leaveTypeCode}`);
+        return {
+          empCode: r.empCode,
+          name: r.name,
+          leaveTypeName: r.leaveTypeName,
+          daysTakenInPeriod: r.daysTakenInPeriod,
+          lopDaysInPeriod: r.lopDaysInPeriod,
+          currentBalanceDays: bal?.balanceDays ?? null,
+          balanceAsOf: bal?.asOf ?? null,
+        };
+      }),
+  );
+}
+
+/**
+ * The bonus register — Payment of Bonus Act, Form C — assembled across
+ * a financial year's runs the same way the half-yearly ESIC return is:
+ * each month contributes what it actually calculated, so a month never
+ * run is missing from the total rather than assumed to be zero.
+ *
+ * Assumes an April-start financial year, the convention this codebase
+ * seeds every other statutory figure on; a company set to a different
+ * start month is not yet read here.
+ */
+export async function buildBonusRegister(
+  companyId: string,
+  financialYearStartCalendarYear: number,
+): Promise<string> {
+  const components = await db
+    .select({ code: s.payComponents.code, bonusBase: s.payComponents.bonusBase, bonusRole: s.payComponents.bonusRole })
+    .from(s.payComponents)
+    .where(eq(s.payComponents.companyId, companyId));
+  const bonusBaseCodes = new Set(components.filter((c) => c.bonusBase).map((c) => c.code));
+  const bonusPaidCodes = new Set(components.filter((c) => c.bonusRole === "statutory_bonus").map((c) => c.code));
+
+  const eligibilityParamVersions = await db
+    .select()
+    .from(s.statutoryParams)
+    .where(eq(s.statutoryParams.key, "bonus.eligibility_wage"));
+  const eligibilityWagePaise = effectiveAsOf(
+    eligibilityParamVersions,
+    `${financialYearStartCalendarYear}-04-01`,
+  )[0]?.value;
+
+  type Acc = { empCode: string; name: string; bonusBaseWagePaise: number; bonusPaidPaise: number; monthsIncluded: number };
+  const byEmployee = new Map<string, Acc>();
+
+  const monthsInFy: { calendarYear: number; month: number }[] = [
+    ...Array.from({ length: 9 }, (_, i) => ({ calendarYear: financialYearStartCalendarYear, month: i + 4 })),
+    ...Array.from({ length: 3 }, (_, i) => ({ calendarYear: financialYearStartCalendarYear + 1, month: i + 1 })),
+  ];
+
+  for (const { calendarYear, month } of monthsInFy) {
+    const register = await loadRegister(companyId, calendarYear, month);
+    if (!register) continue;
+
+    for (const line of register.lines) {
+      const acc = byEmployee.get(line.employeeId) ?? {
+        empCode: line.empCode,
+        name: line.name,
+        bonusBaseWagePaise: 0,
+        bonusPaidPaise: 0,
+        monthsIncluded: 0,
+      };
+      for (const [code, amount] of Object.entries(line.amounts)) {
+        if (bonusBaseCodes.has(code)) acc.bonusBaseWagePaise += amount;
+        if (bonusPaidCodes.has(code)) acc.bonusPaidPaise += amount;
+      }
+      acc.monthsIncluded += 1;
+      byEmployee.set(line.employeeId, acc);
+    }
+  }
+
+  return bonusRegister(
+    [...byEmployee.values()]
+      .sort((a, b) => a.empCode.localeCompare(b.empCode))
+      .map((r) => ({
+        ...r,
+        eligible:
+          eligibilityWagePaise === undefined || r.monthsIncluded === 0
+            ? true
+            : r.bonusBaseWagePaise / r.monthsIncluded <= eligibilityWagePaise,
+      })),
+    12,
   );
 }
 

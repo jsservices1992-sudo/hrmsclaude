@@ -8,6 +8,9 @@ import {
   summariseLwf,
   wageRegister,
   employeeRegister,
+  attendanceRegister,
+  leaveRegister,
+  bonusRegister,
   toCsv,
   type RegisterLine,
 } from "./summaries";
@@ -334,4 +337,42 @@ test("a state without a minimum is left alone", () => {
   });
   assert.equal(s.states[0].employerTopUpPaise, 0);
   assert.equal(s.states[0].employerPayablePaise, L(75));
+});
+
+/* ==================================================================
+   Attendance, leave and bonus registers
+   ================================================================== */
+
+test("attendanceRegister lists total, paid, LOP and off-days-worked", () => {
+  const csv = attendanceRegister([
+    { empCode: "KA0001", name: "Aarav Nair", branchName: "Bengaluru", totalDays: 31, paidDays: 29, lopDays: 2, offDaysWorked: 1 },
+  ]);
+  const lines = csv.trim().split("\n");
+  assert.equal(lines[0], "Employee code,Name,Branch,Total days,Paid days,Loss of pay (days),Weekly-off/holiday worked");
+  assert.equal(lines[1], "KA0001,Aarav Nair,Bengaluru,31.00,29.00,2.00,1.00");
+});
+
+test("leaveRegister shows a null balance as blank, not zero", () => {
+  const csv = leaveRegister([
+    { empCode: "KA0001", name: "Aarav Nair", leaveTypeName: "Earned leave", daysTakenInPeriod: 2, lopDaysInPeriod: 0, currentBalanceDays: 8.5, balanceAsOf: "2026-08-31" },
+    { empCode: "KA0002", name: "Priya Rao", leaveTypeName: "Casual leave", daysTakenInPeriod: 1, lopDaysInPeriod: 0, currentBalanceDays: null, balanceAsOf: null },
+  ]);
+  const lines = csv.trim().split("\n");
+  assert.equal(lines[1], "KA0001,Aarav Nair,Earned leave,2.00,0.00,8.50,2026-08-31");
+  // A leave type with no balance record at all is blank, not a false "0.00".
+  assert.equal(lines[2], "KA0002,Priya Rao,Casual leave,1.00,0.00,,");
+});
+
+test("bonusRegister reports eligibility and how many months actually fed it", () => {
+  const csv = bonusRegister(
+    [
+      { empCode: "KA0001", name: "Aarav Nair", bonusBaseWagePaise: L(300000), bonusPaidPaise: L(25000), monthsIncluded: 12, eligible: true },
+      { empCode: "KA0002", name: "Priya Rao", bonusBaseWagePaise: L(600000), bonusPaidPaise: 0, monthsIncluded: 6, eligible: false },
+    ],
+    12,
+  );
+  const lines = csv.trim().split("\n");
+  assert.equal(lines[0], "Employee code,Name,Bonus-qualifying wage for the year (₹),Statutory bonus paid (₹),Months included,Eligible under the Act (average monthly wage)");
+  assert.equal(lines[1], "KA0001,Aarav Nair,300000.00,25000.00,12 of 12,Yes");
+  assert.equal(lines[2], "KA0002,Priya Rao,600000.00,0.00,6 of 12,No");
 });

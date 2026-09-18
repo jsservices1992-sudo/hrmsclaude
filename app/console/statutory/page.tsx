@@ -687,6 +687,26 @@ export default async function StatutoryPage(
               Wage register ↓
             </a>
           )}
+          {register && (
+            <a
+              href={`/console/statutory/download/attendance-register?${query}`}
+              className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+            >
+              Attendance register ↓
+            </a>
+          )}
+          <a
+            href={`/console/statutory/download/leave-register?${query}`}
+            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+          >
+            Leave register ↓
+          </a>
+          <a
+            href={`/console/statutory/download/bonus-register?company=${companyId}&year=${month >= 4 ? year : year - 1}`}
+            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+          >
+            Bonus register (FY{month >= 4 ? year : year - 1}–{String((month >= 4 ? year : year - 1) + 1).slice(2)}) ↓
+          </a>
           <a
             href={`/console/statutory/download/employee-register?company=${companyId}`}
             className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
@@ -695,9 +715,11 @@ export default async function StatutoryPage(
           </a>
         </div>
         <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2 max-w-[76ch]">
-          The attendance, leave and bonus registers, and the state-specific
-          Shops and Establishments forms, are not built yet. Only the two above
-          can be produced today.
+          The attendance register needs a calculated run for the period, the
+          same as the wage register does — nothing to show until one exists.
+          The leave and bonus registers do not, and the bonus register spans
+          the whole financial year rather than one month. The state-specific
+          Shops and Establishments forms are not built yet.
         </p>
       </Panel>
     </div>

@@ -12,6 +12,9 @@ import {
   buildEsicReturn,
   buildWageRegister,
   buildEmployeeRegister,
+  buildAttendanceRegister,
+  buildLeaveRegister,
+  buildBonusRegister,
 } from "@/lib/statutory/load";
 
 /**
@@ -28,6 +31,9 @@ const KINDS = new Set([
   "esic",
   "wage-register",
   "employee-register",
+  "attendance-register",
+  "leave-register",
+  "bonus-register",
 ]);
 
 export async function GET(
@@ -57,6 +63,40 @@ export async function GET(
   if (kind === "employee-register") {
     const csv = await buildEmployeeRegister(companyId);
     return fileResponse(csv, `employee-register-${companyId}.csv`, "text/csv");
+  }
+
+  // The bonus register is a financial year, not a month — the Act
+  // assesses eligibility and payment over the whole accounting year.
+  if (kind === "bonus-register") {
+    if (!Number.isInteger(year) || year < 2000) {
+      return new Response("A financial year (its starting calendar year) is required.", { status: 400 });
+    }
+    await recordAccess({
+      user,
+      dataClass: "compensation",
+      surface: `console/statutory export:${kind}`,
+      companyId,
+      filterApplied: `FY${year}-${String(year + 1).slice(2)}`,
+    });
+    const csv = await buildBonusRegister(companyId, year);
+    return fileResponse(csv, `bonus-register-fy${year}-${year + 1}.csv`, "text/csv");
+  }
+
+  // The leave register does not depend on a payroll run existing —
+  // leave is recorded whether or not anybody has calculated pay yet.
+  if (kind === "leave-register") {
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+      return new Response("A year and month are required.", { status: 400 });
+    }
+    await recordAccess({
+      user,
+      dataClass: "compensation",
+      surface: `console/statutory export:${kind}`,
+      companyId,
+      filterApplied: `${year}-${String(month).padStart(2, "0")}`,
+    });
+    const csv = await buildLeaveRegister(companyId, year, month);
+    return fileResponse(csv, `leave-register-${year}-${String(month).padStart(2, "0")}.csv`, "text/csv");
   }
 
   if (
@@ -111,6 +151,14 @@ export async function GET(
   if (kind === "esic") {
     const esic = buildEsicReturn(register);
     return fileResponse(esic.file, `esic-${period}.csv`, "text/csv");
+  }
+
+  if (kind === "attendance-register") {
+    return fileResponse(
+      buildAttendanceRegister(register),
+      `attendance-register-${period}.csv`,
+      "text/csv",
+    );
   }
 
   return fileResponse(

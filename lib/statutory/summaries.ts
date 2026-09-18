@@ -472,3 +472,131 @@ export function employeeRegister(rows: EmployeeRegisterRow[]): string {
     ]),
   );
 }
+
+/**
+ * The attendance register a Factories Act or Shops & Establishments
+ * inspector asks for — days worked, paid and lost, for one period.
+ *
+ * Drawn from the same per-employee summary payroll itself was
+ * calculated from, not recomputed from the raw punches — the same
+ * reasoning as the wage register: an inspector's copy and the payslip
+ * must never be able to disagree about how many days somebody worked.
+ */
+export type AttendanceRegisterRow = {
+  empCode: string;
+  name: string;
+  branchName: string;
+  totalDays: number;
+  paidDays: number;
+  lopDays: number;
+  offDaysWorked: number;
+};
+
+export function attendanceRegister(rows: AttendanceRegisterRow[]): string {
+  return toCsv(
+    [
+      "Employee code",
+      "Name",
+      "Branch",
+      "Total days",
+      "Paid days",
+      "Loss of pay (days)",
+      "Weekly-off/holiday worked",
+    ],
+    rows.map((r) => [
+      r.empCode,
+      r.name,
+      r.branchName,
+      r.totalDays.toFixed(2),
+      r.paidDays.toFixed(2),
+      r.lopDays.toFixed(2),
+      r.offDaysWorked.toFixed(2),
+    ]),
+  );
+}
+
+/**
+ * The leave register, one row per employee and leave type that had any
+ * activity in the period.
+ *
+ * "Balance" is the live figure as recorded, not reconstructed by
+ * subtracting what this period took from where it now stands — a
+ * balance can be corrected by hand between the period and today, and
+ * pretending to reverse that arithmetic would print a number nobody
+ * actually held on either date. The date the balance was last set is
+ * printed with it for exactly that reason: this is a snapshot, not a
+ * ledger entry for the period.
+ */
+export type LeaveRegisterRow = {
+  empCode: string;
+  name: string;
+  leaveTypeName: string;
+  daysTakenInPeriod: number;
+  lopDaysInPeriod: number;
+  currentBalanceDays: number | null;
+  balanceAsOf: string | null;
+};
+
+export function leaveRegister(rows: LeaveRegisterRow[]): string {
+  return toCsv(
+    [
+      "Employee code",
+      "Name",
+      "Leave type",
+      "Days taken this period",
+      "Of which, loss of pay",
+      "Current balance",
+      "Balance as of",
+    ],
+    rows.map((r) => [
+      r.empCode,
+      r.name,
+      r.leaveTypeName,
+      r.daysTakenInPeriod.toFixed(2),
+      r.lopDaysInPeriod.toFixed(2),
+      r.currentBalanceDays === null ? "" : r.currentBalanceDays.toFixed(2),
+      r.balanceAsOf,
+    ]),
+  );
+}
+
+/**
+ * The bonus register — Payment of Bonus Act, Form C — for one financial
+ * year: what each employee earned toward the bonus, what was actually
+ * paid under the component marked as the statutory bonus, and whether
+ * their wage put them outside the Act's eligibility ceiling at all.
+ *
+ * Assembled across the year's runs the same way the half-yearly ESIC
+ * return is — each month contributes what it actually paid, so a month
+ * never calculated is a month missing from the total, not a month
+ * silently assumed to be zero.
+ */
+export type BonusRegisterRow = {
+  empCode: string;
+  name: string;
+  bonusBaseWagePaise: number;
+  bonusPaidPaise: number;
+  monthsIncluded: number;
+  eligible: boolean;
+};
+
+export function bonusRegister(rows: BonusRegisterRow[], monthsInYear: number): string {
+  return toCsv(
+    [
+      "Employee code",
+      "Name",
+      "Bonus-qualifying wage for the year (₹)",
+      "Statutory bonus paid (₹)",
+      "Months included",
+      "Eligible under the Act (average monthly wage)",
+    ],
+    rows.map((r) => [
+      r.empCode,
+      r.name,
+      (r.bonusBaseWagePaise / 100).toFixed(2),
+      (r.bonusPaidPaise / 100).toFixed(2),
+      `${r.monthsIncluded} of ${monthsInYear}`,
+      r.eligible ? "Yes" : "No",
+    ]),
+  );
+}
