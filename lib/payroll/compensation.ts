@@ -687,21 +687,31 @@ export type MinimumWageRule = {
   skillCategory: "unskilled" | "semi_skilled" | "skilled" | "highly_skilled";
   monthlyPaise: Paise;
   effectiveFrom: string;
+  /**
+   * Null is the shared, instance-wide figure. A company's own row —
+   * for a schedule the general figure does not fit — wins over it; see
+   * `applicableMinimumWage`.
+   */
+  companyId?: string | null;
 };
 
-/** The zones a state notifies rates for, in force on a date. */
+/**
+ * The zones a state notifies rates for, in force on a date, for the
+ * pool a lookup would actually draw from — a company's own rows if it
+ * has any for this state, the shared ones otherwise. Mixing the two
+ * pools would offer a zone from one set that the other does not have a
+ * rate for.
+ */
 export function minimumWageZones(
   rules: MinimumWageRule[],
   stateCode: string,
   asOf: string,
+  companyId?: string | null,
 ): string[] {
-  return [
-    ...new Set(
-      rules
-        .filter((r) => r.stateCode === stateCode && r.effectiveFrom <= asOf && r.zone !== null)
-        .map((r) => r.zone as string),
-    ),
-  ].sort();
+  const forState = rules.filter((r) => r.stateCode === stateCode && r.effectiveFrom <= asOf);
+  const own = companyId ? forState.filter((r) => r.companyId === companyId) : [];
+  const pool = own.length > 0 ? own : forState.filter((r) => !r.companyId);
+  return [...new Set(pool.filter((r) => r.zone !== null).map((r) => r.zone as string))].sort();
 }
 
 export type MinimumWageCheck = {
@@ -718,6 +728,7 @@ export function applicableMinimumWage(
   skillCategory: MinimumWageRule["skillCategory"],
   asOf: string,
   zone?: string | null,
+  companyId?: string | null,
 ): MinimumWageRule | null {
   const forState = rules.filter(
     (r) =>
@@ -727,13 +738,24 @@ export function applicableMinimumWage(
   );
 
   /*
+   * A company on its own schedule — a factory, a shop, construction —
+   * is checked against its own rows and never falls back to the shared
+   * ones, the same reasoning as the zone rule below: a company that
+   * bothered to enter its own figure meant to replace the general one,
+   * not blend with it. Resolve on the company's own rows if it has any
+   * for this state; otherwise use the shared pool.
+   */
+  const ownRows = companyId ? forState.filter((r) => r.companyId === companyId) : [];
+  const scoped = ownRows.length > 0 ? ownRows : forState.filter((r) => !r.companyId);
+
+  /*
    * A zoned state is only answerable once the branch says which zone it
    * is in. Falling back to any one of them would compare a salary in
    * one part of Karnataka against the floor for another — silently, and
    * wrongly in both directions. The caller reports the gap instead.
    */
-  const zoned = forState.filter((r) => r.zone !== null);
-  const statewide = forState.filter((r) => r.zone === null);
+  const zoned = scoped.filter((r) => r.zone !== null);
+  const statewide = scoped.filter((r) => r.zone === null);
   const pool = zoned.length > 0 ? (zone ? zoned.filter((r) => r.zone === zone) : []) : statewide;
 
   return pool.sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] ?? null;
@@ -762,6 +784,8 @@ export function minimumWageFacts(args: {
   monthlyBasicPaise: number | null;
   rules: MinimumWageRule[];
   asOf: string;
+  /** Prefers this company's own rows over the shared ones, if it has any. */
+  companyId?: string | null;
 }): {
   monthlyGrossPaise: number | null;
   monthlyBasicPaise: number | null;
@@ -794,9 +818,10 @@ export function minimumWageFacts(args: {
     args.skillCategory,
     args.asOf,
     args.zone ?? null,
+    args.companyId ?? null,
   );
   if (!rule) {
-    const zones = minimumWageZones(args.rules, args.stateCode, args.asOf);
+    const zones = minimumWageZones(args.rules, args.stateCode, args.asOf, args.companyId ?? null);
     if (zones.length > 0) {
       return {
         ...base,

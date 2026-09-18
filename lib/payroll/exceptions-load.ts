@@ -55,7 +55,7 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
       .from(s.employeeSalaries)
       .where(inArray(s.employeeSalaries.employeeId, employeeIds)),
     db.select().from(s.statutoryParams),
-    loadStatutoryConfig(asOf),
+    loadStatutoryConfig(asOf, run.companyId),
     db.select().from(s.branches).where(eq(s.branches.companyId, run.companyId)),
     db.select().from(s.grades).where(eq(s.grades.companyId, run.companyId)),
     db.select().from(s.payComponents).where(eq(s.payComponents.companyId, run.companyId)),
@@ -220,6 +220,7 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
             : null,
         rules: statutory.minimumWages,
         asOf,
+        companyId: run.companyId,
       }),
       ...bonusFacts(sm.employeeId),
       ...wageCodeFacts(sm.employeeId, sm.grossPaise),

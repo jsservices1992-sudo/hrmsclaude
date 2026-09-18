@@ -118,7 +118,7 @@ export async function loadFinalCheck(args: {
             ),
           )
       : Promise.resolve([]),
-    loadStatutoryConfig(to),
+    loadStatutoryConfig(to, companyId),
     db.select().from(s.branches).where(eq(s.branches.companyId, companyId)),
     db.select().from(s.grades).where(eq(s.grades.companyId, companyId)),
     db.select().from(s.payComponents).where(eq(s.payComponents.companyId, companyId)),
@@ -159,6 +159,7 @@ export async function loadFinalCheck(args: {
       monthlyBasicPaise: null,
       rules: statutory.minimumWages,
       asOf: to,
+      companyId,
     });
 
     if (facts.minimumWageUnknown) {

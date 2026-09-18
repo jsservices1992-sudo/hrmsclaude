@@ -134,7 +134,7 @@ export default async function EmployeeDetailPage(
       employeeDepartmentId: e.departmentId,
     });
     currentBreakupStructureId = resolved.structureId;
-    const statutory = await loadStatutoryConfig(currentSalary.effectiveFrom);
+    const statutory = await loadStatutoryConfig(currentSalary.effectiveFrom, company.id);
     const [branchRow] = await db
       .select({ stateCode: s.branches.stateCode })
       .from(s.branches)

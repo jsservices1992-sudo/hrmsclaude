@@ -671,19 +671,47 @@ export async function createStarterStructure(
  * against the notification is a number, not a compliance position, and
  * the screen says which of the two it is holding.
  */
+/**
+ * The general, shared minimum wage is nobody's to set but the operator
+ * — the same reasoning as `requireTenantWide` above. A row scoped to
+ * one company is different: that company is saying the general figure
+ * does not fit its own notified schedule, which is a decision that
+ * company's own administrator is entitled to make for itself, without
+ * needing operator access to the whole instance. An operator may still
+ * set either kind, for any company.
+ */
+async function requireMinimumWageAccess(companyId: string | null) {
+  const { user, error } = await requireAdmin();
+  if (error || !user) return { user, error };
+  if (companyId === null) return requireTenantWide();
+  if (isTenantWide(user)) return { user, error: null };
+  if (!canAccessCompany(user, companyId)) {
+    return { user, error: "That company is not one this account can change." as const };
+  }
+  return { user, error: null };
+}
+
 export async function saveMinimumWage(
   _prev: PayrollSettingsState,
   fd: FormData,
 ): Promise<PayrollSettingsState> {
-  const { user, error } = await requireTenantWide();
-  if (error || !user) return { error: error ?? "Not authorised." };
-
   const stateCode = String(fd.get("stateCode") ?? "").trim();
+  const zone = nullable(fd.get("zone"));
   const skillCategory = String(fd.get("skillCategory") ?? "").trim();
   const effectiveFrom = String(fd.get("effectiveFrom") ?? "").trim();
   const raw = String(fd.get("monthly") ?? "").trim();
   const source = nullable(fd.get("source"));
   const verified = fd.get("verified") !== null;
+  /*
+   * Present only on the form a company admin sees on their own settings
+   * screen — the shared operator screen never sends this, so an absent
+   * field means the shared row, not "whichever company happens to be
+   * open in another tab".
+   */
+  const companyId = nullable(fd.get("companyId"));
+
+  const { user, error } = await requireMinimumWageAccess(companyId);
+  if (error || !user) return { error: error ?? "Not authorised.", values: submitted(fd) };
 
   const SKILLS = ["unskilled", "semi_skilled", "skilled", "highly_skilled"];
   const fieldErrors: Record<string, string> = {};
@@ -700,6 +728,18 @@ export async function saveMinimumWage(
 
   const monthlyPaise = Math.round(monthly * 100);
 
+  /*
+   * Matched on state, zone, skill AND company. Zone used to be left out
+   * of this lookup, so a state with several zones open at once — the
+   * ordinary case, every zone is open all the time — would pick
+   * whichever zone's row the database happened to return first and
+   * treat it as "current" for a save meant for a different zone,
+   * closing the wrong one and leaving the real target untouched.
+   */
+  const zoneMatch = zone ? eq(s.minimumWages.zone, zone) : isNull(s.minimumWages.zone);
+  const companyMatch = companyId
+    ? eq(s.minimumWages.companyId, companyId)
+    : isNull(s.minimumWages.companyId);
   const [current] = await db
     .select()
     .from(s.minimumWages)
@@ -707,6 +747,8 @@ export async function saveMinimumWage(
       and(
         eq(s.minimumWages.stateCode, stateCode),
         eq(s.minimumWages.skillCategory, skillCategory as "unskilled"),
+        zoneMatch,
+        companyMatch,
         isNull(s.minimumWages.effectiveTo),
       ),
     )
@@ -735,7 +777,9 @@ export async function saveMinimumWage(
     }
     await tx.insert(s.minimumWages).values({
       id: randomUUID(),
+      companyId,
       stateCode,
+      zone,
       skillCategory: skillCategory as "unskilled",
       monthlyPaise,
       effectiveFrom,
@@ -749,16 +793,16 @@ export async function saveMinimumWage(
     actor: user.email,
     action: "minimum_wage.versioned",
     entity: "minimum_wage",
-    entityId: `${stateCode}:${skillCategory}`,
+    entityId: `${stateCode}:${zone ?? "-"}:${skillCategory}:${companyId ?? "shared"}`,
     before: current ? { monthlyPaise: current.monthlyPaise, effectiveFrom: current.effectiveFrom } : null,
-    after: { monthlyPaise, effectiveFrom, verified },
+    after: { monthlyPaise, effectiveFrom, verified, companyId },
     reason: source,
   });
 
   revalidatePath("/console/settings/payroll");
   revalidatePath("/console/runs");
   return {
-    ok: `${stateCode} ${skillCategory.replace("_", " ")} set to ₹${monthly.toLocaleString("en-IN")} from ${effectiveFrom}.`,
+    ok: `${stateCode}${zone ? ` ${zone}` : ""} ${skillCategory.replace("_", " ")} set to ₹${monthly.toLocaleString("en-IN")} from ${effectiveFrom}${companyId ? " for this company" : ""}.`,
   };
 }
 

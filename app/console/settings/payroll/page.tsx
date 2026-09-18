@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { listCompanies } from "@/lib/payroll/load";
@@ -14,6 +14,7 @@ import {
 import {
   getSessionUser,
   canAccessCompany,
+  isTenantWide,
   scopeCompanies,
 } from "@/lib/auth/session";
 import {
@@ -93,7 +94,9 @@ export default async function PayrollSettingsPage(
   const [params, minWages, lwfRates, ptSlabs, jurisdictions, groups, banks, calendars, employees, branches, departments, grades] =
     await Promise.all([
       db.select().from(s.statutoryParams).orderBy(asc(s.statutoryParams.key)),
-      db.select().from(s.minimumWages).orderBy(asc(s.minimumWages.stateCode)),
+      db.select().from(s.minimumWages)
+        .where(or(isNull(s.minimumWages.companyId), eq(s.minimumWages.companyId, companyId)))
+        .orderBy(asc(s.minimumWages.stateCode)),
       db.select().from(s.lwfRates).orderBy(asc(s.lwfRates.stateCode)),
       db.select().from(s.ptSlabs).orderBy(asc(s.ptSlabs.stateCode), asc(s.ptSlabs.minPaise)),
       db.select().from(s.jurisdictions).orderBy(asc(s.jurisdictions.name)),
@@ -705,6 +708,7 @@ export default async function PayrollSettingsPage(
                   <li key={w.id} className="px-4 py-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <span className="text-sm">
                       <span className="font-medium">{w.stateCode}</span>{" "}
+                      {w.zone && <span className="text-ink-2">{w.zone}</span>}{" "}
                       <span className="text-ink-2">{w.skillCategory.replace("_", " ")}</span>
                     </span>
                     <span className="flex flex-wrap items-baseline gap-x-3 text-xs">
@@ -713,6 +717,7 @@ export default async function PayrollSettingsPage(
                         from {formatDate(w.effectiveFrom)}
                         {w.effectiveTo ? ` to ${formatDate(w.effectiveTo)}` : ""}
                       </span>
+                      {w.companyId && <Badge tone="indigo">this company</Badge>}
                       <Badge tone={w.verified ? "teal" : "brass"}>
                         {w.verified ? "verified" : "unverified"}
                       </Badge>
@@ -728,6 +733,8 @@ export default async function PayrollSettingsPage(
                     id: j.stateCode,
                     label: `${j.name} (${j.stateCode})`,
                   }))}
+                  companyId={companyId}
+                  tenantWide={isTenantWide(user)}
                 />
               </div>
             )}

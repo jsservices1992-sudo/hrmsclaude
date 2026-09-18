@@ -836,6 +836,17 @@ export const minimumWages = pgTable(
   "minimum_wages",
   {
     id: text("id").primaryKey(),
+    /**
+     * Null is the shared, instance-wide figure for the state's general
+     * scheduled employment — what most companies there are checked
+     * against. A company here is one that is on a DIFFERENT schedule the
+     * state also notifies (a factory, a shop, construction, security),
+     * so the general figure would be the wrong floor for them. That
+     * company's own row is preferred over the shared one wherever both
+     * could answer the same state, zone and skill — see the 0014
+     * migration and `applicableMinimumWage`.
+     */
+    companyId: text("company_id").references(() => companies.id),
     stateCode: text("state_code").notNull(),
     /**
      * The area this rate was notified for, where the state sets more

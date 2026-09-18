@@ -52,8 +52,18 @@ export function contributionPeriodKey(year: number, month: number) {
   return { period, financialYear } as const;
 }
 
-/** Statutory config as at a date — the effective-dated lookup. */
-export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig> {
+/**
+ * Statutory config as at a date — the effective-dated lookup.
+ *
+ * `companyId`, where given, is what lets a company's own minimum wage
+ * rows — for a notified schedule the shared, general-employment figure
+ * does not fit — be seen at all; without it only the shared rows come
+ * back and a company override resolves to nothing.
+ */
+export async function loadStatutoryConfig(
+  asOf: string,
+  companyId?: string | null,
+): Promise<StatutoryConfig> {
   const effective = <T extends { effectiveFrom: string; effectiveTo: string | null }>(rows: T[]) =>
     effectiveAsOf(rows, asOf);
 
@@ -62,7 +72,12 @@ export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig
     db.select().from(s.ptSlabs).orderBy(asc(s.ptSlabs.minPaise)),
     db.select().from(s.lwfRates),
     db.select().from(s.jurisdictions),
-    db.select().from(s.minimumWages),
+    companyId
+      ? db
+          .select()
+          .from(s.minimumWages)
+          .where(or(isNull(s.minimumWages.companyId), eq(s.minimumWages.companyId, companyId)))
+      : db.select().from(s.minimumWages).where(isNull(s.minimumWages.companyId)),
   ]);
 
   const p = Object.fromEntries(effective(params).map((r) => [r.key, r.value]));
@@ -127,6 +142,7 @@ export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig
     minimumWages: effective(minWages).map((r) => ({
       stateCode: r.stateCode,
       zone: r.zone,
+      companyId: r.companyId,
       skillCategory: r.skillCategory,
       monthlyPaise: r.monthlyPaise,
       effectiveFrom: r.effectiveFrom,
@@ -386,7 +402,7 @@ export async function previewRun(args: {
     .limit(1);
   if (!company) return null;
 
-  const statutory = await loadStatutoryConfig(asOf);
+  const statutory = await loadStatutoryConfig(asOf, args.companyId);
   const structureCtx = await loadStructureResolutionContext(args.companyId);
 
   const rows = await db

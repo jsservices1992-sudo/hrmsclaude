@@ -84,7 +84,7 @@ export async function resolvePay(args: {
   });
   const components = resolution.components;
 
-  const statutory = await loadStatutoryConfig(args.asOf);
+  const statutory = await loadStatutoryConfig(args.asOf, args.companyId);
   const [companyConfig] = await db
     .select({ epfOnActualBasic: s.companies.epfOnActualBasic })
     .from(s.companies)

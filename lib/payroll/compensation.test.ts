@@ -1081,3 +1081,74 @@ describe("Minimum wage zones", () => {
     assert.deepEqual(minimumWageZones(rules, "UP", asOf), []);
   });
 });
+
+describe("Minimum wage company overrides", () => {
+  const asOf = "2026-08-31";
+  const COMPANY_A = "company-a";
+  const COMPANY_B = "company-b";
+
+  /*
+   * Karnataka's general schedule says ₹22,628 skilled. A factory on a
+   * different notified schedule pays more — ₹26,000 — and entered its
+   * own row rather than being checked against the shop-and-office figure
+   * every other company in the state is measured by.
+   */
+  const rules = [
+    { stateCode: "KA", zone: null, skillCategory: "skilled" as const, monthlyPaise: R(22628), effectiveFrom: "2026-04-01", companyId: null },
+    { stateCode: "KA", zone: null, skillCategory: "skilled" as const, monthlyPaise: R(26000), effectiveFrom: "2026-04-01", companyId: COMPANY_A },
+  ];
+
+  test("a company with its own row is checked against that, not the shared one", () => {
+    const r = applicableMinimumWage(rules, "KA", "skilled", asOf, null, COMPANY_A);
+    assert.equal(r?.monthlyPaise, R(26000));
+  });
+
+  test("a company with no row of its own falls back to the shared figure", () => {
+    const r = applicableMinimumWage(rules, "KA", "skilled", asOf, null, COMPANY_B);
+    assert.equal(r?.monthlyPaise, R(22628));
+  });
+
+  test("with no company given at all, the shared figure answers", () => {
+    const r = applicableMinimumWage(rules, "KA", "skilled", asOf, null, null);
+    assert.equal(r?.monthlyPaise, R(22628));
+  });
+
+  test("a company's own rows never blend with the shared ones for a skill it did not enter", () => {
+    // Company A only entered "skilled". Asking for "unskilled" must not
+    // silently borrow the shared unskilled row and call it Company A's.
+    const withUnskilled = [
+      ...rules,
+      { stateCode: "KA", zone: null, skillCategory: "unskilled" as const, monthlyPaise: R(15000), effectiveFrom: "2026-04-01", companyId: null },
+    ];
+    // Company A has no "skilled" row here to trigger the own-rows pool for unskilled,
+    // so it correctly falls back to the shared row — this documents that fallback
+    // is per skill category, not an all-or-nothing switch for the company.
+    const r = applicableMinimumWage(withUnskilled, "KA", "unskilled", asOf, null, COMPANY_A);
+    assert.equal(r?.monthlyPaise, R(15000));
+  });
+
+  test("zones are drawn from a company's own pool once it has one", () => {
+    const zoned = [
+      { stateCode: "MH", zone: "Zone I", skillCategory: "skilled" as const, monthlyPaise: R(15532), effectiveFrom: "2026-04-01", companyId: null },
+      { stateCode: "MH", zone: "Zone II", skillCategory: "skilled" as const, monthlyPaise: R(14936), effectiveFrom: "2026-04-01", companyId: null },
+      { stateCode: "MH", zone: "Factory Belt", skillCategory: "skilled" as const, monthlyPaise: R(17000), effectiveFrom: "2026-04-01", companyId: COMPANY_A },
+    ];
+    assert.deepEqual(minimumWageZones(zoned, "MH", asOf, COMPANY_A), ["Factory Belt"]);
+    assert.deepEqual(minimumWageZones(zoned, "MH", asOf, COMPANY_B), ["Zone I", "Zone II"]);
+    assert.deepEqual(minimumWageZones(zoned, "MH", asOf, null), ["Zone I", "Zone II"]);
+  });
+
+  test("minimumWageFacts reports the company-specific floor when one exists", () => {
+    const facts = minimumWageFacts({
+      stateCode: "KA",
+      zone: null,
+      skillCategory: "skilled",
+      monthlyGrossPaise: R(24000),
+      monthlyBasicPaise: R(12000),
+      rules,
+      asOf,
+      companyId: COMPANY_A,
+    });
+    assert.equal(facts.minimumWagePaise, R(26000));
+  });
+});

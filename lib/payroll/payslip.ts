@@ -179,6 +179,7 @@ export async function loadPayslips(args: {
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const statutory = await loadStatutoryConfig(
     `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`,
+    companyId,
   );
 
   const companyAddressLines = [

@@ -502,6 +502,7 @@ export function ClearDeptOverrideForm({ id }: { id: string }) {
 
 const MIN_WAGE_LABELS: Record<string, string> = {
   stateCode: "State",
+  zone: "Zone",
   skillCategory: "Skill category",
   monthly: "Monthly amount",
   effectiveFrom: "Effective from",
@@ -514,13 +515,52 @@ const SKILL_OPTIONS = [
   { id: "highly_skilled", label: "Highly skilled" },
 ];
 
-export function MinimumWageForm({ states }: { states: { id: string; label: string }[] }) {
+export function MinimumWageForm({
+  states,
+  companyId,
+  tenantWide,
+}: {
+  states: { id: string; label: string }[];
+  /** This screen's company — where this form scopes to when not tenant-wide. */
+  companyId: string;
+  /**
+   * An operator sees a choice: leave the whole instance's shared figure,
+   * or set one just for this company. Anybody else can only ever mean
+   * "for my own company" — they have no shared row to reach.
+   */
+  tenantWide: boolean;
+}) {
   const [state, action] = useActionState<PayrollSettingsState, FormData>(saveMinimumWage, {});
   const err = (k: string) => state.fieldErrors?.[k];
   const val = (k: string, fallback = "") => state.values?.[k] ?? fallback;
+  const [scope, setScope] = useState(state.values?.companyId ? "own" : "shared");
 
   return (
     <form action={action} className="flex flex-col gap-4">
+      {tenantWide ? (
+        <FormField
+          label="Applies to"
+          hint="A company's own row wins over the shared one for it, where both could answer the same state, zone and skill."
+        >
+          <UiSelect
+            name="scope"
+            value={scope}
+            onChange={(e) => setScope(e.currentTarget.value)}
+          >
+            <option value="shared">Shared — every company on this instance</option>
+            <option value="own">This company only</option>
+          </UiSelect>
+        </FormField>
+      ) : (
+        <p className="text-xs text-ink-2 max-w-[72ch]">
+          This sets your own company&rsquo;s figure — for a notified schedule
+          (a factory, a shop, construction, security) that the shared,
+          general-employment figure does not fit. It replaces the shared
+          figure for your company; it does not change what any other
+          company on this instance sees.
+        </p>
+      )}
+      <input type="hidden" name="companyId" value={tenantWide ? (scope === "own" ? companyId : "") : companyId} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <FormField label="State" required error={err("stateCode")}>
           <UiSelect name="stateCode" defaultValue={val("stateCode")} invalid={!!err("stateCode")}>
@@ -529,6 +569,9 @@ export function MinimumWageForm({ states }: { states: { id: string; label: strin
               <option key={s.id} value={s.id}>{s.label}</option>
             ))}
           </UiSelect>
+        </FormField>
+        <FormField label="Zone" error={err("zone")} hint="Only for a state that notifies more than one — leave blank otherwise">
+          <Input name="zone" defaultValue={val("zone")} placeholder="e.g. Zone I" invalid={!!err("zone")} />
         </FormField>
         <FormField label="Skill category" required error={err("skillCategory")}>
           <UiSelect
@@ -574,51 +617,6 @@ export function MinimumWageForm({ states }: { states: { id: string; label: strin
           <Input name="source" defaultValue={val("source")} placeholder="e.g. Haryana Labour Dept notification" />
         </FormField>
       </div>
-
-      <fieldset className="flex flex-col gap-4 border-t border-line pt-4">
-        <legend className="sr-only">Establishment rules</legend>
-        <p className="text-xs text-ink-2 max-w-[72ch]">
-          Some states do not levy per employee at all. Delhi does not apply the
-          Act below five employees; Madhya Pradesh sets a minimum the employer
-          owes per establishment however few people work there, which is the
-          establishment&rsquo;s own cost and is never deducted from pay; Madhya
-          Pradesh and Chhattisgarh exclude managerial and supervisory staff
-          above ₹10,000 a month. Leave these blank where they do not apply.
-        </p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FormField label="Applies from (employees)" error={err("minHeadcount")}
-            hint="Below this, nothing is owed at all">
-            <Input name="minHeadcount" type="number" step="1" placeholder="5" className="tnum"
-              defaultValue={val("minHeadcount")} invalid={!!err("minHeadcount")} />
-          </FormField>
-          <FormField label="Employer minimum (₹)" error={err("employerMinimum")}
-            hint="Per establishment, per collection period">
-            <Input name="employerMinimum" type="number" step="0.01" placeholder="2500" className="tnum"
-              defaultValue={val("employerMinimum")} invalid={!!err("employerMinimum")} />
-          </FormField>
-          <FormField label="Government share (₹)" hint="Recorded for the return; nobody pays it">
-            <Input name="government" type="number" step="0.01" placeholder="20" className="tnum"
-              defaultValue={val("government")} />
-          </FormField>
-          <FormField label="Exclude above (₹ a month)" error={err("excludeAboveWage")}
-            hint="Only for the jobs ticked alongside">
-            <Input name="excludeAboveWage" type="number" step="0.01" placeholder="10000" className="tnum"
-              defaultValue={val("excludeAboveWage")} invalid={!!err("excludeAboveWage")} />
-          </FormField>
-          <fieldset className="flex flex-col gap-1.5 self-end pb-2">
-            <legend className="label text-ink-3 mb-1">Jobs excluded</legend>
-            {[
-              { name: "exclude_managerial", label: "Managerial" },
-              { name: "exclude_supervisory", label: "Supervisory" },
-            ].map((c) => (
-              <label key={c.name} className="flex items-center gap-2.5">
-                <input type="checkbox" name={c.name} className="h-4 w-4" />
-                <span className="text-sm">{c.label}</span>
-              </label>
-            ))}
-          </fieldset>
-        </div>
-      </fieldset>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <label className="flex items-start gap-2.5 self-end pb-2">
@@ -707,6 +705,54 @@ export function LwfRateForm({ states }: { states: { id: string; label: string }[
         <FormField label="Source" hint="The notification this came from">
           <Input name="source" defaultValue={val("source")} placeholder="Gazette / notification number" />
         </FormField>
+      </div>
+
+      <fieldset className="flex flex-col gap-4 border-t border-line pt-4">
+        <legend className="sr-only">Establishment rules</legend>
+        <p className="text-xs text-ink-2 max-w-[72ch]">
+          Some states do not levy per employee at all. Delhi does not apply the
+          Act below five employees; Madhya Pradesh sets a minimum the employer
+          owes per establishment however few people work there, which is the
+          establishment&rsquo;s own cost and is never deducted from pay; Madhya
+          Pradesh and Chhattisgarh exclude managerial and supervisory staff
+          above ₹10,000 a month. Leave these blank where they do not apply.
+        </p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <FormField label="Applies from (employees)" error={err("minHeadcount")}
+            hint="Below this, nothing is owed at all">
+            <Input name="minHeadcount" type="number" step="1" placeholder="5" className="tnum"
+              defaultValue={val("minHeadcount")} invalid={!!err("minHeadcount")} />
+          </FormField>
+          <FormField label="Employer minimum (₹)" error={err("employerMinimum")}
+            hint="Per establishment, per collection period">
+            <Input name="employerMinimum" type="number" step="0.01" placeholder="2500" className="tnum"
+              defaultValue={val("employerMinimum")} invalid={!!err("employerMinimum")} />
+          </FormField>
+          <FormField label="Government share (₹)" hint="Recorded for the return; nobody pays it">
+            <Input name="government" type="number" step="0.01" placeholder="20" className="tnum"
+              defaultValue={val("government")} />
+          </FormField>
+          <FormField label="Exclude above (₹ a month)" error={err("excludeAboveWage")}
+            hint="Only for the jobs ticked alongside">
+            <Input name="excludeAboveWage" type="number" step="0.01" placeholder="10000" className="tnum"
+              defaultValue={val("excludeAboveWage")} invalid={!!err("excludeAboveWage")} />
+          </FormField>
+          <fieldset className="flex flex-col gap-1.5 self-end pb-2">
+            <legend className="label text-ink-3 mb-1">Jobs excluded</legend>
+            {[
+              { name: "exclude_managerial", label: "Managerial" },
+              { name: "exclude_supervisory", label: "Supervisory" },
+            ].map((c) => (
+              <label key={c.name} className="flex items-center gap-2.5">
+                <input type="checkbox" name={c.name} className="h-4 w-4" />
+                <span className="text-sm">{c.label}</span>
+              </label>
+            ))}
+          </fieldset>
+        </div>
+      </fieldset>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <label className="flex items-start gap-2.5 self-end pb-2">
           <input type="checkbox" name="verified" className="h-4 w-4 mt-0.5" />
           <span className="text-sm">

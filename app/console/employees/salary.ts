@@ -196,7 +196,7 @@ export async function reviseSalary(
   // The same statutory rates payroll itself runs on, as at the date this
   // revision takes effect — so the CTC quoted here is the CTC the runs
   // will actually cost.
-  const statutory = await loadStatutoryConfig(effectiveFrom);
+  const statutory = await loadStatutoryConfig(effectiveFrom, employee.companyId);
   const [companyConfig] = await db
     .select({ epfOnActualBasic: s.companies.epfOnActualBasic })
     .from(s.companies)
