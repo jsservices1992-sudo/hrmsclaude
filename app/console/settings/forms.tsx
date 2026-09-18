@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import {
   createCompany,
   updateCompany,
@@ -175,12 +175,12 @@ export function CompanyForm({
             type="number"
             min="0"
             step="0.01"
-            defaultValue={values.otRatePaisePerHour != null ? values.otRatePaisePerHour / 100 : ""}
+            defaultValue={val("otRatePaisePerHour", values.otRatePaisePerHour != null ? String(values.otRatePaisePerHour / 100) : "")}
             invalid={!!err("otRatePaisePerHour")}
           />
         </FormField>
         <FormField label="Rounding" error={err("roundingMode")}>
-          <Select name="roundingMode" defaultValue={values.roundingMode ?? "nearest"} invalid={!!err("roundingMode")}>
+          <Select name="roundingMode" defaultValue={val("roundingMode", "nearest")} invalid={!!err("roundingMode")}>
             <option value="nearest">Nearest rupee</option>
             <option value="up">Round up</option>
             <option value="down">Round down</option>
@@ -191,7 +191,7 @@ export function CompanyForm({
           error={err("attendanceMode")}
           hint="Change this only if you feed punches for everybody. Set to the wrong one, a month with no attendance marks everybody absent and pays nobody."
         >
-          <Select name="attendanceMode" defaultValue={values.attendanceMode ?? "exception"} invalid={!!err("attendanceMode")}>
+          <Select name="attendanceMode" defaultValue={val("attendanceMode", "exception")} invalid={!!err("attendanceMode")}>
             <option value="exception">Count as present — we record only leave and absence</option>
             <option value="punch">Count as absent — we record punches for everybody</option>
           </Select>
@@ -247,17 +247,31 @@ export function BranchForm({
   onDone?: string;
 }) {
   const [state, action] = useActionState<SettingsState, FormData>(saveBranch, {});
-  const [stateCode, setStateCode] = useState(values.stateCode ?? "");
+  /*
+   * The zone list and the hint below both depend on which state is
+   * picked, so the value has to be readable outside the <select> field
+   * itself. The <select> component (see components/console/ui/input.tsx)
+   * handles staying in sync with a refused save on its own.
+   */
+  const [stateCode, setStateCode] = useState(
+    state.values?.stateCode ?? values.stateCode ?? "",
+  );
+  const lastStateForCode = useRef(state);
+  if (lastStateForCode.current !== state) {
+    lastStateForCode.current = state;
+    if (state.values?.stateCode !== undefined) setStateCode(state.values.stateCode);
+  }
   const zones = zonesByState[stateCode] ?? [];
   const err = (k: string) => state.fieldErrors?.[k];
   const val = (k: keyof BranchValues, fallback = "") =>
     state.values?.[k] ?? (values[k] as string | null | undefined) ?? fallback;
   const inherit =
-    values.lwfApplicableOverride === null || values.lwfApplicableOverride === undefined
+    state.values?.lwfApplicableOverride ??
+    (values.lwfApplicableOverride === null || values.lwfApplicableOverride === undefined
       ? "inherit"
       : values.lwfApplicableOverride
         ? "yes"
-        : "no";
+        : "no");
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -280,7 +294,7 @@ export function BranchForm({
         <FormField label="State / UT" error={err("stateCode")} required>
           <Select
             name="stateCode"
-            defaultValue={values.stateCode ?? ""}
+            defaultValue={stateCode}
             invalid={!!err("stateCode")}
             onChange={(e) => setStateCode(e.currentTarget.value)}
           >
@@ -294,13 +308,13 @@ export function BranchForm({
           </Select>
         </FormField>
         <FormField label="Address" error={err("addressLine")}>
-          <Input name="addressLine" defaultValue={values.addressLine ?? ""} invalid={!!err("addressLine")} />
+          <Input name="addressLine" defaultValue={val("addressLine")} invalid={!!err("addressLine")} />
         </FormField>
         <FormField label="City" error={err("city")}>
-          <Input name="city" defaultValue={values.city ?? ""} invalid={!!err("city")} />
+          <Input name="city" defaultValue={val("city")} invalid={!!err("city")} />
         </FormField>
         <FormField label="Pincode" error={err("pincode")}>
-          <Input name="pincode" defaultValue={values.pincode ?? ""} invalid={!!err("pincode")} />
+          <Input name="pincode" defaultValue={val("pincode")} invalid={!!err("pincode")} />
         </FormField>
         <UseMyLocation />
         <FormField
@@ -308,28 +322,28 @@ export function BranchForm({
           error={err("latitude")}
           hint="For self-service attendance. Leave blank to not offer it here."
         >
-          <Input name="latitude" type="number" step="any" defaultValue={values.latitude ?? ""} invalid={!!err("latitude")} />
+          <Input name="latitude" type="number" step="any" defaultValue={val("latitude")} invalid={!!err("latitude")} />
         </FormField>
         <FormField
           label="Office longitude"
           error={err("longitude")}
           hint="Set by the button above, or paste a pair from a map — the button is the one that does not go wrong."
         >
-          <Input name="longitude" type="number" step="any" defaultValue={values.longitude ?? ""} invalid={!!err("longitude")} />
+          <Input name="longitude" type="number" step="any" defaultValue={val("longitude")} invalid={!!err("longitude")} />
         </FormField>
         <FormField
           label="Punch radius (metres)"
           error={err("geofenceMetres")}
           hint="How far from that point a punch is accepted. 50 is a building; a campus needs more."
         >
-          <Input name="geofenceMetres" type="number" min="10" max="5000" defaultValue={values.geofenceMetres ?? 50} invalid={!!err("geofenceMetres")} />
+          <Input name="geofenceMetres" type="number" min="10" max="5000" defaultValue={val("geofenceMetres", "50")} invalid={!!err("geofenceMetres")} />
         </FormField>
         <FormField
           label="Cost centre"
           error={err("costCentre")}
           hint="Your accounting system's cost centre for this — CC-SALES, 4200. Payroll cost is grouped by it in the journal. Leave blank if you do not use them."
         >
-          <Input name="costCentre" defaultValue={values.costCentre ?? ""} invalid={!!err("costCentre")} />
+          <Input name="costCentre" defaultValue={val("costCentre")} invalid={!!err("costCentre")} />
         </FormField>
       </div>
 
@@ -339,16 +353,16 @@ export function BranchForm({
         </p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <FormField label="PT registration override" error={err("ptRegNo")}>
-            <Input name="ptRegNo" defaultValue={values.ptRegNo ?? ""} invalid={!!err("ptRegNo")} />
+            <Input name="ptRegNo" defaultValue={val("ptRegNo")} invalid={!!err("ptRegNo")} />
           </FormField>
           <FormField label="LWF registration override" error={err("lwfRegNo")}>
-            <Input name="lwfRegNo" defaultValue={values.lwfRegNo ?? ""} invalid={!!err("lwfRegNo")} />
+            <Input name="lwfRegNo" defaultValue={val("lwfRegNo")} invalid={!!err("lwfRegNo")} />
           </FormField>
           <FormField label="PF code override" error={err("pfCodeOverride")}>
-            <Input name="pfCodeOverride" defaultValue={values.pfCodeOverride ?? ""} invalid={!!err("pfCodeOverride")} />
+            <Input name="pfCodeOverride" defaultValue={val("pfCodeOverride")} invalid={!!err("pfCodeOverride")} />
           </FormField>
           <FormField label="ESIC code override" error={err("esicCodeOverride")}>
-            <Input name="esicCodeOverride" defaultValue={values.esicCodeOverride ?? ""} invalid={!!err("esicCodeOverride")} />
+            <Input name="esicCodeOverride" defaultValue={val("esicCodeOverride")} invalid={!!err("esicCodeOverride")} />
           </FormField>
           {zones.length > 0 && (
             <FormField
@@ -358,7 +372,7 @@ export function BranchForm({
             >
               <Select
                 name="minimumWageZone"
-                defaultValue={values.minimumWageZone ?? ""}
+                defaultValue={val("minimumWageZone")}
                 invalid={!!err("minimumWageZone")}
               >
                 <option value="">Not set</option>

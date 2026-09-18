@@ -55,9 +55,22 @@ async function audit(entry: {
 }
 
 /** Only an admin changes legal-entity or statutory configuration. */
+/**
+ * Signed out and not permitted are different problems with different
+ * fixes, and saying "Not authorised" for both sends somebody hunting for
+ * a permission they already have. A session can lapse while a long form
+ * is open — the page rendered fine, the save did not — so that case says
+ * so and tells them their typing is still on screen.
+ */
+const NOT_YOURS =
+  "That company is not one this account can change. Nothing was saved." as const;
+
+const SIGNED_OUT =
+  "Your session has ended, so this was not saved. Sign in again in another tab and press save once more — what you typed is still here." as const;
+
 async function requireAdmin() {
   const user = await getSessionUser();
-  if (!user) return { user: null, error: "Not authorised." as const };
+  if (!user) return { user: null, error: SIGNED_OUT };
   if (user.role !== "admin") {
     await audit({
       actor: user.email,
@@ -154,7 +167,7 @@ export async function createCompany(
   fd: FormData,
 ): Promise<SettingsState> {
   const { user, error } = await requireAdmin();
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? SIGNED_OUT, values: submitted(fd) };
 
   const parsed = parseCompany(fd);
   if (!parsed.success) {
@@ -208,10 +221,12 @@ export async function updateCompany(
   fd: FormData,
 ): Promise<SettingsState> {
   const { user, error } = await requireAdmin();
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? SIGNED_OUT, values: submitted(fd) };
 
   const companyId = String(fd.get("companyId") ?? "");
-  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+  if (!canAccessCompany(user, companyId)) {
+    return { error: NOT_YOURS, values: submitted(fd) };
+  }
 
   const [existing] = await db
     .select()
@@ -286,13 +301,15 @@ export async function setDefaultCompany(
   fd: FormData,
 ): Promise<SettingsState> {
   const { user, error } = await requireAdmin();
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? SIGNED_OUT, values: submitted(fd) };
 
   const companyId = String(fd.get("companyId") ?? "");
   /* This clears the flag on every company on the instance before setting
      it, so an administrator confined to one company must not reach it —
      they would be changing another tenant's default entity. */
-  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+  if (!canAccessCompany(user, companyId)) {
+    return { error: NOT_YOURS, values: submitted(fd) };
+  }
 
   await db.transaction(async (tx) => {
     await tx.update(s.companies)
@@ -376,11 +393,13 @@ export async function saveBranch(
   fd: FormData,
 ): Promise<SettingsState> {
   const { user, error } = await requireAdmin();
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? SIGNED_OUT, values: submitted(fd) };
 
   const companyId = String(fd.get("companyId") ?? "");
   const branchId = nullable(fd.get("branchId"));
-  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+  if (!canAccessCompany(user, companyId)) {
+    return { error: NOT_YOURS, values: submitted(fd) };
+  }
 
   const parsed = parseBranch(fd);
   if (!parsed.success) {
@@ -482,7 +501,7 @@ export async function saveRegistration(
   fd: FormData,
 ): Promise<SettingsState> {
   const { user, error } = await requireAdmin();
-  if (error || !user) return { error: error ?? "Not authorised." };
+  if (error || !user) return { error: error ?? SIGNED_OUT, values: submitted(fd) };
 
   const companyId = String(fd.get("companyId") ?? "");
   const stateCode = String(fd.get("stateCode") ?? "").toUpperCase();
@@ -490,7 +509,9 @@ export async function saveRegistration(
   const number = String(fd.get("registrationNumber") ?? "").trim();
   const secondary = nullable(fd.get("secondaryNumber"));
 
-  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+  if (!canAccessCompany(user, companyId)) {
+    return { error: NOT_YOURS, values: submitted(fd) };
+  }
   if (!number) return { error: "Registration number is required." };
   if (!["pt", "lwf", "shops_est"].includes(kind)) {
     return { error: "Unknown registration type." };
@@ -567,11 +588,13 @@ export async function uploadCompanyLogo(
   fd: FormData,
 ): Promise<SettingsState> {
   const user = await getSessionUser();
-  if (!user) return { error: "Not authorised." };
+  if (!user) return { error: SIGNED_OUT, values: submitted(fd) };
   if (user.role !== "admin") return { error: "Only an administrator may change the logo." };
 
   const companyId = String(fd.get("companyId") ?? "");
-  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+  if (!canAccessCompany(user, companyId)) {
+    return { error: NOT_YOURS, values: submitted(fd) };
+  }
 
   const file = fd.get("logo");
   if (!(file instanceof File) || file.size === 0) {
@@ -634,11 +657,13 @@ export async function removeCompanyLogo(
   fd: FormData,
 ): Promise<SettingsState> {
   const user = await getSessionUser();
-  if (!user) return { error: "Not authorised." };
+  if (!user) return { error: SIGNED_OUT, values: submitted(fd) };
   if (user.role !== "admin") return { error: "Only an administrator may change the logo." };
 
   const companyId = String(fd.get("companyId") ?? "");
-  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+  if (!canAccessCompany(user, companyId)) {
+    return { error: NOT_YOURS, values: submitted(fd) };
+  }
 
   await db.update(s.companies).set({ logoUrl: null }).where(eq(s.companies.id, companyId));
   await audit({

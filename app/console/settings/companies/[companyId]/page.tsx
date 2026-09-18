@@ -30,6 +30,10 @@ export default async function CompanySettingsPage(
   const tab = typeof sp.tab === "string" ? sp.tab : "profile";
   const editBranch = typeof sp.branch === "string" ? sp.branch : null;
   const setupStep = typeof sp.setup === "string" ? sp.setup : undefined;
+  /* Every link that stays on this screen has to carry the guided setup
+     with it. Drop it once and the wizard vanishes mid-step, which reads
+     as the guided setup having quietly given up. */
+  const keepSetup = setupStep ? `&setup=${setupStep}` : "";
 
   if (!canAccessCompany(user, companyId)) redirect("/console/settings");
 
@@ -137,7 +141,7 @@ export default async function CompanySettingsPage(
         {TABS.map((t) => (
           <TabLink
             key={t.id}
-            href={`/console/settings/companies/${companyId}?tab=${t.id}${setupStep ? `&setup=${setupStep}` : ""}`}
+            href={`/console/settings/companies/${companyId}?tab=${t.id}${keepSetup}`}
             active={tab === t.id}
           >
             {t.label}
@@ -257,7 +261,7 @@ export default async function CompanySettingsPage(
                     <TD className="text-right">
                       {isAdmin && (
                         <Link
-                          href={`/console/settings/companies/${companyId}?tab=branches&branch=${b.id}`}
+                          href={`/console/settings/companies/${companyId}?tab=branches&branch=${b.id}${keepSetup}`}
                           className="label text-brass hover:underline"
                         >
                           Edit
@@ -278,7 +282,7 @@ export default async function CompanySettingsPage(
                 </span>
                 {editBranch && (
                   <Link
-                    href={`/console/settings/companies/${companyId}?tab=branches`}
+                    href={`/console/settings/companies/${companyId}?tab=branches${keepSetup}`}
                     className="label text-brass hover:underline"
                   >
                     Cancel

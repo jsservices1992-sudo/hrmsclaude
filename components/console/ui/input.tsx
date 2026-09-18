@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 /**
  * `read-only:` styling matters more than it looks. A field that cannot be
  * changed has to be `readOnly` rather than `disabled`, because a disabled
@@ -32,14 +34,69 @@ export function Input({
   return <input className={`${fieldBase} ${widthClass(className)} ${borderClass(invalid)} ${className}`} {...props} />;
 }
 
+/**
+ * A `<select>` that survives being inside a `<form action={...}>`.
+ *
+ * React resets every such form natively on each action submission — its
+ * own automatic-reset-on-action behaviour, meant to clear a form after a
+ * successful create. That reset works from the `selected` HTML
+ * ATTRIBUTE on each `<option>`. An uncontrolled `<select defaultValue>`
+ * writes that attribute when it mounts, but never again — updating the
+ * prop on an already-mounted select does not touch it — so on a
+ * REFUSED save (a validation error, an expired session, any refusal
+ * that re-renders the same form instead of navigating away) the reset
+ * silently reverts every select to whatever it first showed, while the
+ * text fields beside it correctly keep what was typed, because a text
+ * input's `defaultValue` maps straight onto the `value` HTML attribute,
+ * which React does keep current on every render.
+ *
+ * This is the one place that fixes it, so no call site has to know
+ * about it: on the form's native `reset` event, and whenever this
+ * select's own `defaultValue` prop changes, the DOM value is written
+ * back explicitly rather than left to React's normal (insufficient, for
+ * this element) update path.
+ */
 export function Select({
   invalid,
   className = "",
   children,
+  defaultValue,
   ...props
 }: React.ComponentProps<"select"> & { invalid?: boolean }) {
+  const ref = React.useRef<HTMLSelectElement>(null);
+  const latest = React.useRef(defaultValue);
+  latest.current = defaultValue;
+
+  const applyDefault = React.useCallback(() => {
+    const el = ref.current;
+    if (!el || latest.current === undefined) return;
+    const want = String(latest.current);
+    if (el.value !== want) el.value = want;
+  }, []);
+
+  React.useEffect(() => {
+    const form = ref.current?.form;
+    if (!form) return;
+    // Fires synchronously when React (or anybody) calls form.reset().
+    // Re-applying on the next tick lets that reset finish first.
+    const onReset = () => queueMicrotask(applyDefault);
+    form.addEventListener("reset", onReset);
+    return () => form.removeEventListener("reset", onReset);
+  }, [applyDefault]);
+
+  // A refused save can also change `defaultValue` without a reset event
+  // at all — the same prop update this component always ignored.
+  React.useEffect(() => {
+    applyDefault();
+  }, [defaultValue, applyDefault]);
+
   return (
-    <select className={`${fieldBase} ${widthClass(className)} ${borderClass(invalid)} ${className}`} {...props}>
+    <select
+      ref={ref}
+      defaultValue={defaultValue}
+      className={`${fieldBase} ${widthClass(className)} ${borderClass(invalid)} ${className}`}
+      {...props}
+    >
       {children}
     </select>
   );

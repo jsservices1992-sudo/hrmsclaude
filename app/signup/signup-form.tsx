@@ -16,6 +16,7 @@ function Field({
   error,
   autoComplete,
   placeholder,
+  defaultValue,
 }: {
   label: string;
   name: string;
@@ -24,11 +25,13 @@ function Field({
   error?: string;
   autoComplete?: string;
   placeholder?: string;
+  defaultValue?: string;
 }) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="label text-ink-3">{label}</span>
       <input
+        defaultValue={defaultValue}
         name={name}
         type={type}
         required
@@ -49,12 +52,17 @@ function Field({
 export function SignupForm() {
   const [state, action, pending] = useActionState<SignupState, FormData>(signup, {});
   const e = state.fieldErrors ?? {};
+  /* A refusal comes back with what was typed, so fixing one field does
+     not mean retyping the other three. The passwords are not among them
+     and are not meant to be — see SignupState. */
+  const v = state.values ?? {};
 
   return (
     <form action={action} className="flex flex-col gap-4">
       <Field
         label="Company name"
         name="companyName"
+        defaultValue={v.companyName ?? ""}
         error={e.companyName}
         hint="The legal entity that will pay salaries. You can refine it later."
         placeholder="Acme Private Limited"
@@ -63,12 +71,14 @@ export function SignupForm() {
       <Field
         label="Your name"
         name="adminName"
+        defaultValue={v.adminName ?? ""}
         error={e.adminName}
         autoComplete="name"
       />
       <Field
         label="Work email"
         name="email"
+        defaultValue={v.email ?? ""}
         type="email"
         error={e.email}
         hint="This becomes the administrator account."

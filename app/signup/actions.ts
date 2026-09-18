@@ -24,7 +24,27 @@ import {
 export type SignupState = {
   error?: string;
   fieldErrors?: Partial<Record<keyof SignupDraft, string>>;
+  /**
+   * What was typed, so a refused form comes back filled in.
+   *
+   * Without it the first mistake empties the whole screen, and the
+   * company name, the person's name and their email all have to be typed
+   * again to fix one of them — which is how somebody decides not to
+   * bother signing up.
+   *
+   * The two password fields are deliberately absent. Echoing a password
+   * back into the page puts it in the HTML, in the browser's history of
+   * that response, and anywhere that response is cached. Retyping it is
+   * the smaller cost.
+   */
+  values?: { companyName?: string; adminName?: string; email?: string };
 };
+
+const typedSoFar = (fd: FormData) => ({
+  companyName: String(fd.get("companyName") ?? ""),
+  adminName: String(fd.get("adminName") ?? ""),
+  email: String(fd.get("email") ?? ""),
+});
 
 /**
  * Same shape of throttle as the login form, and the same caveat: it is
@@ -61,7 +81,10 @@ export async function signup(
   fd: FormData,
 ): Promise<SignupState> {
   if (!signupEnabled()) {
-    return { error: "Registration is closed on this instance. Ask your administrator for an account." };
+    return {
+      error: "Registration is closed on this instance. Ask your administrator for an account.",
+      values: typedSoFar(fd),
+    };
   }
 
   const draft: SignupDraft = {
@@ -76,13 +99,13 @@ export async function signup(
   if (issues.length > 0) {
     const fieldErrors: Partial<Record<keyof SignupDraft, string>> = {};
     for (const i of issues) fieldErrors[i.field] ??= i.message;
-    return { error: issues[0].message, fieldErrors };
+    return { error: issues[0].message, fieldErrors, values: typedSoFar(fd) };
   }
 
   const hdrs = await headers();
   const ip = hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
   if (tooManyAttempts(ip)) {
-    return { error: "Too many registrations from here. Try again later." };
+    return { error: "Too many registrations from here. Try again later.", values: typedSoFar(fd) };
   }
 
   const email = normaliseEmail(draft.email);
@@ -97,6 +120,7 @@ export async function signup(
     return {
       error: "That email address already has an account. Sign in instead.",
       fieldErrors: { email: "Already registered." },
+      values: typedSoFar(fd),
     };
   }
 
