@@ -13,7 +13,8 @@
     "db:bootstrap": "node --env-file-if-exists=.env.local --import tsx db/bootstrap.mts",
     "db:triggers": "node --env-file-if-exists=.env.local --import tsx db/ensure-triggers.mts",
     "db:migrate": "node --env-file-if-exists=.env.local --import tsx db/migrate.mts",
-    "db:seed-statutory": "node --env-file-if-exists=.env.local --import tsx db/seed-statutory.mts"
+    "db:seed-statutory": "node --env-file-if-exists=.env.local --import tsx db/seed-statutory.mts",
+    "db:attest": "node --env-file-if-exists=.env.local --import tsx db/attest-statutory.mts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",

@@ -497,15 +497,15 @@ export const MINIMUM_WAGES: MinimumWageSeed[] = [
 ].flat();
 
 export const STATUTORY_PARAMS = [
-  { key: "epf.wage_ceiling", value: R(15000), unit: "paise" as const, note: "EPF & MP Act statutory wage ceiling" },
-  { key: "epf.employee_bps", value: 1200, unit: "bps" as const, note: "12% employee share" },
-  { key: "epf.employer_bps", value: 1200, unit: "bps" as const, note: "12% employer share" },
-  { key: "epf.eps_bps", value: 833, unit: "bps" as const, note: "8.33% diverted to pension scheme" },
-  { key: "epf.eps_ceiling", value: R(15000), unit: "paise" as const, note: "Pension scheme wage ceiling" },
-  { key: "esic.wage_threshold", value: R(21000), unit: "paise" as const, note: "Monthly gross coverage threshold" },
-  { key: "esic.employee_bps", value: 75, unit: "bps" as const, note: "0.75% employee share" },
-  { key: "esic.employer_bps", value: 325, unit: "bps" as const, note: "3.25% employer share" },
-  { key: "pt.default_annual_cap", value: R(2500), unit: "paise" as const, note: "Constitutional ceiling on PT" },
+  { key: "epf.wage_ceiling", value: R(15000), unit: "paise" as const, note: "EPF & MP Act statutory wage ceiling", source: "Employees' Provident Funds & Miscellaneous Provisions Act 1952, s.6, read with the ₹15,000 ceiling notified with effect from 1 September 2014" },
+  { key: "epf.employee_bps", value: 1200, unit: "bps" as const, note: "12% employee share", source: "Employees' Provident Funds Scheme 1952, para 29(1)" },
+  { key: "epf.employer_bps", value: 1200, unit: "bps" as const, note: "12% employer share", source: "EPF & MP Act 1952, s.6 — the employer's contribution equals the employee's" },
+  { key: "epf.eps_bps", value: 833, unit: "bps" as const, note: "8.33% diverted to pension scheme", source: "Employees' Pension Scheme 1995, para 3(1)" },
+  { key: "epf.eps_ceiling", value: R(15000), unit: "paise" as const, note: "Pension scheme wage ceiling", source: "Employees' Pension Scheme 1995, para 3 — the pension contribution is computed on wages up to the statutory ceiling even where provident fund is not" },
+  { key: "esic.wage_threshold", value: R(21000), unit: "paise" as const, note: "Monthly gross coverage threshold", source: "Employees' State Insurance (Central) Rules 1950, rule 50" },
+  { key: "esic.employee_bps", value: 75, unit: "bps" as const, note: "0.75% employee share", source: "Employees' State Insurance (Central) Rules 1950, rule 51 — with effect from 1 July 2019" },
+  { key: "esic.employer_bps", value: 325, unit: "bps" as const, note: "3.25% employer share", source: "Employees' State Insurance (Central) Rules 1950, rule 51 — with effect from 1 July 2019" },
+  { key: "pt.default_annual_cap", value: R(2500), unit: "paise" as const, note: "Constitutional ceiling on PT", source: "Constitution of India, Article 276(2) — no State may levy more than ₹2,500 a year by way of tax on professions, trades, callings and employments" },
 
   /* Gratuity and bonus. These were constants in the payroll source until
      they were moved here, which is what lets a revised ceiling be a dated
