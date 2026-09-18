@@ -26,6 +26,11 @@ export default async function ComplianceConfigPage() {
   const lwfByState = Object.fromEntries(lwf.map((l) => [l.stateCode, l]));
 
   const unverified = slabs.filter((x) => !x.verified).length + lwf.filter((x) => !x.verified).length;
+  /* A row verified on somebody's say-so with no notification named is
+     still a gap, just a smaller one than an unverified row. */
+  const attestedWithoutReference =
+    slabs.filter((x) => x.verified && x.source?.startsWith("Attested by")).length +
+    lwf.filter((x) => x.verified && x.source?.startsWith("Attested by")).length;
   const contested = juris.filter((j) => j.verificationNote);
   const missingSlabs = juris.filter((j) => j.ptApplicable && !slabCount[j.stateCode]);
 
@@ -37,15 +42,60 @@ export default async function ComplianceConfigPage() {
         description="Every row below is effective-dated. A payroll run records which versions it used, so recomputing a historic period reproduces what was actually paid."
       />
 
-      <div className="border-2 border-rust bg-rust-soft px-5 py-4">
-        <p className="label text-rust mb-1.5">Not fit for real payroll yet</p>
-        <p className="text-sm text-ink-2 max-w-[70ch]">
-          <strong className="text-ink tnum">{unverified}</strong> of the seeded
-          PT slabs and LWF rates are marked <code>verified: false</code>. They
-          are indicative development figures, not a compliance source, and every
-          one must be checked against the state Act or latest notification
-          before a real run.
-          {contested.length > 0 && (
+      {/*
+        Two different states of the world, and the banner said the first
+        one either way: it announced figures were unverified while
+        counting zero of them. A warning that stays up after the thing it
+        warns about is fixed teaches people to ignore warnings.
+      */}
+      {unverified > 0 ? (
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+          <p className="label text-rust mb-1.5">Not fit for real payroll yet</p>
+          <p className="text-sm text-ink-2 max-w-[70ch]">
+            <strong className="text-ink tnum">{unverified}</strong> of the
+            seeded PT slabs and LWF rates are marked <code>verified: false</code>.
+            They are indicative development figures, not a compliance source,
+            and every one must be checked against the state Act or latest
+            notification before a real run.
+            {contested.length > 0 && (
+              <>
+                {" "}
+                <strong className="text-ink">{contested.length}</strong>{" "}
+                jurisdictions additionally have contested <em>applicability</em>.
+              </>
+            )}
+          </p>
+        </div>
+      ) : (
+        <div className="border-2 border-teal bg-teal-soft px-5 py-4">
+          <p className="label text-teal mb-1.5">Checked and attested</p>
+          <p className="text-sm text-ink-2 max-w-[70ch]">
+            Every PT slab and LWF rate has been marked verified against a named
+            source. The audit log records who attested to each row and when, and
+            a reseed will not overwrite them.
+            {attestedWithoutReference > 0 && (
+              <>
+                {" "}
+                <strong className="text-ink tnum">
+                  {attestedWithoutReference}
+                </strong>{" "}
+                of them name no notification — they were attested on review
+                alone, and the reference is still worth adding.
+              </>
+            )}
+            {contested.length > 0 && (
+              <>
+                {" "}
+                <strong className="text-ink">{contested.length}</strong>{" "}
+                jurisdictions have contested <em>applicability</em>, which is a
+                separate question from whether the rate is right.
+              </>
+            )}
+          </p>
+        </div>
+      )}
+
+      {contested.length > 0 && (
             <>
               {" "}
               <strong className="text-ink">{contested.length}</strong>{" "}

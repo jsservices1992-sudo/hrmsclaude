@@ -99,35 +99,61 @@ export async function calculateRun(
     };
   }
 
-  const runId = randomUUID();
+  /*
+   * Recalculating keeps the run's identity.
+   *
+   * It used to delete the row and insert a replacement under a fresh id,
+   * which meant every page rendered before the recalculation was holding
+   * an id that no longer existed. Approving from one of them answered
+   * "Run not found." — at the point where money is about to move, with
+   * nothing to say what had happened or what to do. The same went for
+   * reopening, the outputs, the payslips and the bank file, and for the
+   * audit entries pointing at the id.
+   *
+   * A recalculation replaces what the run says, not which run it is.
+   */
   const now = new Date().toISOString();
+  const runId = latest?.id ?? randomUUID();
   const version = latest ? latest.version : 1;
 
   await db.transaction(async (tx) => {
     if (latest) {
-      // Replacing an unapproved calculation — clear its lines, keep the row.
       await tx.delete(s.payrollLines).where(eq(s.payrollLines.runId, latest.id));
       await tx.delete(s.payrollEmployeeSummaries)
         .where(eq(s.payrollEmployeeSummaries.runId, latest.id));
-      await tx.delete(s.payrollRuns).where(eq(s.payrollRuns.id, latest.id));
+      await tx
+        .update(s.payrollRuns)
+        .set({
+          status: "calculated",
+          prorationBasis: preview.company.prorationBasis,
+          configSnapshot: JSON.stringify({ asOf: preview.asOf }),
+          preparedBy: user.email,
+          /* Whoever recalculated is the new preparer, and the approval
+             this replaces is gone — so the maker-checker separation is
+             judged afresh rather than inherited from the last version. */
+          approvedBy: null,
+          calculatedAt: now,
+          approvedAt: null,
+        })
+        .where(eq(s.payrollRuns.id, latest.id));
+    } else {
+      await tx.insert(s.payrollRuns)
+        .values({
+          id: runId,
+          companyId,
+          periodYear: year,
+          periodMonth: month,
+          version,
+          status: "calculated",
+          prorationBasis: preview.company.prorationBasis,
+          configSnapshot: JSON.stringify({ asOf: preview.asOf }),
+          preparedBy: user.email,
+          approvedBy: null,
+          calculatedAt: now,
+          approvedAt: null,
+          createdAt: now,
+        });
     }
-
-    await tx.insert(s.payrollRuns)
-      .values({
-        id: runId,
-        companyId,
-        periodYear: year,
-        periodMonth: month,
-        version,
-        status: "calculated",
-        prorationBasis: preview.company.prorationBasis,
-        configSnapshot: JSON.stringify({ asOf: preview.asOf }),
-        preparedBy: user.email,
-        approvedBy: null,
-        calculatedAt: now,
-        approvedAt: null,
-        createdAt: now,
-      });
 
     for (const r of preview.results) {
       await tx.insert(s.payrollEmployeeSummaries)

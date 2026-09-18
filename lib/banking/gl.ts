@@ -500,5 +500,22 @@ export const DEFAULT_MAPPINGS: GlMapping[] = [
   { componentCode: "EPS_ER", debitAccount: "EMPLOYER_PF", creditAccount: "PF_PAYABLE" },
   { componentCode: "ESIC_ER", debitAccount: "EMPLOYER_ESIC", creditAccount: "ESIC_PAYABLE" },
   { componentCode: "LWF_ER", debitAccount: "EMPLOYER_LWF", creditAccount: "LWF_PAYABLE" },
+
+  /*
+   * Net-pay rounding. The account existed and nothing pointed at it, so
+   * every run of every company reported ROUND_OFF as unmapped and put a
+   * few paise in suspense — a "map this before posting" on a journal
+   * that was already correct.
+   *
+   * The reconciliation below that also posts to this account finds
+   * nothing to do once this mapping exists: it measures net against
+   * earnings less deductions, and the ROUND_OFF line is one of those
+   * deductions, so the difference is already zero. The two were never
+   * meant to both fire.
+   *
+   * The amount is signed — a credit of a negative number is a debit — so
+   * one mapping covers a net rounded up and a net rounded down.
+   */
+  { componentCode: "ROUND_OFF", debitAccount: null, creditAccount: ROUNDING_ACCOUNT },
 ];
 
