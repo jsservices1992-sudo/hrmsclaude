@@ -14,6 +14,8 @@
  * without a database.
  */
 
+import { PT_UNMODELLED } from "./statutory";
+
 export type ExceptionSeverity = "critical" | "warning";
 
 export type PayrollExceptionCode =
@@ -35,7 +37,8 @@ export type PayrollExceptionCode =
   | "minimum_wage_unverifiable"
   | "statutory_bonus_short"
   | "statutory_bonus_unassessable"
-  | "wage_code_below_share";
+  | "wage_code_below_share"
+  | "pt_state_unmodelled";
 
 export type PayrollException = {
   code: PayrollExceptionCode;
@@ -119,6 +122,13 @@ export type RunContext = {
   attendanceFinalised: boolean;
   /** Statutory parameters resolved for the period. */
   statutoryConfigured: boolean;
+  /**
+   * States in this run whose professional tax this system cannot work
+   * out — see `PT_UNMODELLED`. They deduct nothing, and nothing is the
+   * one answer that is certainly wrong, so the run says so rather than
+   * letting a ₹0 pass for a considered figure.
+   */
+  ptUnmodelledStates?: string[];
   /** Above this share of the period, loss of pay is worth a second look. */
   excessiveLopRatio?: number;
 };
@@ -146,6 +156,10 @@ export function detectExceptions(
       message:
         "No statutory parameters resolve for this period. PF, ESIC and PT cannot be computed correctly.",
     });
+  }
+  for (const state of ctx.ptUnmodelledStates ?? []) {
+    const why = PT_UNMODELLED[state];
+    if (why) out.push({ code: "pt_state_unmodelled", severity: "warning", message: why });
   }
   if (ctx.bonusUnassessable) {
     out.push({
@@ -388,6 +402,7 @@ export function blockingSummary(list: PayrollException[]): string | null {
     minimum_wage_unverifiable: "minimum wage could not be checked",
     statutory_bonus_short: "statutory bonus short",
     statutory_bonus_unassessable: "statutory bonus could not be assessed",
+    pt_state_unmodelled: "professional tax not modelled for a state",
     wage_code_below_share: "wages under half of pay",
   };
 

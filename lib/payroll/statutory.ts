@@ -280,6 +280,18 @@ export type PtResult = {
 
 const RUPEE = 100;
 
+/**
+ * States whose levy this table cannot express, and why.
+ *
+ * Both are seeded as a single nil band, so a run deducts nothing and the
+ * absence is visible rather than a plausible wrong number. The payroll
+ * checks read this list to say so on the run instead of staying quiet.
+ */
+export const PT_UNMODELLED: Record<string, string> = {
+  ML: "Meghalaya levies professional tax, but its schedule is not recorded here. Nothing is being deducted for Meghalaya employees.",
+  PB: "Punjab's ₹200 applies to a person liable to income tax, which is not a wage band and cannot be decided from payroll alone. Nothing is being deducted for Punjab employees.",
+};
+
 export type SlabProblem = { kind: "gap" | "overlap" | "empty"; message: string };
 
 /**

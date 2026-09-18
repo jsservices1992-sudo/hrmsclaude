@@ -72,18 +72,55 @@ export const JURISDICTIONS: JurisdictionSeed[] = [
   { code: "PY", name: "Puducherry", kind: "ut", pt: true, lwf: false },
 ];
 
+
+/** Monthly-slab states. UNVERIFIED — see file header. */
 export type PtSlabSeed = {
   state: string;
   min: number;
   max: number | null;
   amount: number;
+  gender?: "all" | "female" | "male";
   overrideMonth?: number;
   overrideAmount?: number;
-  gender?: "all" | "female" | "male";
   annualCap?: number;
 };
 
-/** Monthly-slab states. UNVERIFIED — see file header. */
+/**
+ * Builds a state's ladder from the ceilings its schedule prints.
+ *
+ * Each entry is [ceiling, amount] in rupees, with a null ceiling for the
+ * top band, and `divisor` is what turns the schedule's own period into
+ * the monthly figure this engine compares against — 6 for a half-yearly
+ * schedule, 12 for an annual one, 1 for a monthly one.
+ *
+ * Each lower bound sits one paisa above the ceiling below it. A whole
+ * rupee would be the natural step, but converted ceilings land on
+ * fractions of a rupee, and a rupee-wide step over one of those leaves a
+ * band nobody falls into.
+ */
+function ladder(
+  state: string,
+  divisor: number,
+  bands: [number | null, number][],
+  extra: Partial<PtSlabSeed> = {},
+): PtSlabSeed[] {
+  let min = 0;
+  return bands.map(([ceiling, amount]) => {
+    const max = ceiling === null ? null : Math.round(R(ceiling) / divisor);
+    const slab = { state, min, max, amount: Math.round(R(amount) / divisor), ...extra };
+    if (max !== null) min = max + 1;
+    return slab;
+  });
+}
+
+/** A schedule printed on half-yearly income. */
+const HY = (state: string, bands: [number | null, number][]) => ladder(state, 6, bands);
+/** A schedule printed on annual income. */
+const ANN = (state: string, bands: [number | null, number][]) => ladder(state, 12, bands);
+/** A schedule already printed on the monthly wage. */
+const MONTHLY = (state: string, bands: [number | null, number][]) => ladder(state, 1, bands);
+
+
 export const PT_SLABS: PtSlabSeed[] = [
   // Karnataka
   { state: "KA", min: 0, max: R(24999), amount: 0 },
@@ -121,33 +158,63 @@ export const PT_SLABS: PtSlabSeed[] = [
   { state: "MP", min: R(25001), max: R(33333), amount: R(167) },
   { state: "MP", min: R(33334), max: null, amount: R(208), overrideMonth: 2, overrideAmount: R(212) },
 
-  // Punjab — annual cap is ₹2,400, not ₹2,500
-  { state: "PB", min: 0, max: R(20833), amount: 0, annualCap: R(2400) },
-  { state: "PB", min: R(20834), max: null, amount: R(200), annualCap: R(2400) },
+  /*
+   * Several states do not levy on a monthly wage at all. Tamil Nadu,
+   * Kerala and Puducherry set their bands on HALF-YEARLY income; Bihar,
+   * Jharkhand and Manipur on ANNUAL income. Since this engine compares a
+   * MONTHLY wage against a band, both the edges and the amounts are
+   * divided here — `HY` by six, `ANN` by twelve. Dividing the amount but
+   * leaving the edge as printed is what the earlier seed did, and it put
+   * a Tamil Nadu employee on ₹20,000 a month into the "up to ₹21,000"
+   * band and deducted nothing, against ₹208.33 due.
+   *
+   * A converted edge rarely lands on a whole rupee, so `band` lifts each
+   * lower bound one paisa above the ceiling below it rather than a whole
+   * rupee, which would leave a hole `checkSlabCoverage` would report.
+   */
+  ...HY("TN", [
+    [21000, 0], [30000, 180], [45000, 425], [60000, 930], [75000, 1025], [null, 1250],
+  ]),
+  ...HY("KL", [
+    [11999, 0], [17999, 120], [29999, 180], [44999, 300], [59999, 450],
+    [74999, 600], [99999, 750], [124999, 1000], [null, 1250],
+  ]),
+  ...HY("PY", [
+    [99999, 0], [200000, 250], [300000, 500], [400000, 750], [500000, 1000], [null, 1250],
+  ]),
+  ...ANN("BR", [[300000, 0], [500000, 1000], [1000000, 2000], [null, 2500]]),
+  ...ANN("JH", [
+    [300000, 0], [500000, 1200], [800000, 1800], [1000000, 2100], [null, 2500],
+  ]),
+  // Manipur's schedule is the least well attested of these; check it first.
+  ...ANN("MN", [
+    [50000, 0], [75000, 1200], [100000, 2000], [125000, 2400], [null, 2500],
+  ]),
 
-  // Kerala, Tamil Nadu and Bihar levy on half-yearly/annual bases; a monthly
-  // approximation is seeded so runs do not silently skip them.
-  { state: "TN", min: 0, max: R(21000), amount: 0 },
-  { state: "TN", min: R(21001), max: R(30000), amount: R(23) },
-  { state: "TN", min: R(30001), max: R(45000), amount: R(53) },
-  { state: "TN", min: R(45001), max: R(60000), amount: R(115) },
-  { state: "TN", min: R(60001), max: R(75000), amount: R(171) },
-  { state: "TN", min: R(75001), max: null, amount: R(208) },
+  // Monthly-wage states.
+  ...MONTHLY("AS", [[10000, 0], [14999, 150], [24999, 180], [null, 208]]),
+  ...MONTHLY("MZ", [
+    [5000, 0], [8000, 75], [10000, 120], [12000, 150], [15000, 180], [20000, 195], [null, 208],
+  ]),
+  ...MONTHLY("SK", [[20000, 0], [30000, 125], [40000, 150], [null, 200]]),
+  // Nagaland: Public Notice CT/LEG/P.TAX/2/2022, 25 September 2025.
+  ...MONTHLY("NL", [
+    [3999, 0], [4999, 35], [6999, 75], [8999, 110], [11999, 180], [null, 208],
+  ]),
+  // Tripura: Gazette Extraordinary No. 443 of 25 July 2018.
+  ...MONTHLY("TR", [[7500, 0], [15000, 150], [null, 208]]),
 
-  { state: "KL", min: 0, max: R(11999), amount: 0 },
-  { state: "KL", min: R(12000), max: R(17999), amount: R(30) },
-  { state: "KL", min: R(18000), max: R(29999), amount: R(75) },
-  { state: "KL", min: R(30000), max: R(44999), amount: R(125) },
-  { state: "KL", min: R(45000), max: R(59999), amount: R(167) },
-  { state: "KL", min: R(60000), max: null, amount: R(208) },
+  /*
+   * Meghalaya levies PT but its schedule is not recorded here, and
+   * Punjab's ₹200 is conditioned on the person being liable to income
+   * tax rather than on a wage band, which this table cannot express.
+   * Both are seeded as a single nil band: deducting nothing is visibly
+   * wrong and gets corrected, whereas a guessed band quietly charges
+   * every employee the wrong amount. `PT_UNMODELLED` says so in code.
+   */
+  { state: "ML", min: 0, max: null, amount: 0 },
+  { state: "PB", min: 0, max: null, amount: 0, annualCap: R(2400) },
 
-  // Flat-rate states above a threshold
-  ...(["AS", "BR", "JH", "MN", "ML", "MZ", "NL", "SK", "TR", "PY"] as const).map(
-    (state) => ({ state, min: R(25000), max: null, amount: R(200) }),
-  ),
-  ...(["AS", "BR", "JH", "MN", "ML", "MZ", "NL", "SK", "TR", "PY"] as const).map(
-    (state) => ({ state, min: 0, max: R(24999), amount: 0 }),
-  ),
 ];
 
 export type LwfRateSeed = {
@@ -217,3 +284,5 @@ export const STATUTORY_PARAMS = [
   { key: "tds.194H.threshold_fy", value: R(20000), unit: "paise" as const, note: "Per financial year", source: "Section 194H proviso" },
   { key: "tds.206AA.rate", value: 2000, unit: "bps" as const, note: "20% where the payee has given no PAN — a floor, not a replacement", source: "Section 206AA" },
 ];
+
+export { PT_UNMODELLED } from "../lib/payroll/statutory";

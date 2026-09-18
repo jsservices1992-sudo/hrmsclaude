@@ -252,5 +252,13 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
     bonusUnassessable,
     attendanceFinalised,
     statutoryConfigured: statutoryParams.length > 0,
+    ptUnmodelledStates: [
+      ...new Set(
+        summaries
+          .map((sm) => empById.get(sm.employeeId))
+          .map((e) => (e?.branchId ? stateByBranch.get(e.branchId) ?? null : null))
+          .filter((c): c is string => c !== null),
+      ),
+    ],
   });
 }
