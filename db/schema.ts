@@ -299,6 +299,8 @@ export const branches = pgTable(
     /** How far from that point a punch is accepted. */
     geofenceMetres: integer("geofence_metres").notNull().default(50),
     /* ESIC applies only in implemented areas — PRD FR-STAT-3 */
+    /** Which of the state's minimum wage zones this branch sits in. */
+    minimumWageZone: text("minimum_wage_zone"),
     esicImplementedArea: boolean("esic_implemented_area")
       .notNull()
       .default(true),
@@ -835,6 +837,12 @@ export const minimumWages = pgTable(
   {
     id: text("id").primaryKey(),
     stateCode: text("state_code").notNull(),
+    /**
+     * The area this rate was notified for, where the state sets more
+     * than one. Null means a single rate statewide. See the 0013
+     * migration for why a zoned state cannot be collapsed to one rate.
+     */
+    zone: text("zone"),
     skillCategory: text("skill_category", {
       enum: ["unskilled", "semi_skilled", "skilled", "highly_skilled"],
     }).notNull(),

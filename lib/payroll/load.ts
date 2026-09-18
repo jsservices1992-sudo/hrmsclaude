@@ -126,6 +126,7 @@ export async function loadStatutoryConfig(asOf: string): Promise<StatutoryConfig
     },
     minimumWages: effective(minWages).map((r) => ({
       stateCode: r.stateCode,
+      zone: r.zone,
       skillCategory: r.skillCategory,
       monthlyPaise: r.monthlyPaise,
       effectiveFrom: r.effectiveFrom,

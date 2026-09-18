@@ -334,6 +334,7 @@ const BranchSchema = z.object({
   pfCodeOverride: z.string().max(40).nullable(),
   esicCodeOverride: z.string().max(40).nullable(),
   esicImplementedArea: z.boolean(),
+  minimumWageZone: z.string().nullable(),
   lwfApplicableOverride: z.union([z.literal("inherit"), z.literal("yes"), z.literal("no")]),
 });
 
@@ -361,6 +362,7 @@ function parseBranch(fd: FormData) {
     pfCodeOverride: nullable(fd.get("pfCodeOverride")),
     esicCodeOverride: nullable(fd.get("esicCodeOverride")),
     esicImplementedArea: fd.get("esicImplementedArea") !== null,
+    minimumWageZone: nullable(fd.get("minimumWageZone")),
     lwfApplicableOverride: String(fd.get("lwfApplicableOverride") ?? "inherit"),
   });
 }
@@ -419,6 +421,7 @@ export async function saveBranch(
     pfCodeOverride: d.pfCodeOverride,
     esicCodeOverride: d.esicCodeOverride,
     esicImplementedArea: d.esicImplementedArea,
+    minimumWageZone: d.minimumWageZone,
     lwfApplicableOverride: overrideToBool(d.lwfApplicableOverride),
     /* Half a coordinate is worse than none: the punch check would
        compare against a point that does not exist. */

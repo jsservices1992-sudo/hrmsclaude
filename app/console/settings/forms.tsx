@@ -229,17 +229,26 @@ export type BranchValues = Partial<{
   ptRegNo: string | null; lwfRegNo: string | null;
   pfCodeOverride: string | null; esicCodeOverride: string | null;
   esicImplementedArea: boolean; lwfApplicableOverride: boolean | null;
+  minimumWageZone: string | null;
 }>;
 
 export function BranchForm({
-  companyId, values, states,
+  companyId, values, states, zonesByState,
 }: {
   companyId: string;
   values: BranchValues;
   states: { id: string; label: string }[];
+  /**
+   * The minimum wage zones each state notifies. Ten states set different
+   * rates for different areas, and nobody here can be checked against a
+   * floor until the branch says which one it sits in.
+   */
+  zonesByState: Record<string, string[]>;
   onDone?: string;
 }) {
   const [state, action] = useActionState<SettingsState, FormData>(saveBranch, {});
+  const [stateCode, setStateCode] = useState(values.stateCode ?? "");
+  const zones = zonesByState[stateCode] ?? [];
   const err = (k: string) => state.fieldErrors?.[k];
   const val = (k: keyof BranchValues, fallback = "") =>
     state.values?.[k] ?? (values[k] as string | null | undefined) ?? fallback;
@@ -269,7 +278,12 @@ export function BranchForm({
           <Input name="code" defaultValue={val("code")} invalid={!!err("code")} />
         </FormField>
         <FormField label="State / UT" error={err("stateCode")} required>
-          <Select name="stateCode" defaultValue={values.stateCode ?? ""} invalid={!!err("stateCode")}>
+          <Select
+            name="stateCode"
+            defaultValue={values.stateCode ?? ""}
+            invalid={!!err("stateCode")}
+            onChange={(e) => setStateCode(e.currentTarget.value)}
+          >
             {/* Professional tax, LWF and ESIC all follow this, so it is
                 picked deliberately rather than inherited from whichever
                 state happens to sort first. */}
@@ -336,6 +350,24 @@ export function BranchForm({
           <FormField label="ESIC code override" error={err("esicCodeOverride")}>
             <Input name="esicCodeOverride" defaultValue={values.esicCodeOverride ?? ""} invalid={!!err("esicCodeOverride")} />
           </FormField>
+          {zones.length > 0 && (
+            <FormField
+              label="Minimum wage zone"
+              error={err("minimumWageZone")}
+              hint={`${stateCode} notifies a different minimum wage for each of these. Nobody at this branch can be checked against a floor until one is chosen.`}
+            >
+              <Select
+                name="minimumWageZone"
+                defaultValue={values.minimumWageZone ?? ""}
+                invalid={!!err("minimumWageZone")}
+              >
+                <option value="">Not set</option>
+                {zones.map((z) => (
+                  <option key={z} value={z}>{z}</option>
+                ))}
+              </Select>
+            </FormField>
+          )}
           <FormField label="LWF applicability">
             <Select name="lwfApplicableOverride" defaultValue={inherit}>
               <option value="inherit">Follow state table</option>

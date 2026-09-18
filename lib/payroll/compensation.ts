@@ -676,10 +676,33 @@ export function grossForTargetTakeHome(args: {
 
 export type MinimumWageRule = {
   stateCode: string;
+  /**
+   * The area the notification sets this rate for, where the state sets
+   * more than one. Karnataka's Zone I is nearly twice its Zone III, so
+   * picking either one for the whole state would be wrong in most of it.
+   *
+   * Null means the state notifies a single rate statewide.
+   */
+  zone: string | null;
   skillCategory: "unskilled" | "semi_skilled" | "skilled" | "highly_skilled";
   monthlyPaise: Paise;
   effectiveFrom: string;
 };
+
+/** The zones a state notifies rates for, in force on a date. */
+export function minimumWageZones(
+  rules: MinimumWageRule[],
+  stateCode: string,
+  asOf: string,
+): string[] {
+  return [
+    ...new Set(
+      rules
+        .filter((r) => r.stateCode === stateCode && r.effectiveFrom <= asOf && r.zone !== null)
+        .map((r) => r.zone as string),
+    ),
+  ].sort();
+}
 
 export type MinimumWageCheck = {
   compliant: boolean;
@@ -694,17 +717,26 @@ export function applicableMinimumWage(
   stateCode: string,
   skillCategory: MinimumWageRule["skillCategory"],
   asOf: string,
+  zone?: string | null,
 ): MinimumWageRule | null {
-  return (
-    rules
-      .filter(
-        (r) =>
-          r.stateCode === stateCode &&
-          r.skillCategory === skillCategory &&
-          r.effectiveFrom <= asOf,
-      )
-      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] ?? null
+  const forState = rules.filter(
+    (r) =>
+      r.stateCode === stateCode &&
+      r.skillCategory === skillCategory &&
+      r.effectiveFrom <= asOf,
   );
+
+  /*
+   * A zoned state is only answerable once the branch says which zone it
+   * is in. Falling back to any one of them would compare a salary in
+   * one part of Karnataka against the floor for another — silently, and
+   * wrongly in both directions. The caller reports the gap instead.
+   */
+  const zoned = forState.filter((r) => r.zone !== null);
+  const statewide = forState.filter((r) => r.zone === null);
+  const pool = zoned.length > 0 ? (zone ? zoned.filter((r) => r.zone === zone) : []) : statewide;
+
+  return pool.sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0] ?? null;
 }
 
 const SKILL_LABEL: Record<MinimumWageRule["skillCategory"], string> = {
@@ -723,6 +755,8 @@ const SKILL_LABEL: Record<MinimumWageRule["skillCategory"], string> = {
  */
 export function minimumWageFacts(args: {
   stateCode: string | null;
+  /** The branch's zone, for the states that notify more than one rate. */
+  zone?: string | null;
   skillCategory: MinimumWageRule["skillCategory"] | null;
   monthlyGrossPaise: number | null;
   monthlyBasicPaise: number | null;
@@ -754,8 +788,23 @@ export function minimumWageFacts(args: {
     return { ...base, minimumWageUnknown: "No salary on record to compare against the minimum wage." };
   }
 
-  const rule = applicableMinimumWage(args.rules, args.stateCode, args.skillCategory, args.asOf);
+  const rule = applicableMinimumWage(
+    args.rules,
+    args.stateCode,
+    args.skillCategory,
+    args.asOf,
+    args.zone ?? null,
+  );
   if (!rule) {
+    const zones = minimumWageZones(args.rules, args.stateCode, args.asOf);
+    if (zones.length > 0) {
+      return {
+        ...base,
+        minimumWageUnknown: args.zone
+          ? `${args.stateCode} notifies ${zones.join(", ")}, and this branch is set to "${args.zone}", which is not one of them.`
+          : `${args.stateCode} notifies a different minimum wage for ${zones.join(", ")}. Set this branch's zone before anybody here can be checked.`,
+      };
+    }
     return {
       ...base,
       minimumWageUnknown: `No minimum wage is on file for ${SKILL_LABEL[args.skillCategory]} work in ${args.stateCode}.`,

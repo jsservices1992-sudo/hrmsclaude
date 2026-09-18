@@ -58,6 +58,18 @@ export default async function CompanySettingsPage(
     .from(s.jurisdictions)
     .orderBy(asc(s.jurisdictions.name));
 
+  /* Which states notify more than one minimum wage, so a branch in one
+     can be asked which zone it sits in. */
+  const zoneRows = await db
+    .selectDistinct({ stateCode: s.minimumWages.stateCode, zone: s.minimumWages.zone })
+    .from(s.minimumWages);
+  const zonesByState: Record<string, string[]> = {};
+  for (const r of zoneRows) {
+    if (r.zone === null) continue;
+    (zonesByState[r.stateCode] ??= []).push(r.zone);
+  }
+  for (const list of Object.values(zonesByState)) list.sort();
+
   const runs = await db
     .select({ n: sql<number>`count(*)` })
     .from(s.payrollRuns)
@@ -277,6 +289,7 @@ export default async function CompanySettingsPage(
                 <BranchForm
                   key={editBranch ?? "new"}
                   companyId={companyId}
+                  zonesByState={zonesByState}
                   states={jurisdictions.map((j) => ({
                     id: j.stateCode,
                     label: `${j.name} (${j.stateCode})`,

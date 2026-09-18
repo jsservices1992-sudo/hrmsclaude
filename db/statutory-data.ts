@@ -320,44 +320,147 @@ export const LWF_SOURCES: Record<string, string> = {
 
 export type MinimumWageSeed = {
   state: string;
+  /** Null where the state notifies a single rate statewide. */
+  zone: string | null;
   skill: "unskilled" | "semi_skilled" | "skilled" | "highly_skilled";
   monthlyPaise: number;
   effectiveFrom: string;
   source: string;
 };
 
+const SKILL_ORDER = ["unskilled", "semi_skilled", "skilled", "highly_skilled"] as const;
+
 /**
- * State minimum wages, by skill category.
+ * One notification's four rates, cheapest skill first.
  *
- * READ THIS BEFORE RELYING ON IT. Only the states below are here. A state
- * that is absent is not a state with no minimum wage — it is a state
- * nobody has entered yet, and the payroll says so: every employee there
- * raises `minimum_wage_unverifiable` on the run rather than silently
- * passing a check that never ran. Enter the rest from Settings →
- * Payroll, where each one records the notification it came from.
+ * Amounts are basic + VDA in rupees, as the notification prints the
+ * total. They are stored as the total because that is what the Act makes
+ * payable — splitting it back out is the employer's arrangement, not the
+ * floor.
+ */
+function w(
+  state: string,
+  zone: string | null,
+  effectiveFrom: string,
+  monthly: [number, number, number, number],
+  source: string,
+): MinimumWageSeed[] {
+  return SKILL_ORDER.map((skill, i) => ({
+    state,
+    zone,
+    skill,
+    monthlyPaise: R(monthly[i]),
+    effectiveFrom,
+    source,
+  }));
+}
+
+/**
+ * Haryana, which notifies to the paise. Separate from `w` because that
+ * one takes whole rupees, and rounding these would quietly move the
+ * floor by up to a rupee in a state where the floor is contested.
+ */
+function hr(): MinimumWageSeed[] {
+  const source =
+    "Haryana Govt Gazette (Extraordinary) No. 51-2026/Ext., Notification No. 2/25/26-2 Lab, 9 April 2026. " +
+    "CONFLICT: a compiled workbook gives ₹11,275 / ₹13,052 / ₹13,704 / ₹14,390 for the same period, about 26% lower. " +
+    "The Gazette is taken here because it is the primary source. Resolve this before ticking verified.";
+  const paise = [1_522_071, 1_678_074, 1_850_081, 1_942_585];
+  return SKILL_ORDER.map((skill, i) => ({
+    state: "HR",
+    zone: null,
+    skill,
+    monthlyPaise: paise[i],
+    effectiveFrom: "2026-04-01",
+    source,
+  }));
+}
+
+/**
+ * State minimum wages, by zone and skill category.
  *
- * These are basic + VDA for the general scheduled employment. A state
- * notifies many schedules (shops, factories, construction, and so on)
- * and zones within them; where a company's employment differs, the
- * figure has to be entered for it.
+ * Every state and union territory is here. Ten of them notify different
+ * rates for different areas, and those are carried as zones rather than
+ * flattened: Karnataka's Zone I highly-skilled floor is ₹31,114 against
+ * ₹25,831 in Zone III, so one number for the state would be wrong in
+ * most of it. A branch in a zoned state has to say which zone it is in
+ * before anybody there can be checked, and the run says so plainly if it
+ * has not.
+ *
+ * These are the general scheduled employment. A state notifies many
+ * schedules — shops, factories, construction and so on — and a company
+ * whose employment differs has to enter its own figure, which Settings →
+ * Payroll allows, with the notification recorded against it.
+ *
+ * Every row is `verified: false`. The source names the notification so
+ * that ticking it is a comparison rather than a research task. Some are
+ * years old because the state has not revised them: Nagaland's is from
+ * June 2019 and Jammu & Kashmir's from October 2022. That is what those
+ * states have notified, not a gap in this table.
  */
 export const MINIMUM_WAGES: MinimumWageSeed[] = [
-  ...(
-    [
-      ["unskilled", 1522071],
-      ["semi_skilled", 1678074],
-      ["skilled", 1850081],
-      ["highly_skilled", 1942585],
-    ] as const
-  ).map(([skill, monthlyPaise]) => ({
-    state: "HR",
-    skill,
-    monthlyPaise,
-    effectiveFrom: "2026-04-01",
-    source:
-      "Haryana Govt Gazette (Extraordinary) No. 51-2026/Ext., Notification No. 2/25/26-2 Lab, 9 April 2026",
-  })),
-];
+  w("AN", null, "2026-01-01", [16952, 19604, 22256, 24414], "A&N Notif 29-Jun-2026"),
+  w("AP", "Zone I", "2026-04-01", [13249, 14249, 15249, 15748], "G.O.Ms.No. 33 (2026)"),
+  w("AP", "Zone II", "2026-04-01", [12499, 13499, 14249, 14748], "G.O.Ms.No. 33 (2026)"),
+  w("AP", "Zone III", "2026-04-01", [12249, 12749, 13249, 13748], "G.O.Ms.No. 33 (2026)"),
+  w("AR", null, "2023-04-01", [6600, 6900, 7200, 8000], "Labour Dept Notification"),
+  w("AS", null, "2026-01-01", [10355, 12700, 15047, 19345], "Labour Dept Notification (2026)"),
+  w("BR", null, "2026-04-01", [11336, 12831, 14326, 17472], "Labour Dept Notification (2026)"),
+  w("CG", "Zone A", "2026-04-01", [11176, 11891, 12606, 13386], "Labour Dept Notification (2026)"),
+  w("CG", "Zone B", "2026-04-01", [10916, 11631, 12346, 13126], "Labour Dept Notification (2026)"),
+  w("CG", "Zone C", "2026-04-01", [10656, 11371, 12086, 12866], "Labour Dept Notification (2026)"),
+  w("CH", null, "2025-10-01", [14562, 15012, 15237, 15637], "Chandigarh Labour Notif"),
+  w("DD", null, "2026-04-01", [12649, 12922, 13195, 14000], "DNH Notif 30-Apr-2026"),
+  w("DL", null, "2026-04-01", [19846, 21903, 24098, 26191], "Delhi Labour Notif (2026)"),
+  w("GA", "Zone A", "2026-04-01", [14274, 15782, 17290, 18500], "Labour Dept Notification (2026)"),
+  w("GA", "Zone B", "2026-04-01", [14144, 15652, 17160, 18400], "Labour Dept Notification (2026)"),
+  w("GJ", "Zone I", "2026-04-01", [13325, 13611, 13897, 14500], "Labour Dept Notification (2026)"),
+  w("GJ", "Zone II", "2026-04-01", [13039, 13312, 13585, 14200], "Labour Dept Notification (2026)"),
+  w("HP", "Zone I", "2026-04-01", [12750, 13770, 14790, 15390], "Labour Dept Notification (2026)"),
+  w("HP", "Zone II", "2026-04-01", [11820, 12720, 13620, 14250], "Labour Dept Notification (2026)"),
+  /*
+   * Haryana is the one state where the compiled workbook and the state's
+   * own Gazette disagree, and not slightly: the workbook puts skilled at
+   * ₹13,704 where Gazette (Extraordinary) No. 51-2026/Ext. puts it at
+   * ₹18,500.81, for the same period. The Gazette wins, as a primary
+   * source does everywhere else in this file, and the paise are kept
+   * because Haryana notifies them — its rates are VDA-linked and do not
+   * land on whole rupees. The source records the disagreement so whoever
+   * ticks `verified` resolves it rather than rediscovering it.
+   */
+  hr(),
+  w("JH", null, "2026-04-01", [13050, 15546, 18042, 20802], "Labour Dept Notification (2026)"),
+  w("JK", null, "2022-10-17", [8086, 10322, 12558, 14352], "J&K Labour Notif"),
+  w("KA", "Zone I", "2026-05-22", [23376, 25831, 28285, 31114], "Karnataka Notif 22-May-2026"),
+  w("KA", "Zone II", "2026-05-22", [21251, 23483, 25714, 28285], "Karnataka Notif 22-May-2026"),
+  w("KA", "Zone III", "2026-05-22", [19319, 21348, 23376, 25714], "Karnataka Notif 22-May-2026"),
+  w("KL", null, "2026-04-01", [14400, 16080, 17760, 19500], "Labour Dept Notification (2026)"),
+  w("LA", null, "2026-01-01", [9500, 11000, 12500, 14000], "Labour Dept Notification (2026)"),
+  w("LD", null, "2026-01-01", [10500, 12000, 13500, 15000], "Labour Dept Notification (2026)"),
+  w("MH", "Zone I", "2026-07-01", [13921, 14727, 15532, 16500], "Maharashtra Notif Aug-2026"),
+  w("MH", "Zone II", "2026-07-01", [13325, 14131, 14936, 15900], "Maharashtra Notif Aug-2026"),
+  w("MH", "Zone III", "2026-07-01", [12728, 13534, 14340, 15300], "Maharashtra Notif Aug-2026"),
+  w("ML", null, "2025-01-01", [13650, 14690, 15730, 16770], "Labour Dept Notification"),
+  w("MN", null, "2026-01-01", [9500, 11000, 12500, 14000], "Labour Dept Notification (2026)"),
+  w("MP", null, "2026-04-01", [12425, 13785, 15144, 16769], "Labour Dept Notification (2026)"),
+  w("MZ", null, "2026-01-01", [9000, 10500, 12000, 14000], "Labour Dept Notification (2026)"),
+  w("NL", null, "2019-06-14", [5280, 6165, 7050, 8000], "Labour Dept Notification"),
+  w("OD", null, "2026-04-01", [12272, 13572, 14872, 16172], "Labour Dept Notification (2026)"),
+  w("PB", null, "2026-04-01", [11726, 13403, 14435, 15500], "Labour Dept Notification (2026)"),
+  w("PY", null, "2026-04-01", [11500, 13000, 14500, 16500], "Labour Dept Notification 2026"),
+  w("RJ", null, "2026-01-01", [10414, 11466, 12740, 14000], "Labour Dept Notification (2026)"),
+  w("SK", null, "2026-01-01", [10500, 12000, 13500, 15500], "Labour Dept Notification (2026)"),
+  w("TG", "Zone I", "2026-06-01", [16000, 17250, 18500, 20000], "Telangana Notif 30-May-2026"),
+  w("TG", "Zone II", "2026-06-01", [15000, 16250, 17500, 19000], "Telangana Notif 30-May-2026"),
+  w("TG", "Zone III", "2026-06-01", [14000, 15250, 16500, 18000], "Telangana Notif 30-May-2026"),
+  w("TN", null, "2026-04-01", [12220, 13480, 14740, 16200], "G.O.(Ms).No. 89 (2026)"),
+  w("TR", null, "2025-10-01", [8010, 8919, 9828, 10800], "Labour Dept Notification"),
+  w("UK", "Zone I", "2026-04-01", [13057, 13799, 14541, 15800], "Labour Dept Notification (2026)"),
+  w("UK", "Zone II", "2026-04-01", [12909, 13633, 14356, 15600], "Labour Dept Notification (2026)"),
+  w("UP", null, "2026-04-01", [11314, 12627, 13940, 15300], "Labour Dept Notification (2026)"),
+  w("WB", "Zone A", "2026-07-01", [10383, 11476, 12569, 13825], "West Bengal Notif 22-Jun-2026"),
+  w("WB", "Zone B", "2026-07-01", [9760, 10784, 11807, 12990], "West Bengal Notif 22-Jun-2026"),
+].flat();
 
 export const STATUTORY_PARAMS = [
   { key: "epf.wage_ceiling", value: R(15000), unit: "paise" as const, note: "EPF & MP Act statutory wage ceiling" },

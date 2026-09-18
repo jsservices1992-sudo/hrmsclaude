@@ -143,6 +143,7 @@ export async function loadFinalCheck(args: {
      rather than only as an exception on one already calculated. */
   const rateByEmployee = new Map(salariedIds.map((r) => [r.employeeId, r.monthlyGrossPaise]));
   const stateByBranch = new Map(branches.map((b) => [b.id, b.stateCode]));
+  const zoneByBranch = new Map(branches.map((b) => [b.id, b.minimumWageZone]));
   const skillByGrade = new Map(grades.map((g) => [g.id, g.skillCategory]));
 
   const minimumWageBreaches: FinalCheckResult["minimumWageBreaches"] = [];
@@ -152,6 +153,7 @@ export async function loadFinalCheck(args: {
     const who = { id: e.id, name: `${e.firstName} ${e.lastName}`, empCode: e.empCode };
     const facts = minimumWageFacts({
       stateCode: e.branchId ? stateByBranch.get(e.branchId) ?? null : null,
+      zone: e.branchId ? zoneByBranch.get(e.branchId) ?? null : null,
       skillCategory: e.skillCategory ?? (e.gradeId ? skillByGrade.get(e.gradeId) ?? null : null),
       monthlyGrossPaise: rateByEmployee.get(e.id) ?? null,
       monthlyBasicPaise: null,

@@ -68,6 +68,7 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
 
   const empById = new Map(employees.map((e) => [e.id, e]));
   const stateByBranch = new Map(branches.map((b) => [b.id, b.stateCode]));
+  const zoneByBranch = new Map(branches.map((b) => [b.id, b.minimumWageZone]));
   const skillByGrade = new Map(grades.map((g) => [g.id, g.skillCategory]));
 
   /* The contracted rate in force at period end — what a minimum wage is
@@ -207,6 +208,7 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
       engineWarnings: warningsByEmployee.get(sm.employeeId) ?? [],
       ...minimumWageFacts({
         stateCode: e?.branchId ? stateByBranch.get(e.branchId) ?? null : null,
+        zone: e?.branchId ? zoneByBranch.get(e.branchId) ?? null : null,
         skillCategory:
           e?.skillCategory ?? (e?.gradeId ? skillByGrade.get(e.gradeId) ?? null : null),
         monthlyGrossPaise: rateByEmployee.get(sm.employeeId) ?? null,

@@ -12,6 +12,9 @@ import {
   grossForTargetTakeHome,
   takeHomeFor,
   checkMinimumWage,
+  applicableMinimumWage,
+  minimumWageFacts,
+  minimumWageZones,
   computeStatutoryBonus,
   assessStatutoryBonus,
   checkWageCodeSplit,
@@ -655,9 +658,9 @@ describe("Fixed take-home", () => {
 
 describe("Minimum wage", () => {
   const rules = [
-    { stateCode: "KA", skillCategory: "unskilled" as const, monthlyPaise: R(15000), effectiveFrom: "2026-04-01" },
-    { stateCode: "KA", skillCategory: "unskilled" as const, monthlyPaise: R(16000), effectiveFrom: "2026-10-01" },
-    { stateCode: "KA", skillCategory: "skilled" as const, monthlyPaise: R(20000), effectiveFrom: "2026-04-01" },
+    { stateCode: "KA", zone: null, skillCategory: "unskilled" as const, monthlyPaise: R(15000), effectiveFrom: "2026-04-01" },
+    { stateCode: "KA", zone: null, skillCategory: "unskilled" as const, monthlyPaise: R(16000), effectiveFrom: "2026-10-01" },
+    { stateCode: "KA", zone: null, skillCategory: "skilled" as const, monthlyPaise: R(20000), effectiveFrom: "2026-04-01" },
   ];
 
   test("flags a wage below the applicable minimum", () => {
@@ -1018,5 +1021,63 @@ describe("The Code on Wages 50% split", () => {
     const r = checkWageCodeSplit({ wagesPaise: 18_000_00, remunerationPaise: 20_000_00, ...half });
     assert.equal(r.shortfallPaise, 0);
     assert.equal(r.compliant, true);
+  });
+});
+
+describe("Minimum wage zones", () => {
+  /* Karnataka's own spread is the reason zones cannot be collapsed: its
+     skilled floor is ₹28,285 in Zone I against ₹23,376 in Zone III —
+     the real figures from its 22 May 2026 notification, so that a change
+     to the seeded data shows up here rather than passing against
+     numbers invented for the test. */
+  const rules = [
+    { stateCode: "KA", zone: "Zone I", skillCategory: "skilled" as const, monthlyPaise: R(28285), effectiveFrom: "2026-04-01" },
+    { stateCode: "KA", zone: "Zone II", skillCategory: "skilled" as const, monthlyPaise: R(25714), effectiveFrom: "2026-04-01" },
+    { stateCode: "KA", zone: "Zone III", skillCategory: "skilled" as const, monthlyPaise: R(23376), effectiveFrom: "2026-04-01" },
+    { stateCode: "UP", zone: null, skillCategory: "skilled" as const, monthlyPaise: R(13940), effectiveFrom: "2026-04-01" },
+  ];
+  const asOf = "2026-08-31";
+
+  test("a zoned state answers for the zone the branch is in", () => {
+    for (const [zone, expected] of [["Zone I", 28285], ["Zone II", 25714], ["Zone III", 23376]] as const) {
+      const r = applicableMinimumWage(rules, "KA", "skilled", asOf, zone);
+      assert.equal(r?.monthlyPaise, R(expected), `${zone} should be ₹${expected}`);
+    }
+  });
+
+  test("a zoned state with no zone set refuses to guess", () => {
+    assert.equal(applicableMinimumWage(rules, "KA", "skilled", asOf, null), null);
+
+    const facts = minimumWageFacts({
+      stateCode: "KA",
+      zone: null,
+      skillCategory: "skilled",
+      monthlyGrossPaise: R(20000),
+      monthlyBasicPaise: R(10000),
+      rules,
+      asOf,
+    });
+    assert.equal(facts.minimumWagePaise, null, "no figure is invented");
+    assert.match(facts.minimumWageUnknown!, /Zone I, Zone II, Zone III/);
+    assert.match(facts.minimumWageUnknown!, /Set this branch's zone/);
+  });
+
+  test("a zone the state does not notify is named as such", () => {
+    const facts = minimumWageFacts({
+      stateCode: "KA", zone: "Zone IV", skillCategory: "skilled",
+      monthlyGrossPaise: R(20000), monthlyBasicPaise: R(10000), rules, asOf,
+    });
+    assert.equal(facts.minimumWagePaise, null);
+    assert.match(facts.minimumWageUnknown!, /"Zone IV", which is not one of them/);
+  });
+
+  test("a statewide state is unaffected by a zone being set or not", () => {
+    assert.equal(applicableMinimumWage(rules, "UP", "skilled", asOf, null)?.monthlyPaise, R(13940));
+    assert.equal(applicableMinimumWage(rules, "UP", "skilled", asOf, "Zone I")?.monthlyPaise, R(13940));
+  });
+
+  test("minimumWageZones lists what a state actually notifies", () => {
+    assert.deepEqual(minimumWageZones(rules, "KA", asOf), ["Zone I", "Zone II", "Zone III"]);
+    assert.deepEqual(minimumWageZones(rules, "UP", asOf), []);
   });
 });

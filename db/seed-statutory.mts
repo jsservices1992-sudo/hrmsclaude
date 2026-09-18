@@ -171,6 +171,7 @@ try {
         toSeed.map((w) => ({
           id: randomUUID(),
           stateCode: w.state,
+          zone: w.zone,
           skillCategory: w.skill,
           monthlyPaise: w.monthlyPaise,
           effectiveFrom: w.effectiveFrom,
