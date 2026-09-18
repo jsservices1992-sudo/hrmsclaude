@@ -69,6 +69,23 @@ export const companies = pgTable("companies", {
   })
     .notNull()
     .default("ignore"),
+  /**
+   * What a working day with NO attendance record means.
+   *
+   * 'exception' — the company records only leave and absence, so a day
+   * with no record is an ordinary paid day. Most companies work this
+   * way, and it is the default.
+   *
+   * 'punch' — the company feeds punches for everybody, so a day with no
+   * punch is a day nobody came and is not paid.
+   *
+   * The wrong answer here does not cause a small error: it marks every
+   * employee absent every day and pays nobody. So it is a decision the
+   * company makes, not a default buried in the attendance rules.
+   */
+  attendanceMode: text("attendance_mode", { enum: ["exception", "punch"] })
+    .notNull()
+    .default("exception"),
   sandwichRule: boolean("sandwich_rule")
     .notNull()
     .default(false),

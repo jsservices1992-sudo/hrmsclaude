@@ -26,6 +26,7 @@ export default async function NewCompanyPage() {
         mode="create"
         values={{
           roundingMode: "nearest",
+          attendanceMode: "exception",
           sandwichRule: false,
           epfOnActualBasic: false,
         }}

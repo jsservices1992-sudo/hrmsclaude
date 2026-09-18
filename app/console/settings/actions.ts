@@ -104,6 +104,7 @@ const CompanySchema = z.object({
     .regex(/^[0-9]{6}$/, "Pincode must be 6 digits")
     .nullable(),
   roundingMode: z.enum(["nearest", "up", "down"]),
+  attendanceMode: z.enum(["exception", "punch"]),
   sandwichRule: z.boolean(),
   epfOnActualBasic: z.boolean(),
 });
@@ -133,6 +134,7 @@ function parseCompany(fd: FormData) {
     registeredStateCode: nullable(fd.get("registeredStateCode")),
     registeredPincode: nullable(fd.get("registeredPincode")),
     roundingMode: String(fd.get("roundingMode") ?? "nearest"),
+    attendanceMode: String(fd.get("attendanceMode") ?? "exception"),
     sandwichRule: fd.get("sandwichRule") !== null,
     epfOnActualBasic: fd.get("epfOnActualBasic") !== null,
   });
@@ -196,6 +198,7 @@ const AUDITED_COMPANY_FIELDS = [
   "esicCode",
   "declaredHeadcount",
   "roundingMode",
+  "attendanceMode",
   "sandwichRule",
   "epfOnActualBasic",
 ] as const;
@@ -241,7 +244,7 @@ export async function updateCompany(
     .where(eq(s.payrollRuns.companyId, companyId))
     .limit(1);
 
-  const conventionChanged = ["roundingMode", "sandwichRule", "epfOnActualBasic"].some(
+  const conventionChanged = ["roundingMode", "attendanceMode", "sandwichRule", "epfOnActualBasic"].some(
     (k) => k in changes,
   );
   const reason = nullable(fd.get("changeReason"));

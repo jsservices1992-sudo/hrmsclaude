@@ -460,3 +460,60 @@ describe("Working a weekly off or a holiday", () => {
     assert.equal(summary.lopDays, 0);
   });
 });
+
+describe("a working day with no record at all", () => {
+  const workingDay = {
+    date: "2026-08-12",
+    dayType: "working" as const,
+    punches: [],
+    shift: DEFAULT_SHIFT,
+  };
+
+  test("is absent where the company feeds punches for everybody", () => {
+    const d = deriveDay(workingDay);
+    assert.equal(d.status, "absent");
+    assert.equal(d.lopUnits, 1);
+    assert.equal(d.isPayable, false);
+  });
+
+  test("is an ordinary paid day where the company records only exceptions", () => {
+    /*
+     * The regression this guards is not a rounding error. With no
+     * attendance loaded at all, every working day of the month came back
+     * absent, so a month's payroll paid nobody — for a company that had
+     * simply never wired punches up.
+     */
+    const d = deriveDay({ ...workingDay, assumePresentWithoutRecord: true });
+    assert.equal(d.status, "present");
+    assert.equal(d.lopUnits, 0);
+    assert.equal(d.isPayable, true);
+    assert.match(d.basis, /counted present/i);
+  });
+
+  test("never overrides a record that exists", () => {
+    const short = { ...workingDay, assumePresentWithoutRecord: true, punches: [{ inMinute: 600, outMinute: 700 }] };
+    assert.equal(deriveDay(short).status, "absent", "under the half-day threshold is still short");
+
+    const leave = {
+      ...workingDay,
+      assumePresentWithoutRecord: true,
+      leave: { paid: false, halfDay: false },
+    };
+    assert.equal(deriveDay(leave).status, "on_leave");
+    assert.equal(deriveDay(leave).lopUnits, 1, "unpaid leave stays unpaid");
+  });
+
+  test("a whole month of silence is a whole month paid", () => {
+    const days = Array.from({ length: 31 }, (_, i) =>
+      deriveDay({
+        ...workingDay,
+        date: `2026-08-${String(i + 1).padStart(2, "0")}`,
+        assumePresentWithoutRecord: true,
+      }),
+    );
+    assert.equal(
+      days.reduce((a, d) => a + d.lopUnits, 0),
+      0,
+    );
+  });
+});

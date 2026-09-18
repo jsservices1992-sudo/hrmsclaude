@@ -1,0 +1,12 @@
+-- What a working day with no attendance record means.
+--
+-- 'exception' — the company records only leave and absences, so a day
+-- with no record is an ordinary paid day. This is how most companies
+-- run, and it is the default.
+--
+-- 'punch' — the company feeds punches for everybody, so a day with no
+-- punch is a day nobody came and is not paid.
+--
+-- Existing companies get 'exception' because the alternative marks every
+-- employee absent for every unrecorded day and pays nobody.
+ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "attendance_mode" text NOT NULL DEFAULT 'exception';

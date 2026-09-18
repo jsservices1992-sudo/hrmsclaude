@@ -77,7 +77,7 @@ export type CompanyValues = Partial<{
   registeredStateCode: string | null; registeredPincode: string | null;
   roundingMode: string;
   otRatePaisePerHour: number | null;
-  sandwichRule: boolean; epfOnActualBasic: boolean;
+  attendanceMode: string | null; sandwichRule: boolean; epfOnActualBasic: boolean;
 }>;
 
 export function CompanyForm({
@@ -184,6 +184,16 @@ export function CompanyForm({
             <option value="nearest">Nearest rupee</option>
             <option value="up">Round up</option>
             <option value="down">Round down</option>
+          </Select>
+        </FormField>
+        <FormField
+          label="Days with no attendance record"
+          error={err("attendanceMode")}
+          hint="Change this only if you feed punches for everybody. Set to the wrong one, a month with no attendance marks everybody absent and pays nobody."
+        >
+          <Select name="attendanceMode" defaultValue={values.attendanceMode ?? "exception"} invalid={!!err("attendanceMode")}>
+            <option value="exception">Count as present — we record only leave and absence</option>
+            <option value="punch">Count as absent — we record punches for everybody</option>
           </Select>
         </FormField>
         <label className="flex items-center gap-2.5 self-end pb-2">

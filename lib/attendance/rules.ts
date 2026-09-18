@@ -48,6 +48,24 @@ export type DayInput = {
   leave?: { paid: boolean; halfDay: boolean } | null;
   /** Approved on-duty (client visit, offsite) — treated as present. */
   onDuty?: boolean;
+  /**
+   * What a working day with NO record at all means.
+   *
+   * Most companies do not feed punches in for everybody. They record the
+   * exceptions — leave, and the days somebody did not come — and expect
+   * everything else to be an ordinary paid day. For them, silence means
+   * present.
+   *
+   * A company running biometric or app punches means the opposite: a day
+   * with no punch is a day nobody came, and it should not be paid.
+   *
+   * Getting this backwards does not produce a small error. It marks
+   * every employee absent for every day of the month and pays nobody, so
+   * it is an explicit company decision rather than a default buried
+   * here. Only total silence is affected — punches that fall short of
+   * the half-day threshold are still short, whichever way this is set.
+   */
+  assumePresentWithoutRecord?: boolean;
 };
 
 export type DayResult = {
@@ -130,6 +148,16 @@ export function deriveDay(input: DayInput): DayResult {
       isPayable: true,
       offDayWorkedUnits,
       basis: offDayWorkedUnits > 0 ? `${label}, worked` : label,
+    };
+  }
+
+  if (input.assumePresentWithoutRecord && input.punches.length === 0) {
+    return {
+      ...base,
+      status: "present",
+      lopUnits: 0,
+      isPayable: true,
+      basis: "No attendance recorded — counted present",
     };
   }
 

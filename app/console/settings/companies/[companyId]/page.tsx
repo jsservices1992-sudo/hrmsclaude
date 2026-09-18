@@ -172,6 +172,7 @@ export default async function CompanySettingsPage(
                 registeredStateCode: company.registeredStateCode,
                 registeredPincode: company.registeredPincode,
                 roundingMode: company.roundingMode,
+                attendanceMode: company.attendanceMode,
                 sandwichRule: company.sandwichRule,
                 epfOnActualBasic: company.epfOnActualBasic,
               }}

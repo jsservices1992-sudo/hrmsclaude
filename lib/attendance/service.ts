@@ -205,6 +205,9 @@ export async function deriveMonth(args: {
           ? { paid: leave.type.paid, halfDay: leave.req.halfDay }
           : null,
         onDuty: rec?.status === "on_duty",
+        /* Only total silence is affected. A punch that falls short of
+           the half-day threshold is still short either way. */
+        assumePresentWithoutRecord: company.attendanceMode === "exception",
       });
     }
 
