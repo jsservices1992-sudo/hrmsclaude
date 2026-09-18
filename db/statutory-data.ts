@@ -335,7 +335,7 @@ export const LWF_SOURCES: Record<string, string> = {
   CG: "Chhattisgarh welfare fund — ₹15 employee, ₹45 employer per half-year. No establishment minimum applies here; Madhya Pradesh's ₹2,500 does not carry over.",
   KL: "Kerala Labour Welfare Fund Board's current published contribution rate, payable by 15 July and 15 January. The Act's own text still prints ₹4/₹8; the Board's current rate is what is collected.",
   DL: "Delhi Labour Welfare Board. The Act reaches establishments of five or more only. Managerial and supervisory exclusions under the Delhi rules are NOT yet modelled here.",
-  GA: "Goa Labour Welfare Board's published contribution, at the owner's direction. CHECK THIS FIRST: it contradicts the Goa Labour Welfare Fund (Amendment) Act 2004 (Goa Act 6 of 2004) s.14(1), which sets ₹60 employee and ₹180 employer PER YEAR — ₹30 and ₹90 a half-year. The citation offered for ₹10/₹30 did not resolve to a government page.",
+  GA: "₹60 employee and ₹180 employer per HALF-YEAR, at the owner's explicit direction on 18 September 2026 (deducted 30 June and 31 December, remitted by 31 July and 31 January). CHECK THIS FIRST: Goa Act 6 of 2004 s.14(1) sets these same figures — ₹60 and ₹180 — PER YEAR, which is ₹30 and ₹90 a half-year, exactly half what is charged here. The owner has given three different figures for Goa across this project; this is the one currently held, and it is double the Gazette's half-yearly equivalent.",
 };
 
 export type MinimumWageSeed = {
