@@ -8,6 +8,8 @@
  * (Odisha, Chhattisgarh) additionally have contested APPLICABILITY.
  */
 
+import { PT_UNMODELLED } from "../lib/payroll/statutory";
+
 const R = (rupees: number) => Math.round(rupees * 100);
 
 export type JurisdictionSeed = {
@@ -152,11 +154,13 @@ export const PT_SLABS: PtSlabSeed[] = [
   { state: "GJ", min: 0, max: R(12000), amount: 0 },
   { state: "GJ", min: R(12001), max: null, amount: R(200) },
 
-  // Madhya Pradesh
+  /* Madhya Pradesh. The statute sets a higher amount in the TWELFTH
+     month of the tax year — March on an April-March year, not February —
+     and the third band carries one too. */
   { state: "MP", min: 0, max: R(18750), amount: 0 },
   { state: "MP", min: R(18751), max: R(25000), amount: R(125) },
-  { state: "MP", min: R(25001), max: R(33333), amount: R(167) },
-  { state: "MP", min: R(33334), max: null, amount: R(208), overrideMonth: 2, overrideAmount: R(212) },
+  { state: "MP", min: R(25001), max: R(33333), amount: R(166), overrideMonth: 3, overrideAmount: R(174) },
+  { state: "MP", min: R(33334), max: null, amount: R(208), overrideMonth: 3, overrideAmount: R(212) },
 
   /*
    * Several states do not levy on a monthly wage at all. Tamil Nadu,
@@ -232,15 +236,28 @@ export type LwfRateSeed = {
   /** Jobs excluded above `excludeAboveWage`, both conditions together. */
   excludedCategories?: ("managerial" | "supervisory")[];
   excludeAboveWage?: number;
+  /**
+   * Where a state levies a share of wages rather than a flat sum. The
+   * `employee` amount then means the CAP, not the charge.
+   */
+  employeePercentBps?: number;
+  /** The employer's multiple of what the employee actually paid. */
+  employerMultiple?: number;
 };
 
 /** UNVERIFIED — see file header. */
 export const LWF_RATES: LwfRateSeed[] = [
   { state: "MH", employee: R(25), employer: R(75), frequency: "half_yearly", months: [6, 12] },
-  { state: "HR", employee: R(34), employer: R(68), frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+  /* Haryana levies "zero point two percent of his salary or wages
+     subject to a limit of rupees thirty-five", with the employer owing
+     twice what the employee actually paid. A flat ₹35 over-deducts from
+     everybody earning under ₹17,500. */
+  { state: "HR", employee: R(35), employer: R(70), employeePercentBps: 20, employerMultiple: 2,
+    frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
   // Delhi does not apply the Act below five employees at all.
   { state: "DL", employee: R(0.75), employer: R(2.25), frequency: "half_yearly", months: [6, 12], minHeadcount: 5 },
-  { state: "KA", employee: R(20), employer: R(40), frequency: "annual", months: [12] },
+  // Karnataka Act No. 05 of 2025 raised these from ₹20/₹40.
+  { state: "KA", employee: R(50), employer: R(100), frequency: "annual", months: [12] },
   { state: "TN", employee: R(20), employer: R(40), frequency: "annual", months: [12] },
   { state: "AP", employee: R(30), employer: R(70), frequency: "annual", months: [12] },
   { state: "TG", employee: R(2), employer: R(5), frequency: "annual", months: [12] },
@@ -255,11 +272,91 @@ export const LWF_RATES: LwfRateSeed[] = [
     excludedCategories: ["managerial", "supervisory"], excludeAboveWage: R(10_000) },
   { state: "OD", employee: R(10), employer: R(20), frequency: "half_yearly", months: [6, 12] },
   { state: "PB", employee: R(5), employer: R(20), frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  { state: "WB", employee: R(3), employer: R(15), frequency: "half_yearly", months: [6, 12] },
+  // The employer share went to ₹30 with effect from 1 January 2024.
+  { state: "WB", employee: R(3), employer: R(30), frequency: "half_yearly", months: [6, 12] },
   { state: "GA", employee: R(10), employer: R(30), government: R(20), frequency: "half_yearly", months: [6, 12] },
   // The Board's current rate, not the ₹4/₹8 the Act's text still prints.
   { state: "KL", employee: R(45), employer: R(45), frequency: "half_yearly", months: [6, 12] },
   { state: "CH", employee: R(5), employer: R(20), frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
+];
+
+/**
+ * Where each state's figures were read from.
+ *
+ * Recorded so that ticking `verified` is a confirmation rather than a
+ * research task: the person checking opens the notification named here
+ * and compares. A state missing from this map has figures nobody has
+ * traced to a publication yet.
+ */
+export const PT_SOURCES: Record<string, string> = {
+  MH: "Maharashtra Profession Tax Act 1975, Schedule I (rates from 01-04-2023) — mahagst.gov.in",
+  KA: "Karnataka Tax on Professions Act, Schedule (see s.3(2)), Sl.No.1 — ptax.karnataka.gov.in",
+  NL: "Nagaland Commissioner of State Taxes, Public Notice No. CT/LEG/P.TAX/2/2022 dated 25 September 2025 — nagalandtax.nic.in",
+  TR: "Tripura Gazette Extraordinary No. 443, 25 July 2018, No.F.II-I(7)-TAX/99(P-I), as corrected by Gazette No. 1031 of 30 October 2018 — taxes.tripura.gov.in",
+  MP: "MP Commercial Tax Dept PT schedule — mptax.mp.gov.in. The higher amount falls in the twelfth month of the tax year.",
+  TN: "Greater Chennai Corporation Revenue Dept schedule, half-yearly income bands divided by six. Each local body fixes its own rates within state bands, so this is Chennai's.",
+  KL: "Kerala municipal/panchayat schedule, half-yearly income bands divided by six, administered by local bodies.",
+  PY: "Puducherry schedule, half-yearly income bands divided by six.",
+  BR: "Bihar schedule, annual income bands divided by twelve.",
+  JH: "Jharkhand schedule, annual income bands divided by twelve.",
+  MN: "Manipur schedule, annual income bands divided by twelve. The least well attested of these — check it first.",
+  AS: "Assam schedule, monthly wage bands.",
+  MZ: "Mizoram schedule, monthly wage bands.",
+  SK: "Sikkim schedule, monthly wage bands.",
+  ML: PT_UNMODELLED.ML,
+  PB: PT_UNMODELLED.PB,
+};
+
+export const LWF_SOURCES: Record<string, string> = {
+  KA: "Karnataka Labour Welfare Fund (Amendment) Act 2024 — Karnataka Act No. 05 of 2025, Gazette Extraordinary Part IV-A No. 19 — klwb.karnataka.gov.in",
+  WB: "Kolkata Gazette Extraordinary 2 December 2024, Labour Dept notification No. Labr/576641/2024/(LC-LW/MW), effective 1 January 2024 — labour.wb.gov.in",
+  HR: "Haryana Labour Welfare Fund — 0.2% of wages subject to a limit of ₹35, employer twice what the employee paid — hrylabour.gov.in",
+  MP: "M.P. Shram Kalyan Nidhi Adhiniyam, rates after the 2026 amendment. The employer owes at least ₹2,500 per establishment per half-year — shramkalyanmandal.mp.gov.in",
+  CG: "Chhattisgarh welfare fund — ₹15 employee, ₹45 employer per half-year. No establishment minimum applies here; Madhya Pradesh's ₹2,500 does not carry over.",
+  KL: "Kerala Labour Welfare Fund Board's current published contribution rate, payable by 15 July and 15 January. The Act's own text still prints ₹4/₹8; the Board's current rate is what is collected.",
+  DL: "Delhi Labour Welfare Board. The Act reaches establishments of five or more only. Managerial and supervisory exclusions under the Delhi rules are NOT yet modelled here.",
+  GA: "Goa Labour Welfare Board's published contribution, at the owner's direction. CHECK THIS FIRST: it contradicts the Goa Labour Welfare Fund (Amendment) Act 2004 (Goa Act 6 of 2004) s.14(1), which sets ₹60 employee and ₹180 employer PER YEAR — ₹30 and ₹90 a half-year. The citation offered for ₹10/₹30 did not resolve to a government page.",
+};
+
+export type MinimumWageSeed = {
+  state: string;
+  skill: "unskilled" | "semi_skilled" | "skilled" | "highly_skilled";
+  monthlyPaise: number;
+  effectiveFrom: string;
+  source: string;
+};
+
+/**
+ * State minimum wages, by skill category.
+ *
+ * READ THIS BEFORE RELYING ON IT. Only the states below are here. A state
+ * that is absent is not a state with no minimum wage — it is a state
+ * nobody has entered yet, and the payroll says so: every employee there
+ * raises `minimum_wage_unverifiable` on the run rather than silently
+ * passing a check that never ran. Enter the rest from Settings →
+ * Payroll, where each one records the notification it came from.
+ *
+ * These are basic + VDA for the general scheduled employment. A state
+ * notifies many schedules (shops, factories, construction, and so on)
+ * and zones within them; where a company's employment differs, the
+ * figure has to be entered for it.
+ */
+export const MINIMUM_WAGES: MinimumWageSeed[] = [
+  ...(
+    [
+      ["unskilled", 1522071],
+      ["semi_skilled", 1678074],
+      ["skilled", 1850081],
+      ["highly_skilled", 1942585],
+    ] as const
+  ).map(([skill, monthlyPaise]) => ({
+    state: "HR",
+    skill,
+    monthlyPaise,
+    effectiveFrom: "2026-04-01",
+    source:
+      "Haryana Govt Gazette (Extraordinary) No. 51-2026/Ext., Notification No. 2/25/26-2 Lab, 9 April 2026",
+  })),
 ];
 
 export const STATUTORY_PARAMS = [
@@ -302,4 +399,4 @@ export const STATUTORY_PARAMS = [
   { key: "tds.206AA.rate", value: 2000, unit: "bps" as const, note: "20% where the payee has given no PAN — a floor, not a replacement", source: "Section 206AA" },
 ];
 
-export { PT_UNMODELLED } from "../lib/payroll/statutory";
+export { PT_UNMODELLED };

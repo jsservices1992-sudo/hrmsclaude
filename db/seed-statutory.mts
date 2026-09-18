@@ -32,6 +32,9 @@ import {
   JURISDICTIONS,
   PT_SLABS,
   LWF_RATES,
+  LWF_SOURCES,
+  MINIMUM_WAGES,
+  PT_SOURCES,
   STATUTORY_PARAMS,
 } from "./statutory-data";
 
@@ -104,6 +107,7 @@ try {
         effectiveFrom: EFFECTIVE_FROM,
         effectiveTo: null,
         verified: false,
+        source: PT_SOURCES[r.state] ?? null,
       })),
     );
   }
@@ -125,8 +129,11 @@ try {
         stateCode: r.state,
         employeePaise: r.employee,
         employerPaise: r.employer,
+        employeePercentBps: r.employeePercentBps ?? null,
+        employerMultiple: r.employerMultiple ?? null,
         frequency: r.frequency,
         deductionMonths: r.months.join(","),
+        source: LWF_SOURCES[r.state] ?? null,
         minEstablishmentHeadcount: r.minHeadcount ?? null,
         employerMinimumPaise: r.employerMinimum ?? null,
         governmentPaise: r.government ?? null,
@@ -139,6 +146,42 @@ try {
     );
   }
   console.log(`  lwf rates          ${LWF_RATES.filter((r) => lwfStates.includes(r.state)).length}`);
+
+  /* Minimum wages, for the states anybody has entered. A verified row is
+     somebody's own checked figure and is never overwritten. */
+  const mwStates = [...new Set(MINIMUM_WAGES.map((w) => w.state))];
+  if (mwStates.length > 0) {
+    const verifiedMw = new Set(
+      (
+        await db
+          .select({ stateCode: s.minimumWages.stateCode })
+          .from(s.minimumWages)
+          .where(eq(s.minimumWages.verified, true))
+      ).map((r) => r.stateCode),
+    );
+    const toSeed = MINIMUM_WAGES.filter((w) => !verifiedMw.has(w.state));
+    if (toSeed.length > 0) {
+      await db.delete(s.minimumWages).where(
+        and(
+          inArray(s.minimumWages.stateCode, [...new Set(toSeed.map((w) => w.state))]),
+          eq(s.minimumWages.verified, false),
+        ),
+      );
+      await db.insert(s.minimumWages).values(
+        toSeed.map((w) => ({
+          id: randomUUID(),
+          stateCode: w.state,
+          skillCategory: w.skill,
+          monthlyPaise: w.monthlyPaise,
+          effectiveFrom: w.effectiveFrom,
+          effectiveTo: null,
+          verified: false,
+          source: w.source,
+        })),
+      );
+    }
+    console.log(`  minimum wages      ${toSeed.length}`);
+  }
 
   /* Central parameters carry no per-state verification, so these are
      simply replaced at this effective date. */
