@@ -195,6 +195,26 @@ export const PT_SLABS: PtSlabSeed[] = [
     [50000, 0], [75000, 1200], [100000, 2000], [125000, 2400], [null, 2500],
   ]),
 
+  /* Meghalaya bands ANNUAL income, so its ceilings divide by twelve like
+     Bihar's and Jharkhand's. It held a single nil band until the owner
+     supplied this schedule. */
+  ...ANN("ML", [
+    [50000, 0], [75000, 200], [100000, 300], [150000, 500], [200000, 750],
+    [250000, 1000], [300000, 1250], [350000, 1500], [400000, 1800],
+    [450000, 2100], [500000, 2400], [null, 2500],
+  ]),
+
+  /*
+   * Punjab's State Development Tax is a flat ₹200 a month on a salaried
+   * employee, capped at the ₹2,400 a year the Act allows — not a wage
+   * ladder, which is why a band table had nothing to say about it.
+   *
+   * NOTE: the Act reaches a person liable to income tax, and this charges
+   * every salaried employee regardless, at the owner's direction. Somebody
+   * below the taxable limit is therefore deducted ₹200 they may not owe.
+   */
+  { state: "PB", min: 0, max: null, amount: R(200), annualCap: R(2400) },
+
   // Monthly-wage states.
   ...MONTHLY("AS", [[10000, 0], [14999, 150], [24999, 180], [null, 208]]),
   ...MONTHLY("MZ", [
@@ -208,16 +228,6 @@ export const PT_SLABS: PtSlabSeed[] = [
   // Tripura: Gazette Extraordinary No. 443 of 25 July 2018.
   ...MONTHLY("TR", [[7500, 0], [15000, 150], [null, 208]]),
 
-  /*
-   * Meghalaya levies PT but its schedule is not recorded here, and
-   * Punjab's ₹200 is conditioned on the person being liable to income
-   * tax rather than on a wage band, which this table cannot express.
-   * Both are seeded as a single nil band: deducting nothing is visibly
-   * wrong and gets corrected, whereas a guessed band quietly charges
-   * every employee the wrong amount. `PT_UNMODELLED` says so in code.
-   */
-  { state: "ML", min: 0, max: null, amount: 0 },
-  { state: "PB", min: 0, max: null, amount: 0, annualCap: R(2400) },
 
 ];
 
@@ -254,8 +264,12 @@ export const LWF_RATES: LwfRateSeed[] = [
      everybody earning under ₹17,500. */
   { state: "HR", employee: R(35), employer: R(70), employeePercentBps: 20, employerMultiple: 2,
     frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  // Delhi does not apply the Act below five employees at all.
-  { state: "DL", employee: R(0.75), employer: R(2.25), frequency: "half_yearly", months: [6, 12], minHeadcount: 5 },
+  /* Delhi: ₹0.75 employee and ₹2.25 employer each half-year, with the
+     government matching ₹1.50. Deducted 30 June and 31 December, remitted
+     by 15 July and 15 January. The Act does not reach an establishment of
+     fewer than five at all. */
+  { state: "DL", employee: R(0.75), employer: R(2.25), government: R(1.5),
+    frequency: "half_yearly", months: [6, 12], minHeadcount: 5 },
   // Karnataka Act No. 05 of 2025 raised these from ₹20/₹40.
   { state: "KA", employee: R(50), employer: R(100), frequency: "annual", months: [12] },
   { state: "TN", employee: R(20), employer: R(40), frequency: "annual", months: [12] },
@@ -274,7 +288,13 @@ export const LWF_RATES: LwfRateSeed[] = [
   { state: "PB", employee: R(5), employer: R(20), frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
   // The employer share went to ₹30 with effect from 1 January 2024.
   { state: "WB", employee: R(3), employer: R(30), frequency: "half_yearly", months: [6, 12] },
-  { state: "GA", employee: R(10), employer: R(30), government: R(20), frequency: "half_yearly", months: [6, 12] },
+  /* Goa: ₹60 employee and ₹180 employer each half-year — deducted on
+     30 June and 31 December, remitted by 31 July and 31 January — which
+     comes to ₹120 and ₹360 a year. Supplied by the owner, who has now
+     given three different figures for this state; this is the one that
+     stands. It is twice what Goa Act 6 of 2004 s.14(1) sets, that Act
+     reading ₹60 and ₹180 per YEAR. Settle which before ticking verified. */
+  { state: "GA", employee: R(60), employer: R(180), frequency: "half_yearly", months: [6, 12] },
   // The Board's current rate, not the ₹4/₹8 the Act's text still prints.
   { state: "KL", employee: R(45), employer: R(45), frequency: "half_yearly", months: [6, 12] },
   { state: "CH", employee: R(5), employer: R(20), frequency: "monthly", months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
@@ -303,8 +323,8 @@ export const PT_SOURCES: Record<string, string> = {
   AS: "Assam schedule, monthly wage bands.",
   MZ: "Mizoram schedule, monthly wage bands.",
   SK: "Sikkim schedule, monthly wage bands.",
-  ML: PT_UNMODELLED.ML,
-  PB: PT_UNMODELLED.PB,
+  ML: "Meghalaya annual-income schedule, ceilings and amounts divided by twelve to the monthly equivalent this engine compares against. Supplied by the owner, 18 September 2026.",
+  PB: "Punjab State Development Tax — a flat ₹200 a month on a salaried employee, capped at ₹2,400 a year. Supplied by the owner, 18 September 2026. The Act reaches a person liable to income tax; this charges every salaried employee, at the owner's direction.",
 };
 
 export const LWF_SOURCES: Record<string, string> = {
@@ -362,9 +382,9 @@ function w(
  */
 function hr(): MinimumWageSeed[] {
   const source =
-    "Haryana Govt Gazette (Extraordinary) No. 51-2026/Ext., Notification No. 2/25/26-2 Lab, 9 April 2026. " +
-    "CONFLICT: a compiled workbook gives ₹11,275 / ₹13,052 / ₹13,704 / ₹14,390 for the same period, about 26% lower. " +
-    "The Gazette is taken here because it is the primary source. Resolve this before ticking verified.";
+    "Haryana Govt Gazette (Extraordinary) No. 51-2026/Ext., Notification No. 2/25/26-2 Lab, effective 1 April 2026. " +
+    "A compiled workbook gave ₹11,275 / ₹13,052 / ₹13,704 / ₹14,390 for the same period, about 26% lower; " +
+    "the owner confirmed the Gazette figures on 18 September 2026 and those are what is held here.";
   const paise = [1_522_071, 1_678_074, 1_850_081, 1_942_585];
   return SKILL_ORDER.map((skill, i) => ({
     state: "HR",
@@ -411,7 +431,20 @@ export const MINIMUM_WAGES: MinimumWageSeed[] = [
   w("CG", "Zone C", "2026-04-01", [10656, 11371, 12086, 12866], "Labour Dept Notification (2026)"),
   w("CH", null, "2025-10-01", [14562, 15012, 15237, 15637], "Chandigarh Labour Notif"),
   w("DD", null, "2026-04-01", [12649, 12922, 13195, 14000], "DNH Notif 30-Apr-2026"),
-  w("DL", null, "2026-04-01", [19846, 21903, 24098, 26191], "Delhi Labour Notif (2026)"),
+  /*
+   * Delhi notifies on two axes: unskilled / semi-skilled / skilled for
+   * manual work, and non-matriculate / matriculate-non-graduate /
+   * graduate-and-above for clerical and supervisory work. This table has
+   * one axis, so the clerical rates fold onto it where they coincide —
+   * non-matriculate equals semi-skilled and matriculate equals skilled
+   * at the same figures — and "graduate and above" takes the
+   * highly-skilled slot, being the highest Delhi sets.
+   */
+  w("DL", null, "2026-04-01", [18456, 20371, 22411, 24356],
+    "Delhi minimum wage notification, basic + VDA, supplied by the owner 18 September 2026. " +
+    "The highly-skilled figure is Delhi's 'graduate and above' rate. " +
+    "A compiled workbook gives ₹19,846 / ₹21,903 / ₹24,098 / ₹26,191 for the same period, about 7% higher; " +
+    "the owner's figures are taken. Settle which before ticking verified."),
   w("GA", "Zone A", "2026-04-01", [14274, 15782, 17290, 18500], "Labour Dept Notification (2026)"),
   w("GA", "Zone B", "2026-04-01", [14144, 15652, 17160, 18400], "Labour Dept Notification (2026)"),
   w("GJ", "Zone I", "2026-04-01", [13325, 13611, 13897, 14500], "Labour Dept Notification (2026)"),

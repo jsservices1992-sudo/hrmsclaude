@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { PT_SLABS, PT_UNMODELLED } from "./statutory-data";
+import { PT_SLABS, PT_UNMODELLED, JURISDICTIONS, LWF_RATES } from "./statutory-data";
 import { checkSlabCoverage, computeProfessionalTax, type PtSlab } from "../lib/payroll/statutory";
 
 const R = (rupees: number) => Math.round(rupees * 100);
@@ -69,4 +69,69 @@ test("a state we cannot model deducts nothing rather than a plausible wrong figu
   for (const state of Object.keys(PT_UNMODELLED)) {
     assert.equal(deduct(state, 90_000), 0, `${state} should deduct nothing until it is modelled`);
   }
+});
+
+test("Meghalaya bands annual income, compared monthly", () => {
+  /*
+   * Its schedule exempts ₹50,000 a year, which is ₹4,166.67 a month, and
+   * tops out at ₹2,500 a year — ₹208.33 a month. Meghalaya held a single
+   * nil band before this, so nothing was deducted there at all.
+   */
+  assert.equal(deduct("ML", 4_000), 0, "₹48,000 a year is under the exemption");
+  assert.equal(deduct("ML", 5_000), R(200 / 12), "₹60,000 a year is the first paying band");
+  assert.equal(deduct("ML", 50_000), R(2500 / 12), "₹6L a year is the top band");
+  // ₹3,00,000 a year — the ₹1,250 band, not the ₹1,500 one above it.
+  assert.equal(deduct("ML", 25_000), R(1250 / 12));
+});
+
+test("Punjab charges its flat State Development Tax", () => {
+  // Not a wage ladder: ₹200 a month whatever the salary, capped at ₹2,400.
+  for (const wage of [12_000, 35_000, 120_000]) {
+    assert.equal(deduct("PB", wage), R(200), `₹${wage} should pay ₹200`);
+  }
+  const bands = PT_SLABS.filter((s) => s.state === "PB");
+  assert.equal(bands.length, 1, "one band, because there is no ladder");
+  assert.equal(bands[0].annualCap, R(2400), "Punjab's cap is ₹2,400, not ₹2,500");
+});
+
+test("nothing is left unmodelled without being named", () => {
+  /*
+   * PT_UNMODELLED is empty now that Meghalaya and Punjab are held. If a
+   * state is ever put back in it, it must deduct nothing — a visible zero
+   * that gets fixed, rather than a plausible figure nobody checks.
+   */
+  for (const state of Object.keys(PT_UNMODELLED)) {
+    assert.equal(deduct(state, 90_000), 0, `${state} should deduct nothing until it is modelled`);
+    assert.ok(PT_UNMODELLED[state].length > 20, `${state} must say why`);
+  }
+});
+
+test("Delhi levies no professional tax", () => {
+  assert.equal(
+    JURISDICTIONS.find((j) => j.code === "DL")?.pt,
+    false,
+    "Delhi does not levy PT, so nothing should be deducted for it",
+  );
+  assert.equal(
+    PT_SLABS.filter((s) => s.state === "DL").length,
+    0,
+    "and it should carry no slabs that could be applied by mistake",
+  );
+});
+
+test("Delhi's welfare fund carries all three shares and its headcount floor", () => {
+  const dl = LWF_RATES.find((r) => r.state === "DL")!;
+  assert.equal(dl.employee, R(0.75));
+  assert.equal(dl.employer, R(2.25));
+  assert.equal(dl.government, R(1.5), "the state's own matching share, recorded for the return");
+  assert.equal(dl.frequency, "half_yearly");
+  assert.deepEqual(dl.months, [6, 12], "deducted 30 June and 31 December");
+  assert.equal(dl.minHeadcount, 5, "the Act does not reach a smaller establishment at all");
+  /* Nobody is excluded: the Act excludes managerial staff and supervisory
+     staff above a wage, but that wage is not established here, so
+     everybody contributes rather than a guessed threshold excluding the
+     wrong people. Over-contributing is ₹1.50 a year; the other way is a
+     shortfall at assessment. */
+  assert.equal(dl.excludedCategories, undefined);
+  assert.equal(dl.excludeAboveWage, undefined);
 });

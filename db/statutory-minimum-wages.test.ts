@@ -135,9 +135,9 @@ test("Karnataka's zones carry the figures its notification prints", () => {
 
 test("Haryana keeps its Gazette figures, not the workbook's", () => {
   /*
-   * The two sources disagree by about 26% for the same period. The
-   * Gazette is primary and wins; this pins that decision so a later
-   * bulk reload of the workbook cannot quietly reverse it.
+   * A compiled workbook put these about 26% lower for the same period.
+   * The owner confirmed the Gazette on 18 September 2026, and this pins
+   * that decision so a later bulk reload cannot quietly reverse it.
    */
   const expected = [15_220.71, 16_780.74, 18_500.81, 19_425.85];
   SKILLS.forEach((skill, i) => {
@@ -145,5 +145,29 @@ test("Haryana keeps its Gazette figures, not the workbook's", () => {
     assert.equal(r?.monthlyPaise, Math.round(expected[i] * 100), `HR ${skill}`);
   });
   const row = MINIMUM_WAGES.find((w) => w.state === "HR")!;
-  assert.match(row.source, /CONFLICT/, "the disagreement must stay recorded on the row");
+  assert.match(
+    row.source,
+    /owner confirmed the Gazette/,
+    "the row must still say the figures were disputed and how it was settled",
+  );
+  assert.match(row.source, /2\/25\/26-2 Lab/, "and name the notification");
+});
+
+test("Delhi carries the rates its own notification prints", () => {
+  /*
+   * Delhi notifies on two axes — unskilled/semi-skilled/skilled for
+   * manual work, and non-matriculate/matriculate/graduate for clerical
+   * and supervisory work. This table has one, so the clerical rates fold
+   * onto it where they coincide and "graduate and above" takes the
+   * highly-skilled slot. A compiled workbook put all four about 7%
+   * higher; the owner's figures are what is held.
+   */
+  const expected = [18_456, 20_371, 22_411, 24_356];
+  SKILLS.forEach((skill, i) => {
+    const r = applicableMinimumWage(rules, "DL", skill, ASOF, null);
+    assert.equal(r?.monthlyPaise, expected[i] * 100, `DL ${skill}`);
+  });
+  const row = MINIMUM_WAGES.find((w) => w.state === "DL")!;
+  assert.match(row.source, /graduate and above/i, "the mapping must be stated on the row");
+  assert.match(row.source, /7% higher/, "and the workbook's disagreement recorded");
 });
