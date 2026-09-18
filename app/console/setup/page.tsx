@@ -129,9 +129,14 @@ export default async function SetupPage() {
         </Card>
       ) : (
         <p className="text-xs text-ink-3 max-w-[70ch]">
-          Before anyone&rsquo;s real salary goes through this: the tax and
-          statutory figures shipped here are development placeholders and have
-          not been verified against the Finance Act. Have them checked.
+          Before anyone&rsquo;s real salary goes through this: the income tax
+          configuration has not been checked against the Finance Act. The
+          professional tax, welfare fund and minimum wage figures are a separate
+          matter and have been attested — see{" "}
+          <Link href="/console/compliance" className="text-brass hover:underline">
+            statutory configuration
+          </Link>{" "}
+          for who signed off on which row.
         </p>
       )}
     </div>

@@ -95,15 +95,6 @@ export default async function ComplianceConfigPage() {
         </div>
       )}
 
-      {contested.length > 0 && (
-            <>
-              {" "}
-              <strong className="text-ink">{contested.length}</strong>{" "}
-              jurisdictions additionally have contested <em>applicability</em>.
-            </>
-          )}
-        </p>
-      </div>
 
       {contested.length > 0 && (
         <Card padded={false}>
