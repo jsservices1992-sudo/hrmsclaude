@@ -443,8 +443,9 @@ export const MINIMUM_WAGES: MinimumWageSeed[] = [
   w("DL", null, "2026-04-01", [18456, 20371, 22411, 24356],
     "Delhi minimum wage notification, basic + VDA, supplied by the owner 18 September 2026. " +
     "The highly-skilled figure is Delhi's 'graduate and above' rate. " +
-    "A compiled workbook gives ₹19,846 / ₹21,903 / ₹24,098 / ₹26,191 for the same period, about 7% higher; " +
-    "the owner's figures are taken. Settle which before ticking verified."),
+    "Confirmed by the owner on 18 September 2026 and cross-checked against Delhi's own day rates — " +
+    "₹710, ₹784, ₹862 and ₹937, each the monthly figure over 26. " +
+    "A compiled workbook gave ₹19,846 / ₹21,903 / ₹24,098 / ₹26,191 for the same period; these are what stand."),
   w("GA", "Zone A", "2026-04-01", [14274, 15782, 17290, 18500], "Labour Dept Notification (2026)"),
   w("GA", "Zone B", "2026-04-01", [14144, 15652, 17160, 18400], "Labour Dept Notification (2026)"),
   w("GJ", "Zone I", "2026-04-01", [13325, 13611, 13897, 14500], "Labour Dept Notification (2026)"),

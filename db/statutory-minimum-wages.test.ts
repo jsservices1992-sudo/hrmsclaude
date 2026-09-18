@@ -159,8 +159,8 @@ test("Delhi carries the rates its own notification prints", () => {
    * manual work, and non-matriculate/matriculate/graduate for clerical
    * and supervisory work. This table has one, so the clerical rates fold
    * onto it where they coincide and "graduate and above" takes the
-   * highly-skilled slot. A compiled workbook put all four about 7%
-   * higher; the owner's figures are what is held.
+   * highly-skilled slot. The owner confirmed these figures; a compiled
+   * workbook's higher set is not used.
    */
   const expected = [18_456, 20_371, 22_411, 24_356];
   SKILLS.forEach((skill, i) => {
@@ -169,7 +169,7 @@ test("Delhi carries the rates its own notification prints", () => {
   });
   const row = MINIMUM_WAGES.find((w) => w.state === "DL")!;
   assert.match(row.source, /graduate and above/i, "the mapping must be stated on the row");
-  assert.match(row.source, /7% higher/, "and the workbook's disagreement recorded");
+  assert.match(row.source, /Confirmed by the owner/, "and record that they were confirmed");
 });
 
 test("Delhi's monthly rates still agree with the day rates it publishes", () => {
