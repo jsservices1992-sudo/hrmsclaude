@@ -15,6 +15,10 @@ export type MasterState = {
   ok?: string;
   /** What was submitted, so a refused form keeps the person's own work. */
   values?: Record<string, string>;
+  /** Set when a pay component was just created, so a caller that needs
+      to select it right away (the structure editor) can do so without
+      another round trip. */
+  newComponentId?: string;
 };
 
 const nullable = (v: FormDataEntryValue | null) => {
@@ -402,7 +406,17 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
   await db.insert(s.payComponents).values({ id: newId, companyId, ...values });
   await audit({ actor: user.email, action: "pay_component.created", entity: "pay_component", entityId: newId, after: values });
   revalidate();
-  return { ok: "Component added. It becomes available to salary structures immediately." };
+  /* Created from a structure's own page rather than Master Data — the
+     structure page has to see it too, or "it becomes available
+     immediately" is not true from where the admin is standing. */
+  const fromStructureId = nullable(fd.get("structureId"));
+  if (fromStructureId) {
+    revalidatePath(`/console/settings/payroll/structures/${fromStructureId}`);
+  }
+  return {
+    ok: "Component added. It becomes available to salary structures immediately.",
+    newComponentId: newId,
+  };
 }
 
 /**

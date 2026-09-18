@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { login, type LoginState } from "./actions";
 
@@ -19,6 +19,7 @@ function SubmitButton() {
 
 export default function LoginForm() {
   const [state, formAction] = useActionState<LoginState, FormData>(login, {});
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -34,10 +35,26 @@ export default function LoginForm() {
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="label text-ink-3">Password</span>
+        <span className="label text-ink-3 flex items-center justify-between">
+          Password
+          {/*
+           * A freshly issued password is unfamiliar and easy to
+           * mistype, and a masked field gives nobody a way to notice
+           * before submitting — the one moment it would actually help.
+           * Toggling it visible costs nothing once the person is past
+           * that first sign-in and typing a password they know by hand.
+           */}
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="text-xs font-normal text-ink-3 hover:text-ink-2 underline"
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </span>
         <input
           name="password"
-          type="password"
+          type={showPassword ? "text" : "password"}
           autoComplete="current-password"
           required
           className="px-3 py-2.5 bg-surface border border-line focus:border-ink-3 outline-none"

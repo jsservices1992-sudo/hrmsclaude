@@ -11,6 +11,7 @@ import {
   RemoveLineForm,
   SetDefaultForm,
 } from "../forms";
+import { PayComponentForm } from "@/app/console/settings/master-data/forms";
 import {
   PageHeader,
   Card,
@@ -81,6 +82,15 @@ export default async function StructureDetailPage(
     .orderBy(asc(s.payComponents.sequence));
 
   const candidates = await findCandidateEmployees(structure.companyId, structureId);
+
+  /* Every one of the company's components, not just the ones this
+     structure does not use yet — creating a new one that is a percent
+     of an existing line needs to see it too. */
+  const allComponents = await db
+    .select({ id: s.payComponents.id, code: s.payComponents.code, name: s.payComponents.name })
+    .from(s.payComponents)
+    .where(eq(s.payComponents.companyId, structure.companyId))
+    .orderBy(asc(s.payComponents.sequence));
 
   return (
     <div className="flex flex-col gap-6">
@@ -167,7 +177,35 @@ export default async function StructureDetailPage(
             <span className="label text-ink-2">Add a component</span>
           </div>
           <div className="p-4">
-            <AddLineForm structureId={structure.id} availableComponents={availableComponents} />
+            {availableComponents.length > 0 ? (
+              <AddLineForm structureId={structure.id} availableComponents={availableComponents} />
+            ) : (
+              <p className="text-sm text-ink-2">
+                Every component this company has is already on this structure. Create a new one below to add another.
+              </p>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {isAdmin && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">Create a new component</span>
+          </div>
+          <div className="p-4">
+            <p className="text-xs text-ink-2 max-w-[72ch] mb-3">
+              Not the same as picking one above — this defines a component
+              this company has never had before, the way Settings → Master
+              Data → Pay components does. It appears in the list above and
+              on every other structure&rsquo;s once it exists; adding it to
+              this one is the separate step above.
+            </p>
+            <PayComponentForm
+              companyId={structure.companyId}
+              otherComponents={allComponents.map((c) => ({ code: c.code, name: c.name }))}
+              structureId={structure.id}
+            />
           </div>
         </Card>
       )}

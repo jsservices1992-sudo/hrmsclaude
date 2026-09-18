@@ -356,9 +356,17 @@ export function PayComponentForm({
   companyId,
   otherComponents,
   editing,
+  structureId,
 }: {
   companyId: string;
   otherComponents: { code: string; name: string }[];
+  /**
+   * Set when this form is rendered on a structure's own page rather
+   * than Master Data, so the action revalidates that page too — without
+   * it the component exists but the structure page that just created it
+   * would not show it as available until something else refreshed it.
+   */
+  structureId?: string;
   editing?: {
     id: string; code: string; name: string; kind: string; calcMethod: string;
     percentValue: number; percentOfCode: string | null; fixedPaise: number;
@@ -371,6 +379,7 @@ export function PayComponentForm({
     <form action={action} className="flex flex-col gap-2 border border-line-2 p-3">
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
+      {structureId && <input type="hidden" name="structureId" value={structureId} />}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Code</span>

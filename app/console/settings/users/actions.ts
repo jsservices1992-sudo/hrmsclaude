@@ -1,6 +1,6 @@
 "use server";
 
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
@@ -32,9 +32,24 @@ async function requireAdmin() {
   return { user, error: null };
 }
 
-/** A generated password, shown once. Nobody types a password into this form. */
+/**
+ * A generated password, shown once, meant to be RELAYED by a person —
+ * read off a screen, typed into a chat, sometimes read aloud — not
+ * copy-pasted end to end. `base64url` is fine for a machine but not for
+ * a human: 'I'/'l'/'1' and 'O'/'0' are the same shape in most fonts and
+ * indistinguishable read aloud, and a masked password field gives nobody
+ * a way to notice the mistake before submitting.
+ *
+ * So the alphabet drops every character with a common look-alike —
+ * i, I, l, 1, o, O, 0 are all out — and the length is longer than
+ * `randomBytes` would need, to keep the entropy where it was despite
+ * the smaller alphabet (23 chars from 54 symbols is >130 bits).
+ */
+const READABLE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
 function newPassword() {
-  return randomBytes(18).toString("base64url");
+  let out = "";
+  for (let i = 0; i < 23; i++) out += READABLE_CHARS[randomInt(READABLE_CHARS.length)];
+  return out;
 }
 
 /** Whether the actor may act on this account at all. */
