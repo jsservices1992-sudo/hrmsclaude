@@ -11,7 +11,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { recordAccess } from "@/lib/audit/log";
-import { ProofDecisionForm, RegimeForm, CloseWindowForm, PerquisiteForm } from "../forms";
+import { ProofDecisionForm, RegimeForm, CloseWindowForm, PerquisiteForm, SpecialRateForm } from "../forms";
 import { Card, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 
 export const metadata = { title: "Tax worksheet" };
@@ -439,6 +439,68 @@ export default async function TaxWorksheetPage(
             <span className="label text-ink-2">Add a perquisite</span>
           </div>
           <PerquisiteForm employeeId={emp.id} />
+        </Card>
+      )}
+
+      {/* special-rate income — capital gains, VDA, lottery, gaming */}
+      {w.specialRate && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="label text-ink-2">Special-rate income</span>
+            <span className="label text-ink-3">not part of salary TDS above — computed and shown separately</span>
+          </div>
+          {w.specialRate.special.stcgSpecifiedTaxPaise > 0 && (
+            <Row label="STCG — specified (20%)" value={formatINR(w.specialRate.special.stcgSpecifiedTaxPaise)} />
+          )}
+          {w.specialRate.special.ltcgSpecifiedTaxPaise > 0 && (
+            <Row
+              label="LTCG — specified (12.5%)"
+              value={formatINR(w.specialRate.special.ltcgSpecifiedTaxPaise)}
+              note={`On ${formatINR(w.specialRate.special.ltcgSpecifiedTaxableAboveThresholdPaise)} above the ₹1,25,000 threshold`}
+            />
+          )}
+          {w.specialRate.special.ltcgGeneralTaxPaise > 0 && (
+            <Row label="LTCG — general (12.5%)" value={formatINR(w.specialRate.special.ltcgGeneralTaxPaise)} />
+          )}
+          {w.specialRate.special.vdaTaxPaise > 0 && (
+            <Row label="Virtual digital assets (30%)" value={formatINR(w.specialRate.special.vdaTaxPaise)} />
+          )}
+          {w.specialRate.special.lotteryTaxPaise > 0 && (
+            <Row label="Lottery / games (30%)" value={formatINR(w.specialRate.special.lotteryTaxPaise)} />
+          )}
+          {w.specialRate.special.horseRaceTaxPaise > 0 && (
+            <Row label="Horse race winnings (30%)" value={formatINR(w.specialRate.special.horseRaceTaxPaise)} />
+          )}
+          {w.specialRate.special.onlineGamingTaxPaise > 0 && (
+            <Row label="Online gaming (30%)" value={formatINR(w.specialRate.special.onlineGamingTaxPaise)} />
+          )}
+          <Row
+            label="Surcharge on special-rate tax"
+            value={formatINR(w.specialRate.specialSurchargePaise)}
+            note={`Capital gains capped at ${(w.specialRate.cappedSurchargeRateBps / 100).toFixed(0)}%; VDA/lottery/gaming at the full ${(w.specialRate.surchargeBandRateBps / 100).toFixed(0)}% band`}
+          />
+          <Row
+            label="Total tax on special-rate income"
+            value={formatINR(
+              w.specialRate.special.totalTaxBeforeSurchargePaise +
+                w.specialRate.specialSurchargePaise,
+            )}
+            strong
+          />
+          <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2 max-w-[74ch]">
+            Never reduced by the ₹12L/₹60,000 rebate — that rebate applies only
+            to salary taxed at the slab rate. Cess is included in the combined
+            annual tax figure below the computation, not repeated here.
+          </p>
+        </Card>
+      )}
+
+      {canActOnPeople(user) && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">Special-rate income — capital gains, VDA, lottery, gaming</span>
+          </div>
+          <SpecialRateForm employeeId={emp.id} declaration={w.specialRateDeclaration} />
         </Card>
       )}
 

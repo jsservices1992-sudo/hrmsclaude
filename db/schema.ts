@@ -2332,6 +2332,43 @@ export const taxPerquisites = pgTable(
 );
 
 /**
+ * Special-rate income — MODE 1 of `lib/tax/special-rate.ts`: a person
+ * declares an already-computed taxable gain per bucket, not the
+ * underlying transactions. One row per employee per financial year,
+ * the same shape `taxDeclarations` already has, because it is the same
+ * kind of fact: something declared once for the year and revised as
+ * proofs or corrections arrive, not a per-payslip figure.
+ */
+export const taxSpecialRateDeclarations = pgTable(
+  "tax_special_rate_declarations",
+  {
+    id: text("id").primaryKey(),
+    employeeId: text("employee_id")
+      .notNull()
+      .references(() => employees.id),
+    financialYear: integer("financial_year").notNull(),
+    stcgSpecifiedPaise: bigint("stcg_specified_paise", { mode: "number" }).notNull().default(0),
+    stcgOtherPaise: bigint("stcg_other_paise", { mode: "number" }).notNull().default(0),
+    ltcgSpecifiedPaise: bigint("ltcg_specified_paise", { mode: "number" }).notNull().default(0),
+    ltcgGeneralPaise: bigint("ltcg_general_paise", { mode: "number" }).notNull().default(0),
+    currentYearStclPaise: bigint("current_year_stcl_paise", { mode: "number" }).notNull().default(0),
+    currentYearLtclPaise: bigint("current_year_ltcl_paise", { mode: "number" }).notNull().default(0),
+    broughtForwardStclPaise: bigint("brought_forward_stcl_paise", { mode: "number" }).notNull().default(0),
+    broughtForwardLtclPaise: bigint("brought_forward_ltcl_paise", { mode: "number" }).notNull().default(0),
+    vdaPaise: bigint("vda_paise", { mode: "number" }).notNull().default(0),
+    lotteryPaise: bigint("lottery_paise", { mode: "number" }).notNull().default(0),
+    horseRacePaise: bigint("horse_race_paise", { mode: "number" }).notNull().default(0),
+    onlineGamingPaise: bigint("online_gaming_paise", { mode: "number" }).notNull().default(0),
+    dtaaSpecialRatePaise: bigint("dtaa_special_rate_paise", { mode: "number" }).notNull().default(0),
+    updatedBy: text("updated_by"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("tax_special_rate_idx").on(t.employeeId, t.financialYear),
+  ],
+);
+
+/**
  * The monthly TDS actually deducted, by run. Kept separately from the
  * payroll line so a recomputed projection can credit what has already
  * gone to the department without re-reading every payslip.

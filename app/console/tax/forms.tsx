@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { verifyProof, setRegime, closeWindow, addPerquisite, type TaxState } from "./actions";
+import { verifyProof, setRegime, closeWindow, addPerquisite, saveSpecialRateDeclaration, type TaxState } from "./actions";
 import { Input, SubmitButton, FormFeedback } from "@/components/console/ui";
 
 export function ProofDecisionForm({
@@ -210,12 +210,106 @@ function PerquisiteFields({ code }: { code: PerquisiteCode }) {
   }
 }
 
-function Field({ name, label, type = "text" }: { name: string; label: string; type?: string }) {
+function Field({
+  name,
+  label,
+  type = "text",
+  defaultValue,
+}: {
+  name: string;
+  label: string;
+  type?: string;
+  defaultValue?: string;
+}) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs text-ink-2">{label}</span>
-      <input name={name} type={type} inputMode={type === "number" ? "numeric" : "decimal"} className={rupeeField} />
+      <input
+        name={name}
+        type={type}
+        inputMode={type === "number" ? "numeric" : "decimal"}
+        defaultValue={defaultValue}
+        className={rupeeField}
+      />
     </label>
+  );
+}
+
+const rupees = (paise: number | undefined) => (paise ? (paise / 100).toString() : "");
+
+export type SpecialRateDeclarationRow = {
+  stcgSpecifiedPaise: number;
+  stcgOtherPaise: number;
+  ltcgSpecifiedPaise: number;
+  ltcgGeneralPaise: number;
+  currentYearStclPaise: number;
+  currentYearLtclPaise: number;
+  broughtForwardStclPaise: number;
+  broughtForwardLtclPaise: number;
+  vdaPaise: number;
+  lotteryPaise: number;
+  horseRacePaise: number;
+  onlineGamingPaise: number;
+  dtaaSpecialRatePaise: number;
+} | null;
+
+export function SpecialRateForm({
+  employeeId,
+  declaration,
+}: {
+  employeeId: string;
+  declaration: SpecialRateDeclarationRow;
+}) {
+  const [state, action] = useActionState<TaxState, FormData>(saveSpecialRateDeclaration, {});
+  const d = declaration;
+
+  return (
+    <form action={action} className="p-4 space-y-4">
+      <input type="hidden" name="employeeId" value={employeeId} />
+
+      <div>
+        <p className="label text-ink-3 mb-2">Capital gains</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field name="stcgSpecifiedPaise" label="STCG — listed equity/fund, STT paid (20%)" defaultValue={rupees(d?.stcgSpecifiedPaise)} />
+          <Field name="stcgOtherPaise" label="STCG — everything else (taxed at your slab rate)" defaultValue={rupees(d?.stcgOtherPaise)} />
+          <Field name="ltcgSpecifiedPaise" label="LTCG — listed equity/fund (12.5% above ₹1,25,000)" defaultValue={rupees(d?.ltcgSpecifiedPaise)} />
+          <Field name="ltcgGeneralPaise" label="LTCG — everything else (12.5%, no threshold)" defaultValue={rupees(d?.ltcgGeneralPaise)} />
+        </div>
+      </div>
+
+      <div>
+        <p className="label text-ink-3 mb-2">Capital losses</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field name="currentYearStclPaise" label="Short-term loss, this year" defaultValue={rupees(d?.currentYearStclPaise)} />
+          <Field name="currentYearLtclPaise" label="Long-term loss, this year" defaultValue={rupees(d?.currentYearLtclPaise)} />
+          <Field name="broughtForwardStclPaise" label="Short-term loss, brought forward" defaultValue={rupees(d?.broughtForwardStclPaise)} />
+          <Field name="broughtForwardLtclPaise" label="Long-term loss, brought forward" defaultValue={rupees(d?.broughtForwardLtclPaise)} />
+        </div>
+        <p className="text-xs text-ink-3 mt-1.5 max-w-[70ch]">
+          Short-term loss can offset both short- and long-term gains; long-term loss only offsets long-term gains, never the other way.
+        </p>
+      </div>
+
+      <div>
+        <p className="label text-ink-3 mb-2">VDA and gaming (all flat 30%, no loss set-off allowed against these)</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field name="vdaPaise" label="Virtual digital assets / crypto" defaultValue={rupees(d?.vdaPaise)} />
+          <Field name="lotteryPaise" label="Lottery, crossword or card game winnings" defaultValue={rupees(d?.lotteryPaise)} />
+          <Field name="horseRacePaise" label="Horse race winnings" defaultValue={rupees(d?.horseRacePaise)} />
+          <Field name="onlineGamingPaise" label="Net winnings from online games" defaultValue={rupees(d?.onlineGamingPaise)} />
+        </div>
+      </div>
+
+      <div>
+        <p className="label text-ink-3 mb-2">DTAA special-rate income</p>
+        <Field name="dtaaSpecialRatePaise" label="Declared only — not computed here; handle separately" defaultValue={rupees(d?.dtaaSpecialRatePaise)} />
+      </div>
+
+      <div className="flex items-center gap-3">
+        <SubmitButton size="sm" variant="default">Save special-rate income</SubmitButton>
+        <FormFeedback state={state} />
+      </div>
+    </form>
   );
 }
 

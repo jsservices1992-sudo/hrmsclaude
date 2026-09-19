@@ -511,3 +511,85 @@ export async function addPerquisite(
   revalidatePath(`/console/tax/${employeeId}`);
   return { ok: `${line.label} added at ${(line.valuePaise / 100).toFixed(0)} rupees for the year.` };
 }
+
+/**
+ * Declaring special-rate income — MODE 1: the person supplies an
+ * already-computed taxable gain per bucket, not the underlying
+ * transactions. One row per employee per financial year, replaced in
+ * full on every save — nothing here is a running total across saves,
+ * unlike a proof queue.
+ */
+export async function saveSpecialRateDeclaration(
+  _prev: TaxState,
+  fd: FormData,
+): Promise<TaxState> {
+  const { user, error } = await requireHr();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const employeeId = String(fd.get("employeeId") ?? "");
+  const emp = await employeeInScope(user, employeeId);
+  if (!emp) return { error: "Not authorised." };
+
+  const fields = [
+    "stcgSpecifiedPaise",
+    "stcgOtherPaise",
+    "ltcgSpecifiedPaise",
+    "ltcgGeneralPaise",
+    "currentYearStclPaise",
+    "currentYearLtclPaise",
+    "broughtForwardStclPaise",
+    "broughtForwardLtclPaise",
+    "vdaPaise",
+    "lotteryPaise",
+    "horseRacePaise",
+    "onlineGamingPaise",
+    "dtaaSpecialRatePaise",
+  ] as const;
+  const paise: Record<(typeof fields)[number], number> = Object.fromEntries(
+    fields.map((f) => [f, 0]),
+  ) as never;
+  for (const f of fields) {
+    const parsed = parseRupeeField(String(fd.get(f) ?? ""));
+    if (!parsed.ok) return { error: parsed.error };
+    paise[f] = parsed.paise;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(s.taxSpecialRateDeclarations)
+    .where(
+      and(
+        eq(s.taxSpecialRateDeclarations.employeeId, employeeId),
+        eq(s.taxSpecialRateDeclarations.financialYear, CURRENT_FY),
+      ),
+    )
+    .limit(1);
+
+  const now = new Date().toISOString();
+  if (existing) {
+    await db
+      .update(s.taxSpecialRateDeclarations)
+      .set({ ...paise, updatedBy: user.email, updatedAt: now })
+      .where(eq(s.taxSpecialRateDeclarations.id, existing.id));
+  } else {
+    await db.insert(s.taxSpecialRateDeclarations).values({
+      id: randomUUID(),
+      employeeId,
+      financialYear: CURRENT_FY,
+      ...paise,
+      updatedBy: user.email,
+      updatedAt: now,
+    });
+  }
+
+  await audit({
+    actor: user.email,
+    action: "tax_special_rate.saved",
+    entity: "employee",
+    entityId: employeeId,
+    after: paise,
+  });
+
+  revalidatePath(`/console/tax/${employeeId}`);
+  return { ok: "Special-rate income saved and the projection recomputed." };
+}

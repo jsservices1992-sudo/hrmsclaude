@@ -35,6 +35,11 @@ import {
 } from "./config";
 import { hasTaxConfig } from "./config";
 import { summarisePerquisites, type PerquisiteLine } from "./perquisites";
+import {
+  combineSpecialRateWithNormalTax,
+  type SpecialRateDeclaration,
+  type CombinedTaxResult,
+} from "./special-rate";
 
 export {
   CURRENT_FY,
@@ -100,6 +105,14 @@ export type TaxWorksheet = {
   ifNothingProved: ReturnType<typeof closeProofWindow> | null;
   pan: ReturnType<typeof validatePan>;
   warnings: string[];
+  specialRateDeclaration: typeof s.taxSpecialRateDeclarations.$inferSelect | null;
+  /**
+   * Null when nothing has been declared. Additive to `annual`/`projection`
+   * above, never folded into them — capital gains, VDA and gaming income
+   * are not salary and do not belong inside the salary TDS projection's
+   * own numbers, only alongside them. See `lib/tax/special-rate.ts`.
+   */
+  specialRate: CombinedTaxResult | null;
 };
 
 /**
@@ -122,14 +135,37 @@ type WorksheetInputs = {
   /** The employee's branch state, for projecting professional tax — null when the employee has no branch on record. */
   stateCode: string | null;
   statutory: Awaited<ReturnType<typeof loadStatutoryConfig>>;
+  specialRateDecl: typeof s.taxSpecialRateDeclarations.$inferSelect | null;
 };
+
+function specialRateDeclarationFrom(
+  d: typeof s.taxSpecialRateDeclarations.$inferSelect,
+): SpecialRateDeclaration {
+  return {
+    stcgSpecifiedPaise: d.stcgSpecifiedPaise,
+    stcgOtherPaise: d.stcgOtherPaise,
+    ltcgSpecifiedPaise: d.ltcgSpecifiedPaise,
+    ltcgGeneralPaise: d.ltcgGeneralPaise,
+    losses: {
+      currentYearStclPaise: d.currentYearStclPaise,
+      currentYearLtclPaise: d.currentYearLtclPaise,
+      broughtForwardStclPaise: d.broughtForwardStclPaise,
+      broughtForwardLtclPaise: d.broughtForwardLtclPaise,
+    },
+    vdaPaise: d.vdaPaise,
+    lotteryPaise: d.lotteryPaise,
+    horseRacePaise: d.horseRacePaise,
+    onlineGamingPaise: d.onlineGamingPaise,
+    dtaaSpecialRatePaise: d.dtaaSpecialRatePaise,
+  };
+}
 
 function composeWorksheet(
   input: WorksheetInputs,
   financialYear: number,
   overrideRegime?: Regime,
 ): TaxWorksheet {
-  const { emp, decl, salary, structure, flexiApprovedPaise, perqRows, ledger, proofs, stateCode, statutory } = input;
+  const { emp, decl, salary, structure, flexiApprovedPaise, perqRows, ledger, proofs, stateCode, statutory, specialRateDecl } = input;
 
   const regime: Regime = overrideRegime ?? ((decl?.regime ?? emp.taxRegime) as Regime);
   const config = regimeConfig(regime, financialYear, ageAsOfFinancialYearEnd(emp.dateOfBirth, financialYear));
@@ -274,6 +310,23 @@ function composeWorksheet(
     );
   }
 
+  /* ---- special-rate income — capital gains, VDA, lottery and gaming ----
+     Additive only: never folded into `annual`/`projection` above. See
+     lib/tax/special-rate.ts for why 87A never touches this, and why
+     stcgOtherPaise (taxed at the slab rate) is added to the taxable
+     income figure here rather than earlier in the salary computation —
+     it is a different income head, not a salary component. */
+  let specialRate: CombinedTaxResult | null = null;
+  if (specialRateDecl) {
+    const declaration = specialRateDeclarationFrom(specialRateDecl);
+    specialRate = combineSpecialRateWithNormalTax({
+      normalTaxableIncomePaise: annual.taxableIncomePaise + declaration.stcgOtherPaise,
+      regimeConfig: config,
+      declaration,
+    });
+    warnings.push(...specialRate.warnings);
+  }
+
   return {
     employee: emp,
     declaration: decl ?? null,
@@ -293,6 +346,8 @@ function composeWorksheet(
     ifNothingProved,
     pan,
     warnings,
+    specialRateDeclaration: specialRateDecl ?? null,
+    specialRate,
   };
 }
 
@@ -371,6 +426,17 @@ export async function loadWorksheetsFor(
   // also carries are company-scoped, and this projection does not use them.
   const statutory = await loadStatutoryConfig(`${financialYear}-04-01`, null);
 
+  const specialRateRows = await db
+    .select()
+    .from(s.taxSpecialRateDeclarations)
+    .where(
+      and(
+        inArray(s.taxSpecialRateDeclarations.employeeId, employeeIds),
+        eq(s.taxSpecialRateDeclarations.financialYear, financialYear),
+      ),
+    );
+  const specialRateByEmployee = new Map(specialRateRows.map((r) => [r.employeeId, r]));
+
   /* Proofs hang off the declaration, so they are only worth a query when
      somebody has declared something. */
   const declIds = decls.map((d) => d.id);
@@ -432,6 +498,7 @@ export async function loadWorksheetsFor(
           proofs: decl ? (proofsByDecl.get(decl.id) ?? []) : [],
           stateCode: stateByEmployee.get(emp.id) ?? null,
           statutory,
+          specialRateDecl: specialRateByEmployee.get(emp.id) ?? null,
         },
         financialYear,
         overrideRegime,
