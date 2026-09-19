@@ -15,9 +15,12 @@ import {
   buildAttendanceRegister,
   buildLeaveRegister,
   buildBonusRegister,
-  buildHaryanaFormC,
-  buildHaryanaFormD,
+  buildPunjabActFormC,
+  buildPunjabActFormD,
+  buildCombinedRegister,
+  upFormTitleFor,
 } from "@/lib/statutory/load";
+import { SHOPS_ACT_JURISDICTIONS } from "@/db/shops-act-data";
 
 /**
  * Statutory file downloads — PRD §3.12.
@@ -36,8 +39,8 @@ const KINDS = new Set([
   "attendance-register",
   "leave-register",
   "bonus-register",
-  "haryana-form-c",
-  "haryana-form-d",
+  "shops-act-employees",
+  "shops-act-register",
 ]);
 
 export async function GET(
@@ -103,22 +106,27 @@ export async function GET(
     return fileResponse(csv, `leave-register-${year}-${String(month).padStart(2, "0")}.csv`, "text/csv");
   }
 
-  // Haryana's Form C is attendance-based, not run-based — a company can
-  // want its Register of Employees before payroll for the period is even
-  // calculated.
-  if (kind === "haryana-form-c") {
+  // The Punjab Act family's Form C is attendance-based, not run-based —
+  // a company can want its Register of Employees before payroll for the
+  // period is even calculated.
+  if (kind === "shops-act-employees") {
+    const state = url.searchParams.get("state") ?? "";
+    const jurisdiction = SHOPS_ACT_JURISDICTIONS.find((j) => j.state === state);
+    if (!jurisdiction?.formsVerified || jurisdiction.register?.kind !== "punjab_act") {
+      return new Response("This state's employee register is not available.", { status: 404 });
+    }
     if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
       return new Response("A year and month are required.", { status: 400 });
     }
     await recordAccess({
       user,
       dataClass: "compensation",
-      surface: `console/statutory export:${kind}`,
+      surface: `console/statutory export:${kind}:${state}`,
       companyId,
       filterApplied: `${year}-${String(month).padStart(2, "0")}`,
     });
-    const csv = await buildHaryanaFormC(companyId, year, month);
-    return fileResponse(csv, `haryana-form-c-${year}-${String(month).padStart(2, "0")}.csv`, "text/csv");
+    const csv = await buildPunjabActFormC(companyId, state, year, month);
+    return fileResponse(csv, `${state.toLowerCase()}-form-c-${year}-${String(month).padStart(2, "0")}.csv`, "text/csv");
   }
 
   if (
@@ -183,10 +191,28 @@ export async function GET(
     );
   }
 
-  if (kind === "haryana-form-d") {
+  if (kind === "shops-act-register") {
+    const state = url.searchParams.get("state") ?? "";
+    const jurisdiction = SHOPS_ACT_JURISDICTIONS.find((j) => j.state === state);
+    if (!jurisdiction?.formsVerified || !jurisdiction.register) {
+      return new Response("This state's register is not available.", { status: 404 });
+    }
+    if (jurisdiction.register.kind === "punjab_act") {
+      return fileResponse(
+        buildPunjabActFormD(register, state),
+        `${state.toLowerCase()}-form-d-${period}.csv`,
+        "text/csv",
+      );
+    }
+    // Uttar Pradesh's form title depends on this company's UP headcount,
+    // not on a fixed label — Rule 18's own condition.
+    const formTitle =
+      state === "UP"
+        ? upFormTitleFor(register.lines.filter((l) => l.stateCode === "UP").length)
+        : jurisdiction.register.formTitle;
     return fileResponse(
-      buildHaryanaFormD(register),
-      `haryana-form-d-${period}.csv`,
+      await buildCombinedRegister(register, state, formTitle),
+      `${state.toLowerCase()}-register-${period}.csv`,
       "text/csv",
     );
   }

@@ -2,9 +2,10 @@ import { toCsv } from "./summaries";
 import type { Paise } from "../payroll/money";
 
 /**
- * Haryana's Shops & Establishments registers — the Punjab Shops and
- * Commercial Establishments Rules, 1958, Rule 5: Form C (register of
- * employees) and Form D (register of wages). See
+ * The Punjab Shops and Commercial Establishments Rules, 1958, Rule 5:
+ * Form C (register of employees) and Form D (register of wages) —
+ * shared, word for word, by Haryana, Punjab and Chandigarh, the three
+ * jurisdictions still governed by the one pre-1966 Punjab Act. See
  * `db/shops-act-data.ts` for the primary source these are read from.
  *
  * CSV, not the bound, page-numbered register the Rules literally
@@ -51,7 +52,7 @@ export type FormCRow = {
  * single Y/N — the leave module here records approved requests, not a
  * day-by-day application-and-grant date pair distinct from that.
  */
-export function haryanaFormC(rows: FormCRow[]): string {
+export function punjabActFormC(rows: FormCRow[]): string {
   return toCsv(
     [
       "Employee code",
@@ -110,7 +111,7 @@ export type FormDRow = {
  * and overtime wages are not separately available either, so "wages
  * earned" is the one figure the payroll run actually carries.
  */
-export function haryanaFormD(rows: FormDRow[]): string {
+export function punjabActFormD(rows: FormDRow[]): string {
   return toCsv(
     [
       "Employee code",
@@ -132,6 +133,73 @@ export function haryanaFormD(rows: FormDRow[]): string {
       (r.deductionsPaise / 100).toFixed(2),
       "",
       ((r.wagesEarnedPaise - r.deductionsPaise) / 100).toFixed(2),
+      (r.netPaidPaise / 100).toFixed(2),
+    ]),
+  );
+}
+
+/* ==================================================================
+   Combined muster-roll-cum-wages register — every other verified state
+   ================================================================== */
+
+/**
+ * The common shape behind most of the 35-state research: a single
+ * combined register naming attendance, overtime, wages and deductions
+ * together (Karnataka's Form T, Madhya Pradesh's Form N, Maharashtra's
+ * Form Q, Odisha's Form 10, and the rest — see `db/shops-act-data.ts`
+ * for exactly which form each state's row stands for). The research
+ * confirmed each form's NAME, its rule and what payroll data it needs,
+ * not a literal column-by-column transcription the way Haryana's own
+ * Rules text gave that state's Form C — so this is one honest, common
+ * register built to that description, not a claim of word-for-word
+ * reproduction of any one gazette form.
+ */
+export type CombinedRegisterRow = {
+  empCode: string;
+  name: string;
+  designation: string | null;
+  dateOfAppointment: string;
+  totalDays: number;
+  paidDays: number;
+  daysOnLeaveOrAbsent: number;
+  overtimeHours: number | null;
+  wagesFixedPaise: Paise;
+  wagesEarnedPaise: Paise;
+  deductionsPaise: Paise;
+  netPaidPaise: Paise;
+};
+
+export function combinedMusterRollWages(
+  rows: CombinedRegisterRow[],
+  formTitle: string,
+): string {
+  return toCsv(
+    [
+      `Form: ${formTitle}`,
+      "Name of employee",
+      "Designation",
+      "Date of appointment",
+      "Total days",
+      "Days paid",
+      "Days on leave / absent",
+      "Overtime hours",
+      "Wages fixed",
+      "Wages earned",
+      "Deductions",
+      "Net paid",
+    ],
+    rows.map((r) => [
+      r.empCode,
+      r.name,
+      r.designation ?? "",
+      r.dateOfAppointment,
+      r.totalDays.toFixed(1),
+      r.paidDays.toFixed(1),
+      r.daysOnLeaveOrAbsent.toFixed(1),
+      r.overtimeHours == null ? "" : r.overtimeHours.toFixed(2),
+      (r.wagesFixedPaise / 100).toFixed(2),
+      (r.wagesEarnedPaise / 100).toFixed(2),
+      (r.deductionsPaise / 100).toFixed(2),
       (r.netPaidPaise / 100).toFixed(2),
     ]),
   );

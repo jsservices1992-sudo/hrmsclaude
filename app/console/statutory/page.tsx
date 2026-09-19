@@ -104,7 +104,9 @@ export default async function StatutoryPage(
   const calendar = await loadCalendar({ companyId, year, month });
   const register = await loadRegister(companyId, year, month);
   const branchStates = await companyBranchStates(companyId);
-  const hasHaryana = branchStates.includes("HR");
+  const verifiedBranchStates = branchStates.filter(
+    (code) => SHOPS_ACT_JURISDICTIONS.find((j) => j.state === code)?.formsVerified,
+  );
 
   const epf = register ? await buildEpfReturn(register) : null;
   const esic = register ? buildEsicReturn(register) : null;
@@ -718,31 +720,37 @@ export default async function StatutoryPage(
           >
             Register of employees ↓
           </a>
-          {hasHaryana && (
-            <>
-              <a
-                href={`/console/statutory/download/haryana-form-c?${query}`}
-                className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
-              >
-                Haryana — Form C ↓
-              </a>
-              {register && (
-                <a
-                  href={`/console/statutory/download/haryana-form-d?${query}`}
-                  className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
-                >
-                  Haryana — Form D ↓
-                </a>
-              )}
-            </>
-          )}
+          {verifiedBranchStates.map((code) => {
+            const j = SHOPS_ACT_JURISDICTIONS.find((x) => x.state === code)!;
+            return (
+              <span key={code} className="contents">
+                {j.register?.kind === "punjab_act" && (
+                  <a
+                    href={`/console/statutory/download/shops-act-employees?${query}&state=${code}`}
+                    className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+                  >
+                    {code} — Form C ↓
+                  </a>
+                )}
+                {register && (
+                  <a
+                    href={`/console/statutory/download/shops-act-register?${query}&state=${code}`}
+                    className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+                  >
+                    {code} — {j.register?.kind === "punjab_act" ? "Form D" : "register"} ↓
+                  </a>
+                )}
+              </span>
+            );
+          })}
         </div>
         <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2 max-w-[76ch]">
           The attendance register needs a calculated run for the period, the
           same as the wage register does — nothing to show until one exists.
           The leave and bonus registers do not, and the bonus register spans
           the whole financial year rather than one month.
-          {hasHaryana && " Haryana's Form D needs a calculated run, the same as the wage register; Form C does not."}
+          {verifiedBranchStates.length > 0 &&
+            " Each state's own register needs a calculated run, the same as the wage register does; a Punjab Act state's Form C does not."}
         </p>
       </Panel>
 

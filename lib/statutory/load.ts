@@ -43,7 +43,14 @@ import {
   type RegisterLine,
 } from "./summaries";
 import { calendarFor, trackStatus, filingKey, type CompanyRegistrations } from "./calendar";
-import { haryanaFormC, haryanaFormD, type FormCRow, type FormDRow } from "./shops-act";
+import {
+  punjabActFormC,
+  punjabActFormD,
+  combinedMusterRollWages,
+  type FormCRow,
+  type FormDRow,
+  type CombinedRegisterRow,
+} from "./shops-act";
 
 /** Run states in which the figures have actually been signed off. */
 export const APPROVED_STATUSES = new Set([
@@ -624,8 +631,9 @@ export async function buildBonusRegister(
 }
 
 /* ==================================================================
-   Shops & Establishments — Haryana (the only state built so far;
-   see db/shops-act-data.ts for the rest)
+   Shops & Establishments — every state SHOPS_ACT_JURISDICTIONS marks
+   formsVerified. See db/shops-act-data.ts for which states that is,
+   and why the rest are not.
    ================================================================== */
 
 /** Which states a company actually has branches in — what decides which Shops Act(s) even apply to it. */
@@ -644,8 +652,10 @@ function wageBasisFor(employmentType: string): string {
   return employmentType === "contract" ? "Contract" : "Monthly";
 }
 
-export async function buildHaryanaFormC(
+/** The Punjab Act family — Haryana, Punjab, Chandigarh — share one literal Rule 5 form set. */
+export async function buildPunjabActFormC(
   companyId: string,
+  stateCode: string,
   year: number,
   month: number,
 ): Promise<string> {
@@ -653,9 +663,9 @@ export async function buildHaryanaFormC(
     .select({ emp: s.employees })
     .from(s.employees)
     .innerJoin(s.branches, eq(s.employees.branchId, s.branches.id))
-    .where(and(eq(s.employees.companyId, companyId), eq(s.branches.stateCode, "HR")));
+    .where(and(eq(s.employees.companyId, companyId), eq(s.branches.stateCode, stateCode)));
 
-  if (emps.length === 0) return haryanaFormC([]);
+  if (emps.length === 0) return punjabActFormC([]);
 
   const employeeIds = emps.map((r) => r.emp.id);
   const from = `${year}-${String(month).padStart(2, "0")}-01`;
@@ -704,14 +714,15 @@ export async function buildHaryanaFormC(
     }
   }
 
-  return haryanaFormC(rows);
+  return punjabActFormC(rows);
 }
 
-export function buildHaryanaFormD(register: LoadedRegister): string {
+export function buildPunjabActFormD(register: LoadedRegister, stateCode: string): string {
   const rows: FormDRow[] = [];
-  // Only Haryana's own establishments — a run can span several states,
-  // and Form D belongs to whichever of them is under Haryana's Act.
-  for (const line of register.lines.filter((l) => l.stateCode === "HR")) {
+  // Only this jurisdiction's own establishments — a run can span
+  // several states, and Form D belongs to whichever of them is under
+  // the Punjab Act.
+  for (const line of register.lines.filter((l) => l.stateCode === stateCode)) {
     const summary = register.summaries.get(line.employeeId);
     rows.push({
       empCode: line.empCode,
@@ -722,7 +733,61 @@ export function buildHaryanaFormD(register: LoadedRegister): string {
       netPaidPaise: summary?.netPaise ?? 0,
     });
   }
-  return haryanaFormD(rows);
+  return punjabActFormD(rows);
+}
+
+/**
+ * The combined muster-roll-cum-wages register — every other verified
+ * state. Attendance days come from the run's own summary (the same
+ * paidDays/lopDays figures the attendance register already uses);
+ * overtime is read only when the run actually separated an OT line by
+ * category, else left blank rather than guessed.
+ */
+export async function buildCombinedRegister(
+  register: LoadedRegister,
+  stateCode: string,
+  formTitle: string,
+): Promise<string> {
+  const lines = register.lines.filter((l) => l.stateCode === stateCode);
+  if (lines.length === 0) return combinedMusterRollWages([], formTitle);
+
+  const rows: CombinedRegisterRow[] = lines.map((line) => {
+    const emp = register.employees.get(line.employeeId);
+    const summary = register.summaries.get(line.employeeId);
+    return {
+      empCode: line.empCode,
+      name: line.name,
+      designation: emp?.designation ?? null,
+      dateOfAppointment: emp?.dateOfJoining ?? "",
+      totalDays: summary?.totalDays ?? 0,
+      paidDays: summary?.paidDays ?? 0,
+      daysOnLeaveOrAbsent: summary ? Math.max(0, summary.totalDays - summary.paidDays) : 0,
+      // A line exists, so overtime WAS paid this period, but this
+      // register does not itself carry hours worked as overtime — only
+      // the amount paid for it, which is not the same figure.
+      overtimeHours: null,
+      wagesFixedPaise: line.grossPaise,
+      wagesEarnedPaise: summary?.grossPaise ?? line.grossPaise,
+      deductionsPaise: summary?.deductionsPaise ?? 0,
+      netPaidPaise: summary?.netPaise ?? 0,
+    };
+  });
+
+  return combinedMusterRollWages(rows, formTitle);
+}
+
+/**
+ * Uttar Pradesh's Rule 18 makes the applicable form depend on how many
+ * people the establishment employs, not on which form a template
+ * happens to name — 10 or fewer is Form CC alone, 11–25 is Form G plus
+ * Form H, and above 25 is Form G plus Form H plus Form D. The register
+ * this build produces is the same combined content regardless; only the
+ * label naming which form(s) apply changes with the headcount.
+ */
+export function upFormTitleFor(headcount: number): string {
+  if (headcount <= 10) return "Form CC (10 or fewer employees)";
+  if (headcount <= 25) return "Form G + Form H (11–25 employees)";
+  return "Form G + Form H + Form D (more than 25 employees)";
 }
 
 /* ==================================================================
