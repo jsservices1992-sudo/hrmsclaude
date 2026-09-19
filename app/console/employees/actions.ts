@@ -927,6 +927,31 @@ export async function bulkUploadEmployees(
   for (const d of newDepartments) deptByCode.set(d.code.toUpperCase(), d.id);
   for (const g of newGrades) gradeByName.set(g.name.toLowerCase(), g.id);
 
+  /*
+   * Pay, resolved before the transaction — the same reason a single
+   * create does it outside the (synchronous) transaction callback:
+   * resolvePay reads the company's structure and statutory rates, and a
+   * CTC or a take-home figure is never simply divided by twelve.
+   *
+   * Sequential, not parallel, because resolvePay does its own database
+   * reads per row and a hundred of those firing at once is what the
+   * worksheet loader upstream was rewritten to avoid.
+   */
+  const payByEmpCode = new Map<string, Awaited<ReturnType<typeof resolvePay>>>();
+  for (const r of fresh) {
+    if (!r.payMode || r.payAmountPaise == null) continue;
+    const pay = await resolvePay({
+      companyId,
+      departmentId: r.departmentCode ? (deptByCode.get(r.departmentCode) ?? null) : null,
+      mode: r.payMode,
+      amountPaise: r.payAmountPaise,
+      asOf: r.dateOfJoining,
+      branchId: branchByCode.get(r.branchCode) ?? null,
+      gender: r.gender,
+    });
+    payByEmpCode.set(r.empCode, pay);
+  }
+
   await db.transaction(async (tx) => {
     if (newBranches.length > 0) await tx.insert(s.branches).values(newBranches);
     if (newDepartments.length > 0) await tx.insert(s.departments).values(newDepartments);
@@ -952,6 +977,7 @@ export async function bulkUploadEmployees(
         managerId: r.managerEmpCode
           ? (idByCode.get(r.managerEmpCode) ?? newId.get(r.managerEmpCode) ?? null)
           : null,
+        skillCategory: r.skillCategory,
         pan: r.pan,
         uan: r.uan,
         bankAccount: r.bankAccount,
@@ -959,6 +985,24 @@ export async function bulkUploadEmployees(
         status: "active",
         createdBy: user.email,
       });
+
+      const pay = payByEmpCode.get(r.empCode);
+      if (pay) {
+        await tx.insert(s.employeeSalaries).values({
+          id: randomUUID(),
+          employeeId: newId.get(r.empCode)!,
+          monthlyGrossPaise: pay.monthlyGrossPaise,
+          annualCtcPaise: pay.breakdown.annualCtcPaise,
+          ...payAgreementColumns(pay),
+          structureId: null,
+          effectiveFrom: r.dateOfJoining,
+          effectiveTo: null,
+          reason: "Set at bulk import",
+          revisionType: "initial",
+          createdBy: user.email,
+          createdAt: new Date().toISOString(),
+        });
+      }
     }
   });
 
@@ -1027,7 +1071,14 @@ export async function bulkUploadEmployees(
       `${withoutEmail} have no email address, so they have no sign-in — add one to their record and invite them from there.`,
     );
   }
-  notes.push("Nobody has a salary yet — set one before the first payroll.");
+  const withPay = fresh.filter((r) => payByEmpCode.has(r.empCode)).length;
+  const withoutPay = fresh.length - withPay;
+  if (withPay > 0) {
+    notes.push(`${withPay} arrived with a salary set from the file.`);
+  }
+  if (withoutPay > 0) {
+    notes.push(`${withoutPay} have no salary yet — set one before the first payroll.`);
+  }
 
   return { ok: `Imported ${fresh.length} employee(s). ${notes.join(" ")}` };
 }

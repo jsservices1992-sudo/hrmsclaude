@@ -1,7 +1,13 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { EMPLOYEE_COLUMNS, GENDERS, EMPLOYMENT_TYPES } from "@/lib/hris/employee-bulk";
+import {
+  EMPLOYEE_COLUMNS,
+  GENDERS,
+  EMPLOYMENT_TYPES,
+  SKILL_CATEGORIES,
+  PAY_MODES,
+} from "@/lib/hris/employee-bulk";
 import { toCsv } from "@/lib/statutory/summaries";
 import { getSessionUser, canAccessConsole, canAccessCompany } from "@/lib/auth/session";
 
@@ -59,8 +65,9 @@ export async function GET(request: Request) {
 
   const example = [
     "EMP001", "Asha", "Rao", "asha@example.com", "9876543210", "female",
-    "1995-04-02", "2026-04-01", "permanent", "Software Engineer",
-    firstBranch, firstDept, firstGrade, "", "ABCPD1234E", "", "", "",
+    "02/04/1995", "01/04/2026", "permanent", "Software Engineer",
+    firstBranch, firstDept, firstGrade, "", "", "ABCPD1234E", "", "", "",
+    "gross", "45000",
   ];
 
   const lines = [
@@ -76,9 +83,20 @@ export async function GET(request: Request) {
     "#                  listed above is offered for creation when you upload.",
     `# gender:          ${GENDERS.join(" | ")}`,
     `# employmentType:  ${EMPLOYMENT_TYPES.join(" | ")}`,
-    "# dates:           YYYY-MM-DD",
-    "# required:        empCode, firstName, lastName, dateOfJoining, branchCode",
+    `# skillCategory:   ${SKILL_CATEGORIES.join(" | ")} — optional, only used to match a notified minimum wage`,
+    "# dates:           DD/MM/YYYY (31/01/2026) — write dates this way",
+    "# required:        empCode, firstName, lastName, dateOfJoining, branchCode, payMode, payAmount",
     "# managerEmpCode:  an existing employee, or another row in this file",
+    "#",
+    "# --- pay: gives this person a salary in the same upload, instead of a second file ---",
+    `# payMode:          ${PAY_MODES.join(" | ")}`,
+    "# payMode gross:         payAmount is the monthly gross, as it will appear on the payslip",
+    "# payMode annual_gross:  payAmount is the annual gross, divided across twelve months",
+    "# payMode ctc:           payAmount is the annual cost to company — PF, ESIC and gratuity are worked out on top of it",
+    "# payMode take_home:     payAmount is the monthly net in hand — the gross is worked back from it, and re-solved every",
+    "#                        run against that period's rates, so the amount reaching the bank never drifts",
+    "# both columns must be filled in together, or both left blank to add this person with no salary yet",
+    "#",
     "# re-uploading:    safe — an empCode already on the books is skipped, never",
     "#                  overwritten, so fill this in once and upload as you go.",
   ];

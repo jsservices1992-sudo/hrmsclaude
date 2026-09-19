@@ -14,8 +14,9 @@ const row = (over: Record<string, string> = {}) => {
     empCode: "BLR001", firstName: "Asha", lastName: "Rao", email: "asha@acme.in",
     mobile: "9876543210", gender: "female", dateOfBirth: "1995-04-02",
     dateOfJoining: "2026-01-15", employmentType: "permanent", designation: "Engineer",
-    branchCode: "BLR", departmentCode: "ENG", gradeName: "L3", managerEmpCode: "",
+    branchCode: "BLR", departmentCode: "ENG", gradeName: "L3", managerEmpCode: "", skillCategory: "",
     pan: "ABCPD1234E", uan: "100200300400", bankAccount: "50181003001", ifsc: "HDFC0001234",
+    payMode: "", payAmount: "",
   };
   return EMPLOYEE_COLUMNS.map((c) => over[c] ?? base[c]).join(",");
 };
@@ -37,7 +38,7 @@ test("a clean file parses with nothing to report", () => {
 });
 
 test("columns are matched by name, so order and spacing do not matter", () => {
-  const text = "Last Name,emp_code,First Name,date_of_joining,BranchCode\nRao,blr002,Asha,2026-01-15,blr";
+  const text = "Last Name,emp_code,First Name,date_of_joining,BranchCode,PayMode,PayAmount\nRao,blr002,Asha,2026-01-15,blr,,";
   const r = parseEmployeeCsv(text);
   assert.deepEqual(r.problems, []);
   assert.equal(r.rows[0].empCode, "BLR002");
@@ -246,4 +247,73 @@ test("every unresolved reference carries a link to where it is created", () => {
   for (const p of problems) {
     assert.ok(p.fix?.href.startsWith("/console"), `${p.column} has no fix link`);
   }
+});
+
+/* -------------------------------- pay & skill -------------------------------- */
+
+test("a row with no pay mode and no amount is accepted with no salary", () => {
+  const r = parseEmployeeCsv(csv(row({ payMode: "", payAmount: "" })));
+  assert.deepEqual(r.problems, []);
+  assert.equal(r.rows[0].payMode, null);
+  assert.equal(r.rows[0].payAmountPaise, null);
+});
+
+test("gross, CTC and take-home are all accepted pay modes", () => {
+  for (const mode of ["gross", "annual_gross", "ctc", "take_home"]) {
+    const r = parseEmployeeCsv(csv(row({ payMode: mode, payAmount: "50000" })));
+    assert.deepEqual(r.problems, [], mode);
+    assert.equal(r.rows[0].payMode, mode);
+    assert.equal(r.rows[0].payAmountPaise, 50_00000);
+  }
+});
+
+test("a comma-formatted amount is read the way a spreadsheet writes it", () => {
+  const r = parseEmployeeCsv(csv(row({ payMode: "ctc", payAmount: '"12,00,000"' })));
+  assert.deepEqual(r.problems, []);
+  assert.equal(r.rows[0].payAmountPaise, 1_200_000_00);
+});
+
+test("an amount with no pay mode is refused, not guessed", () => {
+  const r = parseEmployeeCsv(csv(row({ payMode: "", payAmount: "50000" })));
+  assert.equal(r.rows.length, 0);
+  assert.match(r.problems.find((p) => p.column === "payMode")!.message, /no pay mode/);
+});
+
+test("a pay mode with no amount is refused, not guessed", () => {
+  const r = parseEmployeeCsv(csv(row({ payMode: "gross", payAmount: "" })));
+  assert.equal(r.rows.length, 0);
+  assert.match(r.problems.find((p) => p.column === "payAmount")!.message, /no amount is given/);
+});
+
+test("an unknown pay mode is reported by name", () => {
+  const r = parseEmployeeCsv(csv(row({ payMode: "salary", payAmount: "50000" })));
+  assert.match(r.problems.find((p) => p.column === "payMode")!.message, /gross, annual_gross, ctc, take_home/);
+});
+
+test("a zero or negative amount is refused", () => {
+  for (const bad of ["0", "-500"]) {
+    const r = parseEmployeeCsv(csv(row({ payMode: "gross", payAmount: bad })));
+    assert.match(r.problems.find((p) => p.column === "payAmount")!.message, /positive amount/, bad);
+  }
+});
+
+test("a file built from before the pay columns existed is refused by name", () => {
+  const r = parseEmployeeCsv(
+    "empCode,firstName,lastName,dateOfJoining,branchCode\nBLR001,Asha,Rao,2026-01-15,BLR",
+  );
+  assert.match(r.problems[0].message, /payMode/);
+  assert.match(r.problems[0].message, /payAmount/);
+  assert.match(r.problems[0].message, /older template/);
+});
+
+test("skill category is optional and validated against the same list minimum wage uses", () => {
+  const clean = parseEmployeeCsv(csv(row({ skillCategory: "highly_skilled" })));
+  assert.deepEqual(clean.problems, []);
+  assert.equal(clean.rows[0].skillCategory, "highly_skilled");
+
+  const blank = parseEmployeeCsv(csv(row({ skillCategory: "" })));
+  assert.equal(blank.rows[0].skillCategory, null);
+
+  const bad = parseEmployeeCsv(csv(row({ skillCategory: "expert" })));
+  assert.match(bad.problems.find((p) => p.column === "skillCategory")!.message, /unskilled/);
 });

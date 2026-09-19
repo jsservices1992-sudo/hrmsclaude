@@ -40,6 +40,19 @@ export const EMPLOYMENT_TYPES = [
   "intern",
   "consultant",
 ] as const;
+export const SKILL_CATEGORIES = [
+  "unskilled",
+  "semi_skilled",
+  "skilled",
+  "highly_skilled",
+] as const;
+/**
+ * How the pay column is denominated — the same vocabulary the console's
+ * own pay forms use, so a figure means the same thing on this sheet as it
+ * does on the screen. `resolvePay` is what turns it into a monthly gross.
+ */
+export const PAY_MODES = ["gross", "annual_gross", "ctc", "take_home"] as const;
+
 
 /** The columns, in the order the template writes them. */
 export const EMPLOYEE_COLUMNS = [
@@ -57,10 +70,13 @@ export const EMPLOYEE_COLUMNS = [
   "departmentCode",
   "gradeName",
   "managerEmpCode",
+  "skillCategory",
   "pan",
   "uan",
   "bankAccount",
   "ifsc",
+  "payMode",
+  "payAmount",
 ] as const;
 
 export type EmployeeRow = {
@@ -79,10 +95,19 @@ export type EmployeeRow = {
   departmentCode: string | null;
   gradeName: string | null;
   managerEmpCode: string | null;
+  skillCategory: (typeof SKILL_CATEGORIES)[number] | null;
   pan: string | null;
   uan: string | null;
   bankAccount: string | null;
   ifsc: string | null;
+  /**
+   * Both null together means no salary is set from this file — the
+   * employee is created without one, same as leaving the pay columns out
+   * entirely. Set together or not at all; one without the other is a
+   * problem the parser reports rather than a guess it makes.
+   */
+  payMode: (typeof PAY_MODES)[number] | null;
+  payAmountPaise: number | null;
 };
 
 export type RowProblem = {
@@ -168,17 +193,26 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
   const at = (name: string) =>
     header.indexOf(name.toLowerCase().replace(/[\s_]/g, ""));
 
-  const missing = (["empCode", "firstName", "lastName", "dateOfJoining", "branchCode"] as const).filter(
-    (c) => at(c) < 0,
-  );
+  /* payMode and payAmount are required as columns, not as values — a row
+     may leave both blank and be created without a salary, same as
+     before. What is not allowed is the column being absent altogether:
+     that means the file was built from a template older than this one,
+     and it should say so rather than silently import everyone with no
+     pay questions asked. */
+  const missing = (
+    ["empCode", "firstName", "lastName", "dateOfJoining", "branchCode", "payMode", "payAmount"] as const
+  ).filter((c) => at(c) < 0);
   if (missing.length > 0) {
+    const payColumnsMissing = missing.includes("payMode") || missing.includes("payAmount");
     return {
       rows,
       problems: [
         {
           line: firstNonBlank + 1,
           column: missing.join(", "),
-          message: `These required columns are missing: ${missing.join(", ")}.`,
+          message: payColumnsMissing
+            ? `These required columns are missing: ${missing.join(", ")}. This looks like an older template — download the current one and copy your rows into it.`
+            : `These required columns are missing: ${missing.join(", ")}.`,
         },
       ],
     };
@@ -283,9 +317,52 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
     }
     if (bankAccount && !ifsc) problem("ifsc", MSG.ifscMissing);
 
+    const skillRaw = get("skillCategory")?.toLowerCase().replace(/\s+/g, "_") ?? null;
+    const skillCategory = skillRaw
+      ? ((SKILL_CATEGORIES as readonly string[]).includes(skillRaw)
+          ? (skillRaw as EmployeeRow["skillCategory"])
+          : null)
+      : null;
+    if (skillRaw && !skillCategory) {
+      problem("skillCategory", `"${skillRaw}" is not one of: ${SKILL_CATEGORIES.join(", ")}.`);
+    }
+
+    /* Set together or not at all. One without the other reads as a
+       mistake, not a choice — an amount with no basis to price it against,
+       or a basis with nothing to apply it to. */
+    const payModeRaw = get("payMode")?.toLowerCase().replace(/\s+/g, "_") ?? null;
+    const payAmountRaw = get("payAmount");
+    const payMode = payModeRaw
+      ? ((PAY_MODES as readonly string[]).includes(payModeRaw)
+          ? (payModeRaw as EmployeeRow["payMode"])
+          : null)
+      : null;
+    if (payModeRaw && !payMode) {
+      problem("payMode", `"${payModeRaw}" is not one of: ${PAY_MODES.join(", ")}.`);
+    }
+    let payAmountPaise: number | null = null;
+    if (payAmountRaw) {
+      const cleaned = payAmountRaw.replace(/,/g, "");
+      const n = Number(cleaned);
+      if (!Number.isFinite(n) || n <= 0) {
+        problem("payAmount", `"${payAmountRaw}" is not a positive amount.`);
+      } else {
+        payAmountPaise = Math.round(n * 100);
+      }
+    }
+    if (payMode && payAmountPaise === null && !payAmountRaw) {
+      problem("payAmount", "A pay mode is set but no amount is given.");
+    }
+    if (!payMode && payAmountRaw) {
+      problem("payMode", "An amount is given but no pay mode — choose gross, annual_gross, ctc or take_home.");
+    }
+
     if (!empCode || !firstName || !lastName || !gender || !employmentType || !branchCode) continue;
     if (!dateOfJoining) continue;
     if (dateOfBirthRaw && !dateOfBirth) continue;
+    if (payModeRaw && !payMode) continue;
+    if (skillRaw && !skillCategory) continue;
+    if ((payMode == null) !== (payAmountPaise == null)) continue;
 
     rows.push({
       line,
@@ -303,10 +380,13 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
       departmentCode: get("departmentCode")?.toUpperCase() ?? null,
       gradeName: get("gradeName"),
       managerEmpCode: get("managerEmpCode")?.toUpperCase() ?? null,
+      skillCategory,
       pan,
       uan,
       bankAccount,
       ifsc,
+      payMode,
+      payAmountPaise,
     });
   }
 
