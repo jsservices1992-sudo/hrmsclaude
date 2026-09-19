@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  isRecalculable, buildRunSteps, nextStep, progressOf, type RunStatusInput } from "./run-status";
+  isRecalculable, buildRunSteps, nextStep, progressOf, canApproveRun, type RunStatusInput } from "./run-status";
 
 const Q = "company=c1&year=2026&month=9";
 
@@ -140,3 +140,27 @@ test("a run that can still be recalculated is not figures of record", () => {
   assert.equal(isRecalculable(undefined), false);
 });
 
+
+test("the preparer cannot approve their own run while the rule is on", () => {
+  const run = { status: "calculated", preparedBy: "asha@x.in" };
+  assert.equal(canApproveRun({ email: "asha@x.in" }, run, true), false);
+  assert.equal(canApproveRun({ email: "ravi@x.in" }, run, true), true);
+});
+
+test("turning the rule off lets the preparer approve — a company of one", () => {
+  /* The switch exists under Settings → Payroll → Controls and the server
+     action already honoured it; the screens did not, so the button never
+     appeared and the setting did nothing. */
+  const run = { status: "calculated", preparedBy: "asha@x.in" };
+  assert.equal(canApproveRun({ email: "asha@x.in" }, run, true, false), true);
+});
+
+test("nothing else about approval is relaxed by turning the rule off", () => {
+  const run = { status: "draft", preparedBy: "asha@x.in" };
+  assert.equal(canApproveRun({ email: "asha@x.in" }, run, true, false), false, "a draft is not approvable");
+  assert.equal(
+    canApproveRun({ email: "asha@x.in" }, { status: "calculated", preparedBy: "asha@x.in" }, false, false),
+    false,
+    "somebody without the right to change payroll still cannot approve",
+  );
+});

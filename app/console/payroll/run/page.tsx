@@ -33,6 +33,7 @@ import {
   StatCard,
   type BadgeTone,
 } from "@/components/console/ui";
+import { loadSodPolicies } from "@/lib/audit/log";
 
 export const metadata = { title: "Run payroll" };
 
@@ -210,7 +211,14 @@ export default async function RunPayrollPage(
       run,
       criticalExceptions: criticalCount,
       warningExceptions: exceptions.length - criticalCount,
-      viewerPreparedRun: runRow?.preparedBy === user.email,
+      /* Only worth saying when the rule is actually on: a company that
+         turned it off is not waiting for a second person. */
+      viewerPreparedRun:
+        runRow?.preparedBy === user.email &&
+        ((await loadSodPolicies(companyId)).find(
+          (p) => p.rule === "preparer_cannot_approve",
+        )?.enabled ??
+          true),
     },
     query,
   );

@@ -22,6 +22,7 @@ import { periodState, selectablePeriods } from "@/lib/payroll/period-lock";
 import { currentPeriod } from "@/lib/clock";
 import { loadFinalCheck, type FinalCheckResult } from "@/lib/payroll/finalcheck";
 import { formatDate, formatDateTime } from "@/lib/format/date";
+import { loadSodPolicies } from "@/lib/audit/log";
 
 export const metadata = { title: "Runs" };
 
@@ -136,6 +137,18 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
   }, {});
 
   const companyName = Object.fromEntries(companies.map((c) => [c.id, c.name]));
+
+  /* Per company: one of them may have turned the preparer rule off and
+     another left it on, and the list shows runs from both. */
+  const preparerRuleByCompany = Object.fromEntries(
+    await Promise.all(
+      companyIds.map(async (id) => [
+        id,
+        (await loadSodPolicies(id)).find((p) => p.rule === "preparer_cannot_approve")
+          ?.enabled ?? true,
+      ] as const),
+    ),
+  );
 
   const finalCheck =
     canMutate(user) && calcCompany
@@ -318,9 +331,10 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
             <tbody>
             {runs.map((run) => {
               const t = totalsByRun[run.id] ?? { count: 0, net: 0, gross: 0 };
-              const canApprove = canApproveRun(user, run, canMutate(user));
+              const preparerCannotApprove = preparerRuleByCompany[run.companyId] ?? true;
+              const canApprove = canApproveRun(user, run, canMutate(user), preparerCannotApprove);
               const rowOpen = periodState(run.periodYear, run.periodMonth).open;
-              const isPreparer = run.preparedBy === user.email;
+              const isPreparer = run.preparedBy === user.email && preparerCannotApprove;
               const asOf = JSON.parse(run.configSnapshot ?? "{}").asOf ?? "—";
 
               return (

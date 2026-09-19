@@ -7,6 +7,7 @@ import { ApproveForm, ReopenForm } from "../run-actions";
 import { MONTHS, STATUS_TONE, canApproveRun } from "@/lib/payroll/run-status";
 import { PageHeader, Card, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 import { formatDateTime } from "@/lib/format/date";
+import { loadSodPolicies } from "@/lib/audit/log";
 
 export const metadata = { title: "Run detail" };
 
@@ -20,8 +21,11 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
   if (!canAccessCompany(user, detail.company.id)) redirect("/console/runs");
 
   const { run, company, employees, totals, versionChain } = detail;
-  const canApprove = canApproveRun(user, run, canMutate(user));
-  const isPreparer = run.preparedBy === user.email;
+  const policies = await loadSodPolicies(company.id);
+  const preparerCannotApprove =
+    policies.find((p) => p.rule === "preparer_cannot_approve")?.enabled ?? true;
+  const canApprove = canApproveRun(user, run, canMutate(user), preparerCannotApprove);
+  const isPreparer = run.preparedBy === user.email && preparerCannotApprove;
 
   return (
     <div className="flex flex-col gap-6">

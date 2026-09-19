@@ -40,9 +40,18 @@ export function canApproveRun(
   user: { email: string },
   run: { status: string; preparedBy: string | null },
   canMutate: boolean,
+  /**
+   * Whether this company still forbids the preparer from approving.
+   * A company with one administrator can turn that rule off under
+   * Settings → Payroll → Controls, and when it has, the button has to
+   * actually appear: a switch the screens ignore is not a setting, it
+   * is a dead end with an audit entry behind it.
+   */
+  preparerCannotApprove = true,
 ): boolean {
   if (!canMutate) return false;
   if (!["calculated", "in_review"].includes(run.status)) return false;
+  if (!preparerCannotApprove) return true;
   return run.preparedBy !== user.email;
 }
 
