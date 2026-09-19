@@ -115,7 +115,12 @@ export function isSafeKey(key: string): boolean {
   if (key.includes("..")) return false;
   if (key.startsWith("/") || key.startsWith("\\")) return false;
   if (key.includes("\0")) return false;
-  return /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.[a-z0-9]{1,5}$/.test(key);
+  /* One or more safe segments — an employee document is two
+     (employeeId/documentId.ext), a company logo is three
+     (companies/companyId/logo.ext). Every segment is still restricted to
+     the same safe character set; only the segment count was ever meant
+     to vary. */
+  return /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*\.[a-z0-9]{1,5}$/.test(key);
 }
 
 /** A filename safe to hand back on download. */

@@ -153,6 +153,16 @@ test("safe keys pass and unsafe ones do not", () => {
   assert.ok(!isSafeKey("emp_0001/abc"), "no extension");
 });
 
+test("a three-segment key is safe too — the company logo is one", () => {
+  /* Uploading a logo used to throw here: the key has two slashes
+     (companies/<companyId>/logo.png) and the check only ever allowed one,
+     so every logo upload failed with a 500 rather than a plain error. */
+  assert.ok(isSafeKey("companies/7b4ece89-6c79-44a3-a219-b2e8731bd5eb/logo.png"));
+  assert.ok(isSafeKey("a/b/c/d.jpg"), "any number of safe segments");
+  assert.ok(!isSafeKey("companies/../etc/logo.png"), "traversal in a later segment is still refused");
+  assert.ok(!isSafeKey("companies//logo.png"), "an empty segment is still refused");
+});
+
 test("a download name is derived safely from the label", () => {
   const name = downloadNameFor({
     label: 'PAN "card" / 2024',
