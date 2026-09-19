@@ -11,7 +11,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { recordAccess } from "@/lib/audit/log";
-import { ProofDecisionForm, RegimeForm, CloseWindowForm } from "../forms";
+import { ProofDecisionForm, RegimeForm, CloseWindowForm, PerquisiteForm } from "../forms";
 import { Card, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 
 export const metadata = { title: "Tax worksheet" };
@@ -430,6 +430,15 @@ export default async function TaxWorksheetPage(
             value={formatINR(w.perquisites.totalPaise)}
             strong
           />
+        </Card>
+      )}
+
+      {canActOnPeople(user) && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">Add a perquisite</span>
+          </div>
+          <PerquisiteForm employeeId={emp.id} />
         </Card>
       )}
 

@@ -6,6 +6,12 @@ import {
   valueLoan,
   valueExcessRetirals,
   valueEsop,
+  valueDomesticServant,
+  valueUtilities,
+  valueEducationalFacility,
+  valueClubOrGymMembership,
+  valueGifts,
+  valueMedicalReimbursement,
   summarisePerquisites,
   PERQUISITE_RATES_2026 as R,
 } from "./perquisites";
@@ -393,6 +399,111 @@ test("a start-up may defer the TDS but the perquisite still arises", () => {
   });
   assert.equal(r.valuePaise, L(250000));
   assert.match(r.basis, /192\(1C\)/);
+});
+
+/* ---------------- domestic servant ---------------- */
+
+test("a domestic servant is valued at cost less recovery", () => {
+  const r = valueDomesticServant({
+    provided: true,
+    actualCostToEmployerPaise: L(60000),
+    amountRecoveredPaise: L(10000),
+  });
+  assert.equal(r.valuePaise, L(50000));
+});
+
+test("no servant provided is nil", () => {
+  const r = valueDomesticServant({ provided: false, actualCostToEmployerPaise: L(60000), amountRecoveredPaise: 0 });
+  assert.equal(r.valuePaise, 0);
+});
+
+/* ---------------- utilities ---------------- */
+
+test("utilities from the employer's own resources use manufacturing cost", () => {
+  const r = valueUtilities({
+    provided: true,
+    suppliedFromEmployersOwnResources: true,
+    manufacturingCostToEmployerPaise: L(8000),
+    billedByOutsideAgencyPaise: L(12000),
+    amountRecoveredPaise: L(2000),
+  });
+  assert.equal(r.valuePaise, L(6000));
+});
+
+test("utilities billed by an outside agency use the bill amount", () => {
+  const r = valueUtilities({
+    provided: true,
+    suppliedFromEmployersOwnResources: false,
+    manufacturingCostToEmployerPaise: L(8000),
+    billedByOutsideAgencyPaise: L(12000),
+    amountRecoveredPaise: 0,
+  });
+  assert.equal(r.valuePaise, L(12000));
+});
+
+/* ---------------- educational facility ---------------- */
+
+test("a child's cost at or below ₹1,000/month is nil, not the excess", () => {
+  const r = valueEducationalFacility({
+    perChildMonthlyCostPaise: [L(800), L(1000)],
+    months: 12,
+    amountRecoveredPaise: 0,
+  });
+  assert.equal(r.valuePaise, 0);
+});
+
+test("a child's cost above ₹1,000/month taxes the full monthly cost, not just the excess", () => {
+  const r = valueEducationalFacility({
+    perChildMonthlyCostPaise: [L(1500), L(800)],
+    months: 12,
+    amountRecoveredPaise: L(2000),
+  });
+  // only the ₹1,500 child crosses the threshold: 1500*12 - 2000
+  assert.equal(r.valuePaise, L(18000) - L(2000));
+});
+
+/* ---------------- club / gym ---------------- */
+
+test("a club membership used wholly for business is nil", () => {
+  const r = valueClubOrGymMembership({
+    annualFeePaidByEmployerPaise: L(50000),
+    usedWhollyAndExclusivelyForBusiness: true,
+    amountRecoveredPaise: 0,
+  });
+  assert.equal(r.valuePaise, 0);
+});
+
+test("a personal club membership is taxed at fee less recovery", () => {
+  const r = valueClubOrGymMembership({
+    annualFeePaidByEmployerPaise: L(50000),
+    usedWhollyAndExclusivelyForBusiness: false,
+    amountRecoveredPaise: L(10000),
+  });
+  assert.equal(r.valuePaise, L(40000));
+});
+
+/* ---------------- gifts ---------------- */
+
+test("gifts at or below ₹5,000 in the year are exempt", () => {
+  const r = valueGifts({ aggregateValuePaise: L(5000) });
+  assert.equal(r.valuePaise, 0);
+});
+
+test("gifts over ₹5,000 make the WHOLE value taxable, not the excess", () => {
+  const r = valueGifts({ aggregateValuePaise: L(5001) });
+  assert.equal(r.valuePaise, L(5001));
+});
+
+/* ---------------- medical reimbursement ---------------- */
+
+test("treatment at the employer's or a Government hospital is not a perquisite", () => {
+  const r = valueMedicalReimbursement({ reimbursedPaise: L(40000), atEmployersOrGovernmentHospital: true });
+  assert.equal(r.valuePaise, 0);
+});
+
+test("any other medical reimbursement is fully taxable — the old ₹15,000 exemption is gone", () => {
+  const r = valueMedicalReimbursement({ reimbursedPaise: L(12000), atEmployersOrGovernmentHospital: false });
+  assert.equal(r.valuePaise, L(12000));
 });
 
 /* ---------------- assembly ---------------- */

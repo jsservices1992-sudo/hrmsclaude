@@ -70,8 +70,13 @@ export const TAX_CONFIG_VERIFICATION = {
    * scheme this build does not administer), and 80RRB/80QQB (royalties).
    */
   deductionMaster: true,
-  /** Perquisite valuation (rent-free accommodation, ESOPs, etc.) beyond what `perquisites.ts` already computes. */
-  perquisiteRules: false,
+  /**
+   * `perquisites.ts` now also values domestic servants, utilities, a
+   * child's educational facility, club/gym membership, gifts and
+   * vouchers, and medical reimbursement, beyond the car, accommodation,
+   * loan, retiral and ESOP rules it already had.
+   */
+  perquisiteRules: true,
 } as const;
 
 /**

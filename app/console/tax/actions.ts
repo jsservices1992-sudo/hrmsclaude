@@ -12,6 +12,22 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { CURRENT_FY } from "@/lib/tax/fy";
+import { parseRupeeField } from "@/lib/ess/declaration";
+import {
+  valueCar,
+  valueAccommodation,
+  valueLoan,
+  valueExcessRetirals,
+  valueEsop,
+  valueDomesticServant,
+  valueUtilities,
+  valueEducationalFacility,
+  valueClubOrGymMembership,
+  valueGifts,
+  valueMedicalReimbursement,
+  PERQUISITE_RATES_2026,
+  type PerquisiteLine,
+} from "@/lib/tax/perquisites";
 
 export type TaxState = { error?: string; ok?: string };
 
@@ -298,4 +314,200 @@ export async function closeWindow(
   return {
     ok: "Window closed. Unverified deductions have dropped out and the remaining months carry the shortfall.",
   };
+}
+
+/**
+ * Adding a perquisite values it, right here, from the facts entered — it
+ * is never stored as a raw claim to be valued later. The `inputs` column
+ * keeps what was typed so the figure can be re-derived if the facts turn
+ * out to have been wrong.
+ */
+export async function addPerquisite(
+  _prev: TaxState,
+  fd: FormData,
+): Promise<TaxState> {
+  const { user, error } = await requireHr();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const employeeId = String(fd.get("employeeId") ?? "");
+  const emp = await employeeInScope(user, employeeId);
+  if (!emp) return { error: "Not authorised." };
+
+  const code = String(fd.get("code") ?? "");
+  const on = (name: string) => fd.get(name) === "on";
+  const num = (name: string) => Number(fd.get(name) ?? 0) || 0;
+  const rupee = (name: string): { ok: true; paise: number } | { ok: false; error: string } =>
+    parseRupeeField(String(fd.get(name) ?? ""));
+
+  const fields = [
+    "actualCostPaise",
+    "amountRecoveredPaise",
+    "salaryPaise",
+    "actualRentPaise",
+    "rentRecoveredFromEmployeePaise",
+    "furnishingValuePaise",
+    "loanOutstandingPaise",
+    "employerPfPaise",
+    "employerNpsPaise",
+    "employerSuperannuationPaise",
+    "fmvPerSharePaise",
+    "exercisePricePerSharePaise",
+    "manufacturingCostPaise",
+    "billedByAgencyPaise",
+    "perChildMonthlyCostPaise",
+    "annualFeePaise",
+    "aggregateGiftsPaise",
+    "reimbursedPaise",
+  ] as const;
+  const paise: Record<string, number> = {};
+  for (const f of fields) {
+    if (fd.get(f) == null) continue;
+    const parsed = rupee(f);
+    if (!parsed.ok) return { error: parsed.error };
+    paise[f] = parsed.paise;
+  }
+
+  let line: PerquisiteLine;
+  switch (code) {
+    case "CAR":
+      line = valueCar(
+        {
+          ownedByEmployer: on("ownedByEmployer"),
+          engineCc: num("engineCc"),
+          driverProvided: on("driverProvided"),
+          useIsWhollyPersonal: on("useIsWhollyPersonal"),
+          actualCostPaise: paise.actualCostPaise ?? 0,
+          amountRecoveredPaise: paise.amountRecoveredPaise ?? 0,
+          months: num("months") || 1,
+        },
+        PERQUISITE_RATES_2026,
+      );
+      break;
+    case "ACCOM":
+      line = valueAccommodation(
+        {
+          provided: true,
+          salaryPaise: paise.salaryPaise ?? 0,
+          cityPopulation: num("cityPopulation"),
+          leasedByEmployer: on("leasedByEmployer"),
+          actualRentPaise: paise.actualRentPaise ?? 0,
+          rentRecoveredFromEmployeePaise: paise.rentRecoveredFromEmployeePaise ?? 0,
+          furnishingValuePaise: paise.furnishingValuePaise ?? 0,
+        },
+        PERQUISITE_RATES_2026,
+      );
+      break;
+    case "LOAN": {
+      const months = num("months") || 1;
+      const outstanding = paise.loanOutstandingPaise ?? 0;
+      line = valueLoan(
+        {
+          // A single "typical monthly outstanding" repeated is a simplification
+          // of the real month-by-month schedule a reducing loan actually has —
+          // documented on the line itself via `inputs`, not hidden.
+          monthlyOutstandingPaise: Array(months).fill(outstanding),
+          interestChargedBps: num("interestChargedBps"),
+          isExemptPurpose: on("isExemptPurpose"),
+        },
+        PERQUISITE_RATES_2026,
+      );
+      break;
+    }
+    case "RETIRAL":
+      line = valueExcessRetirals(
+        {
+          employerPfPaise: paise.employerPfPaise ?? 0,
+          employerNpsPaise: paise.employerNpsPaise ?? 0,
+          employerSuperannuationPaise: paise.employerSuperannuationPaise ?? 0,
+        },
+        PERQUISITE_RATES_2026,
+      );
+      break;
+    case "ESOP":
+      line = valueEsop({
+        sharesExercised: num("sharesExercised"),
+        fairMarketValuePerSharePaise: paise.fmvPerSharePaise ?? 0,
+        exercisePricePerSharePaise: paise.exercisePricePerSharePaise ?? 0,
+        isEligibleStartup: on("isEligibleStartup"),
+      });
+      break;
+    case "SERVANT":
+      line = valueDomesticServant({
+        provided: true,
+        actualCostToEmployerPaise: paise.actualCostPaise ?? 0,
+        amountRecoveredPaise: paise.amountRecoveredPaise ?? 0,
+      });
+      break;
+    case "UTILITIES":
+      line = valueUtilities({
+        provided: true,
+        suppliedFromEmployersOwnResources: on("suppliedFromEmployersOwnResources"),
+        manufacturingCostToEmployerPaise: paise.manufacturingCostPaise ?? 0,
+        billedByOutsideAgencyPaise: paise.billedByAgencyPaise ?? 0,
+        amountRecoveredPaise: paise.amountRecoveredPaise ?? 0,
+      });
+      break;
+    case "EDUCATION": {
+      const children = Math.max(1, num("numberOfChildren") || 1);
+      line = valueEducationalFacility({
+        // One typical monthly cost applied to every child — a
+        // simplification of a real per-child schedule, same as the loan
+        // case above.
+        perChildMonthlyCostPaise: Array(children).fill(paise.perChildMonthlyCostPaise ?? 0),
+        months: num("months") || 12,
+        amountRecoveredPaise: paise.amountRecoveredPaise ?? 0,
+      });
+      break;
+    }
+    case "CLUB":
+      line = valueClubOrGymMembership({
+        annualFeePaidByEmployerPaise: paise.annualFeePaise ?? 0,
+        usedWhollyAndExclusivelyForBusiness: on("usedWhollyAndExclusivelyForBusiness"),
+        amountRecoveredPaise: paise.amountRecoveredPaise ?? 0,
+      });
+      break;
+    case "GIFTS":
+      line = valueGifts({ aggregateValuePaise: paise.aggregateGiftsPaise ?? 0 });
+      break;
+    case "MEDICAL":
+      line = valueMedicalReimbursement({
+        reimbursedPaise: paise.reimbursedPaise ?? 0,
+        atEmployersOrGovernmentHospital: on("atEmployersOrGovernmentHospital"),
+      });
+      break;
+    default:
+      return { error: "Choose a perquisite type." };
+  }
+
+  if (line.valuePaise <= 0) {
+    return {
+      error: `On these facts this values at ₹0 (${line.basis}) — nothing to record.`,
+    };
+  }
+
+  const inputs: Record<string, unknown> = { code };
+  for (const [k, v] of fd.entries()) if (k !== "employeeId") inputs[k] = v;
+
+  await db.insert(s.taxPerquisites).values({
+    id: randomUUID(),
+    employeeId,
+    financialYear: CURRENT_FY,
+    code: line.code,
+    label: line.label,
+    valuePaise: line.valuePaise,
+    basis: line.basis,
+    inputs: JSON.stringify(inputs),
+    createdAt: new Date().toISOString(),
+  });
+
+  await audit({
+    actor: user.email,
+    action: "tax_perquisite.added",
+    entity: "employee",
+    entityId: employeeId,
+    after: { code: line.code, valuePaise: line.valuePaise },
+  });
+
+  revalidatePath(`/console/tax/${employeeId}`);
+  return { ok: `${line.label} added at ${(line.valuePaise / 100).toFixed(0)} rupees for the year.` };
 }

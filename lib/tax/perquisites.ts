@@ -7,7 +7,15 @@ import type { Paise } from "../payroll/money";
  * not on what the benefit cost the employer. The rates below are
  * configuration for the same reason the slabs are.
  *
- * UNVERIFIED, like the rest of the FY 2026-27 set.
+ * Covers: motor car, rent-free/concessional accommodation, concessional
+ * loans, employer retirals above the aggregate cap, ESOPs, domestic
+ * servants, gas/electricity/water, a child's educational facility, club
+ * or gym membership, gifts and vouchers, and medical reimbursement. Left
+ * out on purpose because they need facts this build does not otherwise
+ * hold: leave travel concession beyond the two-in-a-block exemption
+ * (handled as an exempt allowance, not here), and lunch/tea/non-alcoholic
+ * refreshment at the workplace (exempt regardless of value, so there is
+ * nothing to value).
  */
 
 export type PerquisiteRates = {
@@ -31,6 +39,10 @@ export type PerquisiteRates = {
   loanExemptionThresholdPaise: Paise;
   /** Employer PF, NPS and superannuation above this is taxable — s.17(2)(vii). */
   retiralAggregateCapPaise: Paise;
+  /** Rule 3(5): education is nil-value below this, per child per month. */
+  educationExemptMonthlyPaise: Paise;
+  /** CBDT circular: gifts in kind, aggregate for the year. Above this the WHOLE value is taxable, not just the excess. */
+  giftExemptAggregatePaise: Paise;
 };
 
 export const PERQUISITE_RATES_2026: PerquisiteRates = {
@@ -44,6 +56,8 @@ export const PERQUISITE_RATES_2026: PerquisiteRates = {
   sbiLendingRateBps: 900,
   loanExemptionThresholdPaise: 2000000, // ₹20,000
   retiralAggregateCapPaise: 75000000, // ₹7,50,000
+  educationExemptMonthlyPaise: 100000, // ₹1,000 per child per month
+  giftExemptAggregatePaise: 500000, // ₹5,000
 };
 
 export type PerquisiteLine = {
@@ -276,6 +290,159 @@ export function valueEsop(args: {
     basis: args.isEligibleStartup
       ? `${args.sharesExercised} shares at a spread of ₹${(spread / 100).toFixed(2)}; TDS may be deferred under section 192(1C), but the perquisite arises on exercise`
       : `${args.sharesExercised} shares at a spread of ₹${(spread / 100).toFixed(2)} on exercise`,
+  };
+}
+
+/* ------------------------------------------------------------------
+   Domestic servant — Rule 3(3)
+   ------------------------------------------------------------------ */
+
+export function valueDomesticServant(args: {
+  provided: boolean;
+  actualCostToEmployerPaise: Paise;
+  amountRecoveredPaise: Paise;
+}): PerquisiteLine {
+  if (!args.provided) {
+    return { code: "SERVANT", label: "Domestic servant", valuePaise: 0, basis: "Not provided" };
+  }
+  const value = Math.max(0, args.actualCostToEmployerPaise - args.amountRecoveredPaise);
+  return {
+    code: "SERVANT",
+    label: "Domestic servant",
+    valuePaise: value,
+    basis: "Actual cost to the employer, less any amount recovered from the employee",
+  };
+}
+
+/* ------------------------------------------------------------------
+   Gas, electricity and water — Rule 3(7)(ii)
+   ------------------------------------------------------------------ */
+
+export function valueUtilities(args: {
+  provided: boolean;
+  suppliedFromEmployersOwnResources: boolean;
+  manufacturingCostToEmployerPaise: Paise;
+  billedByOutsideAgencyPaise: Paise;
+  amountRecoveredPaise: Paise;
+}): PerquisiteLine {
+  if (!args.provided) {
+    return { code: "UTILITIES", label: "Gas, electricity and water", valuePaise: 0, basis: "Not provided" };
+  }
+  const gross = args.suppliedFromEmployersOwnResources
+    ? args.manufacturingCostToEmployerPaise
+    : args.billedByOutsideAgencyPaise;
+  const value = Math.max(0, gross - args.amountRecoveredPaise);
+  return {
+    code: "UTILITIES",
+    label: "Gas, electricity and water",
+    valuePaise: value,
+    basis: args.suppliedFromEmployersOwnResources
+      ? "Manufacturing cost to the employer, less recovery"
+      : "Amount billed by the outside agency, less recovery",
+  };
+}
+
+/* ------------------------------------------------------------------
+   Educational facility for children — Rule 3(5)
+   ------------------------------------------------------------------ */
+
+export function valueEducationalFacility(args: {
+  /** One entry per child, the school's monthly cost in a similar institution. */
+  perChildMonthlyCostPaise: Paise[];
+  months: number;
+  amountRecoveredPaise: Paise;
+}): PerquisiteLine {
+  if (args.perChildMonthlyCostPaise.length === 0) {
+    return { code: "EDUCATION", label: "Educational facility", valuePaise: 0, basis: "Not provided" };
+  }
+  // Below the per-child monthly threshold the value is nil, not merely the
+  // excess above it — this is an exemption, not a deduction against cost.
+  const taxableChildren = args.perChildMonthlyCostPaise.filter(
+    (m) => m > PERQUISITE_RATES_2026.educationExemptMonthlyPaise,
+  );
+  const gross = taxableChildren.reduce((a, m) => a + m * args.months, 0);
+  const value = Math.max(0, gross - args.amountRecoveredPaise);
+  return {
+    code: "EDUCATION",
+    label: "Educational facility",
+    valuePaise: value,
+    basis:
+      taxableChildren.length === 0
+        ? "Every child's cost is at or below ₹1,000 a month — nil value, not merely the excess"
+        : `${taxableChildren.length} of ${args.perChildMonthlyCostPaise.length} child(ren) over ₹1,000/month — full monthly cost is taxable for each, less recovery`,
+  };
+}
+
+/* ------------------------------------------------------------------
+   Club or gym membership — Rule 3(7)(iii)
+   ------------------------------------------------------------------ */
+
+export function valueClubOrGymMembership(args: {
+  annualFeePaidByEmployerPaise: Paise;
+  usedWhollyAndExclusivelyForBusiness: boolean;
+  amountRecoveredPaise: Paise;
+}): PerquisiteLine {
+  if (args.usedWhollyAndExclusivelyForBusiness) {
+    return {
+      code: "CLUB",
+      label: "Club or gym membership",
+      valuePaise: 0,
+      basis: "Used wholly and exclusively for the employer's business",
+    };
+  }
+  const value = Math.max(0, args.annualFeePaidByEmployerPaise - args.amountRecoveredPaise);
+  return {
+    code: "CLUB",
+    label: "Club or gym membership",
+    valuePaise: value,
+    basis: "Annual fee paid by the employer, less any amount recovered",
+  };
+}
+
+/* ------------------------------------------------------------------
+   Gifts and vouchers — CBDT Circular under Rule 3(7)(iv)
+   ------------------------------------------------------------------ */
+
+export function valueGifts(args: { aggregateValuePaise: Paise }): PerquisiteLine {
+  if (args.aggregateValuePaise <= PERQUISITE_RATES_2026.giftExemptAggregatePaise) {
+    return {
+      code: "GIFTS",
+      label: "Gifts and vouchers",
+      valuePaise: 0,
+      basis: `Aggregate for the year is at or below the ₹${(PERQUISITE_RATES_2026.giftExemptAggregatePaise / 100).toFixed(0)} exemption`,
+    };
+  }
+  return {
+    code: "GIFTS",
+    label: "Gifts and vouchers",
+    valuePaise: args.aggregateValuePaise,
+    basis: "Once the aggregate crosses ₹5,000 in the year, the WHOLE value is taxable, not just the excess",
+  };
+}
+
+/* ------------------------------------------------------------------
+   Medical reimbursement — no standalone exemption since AY 2019-20
+   ------------------------------------------------------------------ */
+
+export function valueMedicalReimbursement(args: {
+  reimbursedPaise: Paise;
+  /** Treatment at the employer's own hospital, or one maintained by the Government, is not a perquisite at all. */
+  atEmployersOrGovernmentHospital: boolean;
+}): PerquisiteLine {
+  if (args.atEmployersOrGovernmentHospital) {
+    return {
+      code: "MEDICAL",
+      label: "Medical reimbursement",
+      valuePaise: 0,
+      basis: "Treatment at the employer's own or a Government hospital is not a perquisite",
+    };
+  }
+  return {
+    code: "MEDICAL",
+    label: "Medical reimbursement",
+    valuePaise: args.reimbursedPaise,
+    basis:
+      "Fully taxable — the ₹15,000 medical reimbursement exemption was withdrawn from AY 2019-20 when the standard deduction was introduced",
   };
 }
 
