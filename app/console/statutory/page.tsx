@@ -7,7 +7,10 @@ import {
   buildEsicReturn,
   buildSummaries,
   loadHalfYearly,
+  companyBranchStates,
 } from "@/lib/statutory/load";
+import { SHOPS_ACT_JURISDICTIONS } from "@/db/shops-act-data";
+import { JURISDICTIONS } from "@/db/statutory-data";
 import { formatINR } from "@/lib/payroll/money";
 import {
   getSessionUser,
@@ -100,6 +103,8 @@ export default async function StatutoryPage(
   const company = companies.find((c) => c.id === companyId)!;
   const calendar = await loadCalendar({ companyId, year, month });
   const register = await loadRegister(companyId, year, month);
+  const branchStates = await companyBranchStates(companyId);
+  const hasHaryana = branchStates.includes("HR");
 
   const epf = register ? await buildEpfReturn(register) : null;
   const esic = register ? buildEsicReturn(register) : null;
@@ -713,13 +718,69 @@ export default async function StatutoryPage(
           >
             Register of employees ↓
           </a>
+          {hasHaryana && (
+            <>
+              <a
+                href={`/console/statutory/download/haryana-form-c?${query}`}
+                className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+              >
+                Haryana — Form C ↓
+              </a>
+              {register && (
+                <a
+                  href={`/console/statutory/download/haryana-form-d?${query}`}
+                  className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+                >
+                  Haryana — Form D ↓
+                </a>
+              )}
+            </>
+          )}
         </div>
         <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2 max-w-[76ch]">
           The attendance register needs a calculated run for the period, the
           same as the wage register does — nothing to show until one exists.
           The leave and bonus registers do not, and the bonus register spans
-          the whole financial year rather than one month. The state-specific
-          Shops and Establishments forms are not built yet.
+          the whole financial year rather than one month.
+          {hasHaryana && " Haryana's Form D needs a calculated run, the same as the wage register; Form C does not."}
+        </p>
+      </Panel>
+
+      {/* ---------- Shops & Establishments coverage ---------- */}
+      <Panel title="Shops & Establishments coverage">
+        <Table>
+          <THead>
+            {["State", "Governing Act", "Forms built"].map((h) => (
+              <TH key={h}>{h}</TH>
+            ))}
+          </THead>
+          <TBody>
+            {branchStates.map((code) => {
+              const j = SHOPS_ACT_JURISDICTIONS.find((x) => x.state === code);
+              const name = JURISDICTIONS.find((x) => x.code === code)?.name ?? code;
+              return (
+                <TR key={code}>
+                  <TD>{name}</TD>
+                  <TD className="text-ink-2 max-w-[40ch] whitespace-normal">
+                    {j?.actName ?? "Not yet identified"}
+                  </TD>
+                  <TD>
+                    <Badge tone={j?.formsVerified ? "teal" : "neutral"}>
+                      {j?.formsVerified ? "Built" : "Not built"}
+                    </Badge>
+                  </TD>
+                </TR>
+              );
+            })}
+          </TBody>
+        </Table>
+        <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2 max-w-[76ch]">
+          Every state and union territory has its own Act, Rules and prescribed
+          forms — there is no single all-India version of this the way there is
+          for the Code on Wages. A state shows here only once this company has
+          a branch in it, and &quot;Built&quot; means its actual forms have been read
+          from a primary source and are downloadable above, not merely that
+          the Act&apos;s name is known.
         </p>
       </Panel>
     </div>

@@ -15,6 +15,8 @@ import {
   buildAttendanceRegister,
   buildLeaveRegister,
   buildBonusRegister,
+  buildHaryanaFormC,
+  buildHaryanaFormD,
 } from "@/lib/statutory/load";
 
 /**
@@ -34,6 +36,8 @@ const KINDS = new Set([
   "attendance-register",
   "leave-register",
   "bonus-register",
+  "haryana-form-c",
+  "haryana-form-d",
 ]);
 
 export async function GET(
@@ -99,6 +103,24 @@ export async function GET(
     return fileResponse(csv, `leave-register-${year}-${String(month).padStart(2, "0")}.csv`, "text/csv");
   }
 
+  // Haryana's Form C is attendance-based, not run-based — a company can
+  // want its Register of Employees before payroll for the period is even
+  // calculated.
+  if (kind === "haryana-form-c") {
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+      return new Response("A year and month are required.", { status: 400 });
+    }
+    await recordAccess({
+      user,
+      dataClass: "compensation",
+      surface: `console/statutory export:${kind}`,
+      companyId,
+      filterApplied: `${year}-${String(month).padStart(2, "0")}`,
+    });
+    const csv = await buildHaryanaFormC(companyId, year, month);
+    return fileResponse(csv, `haryana-form-c-${year}-${String(month).padStart(2, "0")}.csv`, "text/csv");
+  }
+
   if (
     !Number.isInteger(year) ||
     !Number.isInteger(month) ||
@@ -157,6 +179,14 @@ export async function GET(
     return fileResponse(
       buildAttendanceRegister(register),
       `attendance-register-${period}.csv`,
+      "text/csv",
+    );
+  }
+
+  if (kind === "haryana-form-d") {
+    return fileResponse(
+      buildHaryanaFormD(register),
+      `haryana-form-d-${period}.csv`,
       "text/csv",
     );
   }

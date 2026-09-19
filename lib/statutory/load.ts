@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, lte, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { validatePan } from "../tax/engine";
@@ -43,6 +43,7 @@ import {
   type RegisterLine,
 } from "./summaries";
 import { calendarFor, trackStatus, filingKey, type CompanyRegistrations } from "./calendar";
+import { haryanaFormC, haryanaFormD, type FormCRow, type FormDRow } from "./shops-act";
 
 /** Run states in which the figures have actually been signed off. */
 export const APPROVED_STATUSES = new Set([
@@ -620,6 +621,108 @@ export async function buildBonusRegister(
       })),
     12,
   );
+}
+
+/* ==================================================================
+   Shops & Establishments — Haryana (the only state built so far;
+   see db/shops-act-data.ts for the rest)
+   ================================================================== */
+
+/** Which states a company actually has branches in — what decides which Shops Act(s) even apply to it. */
+export async function companyBranchStates(companyId: string): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ stateCode: s.branches.stateCode })
+    .from(s.branches)
+    .where(eq(s.branches.companyId, companyId));
+  return rows.map((r) => r.stateCode).sort();
+}
+
+const daysInMonth = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+/** "Whether employed on daily, monthly, contract or piece-rate wages" — Form C's own phrase. */
+function wageBasisFor(employmentType: string): string {
+  return employmentType === "contract" ? "Contract" : "Monthly";
+}
+
+export async function buildHaryanaFormC(
+  companyId: string,
+  year: number,
+  month: number,
+): Promise<string> {
+  const emps = await db
+    .select({ emp: s.employees })
+    .from(s.employees)
+    .innerJoin(s.branches, eq(s.employees.branchId, s.branches.id))
+    .where(and(eq(s.employees.companyId, companyId), eq(s.branches.stateCode, "HR")));
+
+  if (emps.length === 0) return haryanaFormC([]);
+
+  const employeeIds = emps.map((r) => r.emp.id);
+  const from = `${year}-${String(month).padStart(2, "0")}-01`;
+  const to = `${year}-${String(month).padStart(2, "0")}-${String(daysInMonth(year, month)).padStart(2, "0")}`;
+
+  const records = await db
+    .select()
+    .from(s.attendanceRecords)
+    .where(
+      and(
+        inArray(s.attendanceRecords.employeeId, employeeIds),
+        gte(s.attendanceRecords.date, from),
+        lte(s.attendanceRecords.date, to),
+      ),
+    );
+  const byEmployeeDate = new Map(records.map((r) => [`${r.employeeId}:${r.date}`, r]));
+
+  const rows: FormCRow[] = [];
+  for (const { emp } of emps) {
+    for (let d = 1; d <= daysInMonth(year, month); d++) {
+      const date = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const rec = byEmployeeDate.get(`${emp.id}:${date}`);
+      const punches: { inMinute: number; outMinute: number }[] = rec
+        ? JSON.parse(rec.punchesJson)
+        : [];
+
+      rows.push({
+        empCode: emp.empCode,
+        name: `${emp.firstName} ${emp.lastName}`,
+        fatherOrHusbandName: null,
+        natureOfWork: emp.designation,
+        wageBasis: wageBasisFor(emp.employmentType),
+        dateOfAppointment: emp.dateOfJoining,
+        date,
+        spreadOverFromMinute: punches[0]?.inMinute ?? null,
+        spreadOverToMinute: punches.at(-1)?.outMinute ?? null,
+        // A rest interval only reads where there are two distinct punch
+        // pairs — a single in-to-out pair has no recorded break at all,
+        // and this build does not assume an unrecorded one.
+        restFromMinute: punches.length === 2 ? punches[0].outMinute : null,
+        restToMinute: punches.length === 2 ? punches[1].inMinute : null,
+        workingMinutes: rec?.workedMinutes ?? 0,
+        onLeave: rec?.status === "on_leave",
+        remarks: rec ? "" : "No attendance record for this date",
+      });
+    }
+  }
+
+  return haryanaFormC(rows);
+}
+
+export function buildHaryanaFormD(register: LoadedRegister): string {
+  const rows: FormDRow[] = [];
+  // Only Haryana's own establishments — a run can span several states,
+  // and Form D belongs to whichever of them is under Haryana's Act.
+  for (const line of register.lines.filter((l) => l.stateCode === "HR")) {
+    const summary = register.summaries.get(line.employeeId);
+    rows.push({
+      empCode: line.empCode,
+      name: line.name,
+      wagesFixedPaise: line.grossPaise,
+      wagesEarnedPaise: summary?.grossPaise ?? line.grossPaise,
+      deductionsPaise: summary?.deductionsPaise ?? 0,
+      netPaidPaise: summary?.netPaise ?? 0,
+    });
+  }
+  return haryanaFormD(rows);
 }
 
 /* ==================================================================
