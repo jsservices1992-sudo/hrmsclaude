@@ -164,7 +164,14 @@ export default function SiteNav() {
             </Link>
           </div>
 
-          {/* mobile toggle */}
+          {/* mobile: sign-in stays in view, not buried under the menu */}
+          <div className="lg:hidden flex items-center gap-1">
+          <Link
+            href="/login"
+            className="px-3 py-1.5 text-sm font-medium bg-indigo text-on-indigo border border-indigo"
+          >
+            Sign in
+          </Link>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -191,6 +198,7 @@ export default function SiteNav() {
               />
             </span>
           </button>
+          </div>
         </nav>
       </div>
     </div>
