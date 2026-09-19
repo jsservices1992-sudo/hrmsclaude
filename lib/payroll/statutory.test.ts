@@ -9,6 +9,7 @@ import {
   effectiveAsOf,
   checkSlabCoverage,
   lwfEmployerTopUp,
+  projectAnnualProfessionalTax,
   type EpfParams,
   type LwfInput,
   type LwfRate,
@@ -397,6 +398,77 @@ describe("Professional tax", () => {
       applicable: true,
     });
     assert.equal(r.amountPaise, 0);
+  });
+});
+
+describe("A full financial year's projected professional tax", () => {
+  test("twelve months of a flat Karnataka slab", () => {
+    const total = projectAnnualProfessionalTax({
+      stateCode: "KA",
+      ptBasePaise: R(60000),
+      gender: "male",
+      slabs: KA,
+      applicable: true,
+    });
+    assert.equal(total, R(2400), "₹200 × 12");
+  });
+
+  test("the annual cap still applies across a projected year", () => {
+    // Same shape as Punjab's real slab: R(200)/month, capped at R(2400)/year.
+    const slabs: PtSlab[] = [{ minPaise: 0, maxPaise: null, amountPaise: R(2500) }];
+    const total = projectAnnualProfessionalTax({
+      stateCode: "XX",
+      ptBasePaise: R(60000),
+      gender: "male",
+      slabs,
+      applicable: true,
+    });
+    assert.equal(total, R(2500), "the default ₹2,500 constitutional cap, not 12 × ₹2,500");
+  });
+
+  test("February's Maharashtra override is picked up inside the projected year", () => {
+    const total = projectAnnualProfessionalTax({
+      stateCode: "MH",
+      ptBasePaise: R(50000),
+      gender: "male",
+      slabs: MH,
+      applicable: true,
+    });
+    // 11 months at ₹200 + February at ₹300, but MH's own cap is ₹2,500.
+    assert.equal(total, R(2500));
+  });
+
+  test("a state that does not levy PT projects nothing", () => {
+    const total = projectAnnualProfessionalTax({
+      stateCode: "UP",
+      ptBasePaise: R(90000),
+      gender: "male",
+      slabs: [],
+      applicable: false,
+    });
+    assert.equal(total, 0);
+  });
+
+  test("Punjab's income-tax-liability gate defaults to nothing when liability is not yet known", () => {
+    const pbSlab: PtSlab = { minPaise: 0, maxPaise: null, amountPaise: R(200), annualCapPaise: R(2400), requiresIncomeTaxLiability: true };
+    const unknown = projectAnnualProfessionalTax({
+      stateCode: "PB",
+      ptBasePaise: R(60000),
+      gender: "male",
+      slabs: [pbSlab],
+      applicable: true,
+    });
+    assert.equal(unknown, 0, "undefined is treated as not liable, never guessed");
+
+    const known = projectAnnualProfessionalTax({
+      stateCode: "PB",
+      ptBasePaise: R(60000),
+      gender: "male",
+      slabs: [pbSlab],
+      applicable: true,
+      incomeTaxPayee: true,
+    });
+    assert.equal(known, R(2400));
   });
 });
 

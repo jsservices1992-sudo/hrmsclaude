@@ -4,8 +4,9 @@ import { CURRENT_FY, monthsInQuarter, monthsRemainingInFy } from "./fy";
 import { buildForm16PartB } from "./form16";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { loadStructure } from "../payroll/load";
+import { loadStructure, loadStatutoryConfig } from "../payroll/load";
 import { evaluateStructure } from "../payroll/compensation";
+import { projectAnnualProfessionalTax } from "../payroll/statutory";
 import {
   computeAnnualTax,
   computeDeductions,
@@ -118,6 +119,9 @@ type WorksheetInputs = {
   perqRows: (typeof s.taxPerquisites.$inferSelect)[];
   ledger: (typeof s.tdsLedger.$inferSelect)[];
   proofs: (typeof s.taxProofs.$inferSelect)[];
+  /** The employee's branch state, for projecting professional tax — null when the employee has no branch on record. */
+  stateCode: string | null;
+  statutory: Awaited<ReturnType<typeof loadStatutoryConfig>>;
 };
 
 function composeWorksheet(
@@ -125,7 +129,7 @@ function composeWorksheet(
   financialYear: number,
   overrideRegime?: Regime,
 ): TaxWorksheet {
-  const { emp, decl, salary, structure, flexiApprovedPaise, perqRows, ledger, proofs } = input;
+  const { emp, decl, salary, structure, flexiApprovedPaise, perqRows, ledger, proofs, stateCode, statutory } = input;
 
   const regime: Regime = overrideRegime ?? ((decl?.regime ?? emp.taxRegime) as Regime);
   const config = regimeConfig(regime, financialYear, ageAsOfFinancialYearEnd(emp.dateOfBirth, financialYear));
@@ -183,6 +187,28 @@ function composeWorksheet(
       })
     : { lines: [], totalAllowedPaise: 0, disallowedPaise: 0 };
 
+  /* ---- professional tax, projected for the whole year ---- */
+  let projectedPtPaise = 0;
+  if (stateCode) {
+    const applicable = statutory.ptApplicableByState[stateCode] ?? false;
+    const slabs = statutory.ptSlabsByState[stateCode] ?? [];
+    if (applicable && slabs.length === 0) {
+      warnings.push(`${stateCode} levies professional tax but no slab is configured — the projection assumes none`);
+    } else {
+      projectedPtPaise = projectAnnualProfessionalTax({
+        stateCode,
+        ptBasePaise: evaluated.ptBasePaise,
+        gender: emp.gender ?? "other",
+        slabs,
+        applicable,
+        // Not yet known — this worksheet is what would establish it.
+        // Only Punjab's slab reads this, and it charges nothing rather
+        // than use this same computation's own unfinished answer.
+        incomeTaxPayee: undefined,
+      });
+    }
+  }
+
   /* ---- annual ---- */
   const exemptAllowances = (hra?.exemptPaise ?? 0) + flexiExempt;
 
@@ -192,9 +218,12 @@ function composeWorksheet(
     perquisitesPaise: perquisites.totalPaise,
     previousEmployerSalaryPaise: decl?.previousSalaryPaise ?? 0,
     previousEmployerTdsPaise: decl?.previousTdsPaise ?? 0,
-    // Professional tax is not modelled per state here; the payroll run is
-    // authoritative and feeds this once the year has months behind it.
-    professionalTaxPaidPaise: 0,
+    // A full-year projection — see projectAnnualProfessionalTax above —
+    // not what has actually been paid to date. The payroll run remains
+    // authoritative for the return actually filed; this only sizes the
+    // month-by-month TDS estimate closer to what section 16(iii) will
+    // eventually allow.
+    professionalTaxPaidPaise: projectedPtPaise,
     deductions,
     config,
   });
@@ -284,7 +313,7 @@ export async function loadWorksheetsFor(
   const out = new Map<string, TaxWorksheet>();
   if (employeeIds.length === 0 || !hasTaxConfig(financialYear)) return out;
 
-  const [emps, decls, salaries, flexi, perqs, ledgers] = await Promise.all([
+  const [emps, decls, salaries, flexi, perqs, ledgers, branchRows] = await Promise.all([
     db.select().from(s.employees).where(inArray(s.employees.id, employeeIds)),
     db
       .select()
@@ -327,9 +356,20 @@ export async function loadWorksheetsFor(
           eq(s.tdsLedger.financialYear, financialYear),
         ),
       ),
+    db
+      .select({ employeeId: s.employees.id, stateCode: s.branches.stateCode })
+      .from(s.employees)
+      .innerJoin(s.branches, eq(s.employees.branchId, s.branches.id))
+      .where(inArray(s.employees.id, employeeIds)),
   ]);
 
   const declByEmployee = new Map(decls.map((d) => [d.employeeId, d]));
+  const stateByEmployee = new Map(branchRows.map((r) => [r.employeeId, r.stateCode]));
+
+  // PT/LWF are state-wide, not company-scoped, so one call covers every
+  // company in the batch; only the minimum-wage rows loadStatutoryConfig
+  // also carries are company-scoped, and this projection does not use them.
+  const statutory = await loadStatutoryConfig(`${financialYear}-04-01`, null);
 
   /* Proofs hang off the declaration, so they are only worth a query when
      somebody has declared something. */
@@ -390,6 +430,8 @@ export async function loadWorksheetsFor(
           perqRows: perqByEmployee.get(emp.id) ?? [],
           ledger: ledgerByEmployee.get(emp.id) ?? [],
           proofs: decl ? (proofsByDecl.get(decl.id) ?? []) : [],
+          stateCode: stateByEmployee.get(emp.id) ?? null,
+          statutory,
         },
         financialYear,
         overrideRegime,

@@ -482,6 +482,46 @@ export function computeProfessionalTax(input: PtInput): PtResult {
   };
 }
 
+/**
+ * A whole financial year's professional tax, for a projection rather
+ * than a run — the annual tax worksheet needs an up-front estimate of
+ * what section 16(iii) will let someone deduct, months before payroll
+ * has actually run them all.
+ *
+ * Assumes the same monthly PT base for all twelve months, the same
+ * assumption the rest of the annual projection already makes for gross
+ * salary itself (`monthlyGross * 12`); a mid-year raise or state move
+ * moves this projection the same way it moves everything else it feeds,
+ * which is why this is a projection and never the figure actually filed.
+ * Runs April to March regardless of which calendar month it is called
+ * from, months accumulate the annual cap exactly as a real run would.
+ */
+export function projectAnnualProfessionalTax(args: {
+  stateCode: string;
+  ptBasePaise: Paise;
+  gender: "female" | "male" | "other";
+  slabs: PtSlab[];
+  applicable: boolean;
+  /**
+   * Undefined, not guessed at, for the same reason `PtInput.incomeTaxPayee`
+   * itself treats undefined as "not liable" everywhere else: whether this
+   * person is liable to income tax is exactly what a projection is still
+   * in the middle of computing, so passing anything but "not yet known"
+   * here would make the projection use its own not-yet-final answer as
+   * one of its own inputs. Only Punjab's slab reads this, and it already
+   * charges nothing rather than guess when it is missing.
+   */
+  incomeTaxPayee?: boolean;
+}): Paise {
+  let ytd = 0;
+  for (let i = 0; i < 12; i++) {
+    const month = ((3 + i) % 12) + 1; // April (4) through March (3), in order
+    const result = computeProfessionalTax({ ...args, month, ytdDeductedPaise: ytd });
+    ytd += result.amountPaise;
+  }
+  return ytd;
+}
+
 /* ==================================================================
    Labour welfare fund
    ================================================================== */
