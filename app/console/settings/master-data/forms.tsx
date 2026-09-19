@@ -19,6 +19,7 @@ import {
 } from "./actions";
 import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
 import { MOVABLE_HOLIDAYS } from "@/lib/hris/holidays-india";
+import { ESIC_TREATMENTS, defaultEsicTreatment } from "@/lib/payroll/esic-wage";
 
 const check = "flex items-center gap-1.5 text-xs";
 
@@ -370,7 +371,7 @@ export function PayComponentForm({
   editing?: {
     id: string; code: string; name: string; kind: string; calcMethod: string;
     percentValue: number; percentOfCode: string | null; fixedPaise: number;
-    taxable: boolean; epfBase: boolean; esicBase: boolean; ptBase: boolean;
+    taxable: boolean; epfBase: boolean; esicBase: boolean; esicTreatment?: string | null; ptBase: boolean;
     bonusBase: boolean; bonusRole: string | null; gratuityBase: boolean; prorates: boolean; active: boolean; sequence: number;
   };
 }) {
@@ -433,13 +434,37 @@ export function PayComponentForm({
       <div className="flex flex-wrap gap-4">
         <label className={check}><input type="checkbox" name="taxable" defaultChecked={editing?.taxable ?? true} />Taxable</label>
         <label className={check}><input type="checkbox" name="epfBase" defaultChecked={editing?.epfBase ?? false} />Counts to EPF wages</label>
-        <label className={check}><input type="checkbox" name="esicBase" defaultChecked={editing?.esicBase ?? true} />Counts to ESIC wages</label>
         <label className={check}><input type="checkbox" name="ptBase" defaultChecked={editing?.ptBase ?? true} />Counts to PT gross</label>
         <label className={check}><input type="checkbox" name="bonusBase" defaultChecked={editing?.bonusBase ?? false} />Counts to bonus wage</label>
         <label className={check}><input type="checkbox" name="gratuityBase" defaultChecked={editing?.gratuityBase ?? false} />Counts to gratuity wage</label>
         <label className={check}><input type="checkbox" name="prorates" defaultChecked={editing?.prorates ?? true} />Prorates for partial months</label>
         <label className={check}><input type="checkbox" name="active" defaultChecked={editing?.active ?? true} />Active</label>
       </div>
+      {/* A yes/no cannot say "excluded, unless there is too much of it",
+          which is how the Code treats HRA and conveyance — so ESIC gets a
+          treatment rather than a checkbox. */}
+      <label className="flex flex-col gap-1 max-w-md">
+        <span className="label text-ink-3">ESIC wages</span>
+        <Select
+          name="esicTreatment"
+          defaultValue={
+            state.values?.esicTreatment ??
+            editing?.esicTreatment ??
+            (editing ? defaultEsicTreatment(editing.code, editing.esicBase) : "included")
+          }
+        >
+          {ESIC_TREATMENTS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label} — {o.hint}
+            </option>
+          ))}
+        </Select>
+        <span className="text-xs text-ink-3">
+          Under the Code, excluded components come back into ESI wages only
+          where together they exceed half of the month&apos;s pay. Overtime is
+          left out of the ₹21,000 coverage test.
+        </span>
+      </label>
       <label className="flex flex-col gap-1 max-w-md">
         <span className="label text-ink-3">Pays the bonus?</span>
         <Select name="bonusRole" defaultValue={editing?.bonusRole ?? ""}>
@@ -647,6 +672,7 @@ export function VariablePayTypeForm({
     label: string;
     category: string;
     defaultAmountPaise: number | null;
+    esicTreatment?: string | null;
     active: boolean;
   };
 }) {
@@ -691,6 +717,20 @@ export function VariablePayTypeForm({
             defaultValue={state.values?.defaultAmount ?? (editing?.defaultAmountPaise != null ? editing.defaultAmountPaise / 100 : "")}
             placeholder="none"
           />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="label text-ink-3">ESIC wages</span>
+          <Select
+            name="esicTreatment"
+            defaultValue={state.values?.esicTreatment ?? editing?.esicTreatment ?? ""}
+            className="w-56"
+          >
+            <option value="">From the category</option>
+            {ESIC_TREATMENTS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </Select>
+          <span className="text-xs text-ink-3">Overtime as overtime, a bonus under the 50% rule, the rest as wages.</span>
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="active" defaultChecked={editing?.active ?? true} className="h-4 w-4" />

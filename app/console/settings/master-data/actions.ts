@@ -9,6 +9,7 @@ import { getSessionUser, canMutate, canAccessCompany } from "@/lib/auth/session"
 import { recordAuditAs } from "@/lib/audit/log";
 import { certainHolidays } from "@/lib/hris/holidays-india";
 import { submitted } from "@/lib/forms/submitted";
+import { isEsicTreatment } from "@/lib/payroll/esic-wage";
 
 export type MasterState = {
   error?: string;
@@ -344,7 +345,11 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
   const fixedPaise = Math.round(num(fd.get("fixedRupees")) * 100);
   const taxable = bool(fd.get("taxable"));
   const epfBase = bool(fd.get("epfBase"));
-  const esicBase = bool(fd.get("esicBase"));
+  /* The treatment is what the Code reads; the flag is kept in step with it
+     because a period before the Code still computes on the flag. */
+  const esicTreatmentRaw = String(fd.get("esicTreatment") ?? "included");
+  const esicTreatment = isEsicTreatment(esicTreatmentRaw) ? esicTreatmentRaw : "included";
+  const esicBase = esicTreatment !== "excluded";
   const ptBase = bool(fd.get("ptBase"));
   const bonusBase = bool(fd.get("bonusBase"));
   /* Empty means nobody has said, which the run reports rather than
@@ -387,7 +392,7 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
 
   const values = {
     code, name, kind, calcMethod, percentValue, percentOfCode, fixedPaise,
-    taxable, epfBase, esicBase, ptBase, bonusBase, bonusRole, gratuityBase, prorates, active, sequence,
+    taxable, epfBase, esicBase, esicTreatment, ptBase, bonusBase, bonusRole, gratuityBase, prorates, active, sequence,
   };
 
   if (id) {
@@ -519,6 +524,10 @@ export async function saveVariablePayType(
     defaultAmountPaise = Math.round(n * 100);
   }
 
+  /* Empty is a choice too: read it from the category. */
+  const esicTreatmentRaw = String(fd.get("esicTreatment") ?? "");
+  const esicTreatment = isEsicTreatment(esicTreatmentRaw) ? esicTreatmentRaw : null;
+
   const id = String(fd.get("id") ?? "").trim() || randomUUID();
   const existing = await db
     .select({ id: s.variablePayTypes.id })
@@ -538,6 +547,7 @@ export async function saveVariablePayType(
       label,
       category: category as "ot" | "bonus" | "incentive" | "deduction" | "other",
       defaultAmountPaise,
+      esicTreatment,
       active: fd.get("active") !== null,
       createdAt: new Date().toISOString(),
     })
@@ -548,6 +558,7 @@ export async function saveVariablePayType(
         label,
         category: category as "ot" | "bonus" | "incentive" | "deduction" | "other",
         defaultAmountPaise,
+        esicTreatment,
         active: fd.get("active") !== null,
       },
     });

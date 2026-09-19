@@ -145,7 +145,8 @@ describe("ESIC", () => {
 
   test("covers an employee within the wage threshold", () => {
     const r = computeEsic({
-      grossPaise: R(18000),
+      coverageWagePaise: R(18000),
+      contributionWagePaise: R(18000),
       month: 4,
       params: ESIC,
       implementedArea: true,
@@ -159,7 +160,8 @@ describe("ESIC", () => {
   test("THE RULE: coverage persists to period end after a mid-period raise", () => {
     // Covered in April at 20,000; raised to 25,000 in November.
     const r = computeEsic({
-      grossPaise: R(25000),
+      coverageWagePaise: R(25000),
+      contributionWagePaise: R(25000),
       month: 11,
       params: ESIC,
       implementedArea: true,
@@ -175,7 +177,8 @@ describe("ESIC", () => {
 
   test("drops coverage at the next period start once above threshold", () => {
     const r = computeEsic({
-      grossPaise: R(25000),
+      coverageWagePaise: R(25000),
+      contributionWagePaise: R(25000),
       month: 4,
       params: ESIC,
       implementedArea: true,
@@ -186,7 +189,8 @@ describe("ESIC", () => {
 
   test("not applicable outside an implemented area", () => {
     const r = computeEsic({
-      grossPaise: R(15000),
+      coverageWagePaise: R(15000),
+      contributionWagePaise: R(15000),
       month: 6,
       params: ESIC,
       implementedArea: false,
@@ -198,13 +202,60 @@ describe("ESIC", () => {
 
   test("an employee above threshold at period start is never covered", () => {
     const r = computeEsic({
-      grossPaise: R(30000),
+      coverageWagePaise: R(30000),
+      contributionWagePaise: R(30000),
       month: 7,
       params: ESIC,
       implementedArea: true,
       coveredAtPeriodStart: false,
     });
     assert.equal(r.applicable, false);
+  });
+
+  test("coverage is tested on the coverage wage, contribution charged on the other", () => {
+    /* Overtime pushes the contribution wage past 21,000; it must not take
+       the person out of the scheme at the start of a period. */
+    const r = computeEsic({
+      coverageWagePaise: R(18000),
+      contributionWagePaise: R(24000),
+      month: 4,
+      params: ESIC,
+      implementedArea: true,
+      coveredAtPeriodStart: false,
+    });
+    assert.equal(r.applicable, true);
+    assert.equal(r.employeePaise, R(180), "0.75% of 24,000");
+    assert.equal(r.employerPaise, R(780), "3.25% of 24,000");
+  });
+
+  test("an average daily wage at or below ₹176 owes no employee share", () => {
+    const params = { ...ESIC, lowWageDailyPaise: R(176) };
+    const r = computeEsic({
+      coverageWagePaise: R(5100),
+      contributionWagePaise: R(5100),
+      paidDays: 30,
+      month: 6,
+      params,
+      implementedArea: true,
+      coveredAtPeriodStart: true,
+    });
+    assert.equal(r.employeePaise, 0, "₹170 a day");
+    assert.equal(r.employerPaise, Math.ceil((R(5100) * 325) / 10000), "employer still pays");
+    assert.match(r.reason, /no employee share/);
+  });
+
+  test("a day's wage just above ₹176 pays both shares", () => {
+    const params = { ...ESIC, lowWageDailyPaise: R(176) };
+    const r = computeEsic({
+      coverageWagePaise: R(5400),
+      contributionWagePaise: R(5400),
+      paidDays: 30,
+      month: 6,
+      params,
+      implementedArea: true,
+      coveredAtPeriodStart: true,
+    });
+    assert.ok(r.employeePaise > 0, "₹180 a day");
   });
 });
 

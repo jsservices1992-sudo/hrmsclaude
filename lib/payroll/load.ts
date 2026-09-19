@@ -134,6 +134,8 @@ export async function loadStatutoryConfig(
     },
     esic: {
       wageThresholdPaise: p["esic.wage_threshold"] ?? 2_100_000,
+      /* ₹176 a day: at or below it the employee owes no share of their own. */
+      lowWageDailyPaise: p["esic.low_wage_daily_limit"] ?? 17_600,
       employeeBps: p["esic.employee_bps"] ?? 75,
       employerBps: p["esic.employer_bps"] ?? 325,
     },
@@ -212,6 +214,7 @@ export async function loadStructure(companyId: string): Promise<ComponentSpec[]>
     taxable: r.taxable,
     epfBase: r.epfBase,
     esicBase: r.esicBase,
+    esicTreatment: r.esicTreatment,
     ptBase: r.ptBase,
     bonusBase: r.bonusBase,
     gratuityBase: r.gratuityBase,
@@ -268,6 +271,7 @@ export async function loadStructureResolutionContext(
         componentTaxable: s.payComponents.taxable,
         componentEpfBase: s.payComponents.epfBase,
         componentEsicBase: s.payComponents.esicBase,
+        componentEsicTreatment: s.payComponents.esicTreatment,
         componentPtBase: s.payComponents.ptBase,
         componentBonusBase: s.payComponents.bonusBase,
         componentGratuityBase: s.payComponents.gratuityBase,
@@ -631,8 +635,12 @@ export async function previewRun(args: {
   /* One-off incentives and ad-hoc deductions for this period only — not a
      recurring pay component, not a recoverable loan. */
   const adjustmentRows = await db
-    .select()
+    .select({
+      adj: s.payrollAdjustments,
+      esicTreatment: s.variablePayTypes.esicTreatment,
+    })
     .from(s.payrollAdjustments)
+    .leftJoin(s.variablePayTypes, eq(s.variablePayTypes.id, s.payrollAdjustments.typeId))
     .where(
       and(
         eq(s.payrollAdjustments.periodYear, args.year),
@@ -644,13 +652,14 @@ export async function previewRun(args: {
       ),
     );
   const adjustmentsByEmployee = new Map<string, EmployeeInput["oneOffLines"]>();
-  for (const adj of adjustmentRows) {
+  for (const { adj, esicTreatment } of adjustmentRows) {
     const list = adjustmentsByEmployee.get(adj.employeeId) ?? [];
     list!.push({
       code: adj.code,
       label: adj.label,
       kind: adj.kind,
       category: adj.category,
+      esicTreatment,
       amountPaise: adj.amountPaise,
       reason: adj.reason ?? undefined,
     });

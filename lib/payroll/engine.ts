@@ -6,6 +6,15 @@ import {
 } from "../loans/engine";
 import { applyRounding } from "./settings";
 import {
+  defaultEsicTreatment,
+  describeEsicWage,
+  esicRuleFor,
+  esicTreatmentForCategory,
+  esicWage,
+  type EsicTreatment,
+  type EsicWageLine,
+} from "./esic-wage";
+import {
   evaluateStructure,
   type BonusParams,
   type ComponentSpec,
@@ -122,6 +131,8 @@ export type EmployeeInput = {
     amountPaise: Paise;
     /** Lets the register column the line without guessing from its code. */
     category?: PayLineCategory;
+    /** How the ESI definition of wages treats it. Absent, read from the category. */
+    esicTreatment?: EsicTreatment | null;
     reason?: string;
   }[];
 };
@@ -265,15 +276,25 @@ export function computeEmployeePay(args: {
 
   let gross = 0;
   let epfBase = 0;
-  let esicBase = 0;
   let ptBase = 0;
+  /* Every earning this month with how the ESI definition of wages treats
+     it. Collected rather than summed, because the Code's wage cannot be
+     known until everything paid this month is in — overtime and
+     incentives included — and the 50% test has been run over the lot. */
+  const esicLines: EsicWageLine[] = [];
 
   c.structure.forEach((def, i) => {
     const amount = rounding.components[i];
     gross += amount;
     if (def.epfBase) epfBase += amount;
-    if (def.esicBase) esicBase += amount;
     if (def.ptBase) ptBase += amount;
+    if (def.kind === "earning") {
+      esicLines.push({
+        code: def.code,
+        amountPaise: amount,
+        treatment: def.esicTreatment ?? defaultEsicTreatment(def.code, def.esicBase),
+      });
+    }
 
     lines.push({
       code: def.code,
@@ -343,32 +364,6 @@ export function computeEmployeePay(args: {
     });
   } else {
     warnings.push(epf.reason);
-  }
-
-  /* ---- ESIC ---- */
-  const esic = computeEsic({
-    grossPaise: esicBase,
-    month,
-    params: s.esic,
-    implementedArea: e.esicImplementedArea,
-    coveredAtPeriodStart: e.esicCoveredAtPeriodStart,
-  });
-
-  if (esic.applicable) {
-    lines.push({
-      code: "ESIC_EE",
-      label: "ESIC — employee",
-      kind: "deduction",
-      amountPaise: esic.employeePaise,
-      basis: `0.75% of ₹${(esicBase / 100).toFixed(0)} — ${esic.reason}`,
-    });
-    lines.push({
-      code: "ESIC_ER",
-      label: "ESIC — employer",
-      kind: "employer_contribution",
-      amountPaise: esic.employerPaise,
-      basis: `3.25% of ₹${(esicBase / 100).toFixed(0)}`,
-    });
   }
 
   /* ---- Professional tax ---- */
@@ -463,6 +458,7 @@ export function computeEmployeePay(args: {
     const amount = Math.round(perDay * offDaysWorked);
     if (amount > 0) {
       gross += amount;
+      esicLines.push({ code: "OFF_DAY_WORK", amountPaise: amount, treatment: "included" });
       lines.push({
         code: "OFF_DAY_WORK",
         label: "Worked on a day off",
@@ -474,7 +470,14 @@ export function computeEmployeePay(args: {
   }
 
   for (const adj of e.oneOffLines ?? []) {
-    if (adj.kind === "earning") gross += adj.amountPaise;
+    if (adj.kind === "earning") {
+      gross += adj.amountPaise;
+      esicLines.push({
+        code: adj.code,
+        amountPaise: adj.amountPaise,
+        treatment: adj.esicTreatment ?? esicTreatmentForCategory(adj.category),
+      });
+    }
     lines.push({
       code: adj.code,
       label: adj.label,
@@ -482,6 +485,43 @@ export function computeEmployeePay(args: {
       category: adj.category,
       amountPaise: adj.amountPaise,
       basis: adj.reason ?? (adj.kind === "earning" ? "One-off incentive" : "One-off deduction"),
+    });
+  }
+
+  /* ---- ESIC ----
+     Last of the earnings-driven deductions, because it is the one that
+     depends on all of them. It used to run straight after the salary
+     components, so overtime, incentives and a day worked on an off were
+     paid out and never had ESIC charged on them at all. */
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const periodEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const esiWage = esicWage(esicLines, esicRuleFor(periodEnd));
+
+  const esic = computeEsic({
+    coverageWagePaise: esiWage.coverageWagePaise,
+    contributionWagePaise: esiWage.contributionWagePaise,
+    paidDays,
+    month,
+    params: s.esic,
+    implementedArea: e.esicImplementedArea,
+    coveredAtPeriodStart: e.esicCoveredAtPeriodStart,
+  });
+
+  if (esic.applicable) {
+    const wageNote = describeEsicWage(esiWage);
+    lines.push({
+      code: "ESIC_EE",
+      label: "ESIC — employee",
+      kind: "deduction",
+      amountPaise: esic.employeePaise,
+      basis: `0.75% — ${wageNote} — ${esic.reason}`,
+    });
+    lines.push({
+      code: "ESIC_ER",
+      label: "ESIC — employer",
+      kind: "employer_contribution",
+      amountPaise: esic.employerPaise,
+      basis: `3.25% — ${wageNote}`,
     });
   }
 

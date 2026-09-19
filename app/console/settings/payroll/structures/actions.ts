@@ -227,6 +227,7 @@ export async function addStructureLine(
       componentTaxable: s.payComponents.taxable,
       componentEpfBase: s.payComponents.epfBase,
       componentEsicBase: s.payComponents.esicBase,
+      componentEsicTreatment: s.payComponents.esicTreatment,
       componentPtBase: s.payComponents.ptBase,
       componentBonusBase: s.payComponents.bonusBase,
       componentGratuityBase: s.payComponents.gratuityBase,

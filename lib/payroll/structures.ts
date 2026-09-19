@@ -1,4 +1,5 @@
 import type { ComponentSpec, CalcMethod } from "./compensation";
+import type { EsicTreatment } from "./esic-wage";
 
 /** A structure's line, joined with the pay component it references. */
 export type StructureLineJoined = {
@@ -16,6 +17,7 @@ export type StructureLineJoined = {
   componentTaxable: boolean;
   componentEpfBase: boolean;
   componentEsicBase: boolean;
+  componentEsicTreatment?: EsicTreatment | null;
   componentPtBase: boolean;
   componentBonusBase: boolean;
   componentGratuityBase: boolean;
@@ -42,6 +44,7 @@ export function buildComponentSpecs(lines: StructureLineJoined[]): ComponentSpec
       taxable: l.componentTaxable,
       epfBase: l.componentEpfBase,
       esicBase: l.componentEsicBase,
+      esicTreatment: l.componentEsicTreatment ?? null,
       ptBase: l.componentPtBase,
       bonusBase: l.componentBonusBase,
       gratuityBase: l.componentGratuityBase,

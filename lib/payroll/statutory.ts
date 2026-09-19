@@ -158,10 +158,16 @@ export function computeEpf(input: EpfInput): EpfResult {
    ================================================================== */
 
 export type EsicParams = {
-  /** Monthly gross wage threshold for coverage (₹21,000). */
+  /** Monthly ESI wage threshold for coverage (₹21,000). */
   wageThresholdPaise: Paise;
   employeeBps: number; // 75 = 0.75%
   employerBps: number; // 325 = 3.25%
+  /**
+   * An average daily wage at or below this owes no employee share; the
+   * employer's is still payable in full (₹176). Optional so that a
+   * configuration without it simply never exempts anybody.
+   */
+  lowWageDailyPaise?: Paise;
 };
 
 /**
@@ -177,7 +183,15 @@ export function isContributionPeriodStart(month: number): boolean {
 }
 
 export type EsicInput = {
-  grossPaise: Paise;
+  /**
+   * The wage the ₹21,000 ceiling is tested on. Not gross, and not the
+   * contribution wage either: overtime is left out of it. See esic-wage.ts.
+   */
+  coverageWagePaise: Paise;
+  /** The wage 0.75% and 3.25% are charged on. */
+  contributionWagePaise: Paise;
+  /** Days paid this month, for the average daily wage the exemption reads. */
+  paidDays?: number;
   month: number;
   params: EsicParams;
   /** ESIC applies only where the branch sits in an implemented area. */
@@ -212,7 +226,7 @@ export function computeEsic(input: EsicInput): EsicResult {
     };
   }
 
-  const withinThreshold = input.grossPaise <= params.wageThresholdPaise;
+  const withinThreshold = input.coverageWagePaise <= params.wageThresholdPaise;
 
   // At a period boundary, coverage is re-tested against the threshold.
   // Within a period, coverage set at the start persists to period end even
@@ -232,18 +246,32 @@ export function computeEsic(input: EsicInput): EsicResult {
   }
 
   // Contribution is on actual wages, not on the capped threshold.
-  const employee = Math.ceil((input.grossPaise * params.employeeBps) / 10000);
-  const employer = Math.ceil((input.grossPaise * params.employerBps) / 10000);
+  const wage = input.contributionWagePaise;
+  const employer = Math.ceil((wage * params.employerBps) / 10000);
+
+  /* The lowest paid owe nothing themselves, and the employer may not
+     recover its own share from them either — so this zeroes one side and
+     leaves the other exactly as it was. */
+  const averageDaily =
+    input.paidDays && input.paidDays > 0 ? wage / input.paidDays : null;
+  const exempt =
+    params.lowWageDailyPaise != null &&
+    averageDaily != null &&
+    averageDaily <= params.lowWageDailyPaise;
+  const employee = exempt ? 0 : Math.ceil((wage * params.employeeBps) / 10000);
+
+  const coverage = withinThreshold
+    ? "Within wage threshold"
+    : "Covered at contribution period start — coverage continues to period end";
 
   return {
     applicable: true,
     employeePaise: employee,
     employerPaise: employer,
     coveredForNextPeriod: withinThreshold,
-    reason:
-      withinThreshold
-        ? "Within wage threshold"
-        : "Covered at contribution period start — coverage continues to period end",
+    reason: exempt
+      ? `${coverage}; average daily wage ₹${(averageDaily! / 100).toFixed(2)} is at or below ₹${(params.lowWageDailyPaise! / 100).toFixed(0)}, so no employee share`
+      : coverage,
   };
 }
 

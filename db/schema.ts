@@ -630,6 +630,16 @@ export const payComponents = pgTable(
     taxable: boolean("taxable").notNull().default(true),
     epfBase: boolean("epf_base").notNull().default(false),
     esicBase: boolean("esic_base").notNull().default(true),
+    /*
+     * How the Code's definition of wages treats this component: included,
+     * excluded subject to the 50% add-back, fully excluded, or overtime.
+     * Null means derive it — the law's own classification for the codes it
+     * names (HRA, conveyance, overtime, commission), the flag above for the
+     * rest — so a component nobody has revisited is still computed right.
+     */
+    esicTreatment: text("esic_treatment", {
+      enum: ["included", "excluded_50", "excluded", "overtime"],
+    }),
     ptBase: boolean("pt_base").notNull().default(true),
     /** Counts toward the Payment of Bonus Act wage. */
     bonusBase: boolean("bonus_base").notNull().default(false),
@@ -1184,6 +1194,12 @@ export const variablePayTypes = pgTable(
     }).notNull(),
     /** Offered as the starting amount where one is usual. */
     defaultAmountPaise: bigint("default_amount_paise", { mode: "number" }),
+    /* How the ESI definition of wages treats a line of this type. Null
+       reads it from the category: overtime as overtime, a bonus as an
+       exclusion under the 50% rule, anything else as wages. */
+    esicTreatment: text("esic_treatment", {
+      enum: ["included", "excluded_50", "excluded", "overtime"],
+    }),
     /* Raised by the system rather than chosen by a person — arrears come
        from a backdated revision. Hidden from the entry forms, shown in
        master data so the label on the payslip can still be changed. */

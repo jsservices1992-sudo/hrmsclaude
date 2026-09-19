@@ -203,7 +203,16 @@ describe("Structure evaluation", () => {
     const e = evaluateStructure(STRUCTURE, GROSS);
     assert.equal(e.epfBasePaise, R(25000), "only BASIC is PF base");
     assert.equal(e.gratuityBasePaise, R(25000));
-    assert.equal(e.esicBasePaise, GROSS, "every earning is ESIC base here");
+    /* Basic 25,000 + HRA 10,000 + conveyance 1,600 + special 13,400. HRA
+       and conveyance are the Code's exclusions, 11,600 against a limit of
+       half of 50,000 — inside it, so they are simply left out. */
+    assert.equal(e.esicBasePaise, GROSS - R(10000) - R(1600), "HRA and conveyance excluded");
+    assert.equal(e.esicCoverageBasePaise, e.esicBasePaise, "no overtime in a structure");
+  });
+
+  test("the ESI Act definition still counts every flagged component in full", () => {
+    const e = evaluateStructure(STRUCTURE, GROSS, undefined, "esi_act");
+    assert.equal(e.esicBasePaise, GROSS);
   });
 
   test("a fixed component stays fixed as gross changes", () => {
@@ -265,7 +274,9 @@ describe("CTC build-up", () => {
       employer: EMPLOYER,
     });
     assert.ok(b.employerEsicPaise > 0, "under threshold, employer ESIC applies");
-    assert.equal(b.employerEsicPaise, Math.ceil((R(18000) * 325) / 10000));
+    /* Charged on ESI wages, not gross: of 18,000 the Code excludes HRA
+       (3,600) and conveyance (1,600), leaving 12,800. */
+    assert.equal(b.employerEsicPaise, Math.ceil((R(12800) * 325) / 10000));
   });
 
   test("REVERSE: a target CTC lands within a rupee of the target", () => {

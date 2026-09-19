@@ -463,3 +463,78 @@ describe("Working a weekly off", () => {
     );
   });
 });
+
+describe("ESIC on the Code's definition of wages", () => {
+  const line = (r: ReturnType<typeof run>, code: string) =>
+    r.lines.find((l) => l.code === code)?.amountPaise ?? 0;
+
+  test("HRA and conveyance are left out of the wage when within half", () => {
+    /* 20,000 gross on the default structure: basic 10,000, HRA 4,000,
+       conveyance 1,600, special 4,400. Exclusions 5,600 — under 10,000. */
+    const r = run({ monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true });
+    assert.equal(line(r, "ESIC_EE"), Math.ceil((L(14400) * 75) / 10000));
+    assert.equal(line(r, "ESIC_ER"), Math.ceil((L(14400) * 325) / 10000));
+  });
+
+  test("a gross over ₹21,000 is still covered when its ESI wage is not", () => {
+    /* 24,000 gross → 17,280 of wages once HRA and conveyance are out.
+       Testing the ceiling on gross would have left this person unprotected. */
+    const r = run({ monthlyGrossPaise: L(24000), esicCoveredAtPeriodStart: false });
+    assert.ok(line(r, "ESIC_EE") > 0, "covered on ESI wages");
+  });
+
+  test("overtime is charged ESIC — it used to be paid out untouched", () => {
+    const without = run({ monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true });
+    const withOt = run({
+      monthlyGrossPaise: L(20000),
+      esicCoveredAtPeriodStart: true,
+      oneOffLines: [
+        { code: "OT", label: "Overtime", kind: "earning", category: "ot", amountPaise: L(15000) },
+      ],
+    });
+    /* Wages 14,400; exclusions 5,600 + 15,000 OT = 20,600 against half of
+       35,000 — 3,100 over, so 3,100 is added back. */
+    assert.equal(line(withOt, "ESIC_EE"), Math.ceil((L(17500) * 75) / 10000));
+    assert.ok(line(withOt, "ESIC_EE") > line(without, "ESIC_EE"));
+  });
+
+  test("a large overtime month does not take somebody out of the scheme", () => {
+    const r = run({
+      monthlyGrossPaise: L(20000),
+      esicCoveredAtPeriodStart: false,
+      oneOffLines: [
+        { code: "OT", label: "Overtime", kind: "earning", category: "ot", amountPaise: L(30000) },
+      ],
+    });
+    assert.ok(line(r, "ESIC_EE") > 0, "the ceiling is tested without overtime");
+  });
+
+  test("an incentive is wages", () => {
+    const base = run({ monthlyGrossPaise: L(16000), esicCoveredAtPeriodStart: true });
+    const withIncentive = run({
+      monthlyGrossPaise: L(16000),
+      esicCoveredAtPeriodStart: true,
+      oneOffLines: [
+        { code: "INC", label: "Incentive", kind: "earning", category: "incentive", amountPaise: L(2000) },
+      ],
+    });
+    assert.equal(line(withIncentive, "ESIC_ER") - line(base, "ESIC_ER"), Math.ceil((L(2000) * 325) / 10000));
+  });
+
+  test("a period before the Code keeps the ESI Act's wage", () => {
+    const r = computeEmployeePay({
+      employee: { ...employee, monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true },
+      company,
+      statutory,
+      year: 2025,
+      month: 9,
+    });
+    assert.equal(line(r, "ESIC_EE"), Math.ceil((L(20000) * 75) / 10000), "full gross, as filed then");
+  });
+
+  test("the payslip says how the wage was reached", () => {
+    const r = run({ monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true });
+    const basis = r.lines.find((l) => l.code === "ESIC_EE")!.basis;
+    assert.match(basis, /ESI wages ₹14,400/);
+  });
+});

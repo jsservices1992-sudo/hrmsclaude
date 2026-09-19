@@ -129,7 +129,7 @@ export function SalaryBreakupTable({
           negative: true,
           note: "State slab — varies by the state the branch sits in",
         },
-        { label: "ESIC", monthly: takeHome.esicPaise, negative: true, note: "0.75% of gross, where ESIC applies" },
+        { label: "ESIC", monthly: takeHome.esicPaise, negative: true, note: "0.75% of ESI wages — basic and the like, with HRA and conveyance counted back only past half of pay" },
         /* Where the fund is charged every month it is an ordinary
            deduction and belongs in the arithmetic. Where it falls in named
            months it is not, and the note below carries it instead. */

@@ -1,5 +1,11 @@
 import { apportion, type Paise } from "./money";
 import {
+  defaultEsicTreatment,
+  esicWage,
+  type EsicTreatment,
+  type EsicWageRule,
+} from "./esic-wage";
+import {
   computeLwf,
   computeProfessionalTax,
   epfExcluded,
@@ -37,7 +43,13 @@ export type ComponentSpec = {
   fixedPaise?: Paise;
   taxable: boolean;
   epfBase: boolean;
+  /** The old yes/no. Still what the ESI Act definition reads. */
   esicBase: boolean;
+  /**
+   * How the Code's definition of wages treats this component. Absent,
+   * it is derived from the code and the flag — see defaultEsicTreatment.
+   */
+  esicTreatment?: EsicTreatment | null;
   ptBase: boolean;
   /** Counts toward the Payment of Bonus Act wage. */
   bonusBase: boolean;
@@ -193,7 +205,10 @@ export type EvaluationResult = {
   components: EvaluatedComponent[];
   grossPaise: Paise;
   epfBasePaise: Paise;
+  /** ESI contribution wage — what 0.75% and 3.25% are charged on. */
   esicBasePaise: Paise;
+  /** ESI coverage wage — what the ₹21,000 ceiling is tested on. */
+  esicCoverageBasePaise: Paise;
   ptBasePaise: Paise;
   bonusBasePaise: Paise;
   gratuityBasePaise: Paise;
@@ -244,6 +259,7 @@ export function evaluateStructure(
   components: ComponentSpec[],
   monthlyGrossPaise: Paise,
   anchors?: Map<string, Paise>,
+  esicRule: EsicWageRule = "social_security_code",
 ): EvaluationResult {
   const warnings: string[] = [];
   const ordered = resolveOrder(components);
@@ -253,6 +269,7 @@ export function evaluateStructure(
       grossPaise: 0,
       epfBasePaise: 0,
       esicBasePaise: 0,
+      esicCoverageBasePaise: 0,
       ptBasePaise: 0,
       bonusBasePaise: 0,
       gratuityBasePaise: 0,
@@ -343,11 +360,24 @@ export function evaluateStructure(
     );
   }
 
+  /* Projections — a CTC, a take-home solve — are for pay that is still to
+     be run, so they take the definition of wages in force now. A run for a
+     period before the Code picks its own rule in the engine. */
+  const esi = esicWage(
+    earnings.map((c) => ({
+      code: c.code,
+      amountPaise: values.get(c.code) ?? 0,
+      treatment: c.esicTreatment ?? defaultEsicTreatment(c.code, c.esicBase),
+    })),
+    esicRule,
+  );
+
   return {
     components: evaluated,
     grossPaise: gross,
     epfBasePaise: sumWhere((c) => c.epfBase),
-    esicBasePaise: sumWhere((c) => c.esicBase),
+    esicBasePaise: esi.contributionWagePaise,
+    esicCoverageBasePaise: esi.coverageWagePaise,
     ptBasePaise: sumWhere((c) => c.ptBase),
     bonusBasePaise: sumWhere((c) => c.bonusBase),
     gratuityBasePaise: sumWhere((c) => c.gratuityBase),
@@ -406,7 +436,7 @@ export function employerCostFor(
   const pf = excluded ? 0 : Math.round((pfWage * p.epfEmployerBps) / 10000);
 
   const esic =
-    evaluation.esicBasePaise <= p.esicThresholdPaise
+    evaluation.esicCoverageBasePaise <= p.esicThresholdPaise
       ? Math.ceil((evaluation.esicBasePaise * p.esicEmployerBps) / 10000)
       : 0;
 
@@ -523,7 +553,7 @@ export function takeHomeFor(
   const epf = excluded ? 0 : Math.round((pfWage * p.epfEmployeeBps) / 10000);
 
   const esic =
-    evaluation.esicBasePaise <= p.esicThresholdPaise
+    evaluation.esicCoverageBasePaise <= p.esicThresholdPaise
       ? Math.ceil((evaluation.esicBasePaise * p.esicEmployeeBps) / 10000)
       : 0;
 
