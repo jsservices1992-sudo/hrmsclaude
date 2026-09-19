@@ -55,12 +55,16 @@ export const TAX_CONFIG_VERIFICATION = {
   /** Marginal relief at the surcharge thresholds (₹50L/1Cr/2Cr, +₹5Cr old regime). */
   surchargeMarginalRelief: true,
   /**
-   * Capital gains, lottery and other rates taxed outside the normal
-   * slabs. This engine does not model them at all yet — see
-   * `allowsChapterViA`/`allowsHraExemption` and the deduction limits
-   * below for what it does compute.
+   * Capital gains, VDA, lottery and gaming — modelled separately in
+   * `lib/tax/special-rate.ts` and `special-rate-config.ts`, kept out of
+   * this file entirely since none of it is slab income. Its own
+   * `SPECIAL_RATE_CORE_VERIFIED` covers the flat rates; DTAA,
+   * non-resident treatment, full asset classification and the full
+   * loss-carry-forward engine stay unverified there regardless of this
+   * flag. Off by default per company (Payroll Settings → Advanced tax)
+   * — most salaried employees have none of this.
    */
-  specialRateIncome: false,
+  specialRateIncome: true,
   /**
    * Every Chapter VI-A section a salaried employee can plausibly claim is
    * now modelled: 80C, 80CCD(1B)/(2), 80D, 80DD, 80DDB, 80E, 80EEB, 80G,

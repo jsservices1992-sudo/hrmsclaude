@@ -160,8 +160,8 @@ describe("The verification flags", () => {
     }
   });
 
-  test("special-rate income stays explicitly unchecked", () => {
-    assert.equal(TAX_CONFIG_VERIFICATION.specialRateIncome, false);
+  test("special-rate income is now modelled — its own granular flags live in special-rate-config.ts", () => {
+    assert.equal(TAX_CONFIG_VERIFICATION.specialRateIncome, true);
   });
 
   test("the Chapter VI-A deduction master and the perquisite rules are now checked", () => {
