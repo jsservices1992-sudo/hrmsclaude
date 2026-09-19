@@ -55,9 +55,10 @@ export default async function LoginPage() {
               </Link>
             </p>
           )}
-          <p className="text-xs text-ink-3">
-            Trouble signing in? Contact your payroll administrator — password
-            reset is not yet built.
+          <p className="text-sm text-ink-2">
+            <Link href="/forgot-password" className="text-brass hover:underline">
+              Forgot your password?
+            </Link>
           </p>
         </div>
       </div>

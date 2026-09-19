@@ -2128,11 +2128,21 @@ export const users = pgTable(
     inviteTokenExpiresAt: text("invite_token_expires_at"),
     /** Null until they have chosen a password of their own. */
     passwordSetAt: text("password_set_at"),
+    /**
+     * A single-use, short-lived link for "forgot your password" — separate
+     * from the invite token above because a reset must work on an account
+     * that already has a real password (`passwordSetAt` is already set),
+     * which the invite token's own "spent" rule deliberately treats as
+     * used up.
+     */
+    resetToken: text("reset_token"),
+    resetTokenExpiresAt: text("reset_token_expires_at"),
     createdAt: text("created_at").notNull(),
   },
   (t) => [
     uniqueIndex("users_email_idx").on(t.email),
     uniqueIndex("users_invite_token_idx").on(t.inviteToken),
+    uniqueIndex("users_reset_token_idx").on(t.resetToken),
   ],
 );
 

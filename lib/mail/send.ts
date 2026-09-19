@@ -56,6 +56,24 @@ export async function sendMail(args: {
   }
 }
 
+/** A password reset link. Says nothing that would matter if it were sent to the wrong inbox by mistake. */
+export function resetEmail(args: { name: string; url: string; expiresInMinutes: number }) {
+  return {
+    subject: "Reset your Lekha password",
+    text: [
+      `Hello ${args.name},`,
+      "",
+      "Someone asked to reset the password on this account. If that was you, choose a new one here:",
+      "",
+      args.url,
+      "",
+      `The link works once and expires in ${args.expiresInMinutes} minutes.`,
+      "",
+      "If you did not ask for this, you can ignore this email — your password has not changed.",
+    ].join("\n"),
+  };
+}
+
 /** The invitation itself. Deliberately short: a link and why it arrived. */
 export function inviteEmail(args: {
   name: string;
