@@ -42,6 +42,68 @@ export const EPF_CHARGES_2026: EpfChargeParams = {
 };
 
 /* ==================================================================
+   Pension (EPS) eligibility — Employees' Pension Scheme 1995, para 6
+   ================================================================== */
+
+/**
+ * Age as of the last day of a given month — the ordinary way to ask
+ * "how old were they for this period" without pretending an exact day
+ * within the month matters for a monthly contribution.
+ */
+export function ageAsOfMonth(
+  dateOfBirth: string | null | undefined,
+  year: number,
+  month: number,
+): number | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth + "T00:00:00Z");
+  if (Number.isNaN(dob.getTime())) return null;
+  const periodEnd = new Date(Date.UTC(year, month, 0)); // day 0 of next month = last day of this one
+  let age = periodEnd.getUTCFullYear() - dob.getUTCFullYear();
+  const hadBirthday =
+    periodEnd.getUTCMonth() > dob.getUTCMonth() ||
+    (periodEnd.getUTCMonth() === dob.getUTCMonth() && periodEnd.getUTCDate() >= dob.getUTCDate());
+  if (!hadBirthday) age -= 1;
+  return age;
+}
+
+/**
+ * Whether a member's employer share is split into EPS at all this period.
+ *
+ * Two separate gates, per para 6 of the EPS Scheme: someone who joined
+ * PF for the very first time on wages above the statutory ceiling never
+ * enters EPS — the whole employer share stays in provident fund — while
+ * an existing member carries on regardless of wages. Either way, EPS
+ * contributions stop once the member turns 58; the employer share is
+ * then credited to EPF alone even for someone who was contributing to
+ * EPS the month before.
+ */
+export function isEpsEligible(args: {
+  hadPriorPfMembership: boolean;
+  pfWagePaise: Paise;
+  wageCeilingPaise: Paise;
+  ageAsOfPeriod: number | null;
+  isInternationalWorker: boolean;
+}): { eligible: boolean; reason: string } {
+  if (args.isInternationalWorker) {
+    return { eligible: true, reason: "International worker — no wage ceiling applies" };
+  }
+  if (args.ageAsOfPeriod != null && args.ageAsOfPeriod >= 58) {
+    return {
+      eligible: false,
+      reason: "Attained 58 years — pension contribution ceases; the employer share now goes to provident fund alone",
+    };
+  }
+  if (!args.hadPriorPfMembership && args.pfWagePaise > args.wageCeilingPaise) {
+    return {
+      eligible: false,
+      reason: "Excluded employee — no prior PF membership and PF wage above the statutory ceiling; never enters EPS",
+    };
+  }
+  return { eligible: true, reason: "Within the wage ceiling, or an existing member carried over regardless of wages" };
+}
+
+/* ==================================================================
    Member lines
    ================================================================== */
 

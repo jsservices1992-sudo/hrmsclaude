@@ -10,6 +10,8 @@ import {
   computeChallan,
   reconcileWithRegister,
   blockingIssues,
+  isEpsEligible,
+  ageAsOfMonth,
   EPF_CHARGES_2026,
   ECR_VERSION,
   ECR_VERIFIED,
@@ -162,10 +164,24 @@ export async function buildEpfReturn(
     );
   const exitByEmployee = new Map(exits.map((e) => [e.employeeId, e]));
 
+  const pensionWarnings: string[] = [];
+
   const lines = members.map((m) => {
     const emp = register.employees.get(m.employeeId)!;
     const summary = register.summaries.get(m.employeeId);
     const exit = exitByEmployee.get(m.employeeId);
+    const pfWagePaise = m.amounts[CODE.pfWages] ?? 0;
+
+    const pension = isEpsEligible({
+      hadPriorPfMembership: emp.hadPriorPfMembership,
+      pfWagePaise,
+      wageCeilingPaise: EPF_CHARGES_2026.wageCeilingPaise,
+      ageAsOfPeriod: ageAsOfMonth(emp.dateOfBirth, register.run.periodYear, register.run.periodMonth),
+      isInternationalWorker: false,
+    });
+    if (!pension.eligible) {
+      pensionWarnings.push(`${emp.firstName} ${emp.lastName} (${emp.empCode}): ${pension.reason}`);
+    }
 
     return buildEcrLine(
       {
@@ -173,16 +189,14 @@ export async function buildEpfReturn(
         memberName: `${emp.firstName} ${emp.lastName}`,
         empCode: emp.empCode,
         grossWagesPaise: m.grossPaise,
-        epfWagesPaise: m.amounts[CODE.pfWages] ?? 0,
+        epfWagesPaise: pfWagePaise,
         employeeContributionPaise: m.amounts[CODE.pfEmployee] ?? 0,
         employerContributionPaise:
           (m.amounts[CODE.pfEmployer] ?? 0) + (m.amounts[CODE.pension] ?? 0),
         // Days with no wages: the LOP already computed by the run.
         nonContributoryDays: Math.round(summary?.lopDays ?? 0),
         refundOfAdvancesPaise: 0,
-        // Pension eligibility is not yet modelled per member; assumed for
-        // every contributing member until the joining-wage rule is built.
-        eligibleForPension: true,
+        eligibleForPension: pension.eligible,
         isInternationalWorker: false,
         dateOfExit: emp.dateOfExit,
         reasonForLeaving: exit ? exit.exitType : emp.dateOfExit ? null : null,
@@ -215,6 +229,7 @@ export async function buildEpfReturn(
   const warnings = [
     ...lines.flatMap((l) => l.warnings),
     ...reconciliation.warnings,
+    ...pensionWarnings,
   ];
 
   // A return built from a run nobody approved is a draft of a draft.

@@ -7,6 +7,8 @@ import {
   computeChallan,
   reconcileWithRegister,
   blockingIssues,
+  isEpsEligible,
+  ageAsOfMonth,
   ECR_DELIMITER,
   EPF_CHARGES_2026 as P,
   type EcrMemberInput,
@@ -299,4 +301,86 @@ test("missing UANs are collected as one blocking issue", () => {
 
 test("a clean file has no blocking issues", () => {
   assert.deepEqual(blockingIssues([buildEcrLine(member(), P, EPS_BPS)]), []);
+});
+
+/* ---------------- EPS eligibility ---------------- */
+
+test("age as of a month is the age on that month's last day", () => {
+  // Turns 58 on 15 June 2026 — as of June 2026 (last day 30 June) they are 58.
+  assert.equal(ageAsOfMonth("1968-06-15", 2026, 6), 58);
+  // As of May 2026 (last day 31 May) they are still 57.
+  assert.equal(ageAsOfMonth("1968-06-15", 2026, 5), 57);
+});
+
+test("no date of birth answers null rather than a guess", () => {
+  assert.equal(ageAsOfMonth(null, 2026, 6), null);
+  assert.equal(ageAsOfMonth(undefined, 2026, 6), null);
+});
+
+test("an existing PF member stays in EPS regardless of wages", () => {
+  const r = isEpsEligible({
+    hadPriorPfMembership: true,
+    pfWagePaise: L(50000),
+    wageCeilingPaise: P.wageCeilingPaise,
+    ageAsOfPeriod: 40,
+    isInternationalWorker: false,
+  });
+  assert.equal(r.eligible, true);
+});
+
+test("a new-to-PF member above the ceiling is excluded from EPS", () => {
+  const r = isEpsEligible({
+    hadPriorPfMembership: false,
+    pfWagePaise: L(20000),
+    wageCeilingPaise: P.wageCeilingPaise,
+    ageAsOfPeriod: 30,
+    isInternationalWorker: false,
+  });
+  assert.equal(r.eligible, false);
+  assert.match(r.reason, /Excluded employee/);
+});
+
+test("a new-to-PF member at or below the ceiling enters EPS", () => {
+  const r = isEpsEligible({
+    hadPriorPfMembership: false,
+    pfWagePaise: L(15000),
+    wageCeilingPaise: P.wageCeilingPaise,
+    ageAsOfPeriod: 30,
+    isInternationalWorker: false,
+  });
+  assert.equal(r.eligible, true);
+});
+
+test("pension contribution ceases at 58, even for an existing member above the ceiling", () => {
+  const r = isEpsEligible({
+    hadPriorPfMembership: true,
+    pfWagePaise: L(50000),
+    wageCeilingPaise: P.wageCeilingPaise,
+    ageAsOfPeriod: 58,
+    isInternationalWorker: false,
+  });
+  assert.equal(r.eligible, false);
+  assert.match(r.reason, /58 years/);
+});
+
+test("an international worker has no wage ceiling and is unaffected by age 58 either", () => {
+  const r = isEpsEligible({
+    hadPriorPfMembership: false,
+    pfWagePaise: L(90000),
+    wageCeilingPaise: P.wageCeilingPaise,
+    ageAsOfPeriod: 60,
+    isInternationalWorker: true,
+  });
+  assert.equal(r.eligible, true);
+});
+
+test("no date of birth on record does not itself exclude someone from EPS", () => {
+  const r = isEpsEligible({
+    hadPriorPfMembership: false,
+    pfWagePaise: L(12000),
+    wageCeilingPaise: P.wageCeilingPaise,
+    ageAsOfPeriod: null,
+    isInternationalWorker: false,
+  });
+  assert.equal(r.eligible, true);
 });
