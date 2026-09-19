@@ -16,7 +16,7 @@ export function PageHeader({
         <h1 className="font-display text-3xl font-semibold mt-1 balance">{title}</h1>
         {description && <p className="text-sm text-ink-2 mt-1 max-w-[70ch]">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 max-w-full min-w-0">{actions}</div>}
     </div>
   );
 }

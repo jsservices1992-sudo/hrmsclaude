@@ -387,9 +387,9 @@ export default async function AttendancePage(
                 <tr className="border-b border-line">
                   <th className="label text-ink-3 text-left px-3 py-2">Employee</th>
                   <th className="label text-ink-3 px-3 py-2 text-left">The month</th>
-                  <th className="label text-ink-3 px-3 py-2 text-right">Derived</th>
+                  <th className="hidden sm:table-cell label text-ink-3 px-3 py-2 text-right">Derived</th>
                   <th className="label text-ink-3 px-3 py-2 text-right">Feeds payroll</th>
-                  <th className="label text-ink-3 px-3 py-2 text-left">Source</th>
+                  <th className="hidden sm:table-cell label text-ink-3 px-3 py-2 text-left">Source</th>
                   {canAct && <th className="label text-ink-3 px-3 py-2 text-right">&nbsp;</th>}
                 </tr>
               </thead>
@@ -428,7 +428,7 @@ export default async function AttendancePage(
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono tnum text-ink-3 whitespace-nowrap">
+                      <td className="hidden sm:table-cell px-3 py-2 text-right font-mono tnum text-ink-3 whitespace-nowrap">
                         {derivedPaid.toFixed(1)}
                         <span className="text-ink-3"> / {daysInThisMonth}</span>
                       </td>
@@ -438,7 +438,7 @@ export default async function AttendancePage(
                         </span>
                         <span className="text-ink-3"> / {daysInThisMonth}</span>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="hidden sm:table-cell px-3 py-2">
                         {stored?.overridden ? (
                           <Badge tone="brass" >overridden</Badge>
                         ) : (
