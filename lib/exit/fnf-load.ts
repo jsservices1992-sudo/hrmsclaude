@@ -16,7 +16,7 @@ import {
   type SettlementAgeing,
   type ReceivableState,
 } from "./settlement-tax";
-import { regimeConfig } from "../tax/config";
+import { regimeConfig, ageAsOfFinancialYearEnd } from "../tax/config";
 import { loadStructure, loadConventions } from "../payroll/load";
 import {
   computeProration,
@@ -217,7 +217,12 @@ export async function loadFnfCase(
 
   /* ---- tax on separation — FR-PAY-19 ---- */
   const regime = (employee.taxRegime ?? "new") as Regime;
-  const config = regimeConfig(regime);
+  const settlementFy = exitMonth >= 4 ? exitYear : exitYear - 1;
+  const config = regimeConfig(
+    regime,
+    settlementFy,
+    ageAsOfFinancialYearEnd(employee.dateOfBirth, settlementFy),
+  );
   const years = completedYears(employee.dateOfJoining, exitCase.lastWorkingDay);
 
   const gratuityExemption = exemptGratuity({

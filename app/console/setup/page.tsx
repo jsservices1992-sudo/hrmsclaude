@@ -129,14 +129,19 @@ export default async function SetupPage() {
         </Card>
       ) : (
         <p className="text-xs text-ink-3 max-w-[70ch]">
-          Before anyone&rsquo;s real salary goes through this: the income tax
-          configuration has not been checked against the Finance Act. The
-          professional tax, welfare fund and minimum wage figures are a separate
-          matter and have been attested — see{" "}
+          The professional tax, welfare fund and minimum wage figures, and the
+          core income tax rates — slabs, standard deduction, cess, surcharge
+          and the section 87A rebate — have been checked; see{" "}
           <Link href="/console/compliance" className="text-brass hover:underline">
             statutory configuration
           </Link>{" "}
-          for who signed off on which row.
+          and{" "}
+          <Link href="/console/tax" className="text-brass hover:underline">
+            income tax &amp; TDS
+          </Link>{" "}
+          for who signed off on what. Special-rate income, the full Chapter
+          VI-A deduction list and perquisite valuation have not been checked
+          beyond what those screens already compute.
         </p>
       )}
     </div>

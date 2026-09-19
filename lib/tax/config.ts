@@ -3,11 +3,26 @@ import type { RegimeConfig, DeductionLimits, Regime } from "./engine";
 /**
  * Tax configuration for FY 2026-27 (AY 2027-28).
  *
- * UNVERIFIED. These figures are seeded from the position as at the last
- * Finance Act known to the author and have NOT been checked against the
- * current Act, the Gazette, or a CA sign-off. Treat every number here as a
- * placeholder until Finance verifies it. Payroll will show the same warning
- * on any run that uses this set.
+ * From 1 April 2026 salary TDS is computed under the Income-tax Act,
+ * 2025 rather than the Income Tax Act 1961 — section 392(1) replaces the
+ * old Act's section 192. CBDT's guidance on the changeover is that an
+ * employer resets the salary TDS computation from 1 April 2026 onward,
+ * projecting the year's income, deductions and the employee's chosen
+ * regime — which is exactly what this engine already does every run: it
+ * never treats TDS as a fixed monthly percentage, only ever a projection
+ * recomputed from where the year now stands. Nothing about that
+ * recomputation logic needed to change for the new Act; only the rates
+ * below and the citation for the section number did.
+ *
+ * Every figure here was supplied by the owner on 19 September 2026, who
+ * gave the Income Tax Department's and Union Budget 2026's own published
+ * material as the source for each one — see the per-field notes. They
+ * were not independently re-derived; the owner's citations are the
+ * verification. Where the owner said a figure was NOT covered by this
+ * — special-rate income (capital gains, lottery, etc.), the deduction
+ * master beyond what is listed, and perquisite valuation rules — the
+ * corresponding flag below says so and stays false, rather than one
+ * blanket boolean implying more was checked than actually was.
  *
  * The shape is what matters: a new financial year is a new entry in this
  * table, never an edit to an existing one, so a prior year stays reproducible
@@ -16,9 +31,78 @@ import type { RegimeConfig, DeductionLimits, Regime } from "./engine";
 
 const L = (rupees: number) => Math.round(rupees * 100);
 
-export const TAX_CONFIG_VERSION = "fy2026-27.draft.1";
-export const TAX_CONFIG_VERIFIED = false;
+export const TAX_CONFIG_VERSION = "fy2026-27.itact2025.1";
 
+/**
+ * What was actually checked, rather than one boolean standing in for
+ * all of it. Salary TDS is not just slabs: HRA, LTA, NPS employer
+ * contribution, 80C/80D, home loan interest, a previous employer's
+ * salary and TDS, perquisites and special-rate income all have their
+ * own rules, and a single "verified" flag would have claimed all of
+ * them were checked when only the core rate structure was.
+ */
+export const TAX_CONFIG_VERIFICATION = {
+  /** Slab boundaries and rates, both regimes, all three old-regime age bands. */
+  slabs: true,
+  /** ₹75,000 new regime / ₹50,000 old regime, both capped at eligible salary. */
+  standardDeduction: true,
+  /** 4% on tax plus surcharge, both regimes. */
+  cess: true,
+  /** The four-tier surcharge schedule and its ₹5Cr/37% old-regime top band. */
+  surcharge: true,
+  /** Section 87A — both regimes' income limit and maximum rebate. */
+  rebate87A: true,
+  /** Marginal relief at the surcharge thresholds (₹50L/1Cr/2Cr, +₹5Cr old regime). */
+  surchargeMarginalRelief: true,
+  /**
+   * Capital gains, lottery and other rates taxed outside the normal
+   * slabs. This engine does not model them at all yet — see
+   * `allowsChapterViA`/`allowsHraExemption` and the deduction limits
+   * below for what it does compute.
+   */
+  specialRateIncome: false,
+  /**
+   * The Chapter VI-A limits below are the commonly-claimed sections;
+   * whether the full statutory list is represented has not been
+   * checked section by section.
+   */
+  deductionMaster: false,
+  /** Perquisite valuation (rent-free accommodation, ESOPs, etc.) beyond what `perquisites.ts` already computes. */
+  perquisiteRules: false,
+} as const;
+
+/**
+ * True only once every CORE rate figure — the part an ordinary salaried
+ * worksheet actually runs on — has been checked. This is what callers
+ * that decide whether to show a warning banner should read; the finer
+ * flags above are for anyone auditing exactly what that covers.
+ */
+export const TAX_CONFIG_VERIFIED =
+  TAX_CONFIG_VERIFICATION.slabs &&
+  TAX_CONFIG_VERIFICATION.standardDeduction &&
+  TAX_CONFIG_VERIFICATION.cess &&
+  TAX_CONFIG_VERIFICATION.surcharge &&
+  TAX_CONFIG_VERIFICATION.rebate87A &&
+  TAX_CONFIG_VERIFICATION.surchargeMarginalRelief;
+
+/**
+ * The surcharge schedule shared by both regimes up to ₹2 crore — sourced
+ * to the Income Tax Department's own published rates. The new regime
+ * stops here, at 25%; the old regime adds a further ₹5 crore/37% band,
+ * defined on that regime's own config below.
+ */
+const SURCHARGE_UPTO_2CR = [
+  { abovePaise: L(5000000), rateBps: 1000 },
+  { abovePaise: L(10000000), rateBps: 1500 },
+  { abovePaise: L(20000000), rateBps: 2500 },
+];
+
+/**
+ * Old regime, resident individual below 60 — Income Tax Department
+ * published slabs for FY 2026-27, unchanged from FY 2025-26 per the
+ * Finance Bill 2026 memorandum's statement that applicable rates were
+ * not revised this year.
+ */
 export const OLD_REGIME_2026: RegimeConfig = {
   regime: "old",
   financialYear: 2026,
@@ -32,17 +116,49 @@ export const OLD_REGIME_2026: RegimeConfig = {
   rebateIncomeLimitPaise: L(500000),
   rebateMaxPaise: L(12500),
   rebateMarginalRelief: false,
-  surcharge: [
-    { abovePaise: L(5000000), rateBps: 1000 },
-    { abovePaise: L(10000000), rateBps: 1500 },
-    { abovePaise: L(20000000), rateBps: 2500 },
-    { abovePaise: L(50000000), rateBps: 3700 },
-  ],
+  surcharge: [...SURCHARGE_UPTO_2CR, { abovePaise: L(50000000), rateBps: 3700 }],
   cessBps: 400,
   allowsChapterViA: true,
   allowsHraExemption: true,
 };
 
+/**
+ * Old regime, resident senior citizen — 60 to under 80 as of the last
+ * day of the financial year (31 March 2027), the Income Tax Act's own
+ * convention: turning 60 at any point up to that date is enough for the
+ * whole year. Only the basic exemption slab differs from below-60; every
+ * other figure — standard deduction, 87A, surcharge, cess — is the same
+ * and is not restated as a separate source.
+ */
+export const OLD_REGIME_SENIOR_2026: RegimeConfig = {
+  ...OLD_REGIME_2026,
+  slabs: [
+    { fromPaise: 0, toPaise: L(300000), rateBps: 0 },
+    { fromPaise: L(300000), toPaise: L(500000), rateBps: 500 },
+    { fromPaise: L(500000), toPaise: L(1000000), rateBps: 2000 },
+    { fromPaise: L(1000000), toPaise: null, rateBps: 3000 },
+  ],
+};
+
+/**
+ * Old regime, resident super senior citizen — 80 and above as of 31
+ * March 2027. Exempt to ₹5,00,000, so the 5% band Below-80 has does not
+ * exist for this band at all.
+ */
+export const OLD_REGIME_SUPER_SENIOR_2026: RegimeConfig = {
+  ...OLD_REGIME_2026,
+  slabs: [
+    { fromPaise: 0, toPaise: L(500000), rateBps: 0 },
+    { fromPaise: L(500000), toPaise: L(1000000), rateBps: 2000 },
+    { fromPaise: L(1000000), toPaise: null, rateBps: 3000 },
+  ],
+};
+
+/**
+ * New regime — the default regime where nobody has intimated a choice
+ * (see `resolveRegime` in load.ts). Does not vary by age: the Income Tax
+ * Department's published new-regime slabs are the same for everyone.
+ */
 export const NEW_REGIME_2026: RegimeConfig = {
   regime: "new",
   financialYear: 2026,
@@ -60,11 +176,7 @@ export const NEW_REGIME_2026: RegimeConfig = {
   rebateMaxPaise: L(60000),
   rebateMarginalRelief: true,
   // The 37% band does not apply under the new regime; it caps at 25%.
-  surcharge: [
-    { abovePaise: L(5000000), rateBps: 1000 },
-    { abovePaise: L(10000000), rateBps: 1500 },
-    { abovePaise: L(20000000), rateBps: 2500 },
-  ],
+  surcharge: SURCHARGE_UPTO_2CR,
   cessBps: 400,
   allowsChapterViA: false,
   allowsHraExemption: false,
@@ -119,11 +231,50 @@ export function hasTaxConfig(financialYear: number): boolean {
   return (CONFIGURED_FINANCIAL_YEARS as readonly number[]).includes(financialYear);
 }
 
-export function regimeConfig(regime: Regime, financialYear = 2026): RegimeConfig {
+/**
+ * Age as of the last day of a financial year (31 March), the Income Tax
+ * Act's own convention for which age band a resident individual falls
+ * in for the WHOLE year — someone turning 60 in February still gets the
+ * senior citizen slabs for the year that started the previous April.
+ *
+ * Null where there is nothing to compute from, which callers treat the
+ * same as "below 60": the ordinary slabs, not a guessed concession.
+ */
+export function ageAsOfFinancialYearEnd(
+  dateOfBirth: string | null | undefined,
+  financialYear: number,
+): number | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth + "T00:00:00Z");
+  if (Number.isNaN(dob.getTime())) return null;
+  // FY 2026 (2026-27) ends 31 March 2027.
+  const fyEnd = new Date(Date.UTC(financialYear + 1, 2, 31));
+  let age = fyEnd.getUTCFullYear() - dob.getUTCFullYear();
+  const hadBirthdayByFyEnd =
+    fyEnd.getUTCMonth() > dob.getUTCMonth() ||
+    (fyEnd.getUTCMonth() === dob.getUTCMonth() && fyEnd.getUTCDate() >= dob.getUTCDate());
+  if (!hadBirthdayByFyEnd) age -= 1;
+  return age;
+}
+
+/**
+ * The regime configuration in force for a year — and, for the old
+ * regime, the age band, since the exemption slab (not any other figure)
+ * depends on whether the person is a senior or super senior citizen as
+ * of the financial year's end. The new regime never varies by age.
+ */
+export function regimeConfig(
+  regime: Regime,
+  financialYear = 2026,
+  ageAsOfFyEnd?: number | null,
+): RegimeConfig {
   if (financialYear !== 2026) {
     throw new Error(
       `No tax configuration is loaded for FY ${financialYear}. Add a dated entry rather than reusing another year's rates.`,
     );
   }
-  return regime === "old" ? OLD_REGIME_2026 : NEW_REGIME_2026;
+  if (regime === "new") return NEW_REGIME_2026;
+  if (ageAsOfFyEnd != null && ageAsOfFyEnd >= 80) return OLD_REGIME_SUPER_SENIOR_2026;
+  if (ageAsOfFyEnd != null && ageAsOfFyEnd >= 60) return OLD_REGIME_SENIOR_2026;
+  return OLD_REGIME_2026;
 }

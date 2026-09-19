@@ -23,12 +23,14 @@ import {
 } from "./engine";
 import {
   regimeConfig,
+  ageAsOfFinancialYearEnd,
   DEDUCTION_LIMITS_2026,
   LANDLORD_PAN_THRESHOLD_PAISE,
   NO_PAN_RATE_BPS,
   isMetroCity,
   TAX_CONFIG_VERSION,
   TAX_CONFIG_VERIFIED,
+  TAX_CONFIG_VERIFICATION,
 } from "./config";
 import { hasTaxConfig } from "./config";
 import { summarisePerquisites, type PerquisiteLine } from "./perquisites";
@@ -109,7 +111,7 @@ function composeWorksheet(
   const { emp, decl, salary, structure, flexiApprovedPaise, perqRows, ledger, proofs } = input;
 
   const regime: Regime = overrideRegime ?? ((decl?.regime ?? emp.taxRegime) as Regime);
-  const config = regimeConfig(regime, financialYear);
+  const config = regimeConfig(regime, financialYear, ageAsOfFinancialYearEnd(emp.dateOfBirth, financialYear));
   const warnings: string[] = [];
 
   /* ---- salary ---- */
@@ -561,8 +563,8 @@ export async function quarterlyReturn(
 }
 
 /** Slab bands for the current regime, for the worksheet's rate table. */
-export function slabTableFor(regime: Regime, taxableIncomePaise: number) {
-  return computeSlabTax(taxableIncomePaise, regimeConfig(regime, CURRENT_FY));
+export function slabTableFor(regime: Regime, taxableIncomePaise: number, ageAsOfFyEnd?: number | null) {
+  return computeSlabTax(taxableIncomePaise, regimeConfig(regime, CURRENT_FY, ageAsOfFyEnd));
 }
 
 /**

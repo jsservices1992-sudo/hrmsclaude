@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { listCompanies } from "@/lib/payroll/load";
 import { loadCompanyTax, listPendingProofs } from "@/lib/tax/load";
+import { TAX_CONFIG_VERIFICATION } from "@/lib/tax/config";
 import { fyLabel, CURRENT_FY } from "@/lib/tax/fy";
 import { formatINR } from "@/lib/payroll/money";
 import {
@@ -83,15 +84,29 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
         }
       />
 
-      {!configVerified && (
+      {!configVerified ? (
         <div className="border-2 border-rust bg-rust-soft px-5 py-4">
           <p className="label text-rust mb-1.5">Unverified tax configuration</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
-            Slabs, rebate limits, surcharge bands and Chapter VI-A ceilings in
-            configuration set <span className="font-mono">{configVersion}</span>{" "}
-            have not been checked against the Finance Act. Every figure on this
-            page is provisional until Finance signs the set off. Do not file a
-            return from it.
+            Slabs, the standard deduction, cess, surcharge and the section 87A
+            rebate in configuration set{" "}
+            <span className="font-mono">{configVersion}</span> have not all
+            been checked. Every figure on this page is provisional until they
+            are. Do not file a return from it.
+          </p>
+        </div>
+      ) : (
+        <div className="border-2 border-teal bg-teal-soft px-5 py-4">
+          <p className="label text-teal mb-1.5">Core rates checked</p>
+          <p className="text-sm text-ink-2 max-w-[74ch]">
+            Slabs (all three old-regime age bands), the standard deduction,
+            cess, the surcharge schedule and section 87A — both regimes, in
+            configuration set <span className="font-mono">{configVersion}</span> —
+            have been checked against the Income Tax Department's and Union
+            Budget's own published figures.{" "}
+            {!TAX_CONFIG_VERIFICATION.specialRateIncome && "Special-rate income (capital gains, lottery and similar) is not modelled at all. "}
+            {!TAX_CONFIG_VERIFICATION.deductionMaster && "The Chapter VI-A deduction list has not been checked section by section beyond what is commonly claimed. "}
+            {!TAX_CONFIG_VERIFICATION.perquisiteRules && "Perquisite valuation beyond what is already computed has not been separately checked."}
           </p>
         </div>
       )}

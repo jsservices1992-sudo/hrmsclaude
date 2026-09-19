@@ -437,7 +437,7 @@ export default async function TaxWorksheetPage(
         <p className="text-xs text-ink-3 max-w-[60ch]">
           Computed on configuration set{" "}
           <span className="font-mono">{w.configVersion}</span>
-          {!w.configVerified && ", which has not been verified against the Finance Act"}.
+          {!w.configVerified && ", whose core rates have not been checked"}.
           The set used is recorded against every deduction, so this worksheet
           stays reproducible after the rates change.
         </p>
