@@ -338,7 +338,7 @@ export default async function PayrollSettingsPage(
             overrides that field specifically. This is the real case for a
             factory floor paid on working days while the rest of the company
             runs calendar days, or a plant that rounds the net where head
-            office doesn't.
+            office doesn&rsquo;t.
           </p>
           <Table>
             <THead>

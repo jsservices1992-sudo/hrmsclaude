@@ -256,9 +256,12 @@ export function BranchForm({
   const [stateCode, setStateCode] = useState(
     state.values?.stateCode ?? values.stateCode ?? "",
   );
-  const lastStateForCode = useRef(state);
-  if (lastStateForCode.current !== state) {
-    lastStateForCode.current = state;
+  /* React's own "adjust state when a prop changes" pattern: a previous
+     value held in state, not a ref, so the comparison is something the
+     renderer knows about rather than a write it cannot see. */
+  const [lastStateForCode, setLastStateForCode] = useState(state);
+  if (lastStateForCode !== state) {
+    setLastStateForCode(state);
     if (state.values?.stateCode !== undefined) setStateCode(state.values.stateCode);
   }
   const zones = zonesByState[stateCode] ?? [];

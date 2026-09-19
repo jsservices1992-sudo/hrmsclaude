@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { SITE } from "@/lib/site";
 import {
   SEGMENT_LABELS,
@@ -13,6 +13,7 @@ import { ICONS, IconMenu, IconClose, IconPanel, IconChevron, IconSearch } from "
 import { DropdownMenu, DropdownItem } from "./ui/dropdown-menu";
 import { ToastProvider } from "./ui/toast";
 import { CommandPalette } from "./command-palette";
+import { useStored } from "./use-stored";
 
 const COLLAPSE_KEY = "lekha.sidebar.collapsed";
 
@@ -42,6 +43,20 @@ function Brand({ collapsed }: { collapsed: boolean }) {
 }
 
 const OPEN_KEY = "lekha.sidebar.open";
+
+/* Both stable references: a fallback or parser rebuilt every render would
+   make the stored value look like it had changed on every pass. */
+const NONE_CLOSED: string[] = [];
+const parseClosed = (raw: string) => JSON.parse(raw) as string[];
+// "1" is what earlier versions wrote; both still read as collapsed.
+const parseBool = (raw: string) => raw === "1" || raw === "true";
+
+const macHint = () => "⌘K";
+const noResubscribe = () => () => {};
+const readShortcutHint = () =>
+  /Mac|iPhone|iPad/.test(navigator.platform ?? navigator.userAgent)
+    ? "⌘K"
+    : "Ctrl K";
 
 /**
  * One section's worth of nav, openable.
@@ -149,29 +164,14 @@ function NavList({
       sec.groups.some((g) => g.items.some((i) => isItemActive(i, pathname))),
     )?.label ?? null;
 
-  const [closed, setClosed] = useState<string[]>([]);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(OPEN_KEY);
-      if (raw) setClosed(JSON.parse(raw) as string[]);
-    } catch {
-      /* every section simply stays open */
-    }
-  }, []);
+  const [closed, setClosed] = useStored<string[]>(OPEN_KEY, NONE_CLOSED, parseClosed);
 
   const toggle = (label: string) => {
-    setClosed((prev) => {
-      const next = prev.includes(label)
-        ? prev.filter((l) => l !== label)
-        : [...prev, label];
-      try {
-        window.localStorage.setItem(OPEN_KEY, JSON.stringify(next));
-      } catch {
-        /* preference simply will not persist */
-      }
-      return next;
-    });
+    setClosed(
+      closed.includes(label)
+        ? closed.filter((l) => l !== label)
+        : [...closed, label],
+    );
   };
 
   return (
@@ -227,13 +227,11 @@ function Breadcrumbs({ pathname }: { pathname: string }) {
 }
 
 function SearchTrigger() {
-  const [hint, setHint] = useState("⌘K");
-
-  useEffect(() => {
-    if (!/Mac|iPhone|iPad/.test(navigator.platform ?? navigator.userAgent)) {
-      setHint("Ctrl K");
-    }
-  }, []);
+  /* Which key this machine actually uses. Subscribed to rather than set
+     from an effect, so the server's markup and the first client render
+     agree on ⌘K and the correction, if any, arrives without a second
+     pass through state. */
+  const hint = useSyncExternalStore(noResubscribe, readShortcutHint, macHint);
 
   return (
     <button
@@ -347,31 +345,16 @@ export default function ConsoleShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [drawer, setDrawer] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  /* Which page the drawer was opened on, rather than a plain boolean and
+     an effect that closes it again on every navigation: following a link
+     changes the path, and the drawer belonging to the page you have left
+     is simply no longer open. */
+  const [openedAt, setOpenedAt] = useState<string | null>(null);
+  const drawer = openedAt === pathname;
+  const setDrawer = (next: boolean) => setOpenedAt(next ? pathname : null);
+  const [collapsed, setCollapsed] = useStored(COLLAPSE_KEY, false, parseBool);
 
-  // Restore the collapsed preference. Wrapped because storage throws in
-  // some embedded contexts.
-  useEffect(() => {
-    try {
-      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1");
-    } catch {
-      /* no stored preference available */
-    }
-  }, []);
-
-  const toggleCollapsed = () => {
-    setCollapsed((v) => {
-      try {
-        window.localStorage.setItem(COLLAPSE_KEY, v ? "0" : "1");
-      } catch {
-        /* preference simply will not persist */
-      }
-      return !v;
-    });
-  };
-
-  useEffect(() => setDrawer(false), [pathname]);
+  const toggleCollapsed = () => setCollapsed(!collapsed);
   useEffect(() => {
     if (!drawer) return;
     /* `overflow: hidden` alone does not stop touch scrolling on iOS

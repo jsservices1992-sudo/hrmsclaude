@@ -102,8 +102,8 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
             Slabs (all three old-regime age bands), the standard deduction,
             cess, the surcharge schedule and section 87A — both regimes, in
             configuration set <span className="font-mono">{configVersion}</span> —
-            have been checked against the Income Tax Department's and Union
-            Budget's own published figures.{" "}
+            have been checked against the Income Tax Department&rsquo;s and Union
+            Budget&rsquo;s own published figures.{" "}
             {!TAX_CONFIG_VERIFICATION.specialRateIncome && "Special-rate income (capital gains, lottery and similar) is not modelled at all. "}
             {!TAX_CONFIG_VERIFICATION.deductionMaster && "The Chapter VI-A deduction list has not been checked section by section beyond what is commonly claimed. "}
             {!TAX_CONFIG_VERIFICATION.perquisiteRules && "Perquisite valuation beyond what is already computed has not been separately checked."}

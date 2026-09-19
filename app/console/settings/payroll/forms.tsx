@@ -858,7 +858,7 @@ export function PtSlabForm({ states }: { states: { id: string; label: string }[]
           <span className="text-sm">
             Only on a person liable to income tax
             <span className="block text-xs text-ink-3 mt-0.5">
-              Punjab's State Development Tax: this band still covers every
+              Punjab&rsquo;s State Development Tax: this band still covers every
               wage, so the coverage check finds no gap, but the run charges
               ₹0 for anybody not shown as an income-tax payer that year.
             </span>

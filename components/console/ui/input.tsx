@@ -64,8 +64,12 @@ export function Select({
   ...props
 }: React.ComponentProps<"select"> & { invalid?: boolean }) {
   const ref = React.useRef<HTMLSelectElement>(null);
+  /* Written after the render, not during it: the reset listener below
+     runs long after, so it still reads the current value. */
   const latest = React.useRef(defaultValue);
-  latest.current = defaultValue;
+  React.useEffect(() => {
+    latest.current = defaultValue;
+  }, [defaultValue]);
 
   const applyDefault = React.useCallback(() => {
     const el = ref.current;

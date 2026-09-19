@@ -23,8 +23,16 @@ function Wordmark() {
 
 export default function SiteNav() {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const [productOpen, setProductOpen] = useState(false);
+  /* Both menus are held against the page they were opened on, so
+     following a link closes them by arithmetic rather than by an effect
+     that fires a second render after every navigation. */
+  const [openedAt, setOpenedAt] = useState<string | null>(null);
+  const [productOpenedAt, setProductOpenedAt] = useState<string | null>(null);
+  const open = openedAt === pathname;
+  const productOpen = productOpenedAt === pathname;
+  const setOpen = (next: boolean) => setOpenedAt(next ? pathname : null);
+  const setProductOpen = (next: boolean) =>
+    setProductOpenedAt(next ? pathname : null);
   const [scrolled, setScrolled] = useState(false);
   const productRef = useRef<HTMLDivElement>(null);
 
@@ -34,12 +42,6 @@ export default function SiteNav() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  // Close both menus on navigation.
-  useEffect(() => {
-    setOpen(false);
-    setProductOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -83,7 +85,7 @@ export default function SiteNav() {
             <div ref={productRef} className="relative">
               <button
                 type="button"
-                onClick={() => setProductOpen((v) => !v)}
+                onClick={() => setProductOpen(!productOpen)}
                 aria-expanded={productOpen}
                 aria-haspopup="true"
                 className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${
@@ -174,7 +176,7 @@ export default function SiteNav() {
           </Link>
           <button
             type="button"
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-controls="mobile-menu"
             className="lg:hidden inline-flex items-center gap-2 px-3 py-2 -mr-3 text-sm text-ink"

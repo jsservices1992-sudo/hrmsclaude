@@ -130,6 +130,9 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
     pendingFile?.valueDate ??
     new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
 
+  /* eslint-disable-next-line react-hooks/purity -- a server component,
+     rendered once per request: "now" is the request's own time, and the
+     45-day alert window is measured from it by design. */
   const windowStart = new Date(Date.now() - 45 * 86_400_000).toISOString();
   await refreshAlerts({
     companyId,

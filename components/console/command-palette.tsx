@@ -30,7 +30,17 @@ export function CommandPalette() {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((v) => !v);
+        /* Cleared here rather than in an effect watching `open`: the
+           palette should start empty every time it is summoned, and that
+           is a consequence of this keystroke, not of having rendered. */
+        setOpen((v) => {
+          if (!v) {
+            setQuery("");
+            setResults([]);
+            setActiveIndex(0);
+          }
+          return !v;
+        });
       }
     }
     window.addEventListener("keydown", onKey);
@@ -38,20 +48,13 @@ export function CommandPalette() {
   }, []);
 
   useEffect(() => {
-    if (open) {
-      setQuery("");
-      setResults([]);
-      setActiveIndex(0);
-      const t = setTimeout(() => inputRef.current?.focus(), 30);
-      return () => clearTimeout(t);
-    }
+    if (!open) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 30);
+    return () => clearTimeout(t);
   }, [open]);
 
   useEffect(() => {
-    if (!query) {
-      setResults([]);
-      return;
-    }
+    if (!query) return;
     const debounce = setTimeout(() => {
       abortRef.current?.abort();
       const ac = new AbortController();

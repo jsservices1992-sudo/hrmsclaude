@@ -347,7 +347,7 @@ export function TaxDeclarationForm({
           </div>
           <div className="grid sm:grid-cols-2 gap-3 mt-3">
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-ink-2">80DD — a dependent's disability</span>
+              <span className="text-xs text-ink-2">80DD — a dependent&rsquo;s disability</span>
               <select name="dependentDisability" defaultValue={String(d.dependentDisability ?? "none")} className={field}>
                 <option value="none">Not claiming</option>
                 <option value="normal">40–79% disability (₹75,000 flat)</option>
@@ -366,7 +366,7 @@ export function TaxDeclarationForm({
           <p className="text-xs text-ink-3 mt-1.5 max-w-[70ch]">
             80DD and 80U are flat allowances fixed by a disability
             certificate, not by anything spent — the amount does not
-            change with the certificate's severity band you pick above.
+            change with the certificate&rsquo;s severity band you pick above.
           </p>
         </div>
 
