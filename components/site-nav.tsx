@@ -68,6 +68,7 @@ export default function SiteNav() {
   const productActive = PRODUCT_NAV.some((i) => i.href === pathname);
 
   return (
+    <>
     <div
       className={`sticky top-0 z-50 bg-paper/95 backdrop-blur-sm ${
         scrolled ? "border-b border-line" : "border-b border-transparent"
@@ -192,12 +193,15 @@ export default function SiteNav() {
           </button>
         </nav>
       </div>
+    </div>
 
-      {/* mobile drawer */}
+      {/* Outside the header on purpose: its backdrop-filter makes it the
+          containing block for fixed children, which shrank this drawer to
+          the header's own 64px — open, invisible, and the page locked. */}
       <div
         id="mobile-menu"
         hidden={!open}
-        className="lg:hidden fixed inset-x-0 top-16 bottom-0 z-40 bg-paper border-t border-line overflow-y-auto"
+        className="lg:hidden fixed inset-x-0 top-16 bottom-0 z-40 bg-paper border-t border-line overflow-y-auto overscroll-contain"
       >
         <ul className="flex flex-col">
           {NAV.map((item) => {
@@ -236,6 +240,6 @@ export default function SiteNav() {
           </Link>
         </div>
       </div>
-    </div>
+    </>
   );
 }
