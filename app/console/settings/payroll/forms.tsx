@@ -91,6 +91,7 @@ export type SettingsValues = {
   roundNet: boolean;
   sandwichRule: boolean;
   epfOnActualBasic: boolean;
+  advancedTaxEnabled: boolean;
   retroLopTreatment: string;
   weeklyOffWorkTreatment: string;
   financialYearStartMonth: number;
@@ -132,6 +133,7 @@ export function PayrollSettingsForm({
           {values.roundNet && <input type="hidden" name="roundNet" value="on" />}
           {values.sandwichRule && <input type="hidden" name="sandwichRule" value="on" />}
           {values.epfOnActualBasic && <input type="hidden" name="epfOnActualBasic" value="on" />}
+          {values.advancedTaxEnabled && <input type="hidden" name="advancedTaxEnabled" value="on" />}
           <input type="hidden" name="retroLopTreatment" value={values.retroLopTreatment} />
           <input type="hidden" name="weeklyOffWorkTreatment" value={values.weeklyOffWorkTreatment} />
           <input type="hidden" name="financialYearStartMonth" value={values.financialYearStartMonth} />
@@ -221,6 +223,19 @@ export function PayrollSettingsForm({
               hint="Otherwise contributions are restricted to the statutory ceiling"
             />
             <Num label="Financial year starts (month)" name="financialYearStartMonth" defaultValue={values.financialYearStartMonth} disabled={d} hint="4 = April" />
+          </Group>
+
+          <Group
+            title="Advanced tax"
+            hint="Off by default — most salaried employees have none of this, and showing it to everyone puts CA-level vocabulary in front of an ordinary payroll."
+          >
+            <Check
+              label="Special-rate income (capital gains, VDA, lottery, gaming)"
+              name="advancedTaxEnabled"
+              defaultChecked={values.advancedTaxEnabled}
+              disabled={d}
+              hint="Lets HR declare an employee's capital gains, crypto, lottery or gaming income for a more accurate projected TDS"
+            />
           </Group>
         </>
       )}

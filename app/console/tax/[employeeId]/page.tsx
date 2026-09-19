@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import * as s from "@/db/schema";
 import { loadWorksheet, compareForEmployee } from "@/lib/tax/load";
 import { fyLabel, CURRENT_FY } from "@/lib/tax/fy";
 import { formatINR } from "@/lib/payroll/money";
@@ -76,6 +79,13 @@ export default async function TaxWorksheetPage(
   const canAct = canActOnPeople(user);
   const emp = w.employee;
   const a = w.annual;
+
+  const [company] = await db
+    .select({ advancedTaxEnabled: s.companies.advancedTaxEnabled })
+    .from(s.companies)
+    .where(eq(s.companies.id, emp.companyId))
+    .limit(1);
+  const advancedTaxEnabled = company?.advancedTaxEnabled ?? false;
 
   return (
     <div className="flex flex-col gap-6 max-w-[72rem]">
@@ -495,13 +505,18 @@ export default async function TaxWorksheetPage(
         </Card>
       )}
 
-      {canActOnPeople(user) && (
+      {advancedTaxEnabled && canActOnPeople(user) && (
         <Card padded={false}>
           <div className="px-4 py-2.5 border-b border-line bg-surface-2">
             <span className="label text-ink-2">Special-rate income — capital gains, VDA, lottery, gaming</span>
           </div>
           <SpecialRateForm employeeId={emp.id} declaration={w.specialRateDeclaration} />
         </Card>
+      )}
+      {!advancedTaxEnabled && w.specialRateDeclaration && canActOnPeople(user) && (
+        <p className="text-xs text-ink-3 px-1">
+          Special-rate income was declared before this feature was turned off in Payroll Settings — the figures above still apply. Turn it back on there to change them.
+        </p>
       )}
 
       <Card className="flex flex-wrap items-center justify-between gap-3">

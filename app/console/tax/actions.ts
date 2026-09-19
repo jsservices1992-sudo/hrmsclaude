@@ -530,6 +530,15 @@ export async function saveSpecialRateDeclaration(
   const emp = await employeeInScope(user, employeeId);
   if (!emp) return { error: "Not authorised." };
 
+  const [company] = await db
+    .select({ advancedTaxEnabled: s.companies.advancedTaxEnabled })
+    .from(s.companies)
+    .where(eq(s.companies.id, emp.companyId))
+    .limit(1);
+  if (!company?.advancedTaxEnabled) {
+    return { error: "Turn on \"Special-rate income\" under Payroll Settings → Advanced tax before declaring this." };
+  }
+
   const fields = [
     "stcgSpecifiedPaise",
     "stcgOtherPaise",

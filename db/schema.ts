@@ -102,6 +102,18 @@ export const companies = pgTable("companies", {
   epfOnActualBasic: boolean("epf_on_actual_basic")
     .notNull()
     .default(false),
+  /**
+   * Special-rate income (capital gains, VDA, lottery, gaming) is real
+   * but rare — most salaried employees have none of it, and showing the
+   * form to everyone would put CA-level tax vocabulary in front of
+   * people running an ordinary payroll. Off by default; an
+   * administrator turns it on for a company whose employees actually
+   * need it, the same opt-in shape as every other advanced convention
+   * on this row.
+   */
+  advancedTaxEnabled: boolean("advanced_tax_enabled")
+    .notNull()
+    .default(false),
   /* What an overtime hour is worth, set by the administrator. Null means
      overtime has not been configured, and hours cannot be entered until
      it is — an OT amount with no agreed rate is not auditable. */
