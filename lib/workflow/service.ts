@@ -32,11 +32,26 @@ export async function buildDirectory(companyId: string): Promise<Directory> {
     .select({ id: s.employees.id, managerId: s.employees.managerId, email: s.employees.email })
     .from(s.employees)
     .where(eq(s.employees.companyId, companyId));
+  const deptOwnerRows = await db
+    .select()
+    .from(s.workflowDepartmentOwners)
+    .where(eq(s.workflowDepartmentOwners.companyId, companyId));
 
   const employeeById = new Map(employees.map((e) => [e.id, e]));
   const loginByEmployee = new Map(
     users.filter((u) => u.employeeId).map((u) => [u.employeeId!, u.email]),
   );
+  const activeEmails = new Set(users.map((u) => u.email));
+  const ownersByDept = new Map<string, string[]>();
+  for (const row of deptOwnerRows) {
+    // An owner who has since been deactivated does not silently keep
+    // holding a step — the same reason `usersWithRole` only looks at
+    // active users above.
+    if (!activeEmails.has(row.ownerEmail)) continue;
+    const list = ownersByDept.get(row.department) ?? [];
+    list.push(row.ownerEmail);
+    ownersByDept.set(row.department, list);
+  }
 
   return {
     // The manager must be able to sign in, or the step goes to nobody. An
@@ -49,9 +64,11 @@ export async function buildDirectory(companyId: string): Promise<Directory> {
       users
         .filter((u) => u.role === role && (u.companyId === null || u.companyId === cid))
         .map((u) => u.email),
-    // Department ownership is not modelled yet, so these steps fall back to
-    // an administrator — and the step says so rather than pretending.
-    departmentOwners: () => [],
+    // A department step routes to whoever Settings names as that
+    // department's owner for this company — see
+    // `workflowDepartmentOwners`. None recorded still falls back to an
+    // administrator, same as before, rather than stalling the workflow.
+    departmentOwners: (department) => ownersByDept.get(department.toLowerCase()) ?? [],
   };
 }
 

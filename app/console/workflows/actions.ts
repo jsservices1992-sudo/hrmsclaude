@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
@@ -246,4 +247,101 @@ export async function saveTemplate(
       check.warnings.length ? ` Note: ${check.warnings.join(" ")}` : ""
     }`,
   };
+}
+
+/**
+ * Naming who owns a department for workflow routing — FR-... the gap
+ * `buildDirectory`'s `departmentOwners` used to paper over with an empty
+ * list, sending every department step straight to an administrator no
+ * matter what the template said. Only an admin may change this, same as
+ * a template itself: it silently redirects other people's approvals.
+ */
+export async function addDepartmentOwner(
+  _prev: WorkflowState,
+  fd: FormData,
+): Promise<WorkflowState> {
+  const user = await getSessionUser();
+  if (!user || user.role !== "admin") {
+    return { error: "Only an administrator may set department owners." };
+  }
+
+  const companyId = String(fd.get("companyId") ?? "");
+  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+
+  const department = String(fd.get("department") ?? "").trim().toLowerCase();
+  const ownerEmail = String(fd.get("ownerEmail") ?? "").trim().toLowerCase();
+  if (!department) return { error: "Name the department as it appears in the template's steps — e.g. \"it\"." };
+  if (!ownerEmail) return { error: "Enter the owner's email address." };
+
+  const [owner] = await db
+    .select({ id: s.users.id, active: s.users.active })
+    .from(s.users)
+    .where(eq(s.users.email, ownerEmail))
+    .limit(1);
+  if (!owner) return { error: "No account with that email exists on this instance." };
+  if (!owner.active) return { error: "That account is not active." };
+
+  const [existing] = await db
+    .select()
+    .from(s.workflowDepartmentOwners)
+    .where(
+      and(
+        eq(s.workflowDepartmentOwners.companyId, companyId),
+        eq(s.workflowDepartmentOwners.department, department),
+        eq(s.workflowDepartmentOwners.ownerEmail, ownerEmail),
+      ),
+    )
+    .limit(1);
+  if (existing) return { error: `${ownerEmail} already owns "${department}".` };
+
+  await db.insert(s.workflowDepartmentOwners).values({
+    id: randomUUID(),
+    companyId,
+    department,
+    ownerEmail,
+    createdAt: new Date().toISOString(),
+  });
+
+  await recordAudit({
+    user,
+    action: "workflow_department_owner.added",
+    entity: "workflow_department_owner",
+    entityId: `${companyId}:${department}`,
+    after: { department, ownerEmail },
+  });
+
+  revalidatePath("/console/workflows");
+  return { ok: `${ownerEmail} now owns "${department}" steps.` };
+}
+
+export async function removeDepartmentOwner(
+  _prev: WorkflowState,
+  fd: FormData,
+): Promise<WorkflowState> {
+  const user = await getSessionUser();
+  if (!user || user.role !== "admin") {
+    return { error: "Only an administrator may change department owners." };
+  }
+
+  const id = String(fd.get("id") ?? "");
+  const [row] = await db
+    .select()
+    .from(s.workflowDepartmentOwners)
+    .where(eq(s.workflowDepartmentOwners.id, id))
+    .limit(1);
+  if (!row) return { error: "Not found." };
+  if (!canAccessCompany(user, row.companyId)) return { error: "Not authorised." };
+
+  await db.delete(s.workflowDepartmentOwners).where(eq(s.workflowDepartmentOwners.id, id));
+
+  await recordAudit({
+    user,
+    action: "workflow_department_owner.removed",
+    entity: "workflow_department_owner",
+    entityId: id,
+    before: { department: row.department, ownerEmail: row.ownerEmail },
+  });
+
+  revalidatePath("/console/workflows");
+  return { ok: `${row.ownerEmail} no longer owns "${row.department}".` };
 }

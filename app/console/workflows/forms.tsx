@@ -6,6 +6,8 @@ import {
   saveTemplate,
   startExitWorkflow,
   startPendingExitWorkflows,
+  addDepartmentOwner,
+  removeDepartmentOwner,
   type WorkflowState,
 } from "./actions";
 import type { WorkflowStep, AssigneeRule } from "@/lib/workflow/engine";
@@ -312,6 +314,75 @@ export function TemplateBuilder({
           </span>
         </div>
       )}
+      <FormFeedback state={state} />
+    </form>
+  );
+}
+
+export type DepartmentOwnerRow = { id: string; department: string; ownerEmail: string };
+
+export function DepartmentOwnersPanel({
+  companyId,
+  owners,
+}: {
+  companyId: string;
+  owners: DepartmentOwnerRow[];
+}) {
+  const byDept = new Map<string, DepartmentOwnerRow[]>();
+  for (const o of owners) {
+    byDept.set(o.department, [...(byDept.get(o.department) ?? []), o]);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {byDept.size === 0 ? (
+        <p className="text-sm text-ink-3">
+          No department owners set yet. A department step in a template routes to an administrator until one is named here.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {[...byDept.entries()].map(([dept, rows]) => (
+            <li key={dept} className="text-sm flex flex-wrap items-center gap-2">
+              <span className="label text-ink-3">{dept}</span>
+              {rows.map((r) => (
+                <RemoveDepartmentOwnerForm key={r.id} id={r.id} email={r.ownerEmail} />
+              ))}
+            </li>
+          ))}
+        </ul>
+      )}
+      <AddDepartmentOwnerForm companyId={companyId} />
+    </div>
+  );
+}
+
+function RemoveDepartmentOwnerForm({ id, email }: { id: string; email: string }) {
+  const [, action] = useActionState<WorkflowState, FormData>(removeDepartmentOwner, {});
+  return (
+    <form action={action} className="inline-flex items-center gap-1 border border-line px-2 py-0.5 text-xs">
+      <input type="hidden" name="id" value={id} />
+      {email}
+      <button type="submit" className="text-ink-3 hover:text-rust" aria-label={`Remove ${email}`}>
+        ×
+      </button>
+    </form>
+  );
+}
+
+function AddDepartmentOwnerForm({ companyId }: { companyId: string }) {
+  const [state, action] = useActionState<WorkflowState, FormData>(addDepartmentOwner, {});
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="companyId" value={companyId} />
+      <label className="flex flex-col gap-1">
+        <span className="text-xs text-ink-2">Department (as typed in a template step)</span>
+        <Input name="department" placeholder="it" className="w-40" />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs text-ink-2">Owner&apos;s email</span>
+        <Input name="ownerEmail" type="email" placeholder="owner@company.com" className="w-56" />
+      </label>
+      <SubmitButton size="sm" variant="default">Add owner</SubmitButton>
       <FormFeedback state={state} />
     </form>
   );

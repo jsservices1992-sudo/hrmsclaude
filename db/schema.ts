@@ -2722,6 +2722,36 @@ export const workflowTemplates = pgTable(
   (t) => [uniqueIndex("workflow_template_idx").on(t.companyId, t.code)],
 );
 
+/**
+ * Who a `{ kind: "department", department }` step routes to.
+ *
+ * A template step names a department as free text — "it", "admin",
+ * whatever the template's author typed — and that name does not have to
+ * match a row in the org chart's `departments` table at all: exit
+ * clearance's "IT" step means "whoever handles IT for workflow
+ * purposes," not any particular org unit, and a company can own that
+ * without ever having modelled an IT department in its structure. One
+ * department can have several owners, so the step is not stranded when
+ * one of them is away.
+ */
+export const workflowDepartmentOwners = pgTable(
+  "workflow_department_owners",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id")
+      .notNull()
+      .references(() => companies.id),
+    /** Lower-cased, matching the template step's own department string. */
+    department: text("department").notNull(),
+    ownerEmail: text("owner_email").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("workflow_dept_owner_idx").on(t.companyId, t.department, t.ownerEmail),
+    index("workflow_dept_owner_company_idx").on(t.companyId),
+  ],
+);
+
 export const workflowInstances = pgTable(
   "workflow_instances",
   {

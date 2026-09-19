@@ -18,7 +18,7 @@ import {
   loadInstances,
   parseTemplate,
 } from "@/lib/workflow/service";
-import { StartPendingForm, StepActionForm, TemplateBuilder } from "./forms";
+import { StartPendingForm, StepActionForm, TemplateBuilder, DepartmentOwnersPanel } from "./forms";
 import { PageHeader, Card, Badge, type BadgeTone, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 
 export const metadata = { title: "Workflows" };
@@ -56,6 +56,10 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
 
   const inbox = await loadInbox(user.email);
   const instances = await loadInstances([companyId]);
+  const deptOwners = await db
+    .select({ id: s.workflowDepartmentOwners.id, department: s.workflowDepartmentOwners.department, ownerEmail: s.workflowDepartmentOwners.ownerEmail })
+    .from(s.workflowDepartmentOwners)
+    .where(eq(s.workflowDepartmentOwners.companyId, companyId));
   const running = instances.filter((i) => i.instance.status === "running");
   const overdue = running.filter((i) => i.overdue.length > 0);
 
@@ -205,6 +209,22 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
               Only an administrator can change a template.
             </p>
           )}
+        </Card>
+      )}
+
+      {/* ---------- department owners ---------- */}
+      {user.role === "admin" && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">Department owners</span>
+            <p className="text-xs text-ink-3 mt-0.5">
+              A step assigned to &quot;a department&quot; above routes to whoever is named here for
+              that department. None named routes to an administrator instead.
+            </p>
+          </div>
+          <div className="px-4 py-4">
+            <DepartmentOwnersPanel companyId={companyId} owners={deptOwners} />
+          </div>
         </Card>
       )}
     </div>
