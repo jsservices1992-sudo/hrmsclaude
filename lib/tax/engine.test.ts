@@ -38,6 +38,14 @@ const noClaims: DeductionClaims = {
   taxpayerIsSenior: false,
   homeLoanInterestPaise: 0,
   isSelfOccupied: true,
+  dependentDisability: "none",
+  selfDisability: "none",
+  section80ddbPaise: 0,
+  ddbPersonIsSenior: false,
+  section80eebPaise: 0,
+  section80ggcPaise: 0,
+  section80ggRentPaise: 0,
+  receivesHra: true,
 };
 
 const emptyDeductions: DeductionResult = {
@@ -330,6 +338,85 @@ test("24(b) is capped only when the property is self-occupied", () => {
     allowsChapterViA: true,
   });
   assert.equal(letOut.totalAllowedPaise, L(320000));
+});
+
+test("80DD and 80U pay a flat amount by severity, regardless of anything typed", () => {
+  const normal = computeDeductions({
+    claims: { ...noClaims, dependentDisability: "normal" },
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "old",
+    allowsChapterViA: true,
+  });
+  assert.equal(normal.totalAllowedPaise, L(75000));
+  assert.equal(normal.lines[0].claimedPaise, L(75000), "the flat figure, not a typed amount");
+
+  const severe = computeDeductions({
+    claims: { ...noClaims, selfDisability: "severe" },
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "old",
+    allowsChapterViA: true,
+  });
+  assert.equal(severe.totalAllowedPaise, L(125000));
+  assert.equal(severe.lines[0].section, "80U");
+
+  const none = computeDeductions({
+    claims: noClaims,
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "old",
+    allowsChapterViA: true,
+  });
+  assert.equal(none.lines.length, 0, "not claiming produces no line at all");
+});
+
+test("80DDB caps by whether the person treated is a senior citizen", () => {
+  const nonSenior = computeDeductions({
+    claims: { ...noClaims, section80ddbPaise: L(120000), ddbPersonIsSenior: false },
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "old",
+    allowsChapterViA: true,
+  });
+  assert.equal(nonSenior.totalAllowedPaise, L(40000));
+
+  const senior = computeDeductions({
+    claims: { ...noClaims, section80ddbPaise: L(120000), ddbPersonIsSenior: true },
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "old",
+    allowsChapterViA: true,
+  });
+  assert.equal(senior.totalAllowedPaise, L(100000));
+});
+
+test("80EEB caps at ₹1,50,000 and 80GGC has no ceiling", () => {
+  const r = computeDeductions({
+    claims: { ...noClaims, section80eebPaise: L(200000), section80ggcPaise: L(75000) },
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "old",
+    allowsChapterViA: true,
+  });
+  assert.equal(r.lines.find((l) => l.section === "80EEB")!.allowedPaise, L(150000));
+  assert.equal(r.lines.find((l) => l.section === "80GGC")!.allowedPaise, L(75000));
+});
+
+test("80GG is the least of three limbs, and only applies when there is no HRA at all", () => {
+  const r = computeDeductions({
+    claims: { ...noClaims, receivesHra: false, section80ggRentPaise: L(150000) },
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "old",
+    allowsChapterViA: true,
+    grossSalaryPaise: L(600000),
+  });
+  // limb1 = 150000 - 10%*600000 = 90000; limb2 = 60000; limb3 = 25%*600000 = 150000
+  // least is 60000
+  assert.equal(r.lines.find((l) => l.section === "80GG")!.allowedPaise, L(60000));
+
+  const withHra = computeDeductions({
+    claims: { ...noClaims, receivesHra: true, section80ggRentPaise: L(150000) },
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "old",
+    allowsChapterViA: true,
+    grossSalaryPaise: L(600000),
+  });
+  assert.ok(!withHra.lines.some((l) => l.section === "80GG"), "no 80GG once HRA is received");
 });
 
 test("the new regime disallows Chapter VI-A but keeps employer NPS", () => {

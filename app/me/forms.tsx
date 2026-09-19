@@ -340,7 +340,34 @@ export function TaxDeclarationForm({
               <input type="checkbox" name="isSelfOccupied" defaultChecked={d.isSelfOccupied === undefined ? true : Boolean(d.isSelfOccupied)} />
               The house is self-occupied
             </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" name="ddbPersonIsSenior" defaultChecked={Boolean(d.ddbPersonIsSenior)} />
+              The person treated under 80DDB is a senior citizen
+            </label>
           </div>
+          <div className="grid sm:grid-cols-2 gap-3 mt-3">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-ink-2">80DD — a dependent's disability</span>
+              <select name="dependentDisability" defaultValue={String(d.dependentDisability ?? "none")} className={field}>
+                <option value="none">Not claiming</option>
+                <option value="normal">40–79% disability (₹75,000 flat)</option>
+                <option value="severe">80%+ disability (₹1,25,000 flat)</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-ink-2">80U — your own disability</span>
+              <select name="selfDisability" defaultValue={String(d.selfDisability ?? "none")} className={field}>
+                <option value="none">Not claiming</option>
+                <option value="normal">40–79% disability (₹75,000 flat)</option>
+                <option value="severe">80%+ disability (₹1,25,000 flat)</option>
+              </select>
+            </label>
+          </div>
+          <p className="text-xs text-ink-3 mt-1.5 max-w-[70ch]">
+            80DD and 80U are flat allowances fixed by a disability
+            certificate, not by anything spent — the amount does not
+            change with the certificate's severity band you pick above.
+          </p>
         </div>
 
         <div>

@@ -229,7 +229,23 @@ export type DeductionLimits = {
   section80ttbPaise: Paise;
   /** Section 24(b) interest on a self-occupied property. */
   section24bSelfOccupiedPaise: Paise;
+  /** 80DD — flat allowance for a dependent's disability, by severity. */
+  section80ddNormalPaise: Paise;
+  section80ddSeverePaise: Paise;
+  /** 80DDB — actual treatment cost, capped, higher cap for a senior patient. */
+  section80ddbNonSeniorPaise: Paise;
+  section80ddbSeniorPaise: Paise;
+  /** 80U — flat allowance for the taxpayer's own disability, by severity. */
+  section80uNormalPaise: Paise;
+  section80uSeverePaise: Paise;
+  /** 80EEB — interest on a loan for an electric vehicle. */
+  section80eebPaise: Paise;
+  /** 80GG — rent paid where no HRA is received at all, annual cap. */
+  section80ggMaxPaise: Paise;
 };
+
+/** How severely disabled a person is, for 80DD/80U — "none" claims nothing. */
+export type DisabilitySeverity = "none" | "normal" | "severe";
 
 export type DeductionClaims = {
   section80cPaise: Paise;
@@ -248,6 +264,26 @@ export type DeductionClaims = {
   taxpayerIsSenior: boolean;
   homeLoanInterestPaise: Paise;
   isSelfOccupied: boolean;
+  /** 80DD — a dependent's disability. The rupee amount is fixed by severity, not by what is typed. */
+  dependentDisability: DisabilitySeverity;
+  /** 80U — the taxpayer's own disability. */
+  selfDisability: DisabilitySeverity;
+  /** 80DDB — actual specified-disease treatment cost claimed. */
+  section80ddbPaise: Paise;
+  /** Whether the person treated (self or dependent) is a senior citizen — decides the 80DDB cap. */
+  ddbPersonIsSenior: boolean;
+  /** 80EEB — interest on a loan sanctioned for an electric vehicle. */
+  section80eebPaise: Paise;
+  /** 80GGC — donations to a registered political party, not paid in cash. No ceiling. */
+  section80ggcPaise: Paise;
+  /**
+   * 80GG — rent paid where the salary structure carries no HRA at all.
+   * Only claimable when `receivesHra` is false; set alongside it by the
+   * caller from the same rent the employee already declared for HRA,
+   * since a person either receives HRA or claims 80GG, never both.
+   */
+  section80ggRentPaise: Paise;
+  receivesHra: boolean;
 };
 
 export type DeductionLine = {
@@ -268,6 +304,16 @@ export function computeDeductions(args: {
   limits: DeductionLimits;
   regime: Regime;
   allowsChapterViA: boolean;
+  /**
+   * Gross salary, used only as a stand-in for "adjusted total income" in
+   * the 80GG formula (rent paid where no HRA is received at all). The Act
+   * means gross total income less capital gains and certain other
+   * deductions; salary is the whole of that for most employees, but this
+   * is an approximation, not a from-scratch computation of the real
+   * figure. Omit it and 80GG is simply not computed, rather than guessed
+   * from nothing.
+   */
+  grossSalaryPaise?: Paise;
 }): DeductionResult {
   const { claims: c, limits: l } = args;
   const lines: DeductionLine[] = [];
@@ -343,6 +389,66 @@ export function computeDeductions(args: {
     via,
     c.isSelfOccupied ? "Self-occupied ceiling" : "Let out",
   );
+
+  // 80DD and 80U are flat allowances tied to a disability certificate, not
+  // to any amount actually spent — "claimed" and "allowed" are the same
+  // fixed figure once a severity is chosen, unlike every capped-expense
+  // section above.
+  const addFlatDisability = (section: string, severity: DisabilitySeverity, normalCap: Paise, severeCap: Paise) => {
+    if (severity === "none") return;
+    const allowed = severity === "severe" ? severeCap : normalCap;
+    lines.push({
+      section,
+      claimedPaise: allowed,
+      allowedPaise: via ? allowed : 0,
+      note: via
+        ? `Flat allowance for ${severity === "severe" ? "a severe (80%+)" : "a 40–79%"} disability, not tied to actual expense`
+        : "Not available under the new regime",
+    });
+  };
+  addFlatDisability("80DD", c.dependentDisability, l.section80ddNormalPaise, l.section80ddSeverePaise);
+  addFlatDisability("80U", c.selfDisability, l.section80uNormalPaise, l.section80uSeverePaise);
+
+  add(
+    "80DDB",
+    c.section80ddbPaise,
+    c.ddbPersonIsSenior ? l.section80ddbSeniorPaise : l.section80ddbNonSeniorPaise,
+    via,
+    "Specified-disease treatment cost",
+  );
+
+  add(
+    "80EEB",
+    c.section80eebPaise,
+    l.section80eebPaise,
+    via,
+    "Electric vehicle loan interest — only loans sanctioned by 31 March 2023 qualify",
+  );
+
+  add("80GGC", c.section80ggcPaise, null, via, "Political donations — must not be paid in cash");
+
+  // 80GG: rent paid where the salary carries no HRA at all. Least of the
+  // three statutory limbs — the same "least of three" shape as HRA itself.
+  if (via && !c.receivesHra && c.section80ggRentPaise > 0 && args.grossSalaryPaise != null) {
+    const adjustedIncome = args.grossSalaryPaise;
+    const limb1 = c.section80ggRentPaise - Math.round(adjustedIncome * 0.1);
+    const limb2 = l.section80ggMaxPaise;
+    const limb3 = Math.round(adjustedIncome * 0.25);
+    const allowed = Math.max(0, Math.min(limb1, limb2, limb3));
+    lines.push({
+      section: "80GG",
+      claimedPaise: c.section80ggRentPaise,
+      allowedPaise: allowed,
+      note: "Least of rent less 10% of income, ₹60,000 a year, and 25% of income",
+    });
+  } else if (!via && c.section80ggRentPaise > 0) {
+    lines.push({
+      section: "80GG",
+      claimedPaise: c.section80ggRentPaise,
+      allowedPaise: 0,
+      note: "Not available under the new regime",
+    });
+  }
 
   const totalAllowed = lines.reduce((a, x) => a + x.allowedPaise, 0);
   const totalClaimed = lines.reduce((a, x) => a + x.claimedPaise, 0);

@@ -2226,6 +2226,18 @@ export const taxDeclarations = pgTable(
       .notNull()
       .default(true),
 
+    /* Chapter VI-A, beyond the commonly-claimed sections above. */
+    dependentDisability: text("dependent_disability", { enum: ["none", "normal", "severe"] })
+      .notNull()
+      .default("none"),
+    selfDisability: text("self_disability", { enum: ["none", "normal", "severe"] })
+      .notNull()
+      .default("none"),
+    section80ddbPaise: bigint("section_80ddb_paise", { mode: "number" }).notNull().default(0),
+    ddbPersonIsSenior: boolean("ddb_person_is_senior").notNull().default(false),
+    section80eebPaise: bigint("section_80eeb_paise", { mode: "number" }).notNull().default(0),
+    section80ggcPaise: bigint("section_80ggc_paise", { mode: "number" }).notNull().default(0),
+
     /* House rent — FR-TAX-3. Rent is annual; the city decides 40 vs 50%. */
     annualRentPaise: bigint("annual_rent_paise", { mode: "number" }).notNull().default(0),
     rentCity: text("rent_city"),

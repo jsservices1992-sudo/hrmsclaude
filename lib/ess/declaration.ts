@@ -22,6 +22,9 @@ export const DECLARATION_SECTIONS = [
   { field: "section80gPaise", section: "80G", label: "80G — donations", capRupees: null },
   { field: "savingsInterestPaise", section: "80TTA", label: "80TTA / 80TTB — savings bank interest", capRupees: 50_000 },
   { field: "homeLoanInterestPaise", section: "24(b)", label: "24(b) — interest on a home loan", capRupees: 200_000 },
+  { field: "section80ddbPaise", section: "80DDB", label: "80DDB — treatment cost for a specified disease", capRupees: 100_000 },
+  { field: "section80eebPaise", section: "80EEB", label: "80EEB — interest on an electric vehicle loan", capRupees: 150_000 },
+  { field: "section80ggcPaise", section: "80GGC", label: "80GGC — donations to a political party", capRupees: null },
 ] as const;
 
 export type DeclarationField = (typeof DECLARATION_SECTIONS)[number]["field"];

@@ -43,7 +43,16 @@ export {
   quarterOf,
 } from "./fy";
 
-function claimsFrom(d: typeof s.taxDeclarations.$inferSelect): DeductionClaims {
+/**
+ * `receivesHra` and the 80GG rent figure are not stored on the
+ * declaration row — they are derived by the caller from the same salary
+ * structure and rent the employee already declared, since a person either
+ * receives HRA or claims 80GG on the same rent, never both.
+ */
+function claimsFrom(
+  d: typeof s.taxDeclarations.$inferSelect,
+  args: { receivesHra: boolean },
+): DeductionClaims {
   return {
     section80cPaise: d.section80cPaise,
     section80ccd1bPaise: d.section80ccd1bPaise,
@@ -59,6 +68,14 @@ function claimsFrom(d: typeof s.taxDeclarations.$inferSelect): DeductionClaims {
     taxpayerIsSenior: d.taxpayerIsSenior,
     homeLoanInterestPaise: d.homeLoanInterestPaise,
     isSelfOccupied: d.isSelfOccupied,
+    dependentDisability: d.dependentDisability,
+    selfDisability: d.selfDisability,
+    section80ddbPaise: d.section80ddbPaise,
+    ddbPersonIsSenior: d.ddbPersonIsSenior,
+    section80eebPaise: d.section80eebPaise,
+    section80ggcPaise: d.section80ggcPaise,
+    receivesHra: args.receivesHra,
+    section80ggRentPaise: args.receivesHra ? 0 : d.annualRentPaise,
   };
 }
 
@@ -158,10 +175,11 @@ function composeWorksheet(
   /* ---- deductions ---- */
   const deductions = decl
     ? computeDeductions({
-        claims: claimsFrom(decl),
+        claims: claimsFrom(decl, { receivesHra: annualHra > 0 }),
         limits: DEDUCTION_LIMITS_2026,
         regime,
         allowsChapterViA: config.allowsChapterViA,
+        grossSalaryPaise: annualGross,
       })
     : { lines: [], totalAllowedPaise: 0, disallowedPaise: 0 };
 

@@ -162,7 +162,10 @@ describe("The verification flags", () => {
 
   test("what was explicitly NOT checked stays false rather than being implied by the boolean above", () => {
     assert.equal(TAX_CONFIG_VERIFICATION.specialRateIncome, false);
-    assert.equal(TAX_CONFIG_VERIFICATION.deductionMaster, false);
     assert.equal(TAX_CONFIG_VERIFICATION.perquisiteRules, false);
+  });
+
+  test("the Chapter VI-A deduction master is now checked section by section", () => {
+    assert.equal(TAX_CONFIG_VERIFICATION.deductionMaster, true);
   });
 });

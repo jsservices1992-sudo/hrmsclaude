@@ -688,6 +688,17 @@ export async function saveTaxDeclaration(
     parentsAreSenior: fd.get("parentsAreSenior") === "on",
     taxpayerIsSenior: fd.get("taxpayerIsSenior") === "on",
     isSelfOccupied: fd.get("isSelfOccupied") === "on",
+    ddbPersonIsSenior: fd.get("ddbPersonIsSenior") === "on",
+    dependentDisability: (["none", "normal", "severe"] as const).includes(
+      String(fd.get("dependentDisability")) as never,
+    )
+      ? (String(fd.get("dependentDisability")) as "none" | "normal" | "severe")
+      : "none",
+    selfDisability: (["none", "normal", "severe"] as const).includes(
+      String(fd.get("selfDisability")) as never,
+    )
+      ? (String(fd.get("selfDisability")) as "none" | "normal" | "severe")
+      : "none",
     status: (submitting ? "submitted" : "draft") as "submitted" | "draft",
     submittedAt: submitting ? now : (existing?.submittedAt ?? null),
     updatedAt: now,

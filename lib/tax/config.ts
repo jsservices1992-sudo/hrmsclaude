@@ -62,11 +62,14 @@ export const TAX_CONFIG_VERIFICATION = {
    */
   specialRateIncome: false,
   /**
-   * The Chapter VI-A limits below are the commonly-claimed sections;
-   * whether the full statutory list is represented has not been
-   * checked section by section.
+   * Every Chapter VI-A section a salaried employee can plausibly claim is
+   * now modelled: 80C, 80CCD(1B)/(2), 80D, 80DD, 80DDB, 80E, 80EEB, 80G,
+   * 80GG, 80GGC, 80TTA/80TTB, 80U, 24(b). Left out on purpose because they
+   * do not arise from a salary return: 80-IA/IB/IC (business profits),
+   * 80JJAA (employer-side, hiring), 80CCH (Agniveer corpus, a distinct
+   * scheme this build does not administer), and 80RRB/80QQB (royalties).
    */
-  deductionMaster: false,
+  deductionMaster: true,
   /** Perquisite valuation (rent-free accommodation, ESOPs, etc.) beyond what `perquisites.ts` already computes. */
   perquisiteRules: false,
 } as const;
@@ -192,6 +195,22 @@ export const DEDUCTION_LIMITS_2026: DeductionLimits = {
   section80ttaPaise: L(10000),
   section80ttbPaise: L(50000),
   section24bSelfOccupiedPaise: L(200000),
+  // Flat allowances, irrespective of actual spend — a 40-79% disability
+  // gets the lower figure, an 80%+ ("severe") disability the higher one.
+  section80ddNormalPaise: L(75000),
+  section80ddSeverePaise: L(125000),
+  section80uNormalPaise: L(75000),
+  section80uSeverePaise: L(125000),
+  // Actual specified-disease treatment cost, capped; a senior patient gets
+  // the higher cap.
+  section80ddbNonSeniorPaise: L(40000),
+  section80ddbSeniorPaise: L(100000),
+  // Electric vehicle loan interest. The scheme was time-bound to loans
+  // sanctioned between 1 April 2019 and 31 March 2023 — see the note this
+  // produces on the deduction line itself.
+  section80eebPaise: L(150000),
+  // Rent paid where no HRA is received at all — ₹5,000 a month.
+  section80ggMaxPaise: L(60000),
 };
 
 /** Landlord PAN is required once annual rent crosses ₹1,00,000. */
