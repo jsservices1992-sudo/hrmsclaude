@@ -20,6 +20,12 @@ test("parses valid rows and skips a header row by name", () => {
   ]);
 });
 
+test("a DD/MM/YYYY date is accepted and normalised to ISO for storage", () => {
+  const { rows, errors } = parseAttendanceCsv("KA0001,01/09/2026,present");
+  assert.equal(errors.length, 0);
+  assert.deepEqual(rows, [{ empCode: "KA0001", date: "2026-09-01", status: "present" }]);
+});
+
 test("does not require a header — data starting on line 1 still parses", () => {
   const { rows, errors } = parseAttendanceCsv("KA0002,2026-09-01,absent");
   assert.equal(errors.length, 0);

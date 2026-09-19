@@ -431,7 +431,7 @@ export default async function MePage(props: PageProps<"/me">) {
   return (
     <div className="mx-auto w-full max-w-4xl px-5 sm:px-8 py-8 flex flex-col gap-6">
       <header className="flex items-center justify-between gap-4" data-print="hide">
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/me" className="flex items-center gap-2.5">
           <span
             aria-hidden
             className="grid h-8 w-8 place-items-center bg-indigo text-on-indigo font-display text-lg font-semibold leading-none"

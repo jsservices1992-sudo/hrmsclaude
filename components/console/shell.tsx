@@ -373,9 +373,38 @@ export default function ConsoleShell({
 
   useEffect(() => setDrawer(false), [pathname]);
   useEffect(() => {
-    document.body.style.overflow = drawer ? "hidden" : "";
+    if (!drawer) return;
+    /* `overflow: hidden` alone does not stop touch scrolling on iOS
+       Safari — the page behind keeps moving under the drawer, which is
+       what "the menu won't open, the page is stuck" turns out to be:
+       the drawer is there, but the layout viewport is scrolling under
+       a `fixed` sheet computed against a stale scroll position. Pinning
+       the body in place with its own scroll offset, the way every mobile
+       drawer library does it, is what actually holds it still. */
+    const { body } = document;
+    const scrollY = window.scrollY;
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "";
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.left = prev.left;
+      body.style.right = prev.right;
+      body.style.width = prev.width;
+      body.style.overflow = prev.overflow;
+      window.scrollTo(0, scrollY);
     };
   }, [drawer]);
 

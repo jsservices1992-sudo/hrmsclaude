@@ -6,6 +6,7 @@
  * is what a manual attendance register actually looks like.
  */
 import type { Punch, AttendanceStatus } from "./rules";
+import { parseFlexibleDate } from "@/lib/format/date";
 
 export const BULK_STATUSES = [
   "present",
@@ -99,8 +100,6 @@ export type BulkParseResult = {
   errors: BulkParseError[];
 };
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 /**
  * Parses `empCode,date,status` CSV text. A header row is detected and
  * skipped by name, not just by position, so a re-uploaded export still
@@ -127,13 +126,14 @@ export function parseAttendanceCsv(text: string): BulkParseResult {
       errors.push({ line: lineNo, message: "Expected empCode,date,status." });
       continue;
     }
-    const [empCode, date, statusRaw] = cols;
+    const [empCode, dateRaw, statusRaw] = cols;
     if (!empCode) {
       errors.push({ line: lineNo, message: "Missing employee code." });
       continue;
     }
-    if (!DATE_RE.test(date)) {
-      errors.push({ line: lineNo, message: `"${date}" is not a valid YYYY-MM-DD date.` });
+    const date = parseFlexibleDate(dateRaw);
+    if (!date) {
+      errors.push({ line: lineNo, message: `"${dateRaw}" is not a date. Use DD/MM/YYYY or YYYY-MM-DD.` });
       continue;
     }
     const read = readStatus(statusRaw);
