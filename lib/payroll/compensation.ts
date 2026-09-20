@@ -28,6 +28,7 @@ export type CalcMethod =
   | "percent_of_gross"
   | "percent_of_basic"
   | "percent_of"
+  | "statutory_bonus"
   | "balance";
 
 export type ComponentSpec = {
@@ -74,6 +75,8 @@ export type OrderResult = { ok: true; order: string[] } | CycleError;
 
 function dependencyOf(c: ComponentSpec): string | null {
   if (c.calcMethod === "percent_of_basic") return "BASIC";
+  // The bonus is a share of bonus wages, which is basic and DA.
+  if (c.calcMethod === "statutory_bonus") return "BASIC";
   if (c.calcMethod === "percent_of") return c.percentOfCode ?? null;
   return null;
 }
@@ -317,6 +320,32 @@ export function evaluateStructure(
         const ref = values.get(c.percentOfCode ?? "") ?? 0;
         amount = Math.round((ref * c.percentValue) / 100);
         basis = `${c.percentValue}% of ${c.percentOfCode}`;
+        break;
+      }
+      /*
+       * The Payment of Bonus Act's own arithmetic, monthly: the minimum
+       * percentage of bonus wages, and those wages capped at the
+       * calculation ceiling. Both numbers live on the component —
+       * percentValue is the 8.33% and fixedPaise the ₹7,000 ceiling — so
+       * every screen that evaluates a structure gets the same figure
+       * without carrying statutory configuration around with it, and a
+       * ceiling revision is one edit in master data.
+       *
+       * Plain percent_of_basic was what companies reached for instead,
+       * and it pays the percentage of the whole basic: nearly twice the
+       * Act's figure on a basic of ₹12,000, quietly, for ever.
+       */
+      case "statutory_bonus": {
+        const wage = components
+          .filter((x) => x.kind === "earning" && x.bonusBase)
+          .reduce((a, x) => a + (values.get(x.code) ?? 0), 0);
+        const ceiling = c.fixedPaise ?? 0;
+        const considered = ceiling > 0 ? Math.min(wage, ceiling) : wage;
+        amount = Math.round((considered * c.percentValue) / 100);
+        basis =
+          ceiling > 0 && wage > ceiling
+            ? `${c.percentValue}% of bonus wages, capped at ₹${(ceiling / 100).toFixed(0)}`
+            : `${c.percentValue}% of bonus wages`;
         break;
       }
       case "balance": {

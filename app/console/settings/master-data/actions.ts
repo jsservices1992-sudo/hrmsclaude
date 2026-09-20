@@ -339,7 +339,7 @@ export async function savePayComponent(_prev: MasterState, fd: FormData): Promis
   const name = String(fd.get("name") ?? "").trim();
   const kind = String(fd.get("kind") ?? "earning") as "earning" | "deduction" | "employer_contribution";
   const calcMethod = String(fd.get("calcMethod") ?? "fixed") as
-    | "fixed" | "percent_of_basic" | "percent_of_gross" | "percent_of" | "balance";
+    | "fixed" | "percent_of_basic" | "percent_of_gross" | "percent_of" | "statutory_bonus" | "balance";
   const percentValue = num(fd.get("percentValue"));
   const percentOfCode = nullable(fd.get("percentOfCode"));
   const fixedPaise = Math.round(num(fd.get("fixedRupees")) * 100);

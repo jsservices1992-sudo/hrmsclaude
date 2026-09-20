@@ -1163,3 +1163,51 @@ describe("Minimum wage company overrides", () => {
     assert.equal(facts.minimumWagePaise, R(26000));
   });
 });
+
+describe("Statutory bonus as a structure component", () => {
+  const withBonus: ComponentSpec[] = [
+    comp({ code: "BASIC", label: "Basic", calcMethod: "percent_of_gross", percentValue: 50, epfBase: true, bonusBase: true, sequence: 0 }),
+    comp({ code: "HRA", label: "HRA", calcMethod: "percent_of_basic", percentValue: 40, sequence: 1 }),
+    comp({ code: "BONUS", label: "Bonus", calcMethod: "statutory_bonus", percentValue: 8.33, fixedPaise: R(7000), sequence: 2 }),
+    comp({ code: "SPL", label: "Special allowance", calcMethod: "balance", sequence: 3 }),
+  ];
+
+  test("pays the Act's percentage of bonus wages, capped at the ceiling", () => {
+    // Basic is half of ₹25,000, well over the ₹7,000 ceiling.
+    const e = evaluateStructure(withBonus, R(25000));
+    const bonus = e.components.find((c) => c.code === "BONUS")!;
+    assert.equal(bonus.amountPaise, Math.round(R(7000) * 8.33 / 100));
+    assert.match(bonus.basis, /capped/);
+  });
+
+  test("below the ceiling it is the percentage of the real wage", () => {
+    // Basic is half of ₹12,000 — ₹6,000, under the ceiling.
+    const e = evaluateStructure(withBonus, R(12000));
+    const bonus = e.components.find((c) => c.code === "BONUS")!;
+    assert.equal(bonus.amountPaise, Math.round(R(6000) * 8.33 / 100));
+  });
+
+  test("the balance component pays for it, so gross does not move", () => {
+    const without = evaluateStructure(
+      withBonus.filter((c) => c.code !== "BONUS"),
+      R(25000),
+    );
+    const with_ = evaluateStructure(withBonus, R(25000));
+    assert.equal(with_.grossPaise, without.grossPaise, "gross is unchanged");
+
+    const spl = (e: typeof with_) => e.components.find((c) => c.code === "SPL")!.amountPaise;
+    const bonus = with_.components.find((c) => c.code === "BONUS")!.amountPaise;
+    assert.equal(spl(without) - spl(with_), bonus, "special allowance gives up exactly the bonus");
+  });
+
+  test("basic and HRA are untouched by it", () => {
+    const without = evaluateStructure(withBonus.filter((c) => c.code !== "BONUS"), R(25000));
+    const with_ = evaluateStructure(withBonus, R(25000));
+    for (const code of ["BASIC", "HRA"]) {
+      assert.equal(
+        with_.components.find((c) => c.code === code)!.amountPaise,
+        without.components.find((c) => c.code === code)!.amountPaise,
+      );
+    }
+  });
+});

@@ -619,7 +619,14 @@ export const payComponents = pgTable(
       enum: ["earning", "deduction", "employer_contribution"],
     }).notNull(),
     calcMethod: text("calc_method", {
-      enum: ["fixed", "percent_of_basic", "percent_of_gross", "percent_of", "balance"],
+      enum: [
+        "fixed",
+        "percent_of_basic",
+        "percent_of_gross",
+        "percent_of",
+        "statutory_bonus",
+        "balance",
+      ],
     })
       .notNull()
       .default("fixed"),

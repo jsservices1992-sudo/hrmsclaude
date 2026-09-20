@@ -406,6 +406,7 @@ export function PayComponentForm({
             <option value="percent_of_basic">% of basic</option>
             <option value="percent_of_gross">% of gross</option>
             <option value="percent_of">% of another component</option>
+            <option value="statutory_bonus">Statutory bonus (% of bonus wages, capped)</option>
             <option value="balance">Balance (fills the rest of CTC)</option>
           </Select>
         </label>
