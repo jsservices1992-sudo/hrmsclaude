@@ -437,6 +437,36 @@ export async function reopenRun(
   if (!state.open) return { error: state.reason };
 
   /*
+   * A version that has already been reversed.
+   *
+   * The screen still offers Reverse on the superseded version, and a
+   * second press tried to create the same version number again: a unique
+   * index refused it, the error reached the router, and the person was
+   * shown a blank page with a server error rather than being told their
+   * reversal had already happened. Reversing the replacement is a
+   * different, legitimate act — it is only this one that is spent.
+   */
+  const [latest] = await db
+    .select({ version: s.payrollRuns.version, status: s.payrollRuns.status })
+    .from(s.payrollRuns)
+    .where(
+      and(
+        eq(s.payrollRuns.companyId, run.companyId),
+        eq(s.payrollRuns.periodYear, run.periodYear),
+        eq(s.payrollRuns.periodMonth, run.periodMonth),
+      ),
+    )
+    .orderBy(desc(s.payrollRuns.version))
+    .limit(1);
+  if (latest && latest.version > run.version) {
+    return {
+      error:
+        `Version ${run.version} has already been reversed — version ${latest.version} replaced it and is ${latest.status.replace("_", " ")}. ` +
+        `Reverse that one if you need to go round again.`,
+    };
+  }
+
+  /*
    * Reverse the old run's loan recoveries BEFORE recalculating.
    *
    * The order matters and is easy to get wrong: previewRun reads live
