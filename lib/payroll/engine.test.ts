@@ -538,3 +538,61 @@ describe("ESIC on the Code's definition of wages", () => {
     assert.match(basis, /ESI wages ₹14,400/);
   });
 });
+
+describe("Statutory bonus on a part month", () => {
+  const withBonus: CompanyConfig = {
+    ...company,
+    structure: [
+      ...DEFAULT_STRUCTURE.filter((c) => c.code !== "SPL"),
+      {
+        code: "BONUS", label: "Statutory Bonus", kind: "earning",
+        calcMethod: "statutory_bonus", percentValue: 8.33, fixedPaise: L(7000),
+        taxable: true, epfBase: false, esicBase: true, ptBase: true,
+        bonusBase: false, gratuityBase: false, prorates: true, sequence: 4,
+      },
+      ...DEFAULT_STRUCTURE.filter((c) => c.code === "SPL"),
+    ],
+  };
+
+  const pay = (over: Partial<EmployeeInput>) =>
+    computeEmployeePay({
+      employee: { ...employee, ...over },
+      company: withBonus,
+      statutory,
+      year: 2026,
+      month: 8,
+    });
+
+  const bonusOf = (r: ReturnType<typeof pay>) =>
+    r.lines.find((l) => l.code === "BONUS")!.amountPaise;
+
+  test("a full month pays the percentage of the capped wage", () => {
+    assert.equal(bonusOf(pay({})), Math.round(L(7000) * 8.33 / 100));
+  });
+
+  test("a joiner still earning above the ceiling gets the same, not a prorated share", () => {
+    /* Half a month on ₹80,000 is basic of ₹20,000 — comfortably over the
+       ₹7,000 ceiling, so the Act's figure has not changed. Prorating the
+       capped amount applies the cap twice. */
+    const r = pay({ dateOfJoining: "2026-08-16" });
+    assert.ok(r.paidDays < r.totalDays, "this is a part month");
+    assert.equal(bonusOf(r), Math.round(L(7000) * 8.33 / 100));
+  });
+
+  test("when earned wages fall under the ceiling it is the percentage of those wages", () => {
+    // Basic is half of gross; joining late leaves earned basic under ₹7,000.
+    const r = pay({ monthlyGrossPaise: L(20000), dateOfJoining: "2026-08-22" });
+    const basic = r.lines.find((l) => l.code === "BASIC")!.amountPaise;
+    assert.ok(basic < L(7000), "earned basic is under the ceiling");
+    assert.equal(bonusOf(r), Math.round(basic * 8.33 / 100));
+  });
+
+  test("gross still totals what it was solved for — the balance pays for it", () => {
+    const r = pay({});
+    const earnings = r.lines
+      .filter((l) => l.kind === "earning")
+      .reduce((a, l) => a + l.amountPaise, 0);
+    assert.equal(earnings, r.grossPaise);
+    assert.equal(r.grossPaise, L(80000));
+  });
+});

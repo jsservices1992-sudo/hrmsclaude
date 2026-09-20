@@ -263,6 +263,49 @@ export function computeEmployeePay(args: {
     return def.prorates ? prorate(full, proration) : full;
   });
 
+  /*
+   * The statutory bonus is settled on the wages actually earned, not by
+   * prorating a figure that was already capped.
+   *
+   * A joiner who works 22 of 31 days still earns basic above the ₹7,000
+   * ceiling, so their bonus is the full 8.33% of the ceiling — prorating
+   * it applies the cap twice and pays short. Somebody whose earned basic
+   * falls under the ceiling is owed 8.33% of what they earned, which is
+   * more than the prorated capped figure. Both cases were reported as
+   * outstanding every month, because the Act check reads the wages on
+   * the run and this did not.
+   */
+  const bonusIndex = c.structure.findIndex(
+    (def) => def.calcMethod === "statutory_bonus",
+  );
+  let employerBonusThisMonth = prorate(evaluated.employerBonusPaise, proration);
+  if (bonusIndex >= 0) {
+    const def = c.structure[bonusIndex];
+    const earnedWage = c.structure.reduce(
+      (a, x, i) => (x.kind === "earning" && x.bonusBase ? a + proratedAmounts[i] : a),
+      0,
+    );
+    const ceiling = def.fixedPaise ?? 0;
+    const considered = ceiling > 0 ? Math.min(earnedWage, ceiling) : earnedWage;
+    const owed = Math.round((considered * def.percentValue) / 100);
+
+    if (def.kind === "earning") {
+      /* Inside gross, so the balance component gives up the difference
+         and the month still totals the gross it was solved for. Without
+         a balance component there is nowhere for it to come from, and
+         moving it would change gross behind the employee's back. */
+      const balanceIndex = c.structure.findIndex(
+        (x) => x.kind === "earning" && x.calcMethod === "balance",
+      );
+      if (balanceIndex >= 0) {
+        proratedAmounts[balanceIndex] -= owed - proratedAmounts[bonusIndex];
+        proratedAmounts[bonusIndex] = owed;
+      }
+    } else {
+      employerBonusThisMonth = owed;
+    }
+  }
+
   const rounding = applyRounding({
     components: proratedAmounts,
     deductions: 0,
@@ -439,7 +482,7 @@ export function computeEmployeePay(args: {
      year. It is shown here because it is earned in this month and is part
      of what this employee costs, which is the same reason the employer's
      provident fund share is on the slip. */
-  if (evaluated.employerBonusPaise > 0) {
+  if (employerBonusThisMonth > 0) {
     const bonusComponent = c.structure.find(
       (x) => x.calcMethod === "statutory_bonus" && x.kind === "employer_contribution",
     );
@@ -449,7 +492,7 @@ export function computeEmployeePay(args: {
       code: `${bonusComponent?.code ?? "BONUS"}_ER`,
       label: "Statutory bonus — employer",
       kind: "employer_contribution",
-      amountPaise: prorate(evaluated.employerBonusPaise, proration),
+      amountPaise: employerBonusThisMonth,
       basis: "Accrued this month under the Payment of Bonus Act, payable annually",
     });
   }
