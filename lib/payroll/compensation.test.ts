@@ -1211,3 +1211,51 @@ describe("Statutory bonus as a structure component", () => {
     }
   });
 });
+
+describe("Statutory bonus carried as an employer cost", () => {
+  const employerBonus: ComponentSpec[] = [
+    comp({ code: "BASIC", label: "Basic", calcMethod: "percent_of_gross", percentValue: 50, epfBase: true, bonusBase: true, sequence: 0 }),
+    comp({ code: "HRA", label: "HRA", calcMethod: "percent_of_basic", percentValue: 40, sequence: 1 }),
+    comp({ code: "BONUS", label: "Bonus", kind: "employer_contribution", calcMethod: "statutory_bonus", percentValue: 8.33, fixedPaise: R(7000), sequence: 2 }),
+    comp({ code: "SPL", label: "Special allowance", calcMethod: "balance", sequence: 3 }),
+  ];
+
+  test("it stays out of gross and out of the employee's components", () => {
+    const e = evaluateStructure(employerBonus, R(25000));
+    assert.equal(e.grossPaise, R(25000));
+    assert.equal(e.components.find((c) => c.code === "BONUS"), undefined);
+  });
+
+  test("special allowance keeps what it had — nobody's pay pays for it", () => {
+    const without = evaluateStructure(employerBonus.filter((c) => c.code !== "BONUS"), R(25000));
+    const with_ = evaluateStructure(employerBonus, R(25000));
+    assert.equal(
+      with_.components.find((c) => c.code === "SPL")!.amountPaise,
+      without.components.find((c) => c.code === "SPL")!.amountPaise,
+    );
+  });
+
+  test("it is reported as an employer cost at the Act's capped figure", () => {
+    const e = evaluateStructure(employerBonus, R(25000));
+    assert.equal(e.employerBonusPaise, Math.round(R(7000) * 8.33 / 100));
+  });
+
+  test("and it lands in CTC, above gross", () => {
+    const built = buildFromGross({
+      monthlyGrossPaise: R(25000),
+      components: employerBonus,
+      employer: EMPLOYER,
+    });
+    const withoutBonus = buildFromGross({
+      monthlyGrossPaise: R(25000),
+      components: employerBonus.filter((c) => c.code !== "BONUS"),
+      employer: EMPLOYER,
+    });
+    assert.equal(built.monthlyGrossPaise, withoutBonus.monthlyGrossPaise, "gross unmoved");
+    assert.equal(
+      built.monthlyCtcPaise - withoutBonus.monthlyCtcPaise,
+      Math.round(R(7000) * 8.33 / 100),
+      "CTC carries it",
+    );
+  });
+});

@@ -215,6 +215,13 @@ export type EvaluationResult = {
   ptBasePaise: Paise;
   bonusBasePaise: Paise;
   gratuityBasePaise: Paise;
+  /**
+   * The statutory bonus, when the structure carries it as an employer
+   * cost rather than a monthly earning — outside gross, inside CTC,
+   * which is how it is usually agreed and how the Act's own timing
+   * works: earned monthly, paid out once a year.
+   */
+  employerBonusPaise: Paise;
   warnings: string[];
 };
 
@@ -276,6 +283,7 @@ export function evaluateStructure(
       ptBasePaise: 0,
       bonusBasePaise: 0,
       gratuityBasePaise: 0,
+      employerBonusPaise: 0,
       warnings: [ordered.message],
     };
   }
@@ -401,6 +409,23 @@ export function evaluateStructure(
     esicRule,
   );
 
+  /* The employer-cost form of the bonus. Same arithmetic as the earning
+     form above, but it never joins gross, so the balance component does
+     not give anything up for it and the employee's monthly pay is
+     untouched — it is money the company owes, accruing every month. */
+  const bonusComponent = components.find(
+    (c) => c.calcMethod === "statutory_bonus" && c.kind === "employer_contribution",
+  );
+  let employerBonusPaise = 0;
+  if (bonusComponent) {
+    const wage = components
+      .filter((c) => c.kind === "earning" && c.bonusBase)
+      .reduce((a, c) => a + (values.get(c.code) ?? 0), 0);
+    const ceiling = bonusComponent.fixedPaise ?? 0;
+    const considered = ceiling > 0 ? Math.min(wage, ceiling) : wage;
+    employerBonusPaise = Math.round((considered * bonusComponent.percentValue) / 100);
+  }
+
   return {
     components: evaluated,
     grossPaise: gross,
@@ -410,6 +435,7 @@ export function evaluateStructure(
     ptBasePaise: sumWhere((c) => c.ptBase),
     bonusBasePaise: sumWhere((c) => c.bonusBase),
     gratuityBasePaise: sumWhere((c) => c.gratuityBase),
+    employerBonusPaise,
     warnings,
   };
 }
@@ -452,7 +478,7 @@ export type CtcBreakdown = {
 export function employerCostFor(
   evaluation: EvaluationResult,
   p: EmployerCostParams,
-): { pf: Paise; esic: Paise; gratuity: Paise; other: Paise } {
+): { pf: Paise; esic: Paise; gratuity: Paise; bonus: Paise; other: Paise } {
   const excluded = epfExcluded({
     pfWagePaise: evaluation.epfBasePaise,
     wageCeilingPaise: p.epfCeilingPaise,
@@ -473,7 +499,13 @@ export function employerCostFor(
     (evaluation.gratuityBasePaise * p.gratuityAccrualBps) / 10000,
   );
 
-  return { pf, esic, gratuity, other: p.otherMonthlyPaise ?? 0 };
+  return {
+    pf,
+    esic,
+    gratuity,
+    bonus: evaluation.employerBonusPaise,
+    other: p.otherMonthlyPaise ?? 0,
+  };
 }
 
 export function buildFromGross(args: {
@@ -490,7 +522,7 @@ export function buildFromGross(args: {
   const cost = employerCostFor(evaluation, args.employer);
 
   const monthlyCtc =
-    evaluation.grossPaise + cost.pf + cost.esic + cost.gratuity + cost.other;
+    evaluation.grossPaise + cost.pf + cost.esic + cost.gratuity + cost.bonus + cost.other;
 
   return {
     monthlyGrossPaise: evaluation.grossPaise,

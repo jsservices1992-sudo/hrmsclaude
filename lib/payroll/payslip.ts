@@ -255,7 +255,13 @@ export async function loadPayslips(args: {
           ? Math.round((lwfRate.employerPaise * lwfRate.deductionMonths.length) / 12)
           : 0;
       monthlyCtcPaise =
-        full.grossPaise + cost.pf + cost.esic + cost.gratuity + cost.other + lwfEmployerMonthly;
+        full.grossPaise +
+        cost.pf +
+        cost.esic +
+        cost.gratuity +
+        cost.bonus +
+        cost.other +
+        lwfEmployerMonthly;
     }
 
     /* The rate card only where it says something the earnings column does

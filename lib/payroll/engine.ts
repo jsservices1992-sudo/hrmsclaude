@@ -284,6 +284,11 @@ export function computeEmployeePay(args: {
   const esicLines: EsicWageLine[] = [];
 
   c.structure.forEach((def, i) => {
+    /* Only earnings make up gross and appear as earning lines. A
+       component the company classified as an employer cost — the
+       statutory bonus is the one that exists today — is paid for
+       separately and would otherwise show as a ₹0.00 earning. */
+    if (def.kind !== "earning") return;
     const amount = rounding.components[i];
     gross += amount;
     if (def.epfBase) epfBase += amount;
@@ -426,6 +431,26 @@ export function computeEmployeePay(args: {
       kind: "employer_contribution",
       amountPaise: lwf.employerPaise,
       basis: `${e.stateCode} — ${lwf.reason}`,
+    });
+  }
+
+  /* ---- Statutory bonus, where the structure carries it as a cost ----
+     Not paid with this month's salary: the Act's bonus is settled once a
+     year. It is shown here because it is earned in this month and is part
+     of what this employee costs, which is the same reason the employer's
+     provident fund share is on the slip. */
+  if (evaluated.employerBonusPaise > 0) {
+    const bonusComponent = c.structure.find(
+      (x) => x.calcMethod === "statutory_bonus" && x.kind === "employer_contribution",
+    );
+    lines.push({
+      // The company's own code for it, so the bonus checks can find this
+      // line rather than matching on a name the engine invented.
+      code: `${bonusComponent?.code ?? "BONUS"}_ER`,
+      label: "Statutory bonus — employer",
+      kind: "employer_contribution",
+      amountPaise: prorate(evaluated.employerBonusPaise, proration),
+      basis: "Accrued this month under the Payment of Bonus Act, payable annually",
     });
   }
 

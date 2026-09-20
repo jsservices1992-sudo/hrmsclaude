@@ -94,8 +94,14 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
    * that "BNS" is the statutory bonus is how somebody gets paid twice.
    */
   const bonusWageCodes = new Set(components.filter((c) => c.bonusBase).map((c) => c.code));
+  /* Both shapes the bonus can take: an earning inside gross, and the
+     employer-cost accrual the engine books as <code>_ER. Counting only
+     the first reported the whole entitlement as outstanding for a
+     company that does pay it, just not out of this month's gross. */
   const bonusPayingCodes = new Set(
-    components.filter((c) => c.bonusRole === "statutory_bonus").map((c) => c.code),
+    components
+      .filter((c) => c.bonusRole === "statutory_bonus")
+      .flatMap((c) => [c.code, `${c.code}_ER`]),
   );
   const declaredHeadcount = companyRow[0]?.declaredHeadcount ?? null;
 
