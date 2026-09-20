@@ -204,7 +204,11 @@ export async function loadPayslips(args: {
         employeeDepartmentId: emp?.departmentId ?? null,
       });
       rates = evaluateStructure(resolved.components, salary.monthlyGrossPaise).components.map(
-        (c) => ({ label: `Fixed ${c.label}`, amountPaise: c.amountPaise }),
+        /* The column is already headed "Salary rates", so prefixing every
+           row with "Fixed" said the same thing twice and left the slip
+           reading "Fixed Basic, Fixed HRA" instead of the component
+           names the employee knows. */
+        (c) => ({ label: c.label, amountPaise: c.amountPaise }),
       );
     }
     const ratesTotalPaise = rates.reduce((a, x) => a + x.amountPaise, 0);
