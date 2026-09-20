@@ -200,6 +200,14 @@ export default async function RunPayrollPage(
       missingSalary: employees.filter((e) => !withSalary.has(e.id)).length,
       missingBank: employees.filter((e) => !e.bankAccount?.trim() || !e.ifsc?.trim()).length,
       lopTotalDays: months.reduce((a, m) => a + m.summary.lopDays, 0),
+      /* The same reading the attendance page takes of a person with
+         nothing on record: no day present, half or on leave. */
+      attendanceEmployees: months.filter(
+        (m) =>
+          m.summary.presentDays > 0 ||
+          m.summary.halfDays > 0 ||
+          m.summary.leaveDays > 0,
+      ).length,
       pendingLeave: pendingLeave.length,
       pendingRegularisation: pendingReg.length,
       attendanceFinalised,

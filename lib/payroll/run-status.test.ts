@@ -14,6 +14,7 @@ function input(p: Partial<RunStatusInput> = {}): RunStatusInput {
     pendingLeave: 0,
     pendingRegularisation: 0,
     attendanceFinalised: true,
+    attendanceEmployees: 32,
     variablePayCount: 0,
     variablePayNetPaise: 0,
     run: null,
@@ -163,4 +164,35 @@ test("nothing else about approval is relaxed by turning the rule off", () => {
     false,
     "somebody without the right to change payroll still cannot approve",
   );
+});
+
+test("a period with no attendance on record is not reported as settled", () => {
+  /* Nothing uploaded looks exactly like everybody present: zero days of
+     loss of pay. Saying "every active day is paid · done" is how a month
+     goes out paying everyone in full when the file never landed. */
+  const steps = buildRunSteps(
+    input({ activeEmployees: 24, attendanceEmployees: 0, lopTotalDays: 0 }),
+    Q,
+  );
+  const attendance = steps.find((s) => s.id === "attendance")!;
+  assert.equal(attendance.state, "attention");
+  assert.match(attendance.detail, /Nothing on record/);
+});
+
+test("some people with nothing on record is said out loud", () => {
+  const steps = buildRunSteps(
+    input({ activeEmployees: 24, attendanceEmployees: 20, lopTotalDays: 0 }),
+    Q,
+  );
+  assert.match(steps.find((s) => s.id === "attendance")!.detail, /4 with nothing on record/);
+});
+
+test("a full month with everybody marked is still done", () => {
+  const steps = buildRunSteps(
+    input({ activeEmployees: 24, attendanceEmployees: 24, lopTotalDays: 0 }),
+    Q,
+  );
+  const attendance = steps.find((s) => s.id === "attendance")!;
+  assert.equal(attendance.state, "done");
+  assert.match(attendance.detail, /Every active day is paid/);
 });

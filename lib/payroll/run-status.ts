@@ -108,6 +108,15 @@ export type RunStatusInput = {
   pendingLeave: number;
   pendingRegularisation: number;
   attendanceFinalised: boolean;
+  /**
+   * Active people with a day on record this period.
+   *
+   * Nothing uploaded and everybody present produce the same zero days of
+   * loss of pay, and the step used to call both of them done. A month
+   * where the file never landed then pays everyone in full and says so
+   * as though it had been checked.
+   */
+  attendanceEmployees: number;
 
   variablePayCount: number;
   variablePayNetPaise: number;
@@ -159,14 +168,25 @@ export function buildRunSteps(i: RunStatusInput, query: string): RunStep[] {
 
   /* 2 — attendance settles how many days are actually paid */
   const attendancePending = i.pendingLeave + i.pendingRegularisation;
+  const nothingOnRecord = i.activeEmployees > 0 && i.attendanceEmployees === 0;
   steps.push({
     id: "attendance",
     title: "Attendance & leave",
-    state: !i.attendanceFinalised ? "attention" : attendancePending > 0 ? "attention" : "done",
+    state: nothingOnRecord
+      ? "attention"
+      : !i.attendanceFinalised
+        ? "attention"
+        : attendancePending > 0
+          ? "attention"
+          : "done",
     detail: [
-      i.lopTotalDays > 0
-        ? `${i.lopTotalDays.toFixed(2)} day(s) will not be paid`
-        : "Every active day is paid",
+      nothingOnRecord
+        ? "Nothing on record for this period — every day will be paid in full"
+        : i.lopTotalDays > 0
+          ? `${i.lopTotalDays.toFixed(2)} day(s) will not be paid`
+          : i.attendanceEmployees < i.activeEmployees
+            ? `Every recorded day is paid · ${i.activeEmployees - i.attendanceEmployees} with nothing on record`
+            : "Every active day is paid",
       attendancePending > 0 ? `${attendancePending} awaiting a decision` : null,
       !i.attendanceFinalised ? "changed since the last calculation" : null,
     ]
