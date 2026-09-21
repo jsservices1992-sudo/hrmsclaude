@@ -596,24 +596,38 @@ export type TakeHomeParams = {
    */
   pfOptedIn?: boolean;
   hadPriorPfMembership?: boolean;
+  /**
+   * Whether the establishment is covered by each Act at all.
+   *
+   * A net-in-hand promise is solved backwards from the deductions, so a
+   * solver that assumes provident fund and ESI where the establishment
+   * owes neither aims at the wrong gross: the run then deducts nothing,
+   * and the employee is paid more than was agreed, every month, quietly.
+   * Undefined is covered, so nothing that worked before changes.
+   */
+  epfEstablishmentCovered?: boolean;
+  esicEstablishmentCovered?: boolean;
 };
 
 export function takeHomeFor(
   evaluation: EvaluationResult,
   p: TakeHomeParams,
 ): { takeHome: Paise; epf: Paise; esic: Paise; pt: Paise; lwf: Paise } {
-  const excluded = epfExcluded({
-    pfWagePaise: evaluation.epfBasePaise,
-    wageCeilingPaise: p.epfCeilingPaise,
-    optedIn: p.pfOptedIn ?? true,
-    hadPriorMembership: p.hadPriorPfMembership ?? false,
-  });
+  const excluded =
+    p.epfEstablishmentCovered === false ||
+    epfExcluded({
+      pfWagePaise: evaluation.epfBasePaise,
+      wageCeilingPaise: p.epfCeilingPaise,
+      optedIn: p.pfOptedIn ?? true,
+      hadPriorMembership: p.hadPriorPfMembership ?? false,
+    });
   const pfWage = p.epfOnActualBasic
     ? evaluation.epfBasePaise
     : Math.min(evaluation.epfBasePaise, p.epfCeilingPaise);
   const epf = excluded ? 0 : Math.round((pfWage * p.epfEmployeeBps) / 10000);
 
   const esic =
+    p.esicEstablishmentCovered !== false &&
     evaluation.esicCoverageBasePaise <= p.esicThresholdPaise
       ? Math.ceil((evaluation.esicBasePaise * p.esicEmployeeBps) / 10000)
       : 0;
@@ -692,6 +706,9 @@ export function grossForTargetTakeHome(args: {
   /** Passed to the excluded-employee test, as the run applies it. */
   pfOptedIn?: boolean;
   hadPriorPfMembership?: boolean;
+  /** Whether the establishment is covered by each Act at all. */
+  epfEstablishmentCovered?: boolean;
+  esicEstablishmentCovered?: boolean;
   /**
    * Components to hold at their agreed amounts while the gross moves. The
    * balance component takes the difference, which is what it is for.
@@ -735,6 +752,8 @@ export function grossForTargetTakeHome(args: {
     lwfEmployeePaise,
     pfOptedIn: args.pfOptedIn,
     hadPriorPfMembership: args.hadPriorPfMembership,
+    epfEstablishmentCovered: args.epfEstablishmentCovered,
+    esicEstablishmentCovered: args.esicEstablishmentCovered,
   });
 
   const firstPass = buildFromTargetTakeHome({

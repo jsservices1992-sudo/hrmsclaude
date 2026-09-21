@@ -571,15 +571,39 @@ export async function setPayrollOverrides(
     };
   }
 
+  /* Whether each charge reaches this person. "No" is a claim about the
+     law, not a preference: the run honours it only where the statutory
+     test agrees, and says so on the payslip run when it does not. */
+  const applicability = (name: string, current: string) => {
+    const raw = String(fd.get(name) ?? current);
+    return ["auto", "yes", "no"].includes(raw) ? raw : current;
+  };
+  const pfApplicability = applicability("pfApplicability", employee.pfApplicability);
+  const esicApplicability = applicability("esicApplicability", employee.esicApplicability);
+  const ptApplicability = applicability("ptApplicability", employee.ptApplicability);
+  const tdsApplicability = applicability("tdsApplicability", employee.tdsApplicability);
+
   const before = {
     pfOptedIn: employee.pfOptedIn,
     vpfPercent: employee.vpfPercent,
     taxRegime: employee.taxRegime,
+    pfApplicability: employee.pfApplicability,
+    esicApplicability: employee.esicApplicability,
+    ptApplicability: employee.ptApplicability,
+    tdsApplicability: employee.tdsApplicability,
   };
 
   await db
     .update(s.employees)
-    .set({ pfOptedIn, vpfPercent: vpfPercentRaw, taxRegime })
+    .set({
+      pfOptedIn,
+      vpfPercent: vpfPercentRaw,
+      taxRegime,
+      pfApplicability: pfApplicability as "auto" | "yes" | "no",
+      esicApplicability: esicApplicability as "auto" | "yes" | "no",
+      ptApplicability: ptApplicability as "auto" | "yes" | "no",
+      tdsApplicability: tdsApplicability as "auto" | "yes" | "no",
+    })
     .where(eq(s.employees.id, employeeId));
 
   await recordAudit({
@@ -588,7 +612,15 @@ export async function setPayrollOverrides(
     entity: "employee",
     entityId: employeeId,
     before,
-    after: { pfOptedIn, vpfPercent: vpfPercentRaw, taxRegime },
+    after: {
+      pfOptedIn,
+      vpfPercent: vpfPercentRaw,
+      taxRegime,
+      pfApplicability,
+      esicApplicability,
+      ptApplicability,
+      tdsApplicability,
+    },
   });
 
   revalidatePath(`/console/employees/${employeeId}`);

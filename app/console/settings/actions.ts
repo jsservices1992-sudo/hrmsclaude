@@ -118,6 +118,8 @@ const CompanySchema = z.object({
     .nullable(),
   roundingMode: z.enum(["nearest", "up", "down"]),
   attendanceMode: z.enum(["exception", "punch"]),
+  epfCoverage: z.enum(["auto", "covered", "not_covered"]),
+  esicCoverage: z.enum(["auto", "covered", "not_covered"]),
   sandwichRule: z.boolean(),
   epfOnActualBasic: z.boolean(),
 });
@@ -148,6 +150,8 @@ function parseCompany(fd: FormData) {
     registeredPincode: nullable(fd.get("registeredPincode")),
     roundingMode: String(fd.get("roundingMode") ?? "nearest"),
     attendanceMode: String(fd.get("attendanceMode") ?? "exception"),
+    epfCoverage: String(fd.get("epfCoverage") ?? "auto"),
+    esicCoverage: String(fd.get("esicCoverage") ?? "auto"),
     sandwichRule: fd.get("sandwichRule") !== null,
     epfOnActualBasic: fd.get("epfOnActualBasic") !== null,
   });
@@ -212,6 +216,8 @@ const AUDITED_COMPANY_FIELDS = [
   "declaredHeadcount",
   "roundingMode",
   "attendanceMode",
+  "epfCoverage",
+  "esicCoverage",
   "sandwichRule",
   "epfOnActualBasic",
 ] as const;

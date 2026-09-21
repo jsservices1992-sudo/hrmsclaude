@@ -51,6 +51,16 @@ export type EpfInput = {
   hadPriorMembership: boolean;
   optedIn: boolean;
   isInternationalWorker?: boolean;
+  /**
+   * Whether the establishment is covered by the Act at all.
+   *
+   * The Act reaches establishments of twenty or more. A company of six
+   * owes nothing and deducting anyway takes money from wages against no
+   * obligation — which is what this product did until coverage existed
+   * as a question at all. Undefined means covered, so every existing
+   * caller keeps the behaviour it had.
+   */
+  establishmentCovered?: boolean;
 };
 
 export type EpfResult = {
@@ -96,6 +106,14 @@ export function computeEpf(input: EpfInput): EpfResult {
   };
 
   const aboveCeiling = input.pfWagePaise > params.wageCeilingPaise;
+
+  if (input.establishmentCovered === false) {
+    return {
+      applicable: false,
+      ...zero,
+      reason: "This establishment is not covered by the EPF Act",
+    };
+  }
 
   if (
     epfExcluded({
@@ -183,6 +201,8 @@ export function isContributionPeriodStart(month: number): boolean {
 }
 
 export type EsicInput = {
+  /** Whether the establishment is covered by the Act — ten or more. */
+  establishmentCovered?: boolean;
   /**
    * The wage the ₹21,000 ceiling is tested on. Not gross, and not the
    * contribution wage either: overtime is left out of it. See esic-wage.ts.
@@ -215,6 +235,16 @@ export type EsicResult = {
 
 export function computeEsic(input: EsicInput): EsicResult {
   const { params } = input;
+
+  if (input.establishmentCovered === false) {
+    return {
+      applicable: false,
+      employeePaise: 0,
+      employerPaise: 0,
+      coveredForNextPeriod: false,
+      reason: "This establishment is not covered by the ESI Act",
+    };
+  }
 
   if (!input.implementedArea) {
     return {

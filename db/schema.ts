@@ -86,6 +86,26 @@ export const companies = pgTable("companies", {
   attendanceMode: text("attendance_mode", { enum: ["exception", "punch"] })
     .notNull()
     .default("exception"),
+  /*
+   * Whether the establishment is covered by provident fund and ESI at
+   * all — FR-STAT-1.
+   *
+   * Coverage is a fact about the establishment, not about the person:
+   * the EPF Act reaches establishments of twenty or more, ESI ten or
+   * more in an implemented area. Without this the product deducted both
+   * from everybody in a company of six, which is money taken from wages
+   * against no obligation and paid to nobody.
+   *
+   * "auto" decides from the declared headcount. The other two are for a
+   * company that has voluntarily registered, or that holds an exemption
+   * — both real, neither derivable from a number.
+   */
+  epfCoverage: text("epf_coverage", { enum: ["auto", "covered", "not_covered"] })
+    .notNull()
+    .default("auto"),
+  esicCoverage: text("esic_coverage", { enum: ["auto", "covered", "not_covered"] })
+    .notNull()
+    .default("auto"),
   sandwichRule: boolean("sandwich_rule")
     .notNull()
     .default(false),
@@ -448,6 +468,28 @@ export const employees = pgTable(
     pfOptedIn: boolean("pf_opted_in")
       .notNull()
       .default(true),
+    /*
+     * Per person, where the establishment's own answer is not the whole
+     * story: an apprentice outside the Act, somebody already covered
+     * through another employer, a director paid a fee.
+     *
+     * "auto" is the statutory test itself and is what nearly everybody
+     * stays on. "no" is honoured only where the law leaves room for it —
+     * a structure may not switch off a deduction that is actually due,
+     * and an attempt to is reported on the run rather than obeyed.
+     */
+    pfApplicability: text("pf_applicability", { enum: ["auto", "yes", "no"] })
+      .notNull()
+      .default("auto"),
+    esicApplicability: text("esic_applicability", { enum: ["auto", "yes", "no"] })
+      .notNull()
+      .default("auto"),
+    ptApplicability: text("pt_applicability", { enum: ["auto", "yes", "no"] })
+      .notNull()
+      .default("auto"),
+    tdsApplicability: text("tds_applicability", { enum: ["auto", "yes", "no"] })
+      .notNull()
+      .default("auto"),
     vpfPercent: real("vpf_percent").notNull().default(0),
     taxRegime: text("tax_regime", { enum: ["old", "new"] })
       .notNull()
@@ -694,6 +736,24 @@ export const salaryStructures = pgTable(
     isDefault: boolean("is_default").notNull().default(false),
     active: boolean("active").notNull().default(true),
     effectiveFrom: text("effective_from").notNull(),
+    /*
+     * What the company agreed with these people, and therefore what the
+     * payslip is about.
+     *
+     * A structure used for a handful of people paid a net in hand has no
+     * cost to company to show and usually no employer contribution
+     * either; printing both anyway is how a payslip comes to state a
+     * figure nobody agreed to. The statutory side is decided separately
+     * — this says what to show, never what to deduct.
+     */
+    payBasis: text("pay_basis", { enum: ["nth_only", "gross", "ctc"] })
+      .notNull()
+      .default("ctc"),
+    showCtcOnPayslip: boolean("show_ctc_on_payslip").notNull().default(true),
+    showEmployerContribution: boolean("show_employer_contribution")
+      .notNull()
+      .default(true),
+    hideZeroComponents: boolean("hide_zero_components").notNull().default(true),
   },
   (t) => [index("salary_structures_company_idx").on(t.companyId)],
 );

@@ -10,6 +10,7 @@ import {
   AddLineForm,
   RemoveLineForm,
   SetDefaultForm,
+  StructurePresentationForm,
 } from "../forms";
 import { PayComponentForm } from "@/app/console/settings/master-data/forms";
 import {
@@ -121,6 +122,25 @@ export default async function StructureDetailPage(
           }
         />
       </div>
+
+      {isAdmin && (
+        <Card padded={false}>
+          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
+            <span className="label text-ink-2">What the payslip shows</span>
+          </div>
+          <div className="p-4">
+            <StructurePresentationForm
+              structureId={structure.id}
+              values={{
+                payBasis: structure.payBasis,
+                showCtcOnPayslip: structure.showCtcOnPayslip,
+                showEmployerContribution: structure.showEmployerContribution,
+                hideZeroComponents: structure.hideZeroComponents,
+              }}
+            />
+          </div>
+        </Card>
+      )}
 
       <Card padded={false}>
         <div className="px-4 py-2.5 border-b border-line bg-surface-2">

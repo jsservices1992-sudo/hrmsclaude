@@ -295,18 +295,31 @@ export function ReviseSalaryForm({
   );
 }
 
+const APPLICABILITY = [
+  { value: "auto", label: "Automatic — the statutory test" },
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No — outside this charge" },
+];
+
 export function PayrollOverridesForm({
   employeeId,
   pfOptedIn,
   vpfPercent,
   taxRegime,
   hadPriorPfMembership,
+  applicability,
 }: {
   employeeId: string;
   pfOptedIn: boolean;
   vpfPercent: number;
   taxRegime: string;
   hadPriorPfMembership: boolean;
+  applicability: {
+    pf: string;
+    esic: string;
+    pt: string;
+    tds: string;
+  };
 }) {
   const [state, action] = useActionState<SalaryState, FormData>(
     setPayrollOverrides,
@@ -355,6 +368,31 @@ export function PayrollOverridesForm({
           </Select>
         </label>
       </div>
+      <div className="grid sm:grid-cols-4 gap-3">
+        {[
+          { name: "pfApplicability", label: "Provident fund applies", value: applicability.pf },
+          { name: "esicApplicability", label: "ESI applies", value: applicability.esic },
+          { name: "ptApplicability", label: "Professional tax applies", value: applicability.pt },
+          { name: "tdsApplicability", label: "Income tax applies", value: applicability.tds },
+        ].map((f) => (
+          <label key={f.name} className="flex flex-col gap-1">
+            <span className="label text-ink-3">{f.label}</span>
+            <Select name={f.name} defaultValue={f.value}>
+              {APPLICABILITY.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </Select>
+          </label>
+        ))}
+      </div>
+      <p className="text-xs text-ink-3 max-w-[76ch]">
+        Leave these on automatic unless this person is genuinely outside a
+        charge — an apprentice, somebody covered through another employer.
+        &ldquo;No&rdquo; is honoured only where the law agrees: a charge that is
+        actually due is still deducted, and the run says the switch was
+        refused. Whether the establishment is covered at all is set once,
+        under Settings → Organisation.
+      </p>
       <div className="flex flex-wrap items-center gap-3">
         <SubmitButton variant="default" pendingText="Saving…">Save</SubmitButton>
         <span className="text-xs text-ink-3">

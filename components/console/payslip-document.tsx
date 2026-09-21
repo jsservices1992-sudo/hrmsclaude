@@ -313,7 +313,8 @@ export function PayslipDocument({
           but leaving it off makes their own PF look like it has no
           counterpart, and it is the difference between a salary and what
           the employee actually costs. */}
-      {slip.employerContributions.length > 0 && (
+      {(slip.employerContributions.length > 0 ||
+        (slip.monthlyCtcPaise ?? 0) > 0) && (
         <table className="w-full border-collapse table-fixed">
           <colgroup>
             <col className="w-[70%]" />
@@ -333,11 +334,13 @@ export function PayslipDocument({
                 <td className={NUM}>{rs(l.amountPaise)}</td>
               </tr>
             ))}
-            <tr className="font-semibold bg-surface-2/60">
-              <td className={CELL}>Total employer contributions</td>
-              <td className={NUM}>{rs(slip.employerTotalPaise)}</td>
-            </tr>
-            {slip.monthlyCtcPaise > 0 && (
+            {slip.employerContributions.length > 0 && (
+              <tr className="font-semibold bg-surface-2/60">
+                <td className={CELL}>Total employer contributions</td>
+                <td className={NUM}>{rs(slip.employerTotalPaise)}</td>
+              </tr>
+            )}
+            {slip.monthlyCtcPaise !== null && slip.monthlyCtcPaise > 0 && (
               <>
                 <tr>
                   <td className={CELL}>Monthly CTC</td>
@@ -345,7 +348,7 @@ export function PayslipDocument({
                 </tr>
                 <tr className="font-semibold bg-surface-2/60">
                   <td className={CELL}>Annual CTC</td>
-                  <td className={NUM}>{rs(slip.annualCtcPaise)}</td>
+                  <td className={NUM}>{rs(slip.annualCtcPaise ?? 0)}</td>
                 </tr>
               </>
             )}

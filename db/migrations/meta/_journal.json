@@ -78,6 +78,13 @@
       "when": 1789670386703,
       "tag": "0010_supreme_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789981217134,
+      "tag": "0011_equal_exiles",
+      "breakpoints": true
     }
   ]
 }

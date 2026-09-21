@@ -1,4 +1,9 @@
 import "server-only";
+
+/* The headcount each Act reaches from. Defaults, not law-by-state: a
+   company that differs says so with its coverage setting. */
+const EPF_HEADCOUNT_THRESHOLD = 20;
+const ESIC_HEADCOUNT_THRESHOLD = 10;
 import { and, asc, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
@@ -230,13 +235,40 @@ export type StructureResolution = {
   structureId: string | null;
   source: ResolvedStructureSource;
   components: ComponentSpec[];
+  presentation: StructurePresentation;
 };
 
 export type StructureResolutionContext = {
   structuresById: Map<string, ComponentSpec[]>;
+  /** What each structure's payslip is about — see StructurePresentation. */
+  presentationById: Map<string, StructurePresentation>;
   deptOverrideByDept: Map<string, string>;
   defaultStructureId: string | null;
   fallback: ComponentSpec[];
+};
+
+/**
+ * What a structure's payslip shows, as distinct from what it pays.
+ *
+ * A company paying eight people a net in hand has no cost to company to
+ * print and no employer contribution to print either; doing it anyway
+ * puts figures on a payslip that nobody agreed to and that the employee
+ * cannot check. None of this touches a deduction — that is the statutory
+ * side, decided from coverage and the person's own record.
+ */
+export type StructurePresentation = {
+  payBasis: "nth_only" | "gross" | "ctc";
+  showCtcOnPayslip: boolean;
+  showEmployerContribution: boolean;
+  hideZeroComponents: boolean;
+};
+
+/** What a company with no structures of its own has always shown. */
+export const DEFAULT_PRESENTATION: StructurePresentation = {
+  payBasis: "ctc",
+  showCtcOnPayslip: true,
+  showEmployerContribution: true,
+  hideZeroComponents: true,
 };
 
 /**
@@ -296,6 +328,17 @@ export async function loadStructureResolutionContext(
   const structuresById = new Map(
     structureRows.map((st) => [st.id, buildComponentSpecs(linesByStructure.get(st.id) ?? [])]),
   );
+  const presentationById = new Map<string, StructurePresentation>(
+    structureRows.map((st) => [
+      st.id,
+      {
+        payBasis: st.payBasis,
+        showCtcOnPayslip: st.showCtcOnPayslip,
+        showEmployerContribution: st.showEmployerContribution,
+        hideZeroComponents: st.hideZeroComponents,
+      },
+    ]),
+  );
   const deptOverrideByDept = new Map(deptOverrideRows.map((r) => [r.departmentId, r.structureId]));
   /* There should be exactly one default, and every write path now
      enforces that. Older data can still carry two — and picking the
@@ -308,7 +351,7 @@ export async function loadStructureResolutionContext(
     defaults[0]?.id ??
     null;
 
-  return { structuresById, deptOverrideByDept, defaultStructureId, fallback };
+  return { structuresById, presentationById, deptOverrideByDept, defaultStructureId, fallback };
 }
 
 export function resolveEmployeeStructure(
@@ -322,9 +365,19 @@ export function resolveEmployeeStructure(
     defaultStructureId: ctx.defaultStructureId,
   });
   if (structureId && ctx.structuresById.has(structureId)) {
-    return { structureId, source, components: ctx.structuresById.get(structureId)! };
+    return {
+      structureId,
+      source,
+      components: ctx.structuresById.get(structureId)!,
+      presentation: ctx.presentationById.get(structureId) ?? DEFAULT_PRESENTATION,
+    };
   }
-  return { structureId: null, source: "fallback_flat_components", components: ctx.fallback };
+  return {
+    structureId: null,
+    source: "fallback_flat_components",
+    components: ctx.fallback,
+    presentation: DEFAULT_PRESENTATION,
+  };
 }
 
 /** Which active employees currently resolve to a given structure, and how. */
@@ -497,6 +550,31 @@ export async function previewRun(args: {
   const coverageByEmployee = Object.fromEntries(
     coverageRows.map((c) => [c.employeeId, c.covered]),
   );
+
+  /*
+   * Whether the Acts reach this establishment at all.
+   *
+   * Twenty for provident fund, ten for ESI — the thresholds the Acts
+   * themselves carry. On "auto" the declared headcount decides; a
+   * company that registered voluntarily, or holds an exemption, says so
+   * instead. Nothing here excuses a person the Act does reach: this is
+   * the establishment's own answer, asked once.
+   */
+  const headcount = company.declaredHeadcount;
+  const coverageFor = (
+    setting: string,
+    threshold: number,
+  ): boolean | undefined => {
+    if (setting === "covered") return true;
+    if (setting === "not_covered") return false;
+    /* Auto, and nobody has said how many people work here: the product
+       cannot decide, so it leaves the charge as it always was rather
+       than quietly stopping a deduction. */
+    if (headcount === null || headcount === undefined) return undefined;
+    return headcount >= threshold;
+  };
+  const epfEstablishmentCovered = coverageFor(company.epfCoverage, EPF_HEADCOUNT_THRESHOLD);
+  const esicEstablishmentCovered = coverageFor(company.esicCoverage, ESIC_HEADCOUNT_THRESHOLD);
 
   const companyConfig: CompanyConfig = {
     prorationBasis: company.prorationBasis as ProrationBasis,
@@ -746,6 +824,16 @@ export async function previewRun(args: {
         offDaysWorked: offDaysByEmployee[emp.id] ?? 0,
         hadPriorPfMembership: emp.hadPriorPfMembership,
         pfOptedIn: emp.pfOptedIn,
+        pfApplicability: emp.pfApplicability,
+        esicApplicability: emp.esicApplicability,
+        ptApplicability: emp.ptApplicability,
+        tdsApplicability: emp.tdsApplicability,
+        /* A person may be outside an Act that reaches the establishment;
+           nobody can be inside one that does not. */
+        epfEstablishmentCovered:
+          emp.pfApplicability === "no" ? false : epfEstablishmentCovered,
+        esicEstablishmentCovered:
+          emp.esicApplicability === "no" ? false : esicEstablishmentCovered,
         vpfPercent: emp.vpfPercent,
         // Read the stored decision for this contribution period. Falling back
         // to current wages only covers an employee with no record yet (a new
@@ -810,6 +898,10 @@ export async function previewRun(args: {
               month: args.month,
               pfOptedIn: employee.pfOptedIn,
               hadPriorPfMembership: employee.hadPriorPfMembership,
+              /* The solver aims at the net that will actually arrive, so
+                 it has to know which charges this establishment owes. */
+              epfEstablishmentCovered: employee.epfEstablishmentCovered,
+              esicEstablishmentCovered: employee.esicEstablishmentCovered,
               statutory,
             }).monthlyGrossPaise,
           }

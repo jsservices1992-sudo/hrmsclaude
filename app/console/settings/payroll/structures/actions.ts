@@ -533,3 +533,70 @@ export async function deleteStructure(
       (structure.isDefault ? " It was the default, so another structure now is — check it is the right one." : ""),
   };
 }
+
+/**
+ * What this structure's payslip is about, and what it shows.
+ *
+ * Kept apart from the statutory side on purpose: this decides what is
+ * printed, never what is deducted. A company paying eight people a net
+ * in hand needs a payslip without a cost to company on it; it does not
+ * need — and must not have — a way to stop a deduction that is due.
+ */
+export async function saveStructurePresentation(
+  _prev: PayrollSettingsState,
+  fd: FormData,
+): Promise<PayrollSettingsState> {
+  const { user, error } = await requireAdmin();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const structureId = String(fd.get("structureId") ?? "");
+  const [structure] = await db
+    .select()
+    .from(s.salaryStructures)
+    .where(eq(s.salaryStructures.id, structureId))
+    .limit(1);
+  if (!structure) return { error: "Structure not found." };
+  if (!canAccessCompany(user, structure.companyId)) return { error: "Not authorised." };
+
+  const payBasisRaw = String(fd.get("payBasis") ?? "ctc");
+  if (!["nth_only", "gross", "ctc"].includes(payBasisRaw)) {
+    return { error: "Choose what this structure is agreed in." };
+  }
+  const payBasis = payBasisRaw as "nth_only" | "gross" | "ctc";
+
+  /* A net-in-hand structure has no cost to company to show: the figure
+     would be one nobody agreed to. The other two keep whatever the
+     person chose. */
+  const showCtcOnPayslip = payBasis === "nth_only" ? false : fd.get("showCtcOnPayslip") === "on";
+  const showEmployerContribution = fd.get("showEmployerContribution") === "on";
+  const hideZeroComponents = fd.get("hideZeroComponents") === "on";
+
+  await db
+    .update(s.salaryStructures)
+    .set({ payBasis, showCtcOnPayslip, showEmployerContribution, hideZeroComponents })
+    .where(eq(s.salaryStructures.id, structureId));
+
+  await audit({
+    actor: user.email,
+    action: "salary_structure.presentation_changed",
+    entity: "salary_structure",
+    entityId: structureId,
+    before: {
+      payBasis: structure.payBasis,
+      showCtcOnPayslip: structure.showCtcOnPayslip,
+      showEmployerContribution: structure.showEmployerContribution,
+      hideZeroComponents: structure.hideZeroComponents,
+    },
+    after: { payBasis, showCtcOnPayslip, showEmployerContribution, hideZeroComponents },
+  });
+
+  revalidatePath(`/console/settings/payroll/structures/${structureId}`);
+  revalidatePath("/console/settings/payroll");
+
+  return {
+    ok:
+      payBasis === "nth_only"
+        ? "Saved. Payslips on this structure show earnings, deductions and the net in hand — no cost to company."
+        : "Saved. Payslips on this structure follow what you chose here from the next payslip printed.",
+  };
+}

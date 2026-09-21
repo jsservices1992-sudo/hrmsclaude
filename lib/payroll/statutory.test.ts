@@ -998,3 +998,63 @@ describe("A state levying PT only on a person liable to income tax", () => {
     assert.deepEqual(checkSlabCoverage([pbSlab]), []);
   });
 });
+
+describe("Establishments the Acts do not reach", () => {
+  /* A company of six owes neither fund anything. Deducting anyway takes
+     money from wages against no obligation and pays it to nobody — which
+     is what happened until coverage was a question this could ask. */
+  test("provident fund is not deducted from an uncovered establishment", () => {
+    const r = computeEpf({
+      pfWagePaise: 1_000_000,
+      params: EPF,
+      onActualBasic: false,
+      hadPriorMembership: true,
+      optedIn: true,
+      establishmentCovered: false,
+    });
+    assert.equal(r.applicable, false);
+    assert.equal(r.employeePaise, 0);
+    assert.equal(r.employerPfPaise, 0);
+    assert.equal(r.employerEpsPaise, 0);
+    assert.match(r.reason, /not covered by the EPF Act/);
+  });
+
+  test("ESI is not deducted from an uncovered establishment", () => {
+    const r = computeEsic({
+      coverageWagePaise: 1_800_000,
+      contributionWagePaise: 1_800_000,
+      paidDays: 30,
+      month: 8,
+      params: ESIC,
+      implementedArea: true,
+      coveredAtPeriodStart: true,
+      establishmentCovered: false,
+    });
+    assert.equal(r.applicable, false);
+    assert.equal(r.employeePaise, 0);
+    assert.equal(r.employerPaise, 0);
+    assert.match(r.reason, /not covered by the ESI Act/);
+  });
+
+  test("a covered establishment is untouched by the new question", () => {
+    /* Undefined means covered, so every company that was computing
+       correctly yesterday computes the same today. */
+    const withFlag = computeEpf({
+      pfWagePaise: 1_000_000,
+      params: EPF,
+      onActualBasic: false,
+      hadPriorMembership: true,
+      optedIn: true,
+      establishmentCovered: true,
+    });
+    const without = computeEpf({
+      pfWagePaise: 1_000_000,
+      params: EPF,
+      onActualBasic: false,
+      hadPriorMembership: true,
+      optedIn: true,
+    });
+    assert.deepEqual(withFlag, without);
+    assert.equal(withFlag.applicable, true);
+  });
+});

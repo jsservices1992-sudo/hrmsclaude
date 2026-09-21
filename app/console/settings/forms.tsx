@@ -78,6 +78,7 @@ export type CompanyValues = Partial<{
   roundingMode: string;
   otRatePaisePerHour: number | null;
   attendanceMode: string | null; sandwichRule: boolean; epfOnActualBasic: boolean;
+  epfCoverage?: string | null; esicCoverage?: string | null;
 }>;
 
 export function CompanyForm({
@@ -194,6 +195,28 @@ export function CompanyForm({
           <Select name="attendanceMode" defaultValue={val("attendanceMode", "exception")} invalid={!!err("attendanceMode")}>
             <option value="exception">Count as present — we record only leave and absence</option>
             <option value="punch">Count as absent — we record punches for everybody</option>
+          </Select>
+        </FormField>
+        <FormField
+          label="Provident fund reaches this establishment"
+          error={err("epfCoverage")}
+          hint="The Act reaches establishments of twenty or more. On automatic the declared headcount above decides; say so explicitly if you registered voluntarily or hold an exemption."
+        >
+          <Select name="epfCoverage" defaultValue={val("epfCoverage", "auto")} invalid={!!err("epfCoverage")}>
+            <option value="auto">Automatic — from the declared headcount</option>
+            <option value="covered">Yes — registered and covered</option>
+            <option value="not_covered">No — outside the Act</option>
+          </Select>
+        </FormField>
+        <FormField
+          label="ESI reaches this establishment"
+          error={err("esicCoverage")}
+          hint="Ten or more in an implemented area. Coverage is about the establishment; whether a particular person is inside the wage threshold is decided per person."
+        >
+          <Select name="esicCoverage" defaultValue={val("esicCoverage", "auto")} invalid={!!err("esicCoverage")}>
+            <option value="auto">Automatic — from the declared headcount</option>
+            <option value="covered">Yes — registered and covered</option>
+            <option value="not_covered">No — outside the Act</option>
           </Select>
         </FormField>
         <label className="flex items-center gap-2.5 self-end pb-2">

@@ -1,4 +1,17 @@
 import { roundToRupee, type Paise, type RoundingMode } from "./money";
+
+/**
+ * How a charge reaches one person: the statutory test, or an answer
+ * somebody put on the record.
+ *
+ * "no" is a claim that the law does not reach this person — an
+ * apprentice, somebody covered through another employer. It is honoured
+ * only where the test agrees; where the charge is genuinely due it
+ * stands, and the run says the switch was refused. A salary structure
+ * that could switch off a statutory deduction is not a structure, it is
+ * a way of underpaying the fund and telling nobody.
+ */
+export type Applicability = "auto" | "yes" | "no";
 import {
   planRecovery,
   type RecoverableLoan,
@@ -82,6 +95,22 @@ export type EmployeeInput = {
   offDaysWorked?: number;
   hadPriorPfMembership: boolean;
   pfOptedIn: boolean;
+  /**
+   * Whether each charge reaches this person at all — FR-STAT-1.
+   *
+   * "auto" is the statutory test. "no" is honoured only where the test
+   * itself finds nothing due: a switch on a record may not excuse a
+   * deduction the law requires, so an attempt to turn one off where it
+   * is genuinely owed leaves the deduction standing and says so on the
+   * run. Undefined is "auto", so every existing caller is unchanged.
+   */
+  pfApplicability?: Applicability;
+  esicApplicability?: Applicability;
+  ptApplicability?: Applicability;
+  tdsApplicability?: Applicability;
+  /** Whether the establishment is covered by each Act at all. */
+  epfEstablishmentCovered?: boolean;
+  esicEstablishmentCovered?: boolean;
   /** Components held at their agreed amounts; the balance one absorbs. */
   componentAnchors?: Map<string, Paise>;
   vpfPercent: number;
@@ -367,7 +396,17 @@ export function computeEmployeePay(args: {
     hadPriorMembership: e.hadPriorPfMembership,
     optedIn: e.pfOptedIn,
     vpfPercent: e.vpfPercent,
+    establishmentCovered: e.epfEstablishmentCovered,
   });
+
+  /* A switch that says this person is outside the Act. Honoured when the
+     test agrees, refused out loud when it does not — the deduction is
+     due and stays. */
+  if (epf.applicable && e.pfApplicability === "no") {
+    warnings.push(
+      "Provident fund is marked as not applicable for this person, but the Act reaches them here — it has been deducted anyway. Change what makes them exempt, or the establishment's coverage.",
+    );
+  }
 
   if (epf.applicable) {
     // The wage the contribution was computed on. Recorded as its own line
@@ -425,6 +464,11 @@ export function computeEmployeePay(args: {
     applicable: s.ptApplicableByState[e.stateCode] ?? false,
     incomeTaxPayee: e.incomeTaxPayee,
   });
+  if (pt.applicable && e.ptApplicability === "no") {
+    warnings.push(
+      `Professional tax is marked as not applicable for this person, but ${e.stateCode} levies it on these wages — it has been deducted anyway.`,
+    );
+  }
 
   if (pt.amountPaise > 0) {
     lines.push({
@@ -498,6 +542,12 @@ export function computeEmployeePay(args: {
   }
 
   /* ---- Income tax ---- */
+  if ((e.monthlyTdsPaise ?? 0) > 0 && e.tdsApplicability === "no") {
+    warnings.push(
+      "Income tax is marked as not applicable for this person, but the projection says tax is due on their pay — it has been deducted anyway. A nil liability comes from their declarations, not from a switch.",
+    );
+  }
+
   if ((e.monthlyTdsPaise ?? 0) > 0) {
     lines.push({
       code: "TDS",
@@ -573,7 +623,14 @@ export function computeEmployeePay(args: {
     params: s.esic,
     implementedArea: e.esicImplementedArea,
     coveredAtPeriodStart: e.esicCoveredAtPeriodStart,
+    establishmentCovered: e.esicEstablishmentCovered,
   });
+
+  if (esic.applicable && e.esicApplicability === "no") {
+    warnings.push(
+      "ESI is marked as not applicable for this person, but their wages are inside the threshold and the establishment is covered — it has been deducted anyway.",
+    );
+  }
 
   if (esic.applicable) {
     const wageNote = describeEsicWage(esiWage);

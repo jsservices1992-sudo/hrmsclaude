@@ -841,6 +841,12 @@ export default async function EmployeeDetailPage(
                   vpfPercent={detail.employee.vpfPercent}
                   taxRegime={detail.employee.taxRegime}
                   hadPriorPfMembership={detail.employee.hadPriorPfMembership}
+                  applicability={{
+                    pf: detail.employee.pfApplicability,
+                    esic: detail.employee.esicApplicability,
+                    pt: detail.employee.ptApplicability,
+                    tds: detail.employee.tdsApplicability,
+                  }}
                 />
               </div>
             </Card>

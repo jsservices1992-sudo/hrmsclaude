@@ -11,6 +11,7 @@ import {
   loadStatutoryConfig,
   loadStructureResolutionContext,
   resolveEmployeeStructure,
+  DEFAULT_PRESENTATION,
 } from "./load";
 import { rupeesInWords } from "./amount-in-words";
 import { formatDate } from "@/lib/format/date";
@@ -84,8 +85,8 @@ export type PayslipData = {
    * a month with unpaid leave does not read as a cut in the package. The
    * contributions above are this month's; these two are the contract.
    */
-  monthlyCtcPaise: number;
-  annualCtcPaise: number;
+  monthlyCtcPaise: number | null;
+  annualCtcPaise: number | null;
   netPaise: number;
   netInWords: string;
   warnings: string[];
@@ -197,6 +198,21 @@ export async function loadPayslips(args: {
 
     /* The un-prorated monthly rate for each component. The run pays the
        prorated figure; this column is what the rate card says. */
+    /* What this structure's payslip is about. A company paying a net in
+       hand has no cost to company to print and usually no employer
+       contribution either — printing them anyway states figures nobody
+       agreed to. */
+    const presentation = salary
+      ? resolveEmployeeStructure(structureCtx, {
+          employeeStructureId: salary.structureId,
+          employeeDepartmentId: emp?.departmentId ?? null,
+        }).presentation
+      : DEFAULT_PRESENTATION;
+    const showCtc =
+      presentation.showCtcOnPayslip && presentation.payBasis !== "nth_only";
+    const dropZero = (l: { amountPaise: number }) =>
+      !presentation.hideZeroComponents || l.amountPaise !== 0;
+
     let rates: SlipLine[] = [];
     if (salary) {
       const resolved = resolveEmployeeStructure(structureCtx, {
@@ -215,22 +231,28 @@ export async function loadPayslips(args: {
 
     const earnings: SlipEarningLine[] = r.lines
       .filter((l) => l.kind === "earning")
-      .map((l) => ({ label: l.label, amountPaise: l.amountPaise, arrearPaise: 0 }));
+      .map((l) => ({ label: l.label, amountPaise: l.amountPaise, arrearPaise: 0 }))
+      .filter(dropZero);
 
     const deductions: SlipLine[] = r.lines
       .filter((l) => l.kind === "deduction")
-      .map((l) => ({ label: l.label, amountPaise: l.amountPaise }));
+      .map((l) => ({ label: l.label, amountPaise: l.amountPaise }))
+      .filter(dropZero);
 
-    const employerContributions: SlipLine[] = r.lines
-      .filter((l) => l.kind === "employer_contribution" && l.amountPaise !== 0)
-      .map((l) => ({ label: l.label, amountPaise: l.amountPaise }));
+    /* Employer contributions are this month's own figures from the run,
+       so a month where nothing was due prints nothing at all. */
+    const employerContributions: SlipLine[] = presentation.showEmployerContribution
+      ? r.lines
+          .filter((l) => l.kind === "employer_contribution" && l.amountPaise !== 0)
+          .map((l) => ({ label: l.label, amountPaise: l.amountPaise }))
+      : [];
 
     /* Cost to company at the full monthly rate, so unpaid leave in this
        month does not read as a cut in the package. The gratuity provision
        belongs in it — it is money set aside for this employee — even
        though no run line pays it out. */
-    let monthlyCtcPaise = 0;
-    if (salary && emp) {
+    let monthlyCtcPaise: number | null = showCtc ? 0 : null;
+    if (showCtc && salary && emp) {
       const resolved = resolveEmployeeStructure(structureCtx, {
         employeeStructureId: salary.structureId,
         employeeDepartmentId: emp.departmentId,
@@ -309,7 +331,7 @@ export async function loadPayslips(args: {
       employerContributions,
       employerTotalPaise: employerContributions.reduce((a, x) => a + x.amountPaise, 0),
       monthlyCtcPaise,
-      annualCtcPaise: monthlyCtcPaise * 12,
+      annualCtcPaise: monthlyCtcPaise === null ? null : monthlyCtcPaise * 12,
       netPaise: r.netPaise,
       netInWords: rupeesInWords(r.netPaise).replace(/^Rupees/, "Indian Rupees"),
       warnings: r.warnings,

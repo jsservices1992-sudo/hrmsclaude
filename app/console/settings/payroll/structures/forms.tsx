@@ -9,6 +9,7 @@ import {
   deleteStructure,
   saveDepartmentSalaryStructureOverride,
   clearDepartmentSalaryStructureOverride,
+  saveStructurePresentation,
   type PayrollSettingsState,
 } from "./actions";
 import { createStarterStructure } from "../actions";
@@ -256,5 +257,71 @@ export function DeleteStructureForm({
       {state.error && <span className="text-xs text-rust max-w-[40ch] text-right">{state.error}</span>}
       {state.ok && <span className="text-xs text-teal">{state.ok}</span>}
     </div>
+  );
+}
+
+/**
+ * What this structure's payslip is about.
+ *
+ * Deliberately says, on the form itself, that none of it touches a
+ * deduction: the first thing somebody reaches for when a payslip shows
+ * a provident fund they do not owe is a switch to hide it, and hiding it
+ * would leave the money still deducted.
+ */
+export function StructurePresentationForm({
+  structureId, values,
+}: {
+  structureId: string;
+  values: {
+    payBasis: string;
+    showCtcOnPayslip: boolean;
+    showEmployerContribution: boolean;
+    hideZeroComponents: boolean;
+  };
+}) {
+  const [state, action] = useActionState<PayrollSettingsState, FormData>(
+    saveStructurePresentation, {},
+  );
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="structureId" value={structureId} />
+      <div className="grid sm:grid-cols-2 gap-4">
+        <FormField
+          label="Agreed in"
+          hint="What the offer said. Net in hand prints no cost to company — there is none to print."
+        >
+          <Select name="payBasis" defaultValue={values.payBasis}>
+            <option value="nth_only">Net in hand (NTH only)</option>
+            <option value="gross">Gross salary</option>
+            <option value="ctc">Cost to company</option>
+          </Select>
+        </FormField>
+        <div className="flex flex-col gap-2 justify-end pb-1">
+          <label className="flex items-center gap-2.5">
+            <input type="checkbox" name="showCtcOnPayslip" defaultChecked={values.showCtcOnPayslip} className="h-4 w-4" />
+            <span className="text-sm">Show cost to company on the payslip</span>
+          </label>
+          <label className="flex items-center gap-2.5">
+            <input type="checkbox" name="showEmployerContribution" defaultChecked={values.showEmployerContribution} className="h-4 w-4" />
+            <span className="text-sm">Show employer contributions</span>
+          </label>
+          <label className="flex items-center gap-2.5">
+            <input type="checkbox" name="hideZeroComponents" defaultChecked={values.hideZeroComponents} className="h-4 w-4" />
+            <span className="text-sm">Leave out lines that are zero</span>
+          </label>
+        </div>
+      </div>
+      <p className="text-xs text-ink-3 max-w-[70ch]">
+        These decide what the payslip prints, never what is deducted. Whether
+        provident fund, ESI, professional tax or income tax apply is settled by
+        the establishment&rsquo;s coverage under Settings → Organisation and by
+        each person&rsquo;s own record — a payslip cannot hide a deduction that
+        was made.
+      </p>
+      <div className="flex items-center gap-3">
+        <SubmitButton pendingText="Saving…">Save</SubmitButton>
+        <FormFeedback state={state} />
+      </div>
+    </form>
   );
 }
