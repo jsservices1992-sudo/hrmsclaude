@@ -109,3 +109,54 @@ describe("What days worked means for the month", () => {
     assert.equal(r.paidDays, 12);
   });
 });
+
+describe("The template's own shape", () => {
+  /* The file this product hands out, read back by the product. It carries
+     a working-days column for the reader; taking "the first number on the
+     line" read that as the answer and told every person they had worked
+     more days than the month holds. */
+  const template = [
+    "empCode,name,workingDaysThisMonth,daysWorked,halfDays",
+    "JBM00015,BADAL SINGH,25,13,0",
+    "JBM00025,SURAJ JM,25,25,0",
+    "JBM00080,ANJLI KUMARI,18,18,0",
+    "",
+    "# JobsMato — August 2026",
+    "# Change the daysWorked column where somebody was away.",
+  ].join("\n");
+
+  test("the days column is read by name, not by position", () => {
+    const { rows, errors } = parseDaysWorkedCsv(template);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(rows, [
+      { empCode: "JBM00015", daysWorked: 13, halfDays: 0 },
+      { empCode: "JBM00025", daysWorked: 25, halfDays: 0 },
+      { empCode: "JBM00080", daysWorked: 18, halfDays: 0 },
+    ]);
+  });
+
+  test("an untouched template is a full month for everybody", () => {
+    const { rows } = parseDaysWorkedCsv(template);
+    const badal = rows.find((r) => r.empCode === "JBM00025")!;
+    const r = outcomeForDaysWorked({
+      workingDays: 25,
+      employedDays: 31,
+      daysWorked: badal.daysWorked,
+      halfDays: badal.halfDays,
+    });
+    assert.equal(r.lopDays, 0);
+  });
+
+  test("the edited line is the only one that costs anything", () => {
+    const { rows } = parseDaysWorkedCsv(template);
+    const badal = rows.find((r) => r.empCode === "JBM00015")!;
+    const r = outcomeForDaysWorked({
+      workingDays: 25,
+      employedDays: 31,
+      daysWorked: badal.daysWorked,
+      halfDays: badal.halfDays,
+    });
+    assert.equal(r.lopDays, 12);
+    assert.equal(r.paidDays, 19);
+  });
+});

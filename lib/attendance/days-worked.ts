@@ -33,6 +33,8 @@ export type DaysWorkedParse = {
 
 const HEADER = /^\s*emp[_\s]?code\s*,/i;
 
+const norm = (h: string) => h.trim().toLowerCase().replace(/[\s_-]/g, "");
+
 function readNumber(raw: string): number | null {
   const clean = raw.trim();
   if (clean === "") return 0;
@@ -40,13 +42,6 @@ function readNumber(raw: string): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-/**
- * Parses `empCode,daysWorked[,halfDays]`.
- *
- * A name column is tolerated and ignored wherever it sits: the template
- * carries one so the file is readable, and a spreadsheet exported from
- * somewhere else usually has one too.
- */
 export function parseDaysWorkedCsv(text: string): DaysWorkedParse {
   const rows: DaysWorkedRow[] = [];
   const errors: DaysWorkedError[] = [];
@@ -54,10 +49,23 @@ export function parseDaysWorkedCsv(text: string): DaysWorkedParse {
 
   const lines = text.split(/\r\n|\r|\n/);
   const firstNonBlank = lines.findIndex((l) => l.trim() !== "");
-  const startAt =
-    firstNonBlank >= 0 && HEADER.test(lines[firstNonBlank])
-      ? firstNonBlank + 1
-      : Math.max(firstNonBlank, 0);
+  const hasHeader = firstNonBlank >= 0 && HEADER.test(lines[firstNonBlank]);
+  const startAt = hasHeader ? firstNonBlank + 1 : Math.max(firstNonBlank, 0);
+
+  /* Named columns when the file has a header, because the template
+     carries a working-days column for the reader — taking "the first
+     number on the line" read that as the answer and told everybody they
+     had worked more days than the month holds. */
+  const header = hasHeader ? lines[firstNonBlank].split(",").map(norm) : [];
+  const columnFor = (...names: string[]) => {
+    for (const name of names) {
+      const at = header.indexOf(norm(name));
+      if (at >= 0) return at;
+    }
+    return -1;
+  };
+  const daysColumn = hasHeader ? columnFor("daysWorked", "days", "presentDays") : -1;
+  const halfColumn = hasHeader ? columnFor("halfDays", "half") : -1;
 
   for (let i = startAt; i < lines.length; i++) {
     const raw = lines[i];
@@ -72,11 +80,19 @@ export function parseDaysWorkedCsv(text: string): DaysWorkedParse {
       continue;
     }
 
-    /* The numbers are whichever columns hold numbers: a name between the
-       code and the count is the common shape, and refusing the file over
-       a column nobody reads would be pedantry. */
-    const numeric = cols.slice(1).filter((c) => c !== "" && !Number.isNaN(Number(c)));
-    if (numeric.length === 0) {
+    let daysRaw: string | undefined;
+    let halfRaw: string | undefined;
+    if (daysColumn >= 0) {
+      daysRaw = cols[daysColumn];
+      halfRaw = halfColumn >= 0 ? cols[halfColumn] : undefined;
+    } else {
+      /* No header to go by: a code, perhaps a name, then the numbers. */
+      const numeric = cols.slice(1).filter((c) => c !== "" && !Number.isNaN(Number(c)));
+      daysRaw = numeric[0];
+      halfRaw = numeric[1];
+    }
+
+    if (daysRaw === undefined || daysRaw === "") {
       errors.push({
         line: lineNo,
         message: `${empCode} has no number of days on it.`,
@@ -84,8 +100,8 @@ export function parseDaysWorkedCsv(text: string): DaysWorkedParse {
       continue;
     }
 
-    const daysWorked = readNumber(numeric[0]);
-    const halfDays = numeric.length > 1 ? readNumber(numeric[1]) : 0;
+    const daysWorked = readNumber(daysRaw);
+    const halfDays = halfRaw === undefined ? 0 : readNumber(halfRaw);
     if (daysWorked === null || halfDays === null) {
       errors.push({
         line: lineNo,
