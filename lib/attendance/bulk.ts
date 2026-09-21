@@ -256,3 +256,22 @@ export function outOfPeriodMessage(
       : "A file covers one month; split it and upload each month into its own period.")
   );
 }
+
+/**
+ * One row per person per day, the last one winning.
+ *
+ * A register kept by hand repeats: a line copied, a correction written
+ * underneath the original instead of over it, the same day written both
+ * as 1/08/2026 and 01/08/2026. Postgres refuses an upsert that touches
+ * the same row twice in one statement, so a repeat used to end the whole
+ * upload in a database error nobody could act on. Writing a day again
+ * further down the file means changing it, so the later row wins.
+ */
+export function lastWordPerDay(rows: BulkRow[]): {
+  rows: BulkRow[];
+  duplicates: number;
+} {
+  const byDay = new Map<string, BulkRow>();
+  for (const row of rows) byDay.set(`${row.empCode}|${row.date}`, row);
+  return { rows: [...byDay.values()], duplicates: rows.length - byDay.size };
+}

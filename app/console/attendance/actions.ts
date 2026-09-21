@@ -16,6 +16,7 @@ import { persistMonth } from "@/lib/attendance/service";
 import {
   parseAttendanceCsv,
   outOfPeriodMessage,
+  lastWordPerDay,
   punchesForBulkStatus,
   dayTypeFor,
   type BulkStatus,
@@ -261,10 +262,23 @@ async function uploadAttendance(
     };
   }
 
+  /*
+   * The same person and day written twice.
+   *
+   * A register kept by hand has them: a row copied, a correction added
+   * underneath the original rather than over it. Postgres refuses an
+   * upsert that touches one row twice in a single statement — "ON
+   * CONFLICT DO UPDATE command cannot affect row a second time" — so the
+   * whole upload died on a database error the person could do nothing
+   * with. The last word on a day wins, which is what writing it again
+   * further down the file means.
+   */
+  const { rows: deduped, duplicates } = lastWordPerDay(usable);
+
   /* One statement, not one per row. Against a hosted database a row at a
      time meant a round trip per day per person, which is where a month
      for one employee took the better part of a minute. */
-  const values = usable.map((row) => {
+  const values = deduped.map((row) => {
     const { punches, recordStatus } = punchesForBulkStatus(row.status, shift);
     return {
       id: randomUUID(),
@@ -313,9 +327,10 @@ async function uploadAttendance(
     entity: "attendance",
     entityId: `${companyId}:${year}-${month}`,
     after: {
-      rows: usable.length,
-      employees: [...new Set(usable.map((r) => r.empCode))].length,
+      rows: deduped.length,
+      employees: [...new Set(deduped.map((r) => r.empCode))].length,
       skippedOutsideEmployment: outsideEmployment.length,
+      duplicatesCollapsed: duplicates,
     },
   });
 
@@ -329,7 +344,12 @@ async function uploadAttendance(
   /* The file's employees, not the company's. `months` is everybody the
      recompute touched, which made a one-person import read as though it
      had covered the whole company. */
-  const importedFor = new Set(usable.map((r) => r.empCode)).size;
+  const importedFor = new Set(deduped.map((r) => r.empCode)).size;
+
+  const duplicateNote =
+    duplicates > 0
+      ? ` ${duplicates} row(s) repeated a person and day already in the file — the last one written won.`
+      : "";
 
   const outsideNote =
     outsideEmployment.length > 0
@@ -344,7 +364,7 @@ async function uploadAttendance(
       : "";
 
   return {
-    ok: `Imported ${usable.length} row(s) for ${importedFor} employee(s), and recomputed the month.${skippedNote}${outsideNote}`,
+    ok: `Imported ${deduped.length} row(s) for ${importedFor} employee(s), and recomputed the month.${duplicateNote}${skippedNote}${outsideNote}`,
     parseErrors: parseErrors.length > 0 ? parseErrors : undefined,
   };
 }

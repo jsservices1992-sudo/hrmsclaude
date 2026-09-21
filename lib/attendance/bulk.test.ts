@@ -7,6 +7,7 @@ import {
   BULK_STATUSES,
   BULK_STATUS_LABELS,
   outOfPeriodMessage,
+  lastWordPerDay,
 } from "./bulk";
 import { toCsv } from "../statutory/summaries";
 
@@ -214,4 +215,35 @@ test("a file spanning two other months is told to be split", () => {
 
 test("a file entirely inside the period says nothing", () => {
   assert.equal(outOfPeriodMessage(["2026-08-01", "2026-08-31"], 2026, 8), null);
+});
+
+test("the same person and day written twice keeps the last one", () => {
+  /* Postgres refuses an upsert that touches one row twice in a single
+     statement, so a repeated day used to end the upload in a database
+     error. Writing a day again further down the file means changing it. */
+  const { rows, duplicates } = lastWordPerDay([
+    { empCode: "E1", date: "2026-08-01", status: "present" },
+    { empCode: "E1", date: "2026-08-02", status: "present" },
+    { empCode: "E1", date: "2026-08-01", status: "absent" },
+  ]);
+  assert.equal(duplicates, 1);
+  assert.equal(rows.length, 2);
+  assert.equal(rows.find((r) => r.date === "2026-08-01")!.status, "absent");
+});
+
+test("the same day written two ways counts as one day", () => {
+  const parsed = parseAttendanceCsv(
+    "E1,1/08/2026,present\nE1,01/08/2026,absent",
+  );
+  const { rows, duplicates } = lastWordPerDay(parsed.rows);
+  assert.equal(duplicates, 1);
+  assert.deepEqual(rows, [{ empCode: "E1", date: "2026-08-01", status: "absent" }]);
+});
+
+test("different people on the same day are not duplicates", () => {
+  const { duplicates } = lastWordPerDay([
+    { empCode: "E1", date: "2026-08-01", status: "present" },
+    { empCode: "E2", date: "2026-08-01", status: "present" },
+  ]);
+  assert.equal(duplicates, 0);
 });
