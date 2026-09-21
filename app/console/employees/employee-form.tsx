@@ -50,7 +50,7 @@ export type FormOptions = {
   grades: { id: string; name: string; level: number }[];
   branches: { id: string; name: string; stateCode: string }[];
   managers: Option[];
-  structures: { id: string; name: string; isDefault: boolean }[];
+  structures: { id: string; name: string; isDefault: boolean; payBasis?: string }[];
 };
 
 export type EmployeeValues = Partial<{
@@ -183,6 +183,13 @@ function Section({
     </Card>
   );
 }
+
+/** What each structure is agreed in, said on the option itself. */
+const STRUCTURE_BASIS: Record<string, string> = {
+  nth_only: "net in hand, no PF/ESI or CTC shown",
+  gross: "gross salary",
+  ctc: "cost to company, with employer contributions",
+};
 
 export default function EmployeeForm({
   mode,
@@ -353,7 +360,9 @@ export default function EmployeeForm({
             defaultValue={state.values?.structureId}
             options={options.structures.map((x) => ({
               id: x.id,
-              label: x.isDefault ? `${x.name} (default)` : x.name,
+              label:
+                `${x.name}${x.isDefault ? " (default)" : ""}` +
+                (x.payBasis ? ` — ${STRUCTURE_BASIS[x.payBasis] ?? x.payBasis}` : ""),
             }))}
             error={err("structureId")}
           />

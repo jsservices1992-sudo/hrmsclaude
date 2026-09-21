@@ -892,6 +892,32 @@ export async function bulkUploadEmployees(
 
   const branchByCode = new Map(branches.map((b) => [(b.code ?? "").toUpperCase(), b.id]));
   const deptByCode = new Map(departments.map((d) => [(d.code ?? "").toUpperCase(), d.id]));
+
+  /* The structure named on each row. Per person, because one department
+     routinely holds two people on the statutory structure and six on a
+     net-in-hand one — and because an employee imported without one is
+     pinned to nothing, which is how six people ended up following a
+     company default nobody chose for them. */
+  const structures = await db
+    .select({ id: s.salaryStructures.id, name: s.salaryStructures.name })
+    .from(s.salaryStructures)
+    .where(and(eq(s.salaryStructures.companyId, companyId), eq(s.salaryStructures.active, true)));
+  const structureByName = new Map(structures.map((x) => [x.name.trim().toLowerCase(), x.id]));
+  const unknownStructures = [
+    ...new Set(
+      fresh
+        .map((r) => r.salaryStructure)
+        .filter((name): name is string => Boolean(name))
+        .filter((name) => !structureByName.has(name.trim().toLowerCase())),
+    ),
+  ];
+  if (unknownStructures.length > 0) {
+    return {
+      error:
+        `${unknownStructures.length} salary structure name(s) in the file do not exist here: ` +
+        `${unknownStructures.join(", ")}. This company has: ${structures.map((x) => x.name).join(", ") || "none yet"}. Nothing has been imported.`,
+    };
+  }
   const gradeByName = new Map(grades.map((g) => [g.name.toLowerCase(), g.id]));
   const idByCode = new Map(existing.map((e) => [e.empCode.toUpperCase(), e.id]));
 
@@ -994,7 +1020,9 @@ export async function bulkUploadEmployees(
           monthlyGrossPaise: pay.monthlyGrossPaise,
           annualCtcPaise: pay.breakdown.annualCtcPaise,
           ...payAgreementColumns(pay),
-          structureId: null,
+          structureId: r.salaryStructure
+            ? (structureByName.get(r.salaryStructure.trim().toLowerCase()) ?? null)
+            : null,
           effectiveFrom: r.dateOfJoining,
           effectiveTo: null,
           reason: "Set at bulk import",

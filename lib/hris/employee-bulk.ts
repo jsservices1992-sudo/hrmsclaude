@@ -77,6 +77,7 @@ export const EMPLOYEE_COLUMNS = [
   "ifsc",
   "payMode",
   "payAmount",
+  "salaryStructure",
 ] as const;
 
 export type EmployeeRow = {
@@ -108,6 +109,15 @@ export type EmployeeRow = {
    */
   payMode: (typeof PAY_MODES)[number] | null;
   payAmountPaise: number | null;
+  /**
+   * The salary structure this person is on, by its name.
+   *
+   * Per person, not per department: one department routinely holds two
+   * people on the statutory structure and six on a net-in-hand one, and
+   * a department-wide answer cannot express that. Blank follows the
+   * department's assignment, or the company default.
+   */
+  salaryStructure: string | null;
 };
 
 export type RowProblem = {
@@ -387,6 +397,7 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
       ifsc,
       payMode,
       payAmountPaise,
+      salaryStructure: get("salaryStructure"),
     });
   }
 

@@ -16,7 +16,7 @@ const row = (over: Record<string, string> = {}) => {
     dateOfJoining: "2026-01-15", employmentType: "permanent", designation: "Engineer",
     branchCode: "BLR", departmentCode: "ENG", gradeName: "L3", managerEmpCode: "", skillCategory: "",
     pan: "ABCPD1234E", uan: "100200300400", bankAccount: "50181003001", ifsc: "HDFC0001234",
-    payMode: "", payAmount: "",
+    payMode: "", payAmount: "", salaryStructure: "",
   };
   return EMPLOYEE_COLUMNS.map((c) => over[c] ?? base[c]).join(",");
 };
@@ -316,4 +316,19 @@ test("skill category is optional and validated against the same list minimum wag
 
   const bad = parseEmployeeCsv(csv(row({ skillCategory: "expert" })));
   assert.match(bad.problems.find((p) => p.column === "skillCategory")!.message, /unskilled/);
+});
+
+test("a salary structure can be named per person in the file", () => {
+  /* Per person, not per department: one department routinely holds two
+     people on the statutory structure and six on a net-in-hand one. */
+  const r = parseEmployeeCsv(
+    csv(row({ salaryStructure: "Without PF" }), row({ empCode: "BLR002" })),
+  );
+  assert.deepEqual(r.problems, []);
+  assert.equal(r.rows[0].salaryStructure, "Without PF");
+  assert.equal(
+    r.rows[1].salaryStructure,
+    null,
+    "blank follows the department's assignment, or the company default",
+  );
 });

@@ -187,6 +187,11 @@ export async function loadFormOptions(companyId: string) {
         id: s.salaryStructures.id,
         name: s.salaryStructures.name,
         isDefault: s.salaryStructures.isDefault,
+        /* What the structure is agreed in, so the person choosing one at
+           onboarding can see it: a net-in-hand structure and a
+           cost-to-company one are different promises, and the name alone
+           does not say which is which. */
+        payBasis: s.salaryStructures.payBasis,
       })
       .from(s.salaryStructures)
       .where(

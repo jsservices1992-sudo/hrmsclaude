@@ -9,6 +9,13 @@ import {
   PAY_MODES,
 } from "@/lib/hris/employee-bulk";
 import { toCsv } from "@/lib/statutory/summaries";
+
+/** What each pay basis means, in the words the template can use. */
+const BASIS_LABEL: Record<string, string> = {
+  nth_only: "net in hand — no CTC on the payslip",
+  gross: "gross salary",
+  ctc: "cost to company, with employer contributions",
+};
 import { getSessionUser, canAccessConsole, canAccessCompany } from "@/lib/auth/session";
 
 /**
@@ -41,7 +48,7 @@ export async function GET(request: Request) {
     return new Response("Not authorised.", { status: 403 });
   }
 
-  const [branches, departments, grades] = await Promise.all([
+  const [branches, departments, grades, structures] = await Promise.all([
     db
       .select({ code: s.branches.code, name: s.branches.name })
       .from(s.branches)
@@ -57,6 +64,11 @@ export async function GET(request: Request) {
       .from(s.grades)
       .where(eq(s.grades.companyId, companyId))
       .orderBy(asc(s.grades.level)),
+    db
+      .select({ name: s.salaryStructures.name, basis: s.salaryStructures.payBasis, isDefault: s.salaryStructures.isDefault })
+      .from(s.salaryStructures)
+      .where(and(eq(s.salaryStructures.companyId, companyId), eq(s.salaryStructures.active, true)))
+      .orderBy(asc(s.salaryStructures.name)),
   ]);
 
   const firstBranch = branches[0]?.code ?? "BLR";
@@ -67,7 +79,7 @@ export async function GET(request: Request) {
     "EMP001", "Asha", "Rao", "asha@example.com", "9876543210", "female",
     "02/04/1995", "01/04/2026", "permanent", "Software Engineer",
     firstBranch, firstDept, firstGrade, "", "", "ABCPD1234E", "", "", "",
-    "gross", "45000",
+    "gross", "45000", structures.find((x) => x.isDefault)?.name ?? "",
   ];
 
   const lines = [
@@ -96,6 +108,13 @@ export async function GET(request: Request) {
     "# payMode take_home:     payAmount is the monthly net in hand — the gross is worked back from it, and re-solved every",
     "#                        run against that period's rates, so the amount reaching the bank never drifts",
     "# both columns must be filled in together, or both left blank to add this person with no salary yet",
+    "#",
+    "# --- salaryStructure: which set of components this person is on ---",
+    `# salaryStructure:  ${structures.length ? structures.map((x) => `${x.name} (${BASIS_LABEL[x.basis] ?? x.basis})`).join(" | ") : "none yet — leave blank"}`,
+    "#                   Per person, not per department: one department can hold",
+    "#                   two people on the statutory structure and six on a",
+    "#                   net-in-hand one. Blank follows the department's",
+    "#                   assignment, or the company default.",
     "#",
     "# re-uploading:    safe — an empCode already on the books is skipped, never",
     "#                  overwritten, so fill this in once and upload as you go.",
