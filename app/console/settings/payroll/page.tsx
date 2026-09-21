@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { asc, eq, isNull, or } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { listCompanies } from "@/lib/payroll/load";
@@ -158,6 +158,36 @@ export default async function PayrollSettingsPage(
     structureDeptOverrides.map((o) => [o.departmentId, o]),
   );
   const structureNameById = Object.fromEntries(structures.map((st) => [st.id, st.name]));
+
+  /* Who a department assignment actually reaches. An employee whose own
+     salary record names a structure keeps it — payroll reads the pin
+     first — so a department row that says nothing about them reads as a
+     change that did not happen. */
+  const activeByDepartment = await db
+    .select({ id: s.employees.id, departmentId: s.employees.departmentId })
+    .from(s.employees)
+    .where(and(eq(s.employees.companyId, companyId), eq(s.employees.status, "active")));
+  const pinnedEmployeeIds = new Set(
+    (
+      await db
+        .select({ employeeId: s.employeeSalaries.employeeId })
+        .from(s.employeeSalaries)
+        .where(
+          and(
+            isNull(s.employeeSalaries.effectiveTo),
+            isNotNull(s.employeeSalaries.structureId),
+          ),
+        )
+    ).map((r) => r.employeeId),
+  );
+  const departmentReach = new Map<string, { total: number; pinned: number }>();
+  for (const e of activeByDepartment) {
+    if (!e.departmentId) continue;
+    const at = departmentReach.get(e.departmentId) ?? { total: 0, pinned: 0 };
+    at.total += 1;
+    if (pinnedEmployeeIds.has(e.id)) at.pinned += 1;
+    departmentReach.set(e.departmentId, at);
+  }
   const overrideByDept = Object.fromEntries(deptOverrides.map((o) => [o.departmentId, o]));
   const headcountByDept = employees.reduce<Record<string, number>>((acc, e) => {
     if (e.departmentId) acc[e.departmentId] = (acc[e.departmentId] ?? 0) + 1;
@@ -568,6 +598,25 @@ export default async function PayrollSettingsPage(
                         ) : (
                           <span className="text-ink-3">Inherits company default</span>
                         )}
+                        {(() => {
+                          const reach = departmentReach.get(d.id);
+                          if (!reach || reach.total === 0) {
+                            return <span className="block text-xs text-ink-3">Nobody in this department</span>;
+                          }
+                          if (reach.pinned === 0) {
+                            return (
+                              <span className="block text-xs text-ink-3">
+                                All {reach.total} follow it
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="block text-xs text-brass">
+                              {reach.total - reach.pinned} of {reach.total} follow it — {reach.pinned} have a
+                              structure named on their own salary record, which wins
+                            </span>
+                          );
+                        })()}
                       </TD>
                       <TD className="text-right">
                         {isAdmin && (

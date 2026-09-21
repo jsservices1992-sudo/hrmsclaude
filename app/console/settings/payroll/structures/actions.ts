@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany } from "@/lib/auth/session";
@@ -391,7 +391,53 @@ export async function saveDepartmentSalaryStructureOverride(
   });
 
   revalidatePath("/console/settings/payroll");
-  return { ok: `${dept.name} now assigned to ${structure.name}.` };
+
+  /*
+   * Who this actually reaches.
+   *
+   * An employee whose own salary record names a structure keeps it — the
+   * pin is the more specific answer and payroll reads it first. Saying
+   * only "assigned" left somebody who had just changed a whole
+   * department looking at the same figures with nothing to explain why,
+   * so the count of people it will not move is part of the answer.
+   */
+  const inDepartment = await db
+    .select({ id: s.employees.id })
+    .from(s.employees)
+    .where(
+      and(
+        eq(s.employees.companyId, companyId),
+        eq(s.employees.departmentId, departmentId),
+        eq(s.employees.status, "active"),
+      ),
+    );
+  const pinned = inDepartment.length
+    ? await db
+        .select({ employeeId: s.employeeSalaries.employeeId })
+        .from(s.employeeSalaries)
+        .where(
+          and(
+            inArray(
+              s.employeeSalaries.employeeId,
+              inDepartment.map((e) => e.id),
+            ),
+            isNull(s.employeeSalaries.effectiveTo),
+            isNotNull(s.employeeSalaries.structureId),
+          ),
+        )
+    : [];
+
+  const follows = inDepartment.length - pinned.length;
+
+  return {
+    ok:
+      `${dept.name} now assigned to ${structure.name}. ` +
+      (inDepartment.length === 0
+        ? "Nobody is in this department yet."
+        : pinned.length === 0
+          ? `All ${inDepartment.length} in the department follow it from the next calculation.`
+          : `${follows} of ${inDepartment.length} follow it. The other ${pinned.length} have a structure named on their own salary record, which wins — move them with a salary revision on their page, choosing this structure.`),
+  };
 }
 
 export async function clearDepartmentSalaryStructureOverride(
