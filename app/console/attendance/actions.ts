@@ -146,7 +146,33 @@ export async function recomputeAttendance(
  * import, since that is a company mismatch worth stopping for, not a
  * typo to shrug off silently.
  */
+/**
+ * A month of attendance, uploaded.
+ *
+ * Wrapped so that whatever goes wrong inside is said on the screen the
+ * person is standing on. An uncaught error in a server action takes the
+ * whole page down to "a server error occurred" with an opaque id — which
+ * is what an upload looked like from the outside: press the button, get
+ * a blank page, no idea whether any of it was saved.
+ */
 export async function bulkUploadAttendance(
+  prev: BulkAttendanceState,
+  fd: FormData,
+): Promise<BulkAttendanceState> {
+  try {
+    return await uploadAttendance(prev, fd);
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error("attendance upload failed", e);
+    return {
+      error:
+        `The upload did not finish: ${detail.slice(0, 300)}. ` +
+        `Nothing partial is left behind — the month is recomputed from what is on record, so uploading again is safe.`,
+    };
+  }
+}
+
+async function uploadAttendance(
   _prev: BulkAttendanceState,
   fd: FormData,
 ): Promise<BulkAttendanceState> {
