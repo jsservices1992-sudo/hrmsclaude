@@ -79,3 +79,24 @@ export function selectablePeriods(
   }
   return out;
 }
+
+/** Run statuses past which the figures are signed off and money may move. */
+export const SIGNED_OFF_STATUSES = ["approved", "finalised", "disbursed", "closed"];
+
+/**
+ * Whether a period's payroll is signed off, given every version of it.
+ *
+ * Only the newest version answers. Reversing an approved run keeps that
+ * version as the record of what was paid and supersedes it with a fresh
+ * one, so a period that has been reopened still has an approved row in
+ * it for ever. Asking whether *any* version is signed off means
+ * reopening never unlocks anything — the screens tell somebody to reopen
+ * the run, they do, and the next attempt refuses them in the same words.
+ */
+export function periodSignedOff(
+  runs: { version: number; status: string }[],
+): boolean {
+  if (runs.length === 0) return false;
+  const latest = runs.reduce((a, b) => (b.version > a.version ? b : a));
+  return SIGNED_OFF_STATUSES.includes(latest.status);
+}

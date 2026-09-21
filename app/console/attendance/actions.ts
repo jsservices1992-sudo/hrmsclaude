@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import {
@@ -23,6 +23,7 @@ import {
 } from "@/lib/attendance/bulk";
 import { DEFAULT_SHIFT } from "@/lib/attendance/rules";
 import { daysInMonth } from "@/lib/payroll/proration";
+import { periodSignedOff as signedOff } from "@/lib/payroll/period-lock";
 import { formatDate } from "@/lib/format/date";
 
 export type AttendanceState = { error?: string; ok?: string };
@@ -55,6 +56,35 @@ async function audit(e: {
   });
 }
 
+/**
+ * Whether this period's payroll is signed off and attendance must not
+ * move under it.
+ *
+ * Only the newest version decides. Reversing an approved run keeps that
+ * version as the record of what was paid and supersedes it with a fresh
+ * one — so a period that has been reopened still has an approved row in
+ * it for ever. Reading every row meant reopening never actually unlocked
+ * anything: the screen told people to reopen the run, they did, and the
+ * upload refused them in the same words.
+ */
+async function periodSignedOff(
+  companyId: string,
+  year: number,
+  month: number,
+): Promise<boolean> {
+  const runs = await db
+    .select({ version: s.payrollRuns.version, status: s.payrollRuns.status })
+    .from(s.payrollRuns)
+    .where(
+      and(
+        eq(s.payrollRuns.companyId, companyId),
+        eq(s.payrollRuns.periodYear, year),
+        eq(s.payrollRuns.periodMonth, month),
+      ),
+    );
+  return signedOff(runs);
+}
+
 async function requireHr() {
   const user = await getSessionUser();
   if (!user) return { user: null, error: "Not authorised." as const };
@@ -82,21 +112,7 @@ export async function recomputeAttendance(
   if (!year || !month) return { error: "Invalid period." };
 
   // A finalised run must not have its inputs moved underneath it.
-  const locked = await db
-    .select({ id: s.payrollRuns.id, status: s.payrollRuns.status })
-    .from(s.payrollRuns)
-    .where(
-      and(
-        eq(s.payrollRuns.companyId, companyId),
-        eq(s.payrollRuns.periodYear, year),
-        eq(s.payrollRuns.periodMonth, month),
-      ),
-    );
-
-  const blocking = locked.filter((r) =>
-    ["approved", "finalised", "disbursed", "closed"].includes(r.status),
-  );
-  if (blocking.length > 0) {
+  if (await periodSignedOff(companyId, year, month)) {
     return {
       error:
         "This period has an approved payroll run. Reopen the run before changing attendance, so the change is versioned rather than silent.",
@@ -142,17 +158,7 @@ export async function bulkUploadAttendance(
   if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
   if (!year || !month) return { error: "Invalid period." };
 
-  const locked = await db
-    .select({ id: s.payrollRuns.id, status: s.payrollRuns.status })
-    .from(s.payrollRuns)
-    .where(
-      and(
-        eq(s.payrollRuns.companyId, companyId),
-        eq(s.payrollRuns.periodYear, year),
-        eq(s.payrollRuns.periodMonth, month),
-      ),
-    );
-  if (locked.some((r) => ["approved", "finalised", "disbursed", "closed"].includes(r.status))) {
+  if (await periodSignedOff(companyId, year, month)) {
     return {
       error:
         "This period has an approved payroll run. Reopen the run before changing attendance, so the change is versioned rather than silent.",
@@ -377,17 +383,7 @@ export async function bulkMarkDepartment(
     }
   }
 
-  const locked = await db
-    .select({ id: s.payrollRuns.id, status: s.payrollRuns.status })
-    .from(s.payrollRuns)
-    .where(
-      and(
-        eq(s.payrollRuns.companyId, companyId),
-        eq(s.payrollRuns.periodYear, year),
-        eq(s.payrollRuns.periodMonth, month),
-      ),
-    );
-  if (locked.some((r) => ["approved", "finalised", "disbursed", "closed"].includes(r.status))) {
+  if (await periodSignedOff(companyId, year, month)) {
     return {
       error:
         "This period has an approved payroll run. Reopen the run before changing attendance, so the change is versioned rather than silent.",
@@ -539,17 +535,7 @@ export async function markAttendanceDay(
   const year = Number(date.slice(0, 4));
   const month = Number(date.slice(5, 7));
 
-  const locked = await db
-    .select({ status: s.payrollRuns.status })
-    .from(s.payrollRuns)
-    .where(
-      and(
-        eq(s.payrollRuns.companyId, companyId),
-        eq(s.payrollRuns.periodYear, year),
-        eq(s.payrollRuns.periodMonth, month),
-      ),
-    );
-  if (locked.some((r) => ["approved", "finalised", "disbursed", "closed"].includes(r.status))) {
+  if (await periodSignedOff(companyId, year, month)) {
     return {
       error:
         "This period has an approved payroll run. Reopen the run before changing attendance, so the change is versioned rather than silent.",
@@ -647,17 +633,7 @@ export async function overrideAttendanceInput(
   if (!Number.isFinite(lopDays) || lopDays < 0) return { error: "Enter a loss-of-pay figure of zero or more days." };
   if (!reason) return { error: "A reason is required — this diverges from what attendance actually computed." };
 
-  const locked = await db
-    .select({ id: s.payrollRuns.id, status: s.payrollRuns.status })
-    .from(s.payrollRuns)
-    .where(
-      and(
-        eq(s.payrollRuns.companyId, companyId),
-        eq(s.payrollRuns.periodYear, year),
-        eq(s.payrollRuns.periodMonth, month),
-      ),
-    );
-  if (locked.some((r) => ["approved", "finalised", "disbursed", "closed"].includes(r.status))) {
+  if (await periodSignedOff(companyId, year, month)) {
     return {
       error:
         "This period has an approved payroll run. Reopen the run before changing attendance, so the change is versioned rather than silent.",
@@ -954,20 +930,7 @@ export async function decideRegularisation(
     if (subject) {
       const year = Number(req.date.slice(0, 4));
       const month = Number(req.date.slice(5, 7));
-      const runs = await db
-        .select({ status: s.payrollRuns.status })
-        .from(s.payrollRuns)
-        .where(
-          and(
-            eq(s.payrollRuns.companyId, subject.companyId),
-            eq(s.payrollRuns.periodYear, year),
-            eq(s.payrollRuns.periodMonth, month),
-          ),
-        );
-      const locked = runs.some((r) =>
-        ["approved", "finalised", "disbursed", "closed"].includes(r.status),
-      );
-      if (!locked) {
+      if (!(await periodSignedOff(subject.companyId, year, month))) {
         await persistMonth({
           companyId: subject.companyId,
           year,
@@ -1081,17 +1044,7 @@ export async function addAdjustment(
 
   if (!label) return { error: "Enter a short label for the payslip line." };
 
-  const locked = await db
-    .select({ id: s.payrollRuns.id, status: s.payrollRuns.status })
-    .from(s.payrollRuns)
-    .where(
-      and(
-        eq(s.payrollRuns.companyId, companyId),
-        eq(s.payrollRuns.periodYear, year),
-        eq(s.payrollRuns.periodMonth, month),
-      ),
-    );
-  if (locked.some((r) => ["approved", "finalised", "disbursed", "closed"].includes(r.status))) {
+  if (await periodSignedOff(companyId, year, month)) {
     return {
       error:
         "This period has an approved payroll run. Reopen the run before adding an adjustment, so it is captured in a new version rather than silently disagreeing with what was approved.",
@@ -1171,17 +1124,7 @@ export async function addVariablePayBulk(
     .limit(1);
   if (!type) return { error: "Choose a type." };
 
-  const locked = await db
-    .select({ status: s.payrollRuns.status })
-    .from(s.payrollRuns)
-    .where(
-      and(
-        eq(s.payrollRuns.companyId, companyId),
-        eq(s.payrollRuns.periodYear, year),
-        eq(s.payrollRuns.periodMonth, month),
-      ),
-    );
-  if (locked.some((r) => ["approved", "finalised", "disbursed", "closed"].includes(r.status))) {
+  if (await periodSignedOff(companyId, year, month)) {
     return {
       error:
         "This period has an approved payroll run. Reopen the run before adding variable pay, so it is captured in a new version.",
@@ -1323,17 +1266,7 @@ export async function updateAdjustment(
     return { error: "Not authorised." };
   }
 
-  const locked = await db
-    .select({ status: s.payrollRuns.status })
-    .from(s.payrollRuns)
-    .where(
-      and(
-        eq(s.payrollRuns.companyId, employee.companyId),
-        eq(s.payrollRuns.periodYear, row.periodYear),
-        eq(s.payrollRuns.periodMonth, row.periodMonth),
-      ),
-    );
-  if (locked.some((r) => ["approved", "finalised", "disbursed", "closed"].includes(r.status))) {
+  if (await periodSignedOff(employee.companyId, row.periodYear, row.periodMonth)) {
     return {
       error:
         "This period has an approved payroll run. Reopen the run before changing variable pay, so it is captured in a new version.",

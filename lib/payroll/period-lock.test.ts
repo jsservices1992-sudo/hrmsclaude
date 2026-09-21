@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { periodState, selectablePeriods } from "./period-lock";
+import { periodState, selectablePeriods, periodSignedOff } from "./period-lock";
 
 /** The 17th: August's salary is what is being paid. */
 const beforeRollover = new Date("2026-09-17T09:00:00Z");
@@ -69,6 +69,53 @@ describe("The months offered to choose from", () => {
     assert.deepEqual(
       periods.map((p) => p.label),
       ["January 2027", "December 2026"],
+    );
+  });
+});
+
+describe("Whether a period is signed off", () => {
+  test("no run at all is open", () => {
+    assert.equal(periodSignedOff([]), false);
+  });
+
+  test("an approved run closes the period", () => {
+    assert.equal(periodSignedOff([{ version: 1, status: "approved" }]), true);
+  });
+
+  test("a calculated run leaves it open", () => {
+    assert.equal(periodSignedOff([{ version: 1, status: "calculated" }]), false);
+  });
+
+  test("reversing an approved run reopens the period", () => {
+    /* The approved version stays as the record of what was paid. Reading
+       it as well as the replacement is what made "reopen the run" advice
+       that could never be followed. */
+    assert.equal(
+      periodSignedOff([
+        { version: 1, status: "approved" },
+        { version: 2, status: "calculated" },
+      ]),
+      false,
+    );
+  });
+
+  test("approving the replacement closes it again", () => {
+    assert.equal(
+      periodSignedOff([
+        { version: 1, status: "approved" },
+        { version: 2, status: "approved" },
+      ]),
+      true,
+    );
+  });
+
+  test("the order the versions arrive in does not matter", () => {
+    assert.equal(
+      periodSignedOff([
+        { version: 2, status: "calculated" },
+        { version: 1, status: "disbursed" },
+      ]),
+      false,
     );
   });
 });
