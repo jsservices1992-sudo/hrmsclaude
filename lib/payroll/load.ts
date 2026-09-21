@@ -828,12 +828,32 @@ export async function previewRun(args: {
         esicApplicability: emp.esicApplicability,
         ptApplicability: emp.ptApplicability,
         tdsApplicability: emp.tdsApplicability,
-        /* A person may be outside an Act that reaches the establishment;
-           nobody can be inside one that does not. */
+        /*
+         * The person's own answer wins over the establishment's, in both
+         * directions, because a company of a dozen routinely holds both
+         * kinds of people: somebody carrying PF membership from a
+         * previous job alongside somebody who has never been a member
+         * and is not being enrolled.
+         *
+         * "yes" covers this person even where the establishment is
+         * outside the Act — voluntary coverage, which is a real thing a
+         * company does for one employee and not another. "no" takes them
+         * out, and the run says so in its findings rather than letting
+         * it pass unremarked: it is a claim about the law, and it is the
+         * employer's to make and to answer for.
+         */
         epfEstablishmentCovered:
-          emp.pfApplicability === "no" ? false : epfEstablishmentCovered,
+          emp.pfApplicability === "yes"
+            ? true
+            : emp.pfApplicability === "no"
+              ? false
+              : epfEstablishmentCovered,
         esicEstablishmentCovered:
-          emp.esicApplicability === "no" ? false : esicEstablishmentCovered,
+          emp.esicApplicability === "yes"
+            ? true
+            : emp.esicApplicability === "no"
+              ? false
+              : esicEstablishmentCovered,
         vpfPercent: emp.vpfPercent,
         // Read the stored decision for this contribution period. Falling back
         // to current wages only covers an employee with no record yet (a new

@@ -399,15 +399,15 @@ export function computeEmployeePay(args: {
     establishmentCovered: e.epfEstablishmentCovered,
   });
 
-  /* A switch that says this person is outside the Act. Honoured when the
-     test agrees, refused out loud when it does not — the deduction is
-     due and stays. */
-  if (epf.applicable && e.pfApplicability === "no") {
+  /* Switched off on this person's record rather than by the statutory
+     test. Nothing is deducted — and the month says so, because who is
+     inside a fund is a claim the employer answers for, and a silent
+     exemption is indistinguishable from a mistake. */
+  if (e.pfApplicability === "no" && epfBase > 0) {
     warnings.push(
-      "Provident fund is marked as not applicable for this person, but the Act reaches them here — it has been deducted anyway. Change what makes them exempt, or the establishment's coverage.",
+      "Provident fund is switched off for this person, so nothing has been deducted or contributed for them this month.",
     );
   }
-
   if (epf.applicable) {
     // The wage the contribution was computed on. Recorded as its own line
     // because the ECR files it as a column, and a stored run has to be
@@ -464,13 +464,17 @@ export function computeEmployeePay(args: {
     applicable: s.ptApplicableByState[e.stateCode] ?? false,
     incomeTaxPayee: e.incomeTaxPayee,
   });
-  if (pt.applicable && e.ptApplicability === "no") {
+  /* Switched off on this person's record. Honoured, and said out loud:
+     it is a claim about who the tax reaches, and the person who made it
+     should meet it again when the month is reviewed. */
+  const ptSwitchedOff = e.ptApplicability === "no" && pt.amountPaise > 0;
+  if (ptSwitchedOff) {
     warnings.push(
-      `Professional tax is marked as not applicable for this person, but ${e.stateCode} levies it on these wages — it has been deducted anyway.`,
+      `Professional tax is switched off for this person, so ${e.stateCode}'s ${(pt.amountPaise / 100).toFixed(2)} has not been deducted. The state levies it on these wages.`,
     );
   }
 
-  if (pt.amountPaise > 0) {
+  if (pt.amountPaise > 0 && !ptSwitchedOff) {
     lines.push({
       code: "PT",
       label: "Professional tax",
@@ -542,13 +546,14 @@ export function computeEmployeePay(args: {
   }
 
   /* ---- Income tax ---- */
-  if ((e.monthlyTdsPaise ?? 0) > 0 && e.tdsApplicability === "no") {
+  const tdsSwitchedOff = e.tdsApplicability === "no" && (e.monthlyTdsPaise ?? 0) > 0;
+  if (tdsSwitchedOff) {
     warnings.push(
-      "Income tax is marked as not applicable for this person, but the projection says tax is due on their pay — it has been deducted anyway. A nil liability comes from their declarations, not from a switch.",
+      `Income tax is switched off for this person, so ${((e.monthlyTdsPaise ?? 0) / 100).toFixed(2)} of TDS has not been deducted. The projection says tax is due on their pay — an employer that under-deducts answers for it.`,
     );
   }
 
-  if ((e.monthlyTdsPaise ?? 0) > 0) {
+  if ((e.monthlyTdsPaise ?? 0) > 0 && !tdsSwitchedOff) {
     lines.push({
       code: "TDS",
       label: "Income tax (TDS)",
@@ -626,9 +631,12 @@ export function computeEmployeePay(args: {
     establishmentCovered: e.esicEstablishmentCovered,
   });
 
-  if (esic.applicable && e.esicApplicability === "no") {
+  if (
+    e.esicApplicability === "no" &&
+    esiWage.coverageWagePaise <= s.esic.wageThresholdPaise
+  ) {
     warnings.push(
-      "ESI is marked as not applicable for this person, but their wages are inside the threshold and the establishment is covered — it has been deducted anyway.",
+      "ESI is switched off for this person, so nothing has been deducted or contributed for them this month, though their wages are inside the threshold.",
     );
   }
 

@@ -386,12 +386,12 @@ export function PayrollOverridesForm({
         ))}
       </div>
       <p className="text-xs text-ink-3 max-w-[76ch]">
-        Leave these on automatic unless this person is genuinely outside a
-        charge — an apprentice, somebody covered through another employer.
-        &ldquo;No&rdquo; is honoured only where the law agrees: a charge that is
-        actually due is still deducted, and the run says the switch was
-        refused. Whether the establishment is covered at all is set once,
-        under Settings → Organisation.
+        One company usually holds both kinds of people, so this is per person
+        rather than per department. Automatic follows the statutory test and the
+        establishment&rsquo;s coverage. &ldquo;Yes&rdquo; covers this person even
+        where the establishment is outside the Act; &ldquo;No&rdquo; takes them
+        out. Either way the month says what was switched off, because who is
+        inside a fund is a claim you answer for.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <SubmitButton variant="default" pendingText="Saving…">Save</SubmitButton>

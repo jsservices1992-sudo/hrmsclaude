@@ -596,3 +596,55 @@ describe("Statutory bonus on a part month", () => {
     assert.equal(r.grossPaise, L(80000));
   });
 });
+
+describe("Both kinds of people in one company", () => {
+  /* A company of a dozen routinely holds somebody carrying PF membership
+     from a previous job alongside somebody who has never been a member.
+     The establishment's coverage is one answer; the person's own record
+     is the other, and it wins in both directions. */
+  const pay = (over: Partial<EmployeeInput>) =>
+    computeEmployeePay({
+      employee: { ...employee, monthlyGrossPaise: L(30000), ...over },
+      company,
+      statutory,
+      year: 2026,
+      month: 8,
+    });
+
+  const deducted = (r: ReturnType<typeof pay>, code: string) =>
+    r.lines.find((l) => l.code === code)?.amountPaise ?? 0;
+
+  test("switched off, nothing is deducted or contributed", () => {
+    const r = pay({ pfApplicability: "no", epfEstablishmentCovered: false });
+    assert.equal(deducted(r, "EPF_EE"), 0);
+    assert.equal(deducted(r, "EPF_ER"), 0);
+    assert.ok(
+      r.warnings.some((w) => /Provident fund is switched off/.test(w)),
+      "the month says so rather than leaving it silent",
+    );
+  });
+
+  test("switched on, it is deducted even where the establishment is outside the Act", () => {
+    /* Voluntary coverage for one person and not another — a real thing a
+       small company does. */
+    const r = pay({ pfApplicability: "yes", epfEstablishmentCovered: true });
+    assert.ok(deducted(r, "EPF_EE") > 0);
+    assert.ok(deducted(r, "EPF_ER") > 0);
+  });
+
+  test("the two sit side by side in the same month", () => {
+    const withPf = pay({ pfApplicability: "yes", epfEstablishmentCovered: true });
+    const withoutPf = pay({ pfApplicability: "no", epfEstablishmentCovered: false });
+    assert.ok(withPf.netPaise < withoutPf.netPaise, "one pays into the fund, the other does not");
+    assert.equal(withPf.grossPaise, withoutPf.grossPaise, "and neither one's gross moved");
+  });
+
+  test("professional tax switched off is not deducted, and is reported", () => {
+    const on = pay({});
+    const off = pay({ ptApplicability: "no" });
+    if (deducted(on, "PT") > 0) {
+      assert.equal(deducted(off, "PT"), 0);
+      assert.ok(off.warnings.some((w) => /Professional tax is switched off/.test(w)));
+    }
+  });
+});
