@@ -53,42 +53,54 @@ export async function deriveMonth(args: {
   const from = iso(year, month, 1);
   const to = iso(year, month, total);
 
-  const [company] = await db
-    .select()
-    .from(s.companies)
-    .where(eq(s.companies.id, companyId))
-    .limit(1);
-  if (!company) return [];
-
-  const employees = await db
-    .select({
-      id: s.employees.id,
-      firstName: s.employees.firstName,
-      lastName: s.employees.lastName,
-      empCode: s.employees.empCode,
-      branchId: s.employees.branchId,
-      dateOfJoining: s.employees.dateOfJoining,
-      dateOfExit: s.employees.dateOfExit,
-    })
-    .from(s.employees)
-    .where(
-      and(
-        eq(s.employees.companyId, companyId),
-        lte(s.employees.dateOfJoining, to),
+  /* Six queries that do not depend on each other, asked together.
+     A hosted database is half a second away, so run in turn they were
+     three seconds of nothing but waiting — and an attendance upload,
+     which recomputes the month at the end of it, spent that waiting
+     twice over and then ran out of time on the serverless limit. */
+  const [[company], employees, [shiftRow], holidayRows] = await Promise.all([
+    db.select().from(s.companies).where(eq(s.companies.id, companyId)).limit(1),
+    db
+      .select({
+        id: s.employees.id,
+        firstName: s.employees.firstName,
+        lastName: s.employees.lastName,
+        empCode: s.employees.empCode,
+        branchId: s.employees.branchId,
+        dateOfJoining: s.employees.dateOfJoining,
+        dateOfExit: s.employees.dateOfExit,
+      })
+      .from(s.employees)
+      .where(
+        and(
+          eq(s.employees.companyId, companyId),
+          lte(s.employees.dateOfJoining, to),
+        ),
+      )
+      .orderBy(asc(s.employees.empCode)),
+    db
+      .select()
+      .from(s.shifts)
+      .where(and(eq(s.shifts.companyId, companyId), eq(s.shifts.isDefault, true)))
+      .limit(1),
+    db
+      .select()
+      .from(s.holidays)
+      .where(
+        and(
+          eq(s.holidays.companyId, companyId),
+          gte(s.holidays.date, from),
+          lte(s.holidays.date, to),
+          eq(s.holidays.restricted, false),
+        ),
       ),
-    )
-    .orderBy(asc(s.employees.empCode));
+  ]);
+  if (!company) return [];
 
   const scoped = args.employeeIds
     ? employees.filter((e) => args.employeeIds!.includes(e.id))
     : employees;
   if (scoped.length === 0) return [];
-
-  const [shiftRow] = await db
-    .select()
-    .from(s.shifts)
-    .where(and(eq(s.shifts.companyId, companyId), eq(s.shifts.isDefault, true)))
-    .limit(1);
 
   const shift: ShiftDef = shiftRow
     ? {
@@ -106,43 +118,32 @@ export async function deriveMonth(args: {
     .map((x) => Number(x.trim()))
     .filter((x) => !Number.isNaN(x));
 
-  const holidayRows = await db
-    .select()
-    .from(s.holidays)
-    .where(
-      and(
-        eq(s.holidays.companyId, companyId),
-        gte(s.holidays.date, from),
-        lte(s.holidays.date, to),
-        eq(s.holidays.restricted, false),
-      ),
-    );
-
   const ids = scoped.map((e) => e.id);
 
-  const punchRows = await db
-    .select()
-    .from(s.attendanceRecords)
-    .where(
-      and(
-        inArray(s.attendanceRecords.employeeId, ids),
-        gte(s.attendanceRecords.date, from),
-        lte(s.attendanceRecords.date, to),
+  const [punchRows, leaveRows] = await Promise.all([
+    db
+      .select()
+      .from(s.attendanceRecords)
+      .where(
+        and(
+          inArray(s.attendanceRecords.employeeId, ids),
+          gte(s.attendanceRecords.date, from),
+          lte(s.attendanceRecords.date, to),
+        ),
       ),
-    );
-
-  const leaveRows = await db
-    .select({ req: s.leaveRequests, type: s.leaveTypes })
-    .from(s.leaveRequests)
-    .innerJoin(s.leaveTypes, eq(s.leaveRequests.leaveTypeId, s.leaveTypes.id))
-    .where(
-      and(
-        inArray(s.leaveRequests.employeeId, ids),
-        eq(s.leaveRequests.status, "approved"),
-        lte(s.leaveRequests.fromDate, to),
-        gte(s.leaveRequests.toDate, from),
+    db
+      .select({ req: s.leaveRequests, type: s.leaveTypes })
+      .from(s.leaveRequests)
+      .innerJoin(s.leaveTypes, eq(s.leaveRequests.leaveTypeId, s.leaveTypes.id))
+      .where(
+        and(
+          inArray(s.leaveRequests.employeeId, ids),
+          eq(s.leaveRequests.status, "approved"),
+          lte(s.leaveRequests.fromDate, to),
+          gte(s.leaveRequests.toDate, from),
+        ),
       ),
-    );
+  ]);
 
   const punchByKey = new Map(punchRows.map((p) => [`${p.employeeId}|${p.date}`, p]));
 

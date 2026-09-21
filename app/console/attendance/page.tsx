@@ -35,6 +35,19 @@ import { formatINR } from "@/lib/payroll/money";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 import { paidDaysForPeriod, type ProrationBasis } from "@/lib/payroll/proration";
 
+/*
+ * A whole month of attendance for a whole company, in one request.
+ *
+ * The upload writes a row per person per day and then recomputes the
+ * month from them, and the database is a few hundred milliseconds away
+ * per statement — so a company of two dozen takes the better part of ten
+ * seconds. The platform's default cut that off mid-write and served a
+ * server error with no explanation, which is what an attendance upload
+ * looked like from the outside: press the button, get a blank page.
+ */
+export const maxDuration = 60;
+
+
 export const metadata = { title: "Attendance" };
 
 const MONTHS = [
