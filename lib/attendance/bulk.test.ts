@@ -6,6 +6,7 @@ import {
   dayTypeFor,
   BULK_STATUSES,
   BULK_STATUS_LABELS,
+  outOfPeriodMessage,
 } from "./bulk";
 import { toCsv } from "../statutory/summaries";
 
@@ -191,4 +192,26 @@ test("every status has a label, so nothing shows a raw key in a menu", () => {
     assert.ok(BULK_STATUS_LABELS[st], st);
     assert.ok(!BULK_STATUS_LABELS[st].includes("_"), st);
   }
+});
+
+test("rows outside the period name the month they belong to", () => {
+  const msg = outOfPeriodMessage(
+    ["2026-08-01", "2026-09-01", "2026-09-02", "2026-09-03"],
+    2026,
+    8,
+  );
+  assert.match(msg!, /3 row\(s\) are not in August 2026/);
+  assert.match(msg!, /3 in September 2026/);
+  assert.match(msg!, /Set the period above to September 2026/);
+});
+
+test("a file spanning two other months is told to be split", () => {
+  const msg = outOfPeriodMessage(["2026-07-31", "2026-09-01"], 2026, 8);
+  assert.match(msg!, /1 in July 2026/);
+  assert.match(msg!, /1 in September 2026/);
+  assert.match(msg!, /split it/);
+});
+
+test("a file entirely inside the period says nothing", () => {
+  assert.equal(outOfPeriodMessage(["2026-08-01", "2026-08-31"], 2026, 8), null);
 });

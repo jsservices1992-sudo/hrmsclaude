@@ -208,3 +208,51 @@ export function dayTypeFor(
   if (status === "holiday") return "holiday";
   return "working";
 }
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** "August 2026" from "2026-08". */
+function periodName(prefix: string): string {
+  const [y, m] = prefix.split("-");
+  return `${MONTH_NAMES[Number(m) - 1] ?? m} ${y}`;
+}
+
+/**
+ * What to say about rows dated outside the period being uploaded into.
+ *
+ * Saying only how many there are leaves somebody scrolling a register of
+ * seven hundred lines looking for them. The months they actually belong
+ * to is the whole answer: nearly always the file is right and the period
+ * picker is on the wrong month, or a payroll cycle that runs from the
+ * 26th has carried the tail of the month before.
+ */
+export function outOfPeriodMessage(
+  dates: string[],
+  year: number,
+  month: number,
+): string | null {
+  const prefix = `${year}-${String(month).padStart(2, "0")}`;
+  const outside = dates.filter((d) => !d.startsWith(prefix));
+  if (outside.length === 0) return null;
+
+  const byMonth = new Map<string, number>();
+  for (const d of outside) {
+    const key = d.slice(0, 7);
+    byMonth.set(key, (byMonth.get(key) ?? 0) + 1);
+  }
+  const named = [...byMonth.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, n]) => `${n} in ${periodName(key)}`);
+
+  const only = byMonth.size === 1 ? [...byMonth.keys()][0] : null;
+
+  return (
+    `${outside.length} row(s) are not in ${periodName(prefix)} — ${named.join(", ")}. ` +
+    (only
+      ? `Set the period above to ${periodName(only)} and upload again, or take those rows out of the file.`
+      : "A file covers one month; split it and upload each month into its own period.")
+  );
+}

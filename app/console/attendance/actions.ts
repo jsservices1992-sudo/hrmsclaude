@@ -15,6 +15,7 @@ import {
 import { persistMonth } from "@/lib/attendance/service";
 import {
   parseAttendanceCsv,
+  outOfPeriodMessage,
   punchesForBulkStatus,
   dayTypeFor,
   type BulkStatus,
@@ -175,13 +176,8 @@ export async function bulkUploadAttendance(
     return { error: "No usable rows found.", parseErrors };
   }
 
-  const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
-  const outOfPeriod = rows.filter((r) => !r.date.startsWith(monthPrefix));
-  if (outOfPeriod.length > 0) {
-    return {
-      error: `${outOfPeriod.length} row(s) fall outside ${monthPrefix} — upload one period at a time.`,
-    };
-  }
+  const outOfPeriod = outOfPeriodMessage(rows.map((r) => r.date), year, month);
+  if (outOfPeriod) return { error: outOfPeriod };
 
   const employees = await db
     .select({
