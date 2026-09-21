@@ -618,9 +618,16 @@ describe("Both kinds of people in one company", () => {
     const r = pay({ pfApplicability: "no", epfEstablishmentCovered: false });
     assert.equal(deducted(r, "EPF_EE"), 0);
     assert.equal(deducted(r, "EPF_ER"), 0);
-    assert.ok(
-      r.warnings.some((w) => /Provident fund is switched off/.test(w)),
-      "the month says so rather than leaving it silent",
+  });
+
+  test("and it is not reported every month as though it were a problem", () => {
+    /* The decision was made once, on the person's record, with a name
+       against it in the audit trail. A finding a month for every such
+       person buries the findings that do need reading. */
+    const r = pay({ pfApplicability: "no", epfEstablishmentCovered: false });
+    assert.equal(
+      r.warnings.filter((w) => /switched off|not applicable/i.test(w)).length,
+      0,
     );
   });
 
@@ -639,12 +646,16 @@ describe("Both kinds of people in one company", () => {
     assert.equal(withPf.grossPaise, withoutPf.grossPaise, "and neither one's gross moved");
   });
 
-  test("professional tax switched off is not deducted, and is reported", () => {
+  test("professional tax switched off is not deducted", () => {
     const on = pay({});
     const off = pay({ ptApplicability: "no" });
     if (deducted(on, "PT") > 0) {
       assert.equal(deducted(off, "PT"), 0);
-      assert.ok(off.warnings.some((w) => /Professional tax is switched off/.test(w)));
+      assert.equal(
+        off.warnings.filter((w) => /switched off/i.test(w)).length,
+        0,
+        "a deliberate setting is not a finding",
+      );
     }
   });
 });

@@ -399,15 +399,10 @@ export function computeEmployeePay(args: {
     establishmentCovered: e.epfEstablishmentCovered,
   });
 
-  /* Switched off on this person's record rather than by the statutory
-     test. Nothing is deducted — and the month says so, because who is
-     inside a fund is a claim the employer answers for, and a silent
-     exemption is indistinguishable from a mistake. */
-  if (e.pfApplicability === "no" && epfBase > 0) {
-    warnings.push(
-      "Provident fund is switched off for this person, so nothing has been deducted or contributed for them this month.",
-    );
-  }
+  /* A person switched out of a fund on their own record produces no
+     finding. It is a decision somebody made once, with their name on it
+     in the audit trail; repeating it every month for every such person
+     buries the findings that do need reading under ones that do not. */
   if (epf.applicable) {
     // The wage the contribution was computed on. Recorded as its own line
     // because the ECR files it as a column, and a stored run has to be
@@ -464,16 +459,7 @@ export function computeEmployeePay(args: {
     applicable: s.ptApplicableByState[e.stateCode] ?? false,
     incomeTaxPayee: e.incomeTaxPayee,
   });
-  /* Switched off on this person's record. Honoured, and said out loud:
-     it is a claim about who the tax reaches, and the person who made it
-     should meet it again when the month is reviewed. */
   const ptSwitchedOff = e.ptApplicability === "no" && pt.amountPaise > 0;
-  if (ptSwitchedOff) {
-    warnings.push(
-      `Professional tax is switched off for this person, so ${e.stateCode}'s ${(pt.amountPaise / 100).toFixed(2)} has not been deducted. The state levies it on these wages.`,
-    );
-  }
-
   if (pt.amountPaise > 0 && !ptSwitchedOff) {
     lines.push({
       code: "PT",
@@ -547,12 +533,6 @@ export function computeEmployeePay(args: {
 
   /* ---- Income tax ---- */
   const tdsSwitchedOff = e.tdsApplicability === "no" && (e.monthlyTdsPaise ?? 0) > 0;
-  if (tdsSwitchedOff) {
-    warnings.push(
-      `Income tax is switched off for this person, so ${((e.monthlyTdsPaise ?? 0) / 100).toFixed(2)} of TDS has not been deducted. The projection says tax is due on their pay — an employer that under-deducts answers for it.`,
-    );
-  }
-
   if ((e.monthlyTdsPaise ?? 0) > 0 && !tdsSwitchedOff) {
     lines.push({
       code: "TDS",
@@ -630,15 +610,6 @@ export function computeEmployeePay(args: {
     coveredAtPeriodStart: e.esicCoveredAtPeriodStart,
     establishmentCovered: e.esicEstablishmentCovered,
   });
-
-  if (
-    e.esicApplicability === "no" &&
-    esiWage.coverageWagePaise <= s.esic.wageThresholdPaise
-  ) {
-    warnings.push(
-      "ESI is switched off for this person, so nothing has been deducted or contributed for them this month, though their wages are inside the threshold.",
-    );
-  }
 
   if (esic.applicable) {
     const wageNote = describeEsicWage(esiWage);

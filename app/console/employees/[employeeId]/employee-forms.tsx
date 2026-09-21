@@ -390,8 +390,8 @@ export function PayrollOverridesForm({
         rather than per department. Automatic follows the statutory test and the
         establishment&rsquo;s coverage. &ldquo;Yes&rdquo; covers this person even
         where the establishment is outside the Act; &ldquo;No&rdquo; takes them
-        out. Either way the month says what was switched off, because who is
-        inside a fund is a claim you answer for.
+        out. What you set here is recorded against your name and is not raised
+        again every month.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <SubmitButton variant="default" pendingText="Saving…">Save</SubmitButton>
