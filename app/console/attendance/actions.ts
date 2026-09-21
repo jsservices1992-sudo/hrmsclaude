@@ -12,7 +12,11 @@ import {
   canSeeCompensation,
   canActOnPeople,
 } from "@/lib/auth/session";
-import { persistMonth } from "@/lib/attendance/service";
+import { persistMonth, deriveMonth } from "@/lib/attendance/service";
+import {
+  parseDaysWorkedCsv,
+  outcomeForDaysWorked,
+} from "@/lib/attendance/days-worked";
 import {
   parseAttendanceCsv,
   outOfPeriodMessage,
@@ -1424,4 +1428,201 @@ export async function removeAdjustment(
   revalidatePath("/console/attendance");
   revalidatePath("/console/runs");
   return { ok: "Removed — it will not apply the next time this period is calculated." };
+}
+
+
+/**
+ * A month from a count of days worked, one line per person.
+ *
+ * The other import wants a row per person per day and takes its meaning
+ * partly from what is *not* in the file — a day nobody mentioned counts
+ * as present under this company's setting, so a register of the days
+ * people actually worked pays everybody in full. This one says the same
+ * thing in the form the register is kept in, and leaves nothing unsaid.
+ *
+ * It writes the loss-of-pay figure payroll reads, marked as set by hand,
+ * because that is what it is: somebody's count, not a derivation from
+ * punches. A later recompute leaves it alone for the same reason.
+ */
+export async function uploadDaysWorked(
+  prev: BulkAttendanceState,
+  fd: FormData,
+): Promise<BulkAttendanceState> {
+  try {
+    return await daysWorkedUpload(prev, fd);
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error("days-worked upload failed", e);
+    return {
+      error: `The upload did not finish: ${detail.slice(0, 300)}. Nothing was changed — uploading again is safe.`,
+    };
+  }
+}
+
+async function daysWorkedUpload(
+  _prev: BulkAttendanceState,
+  fd: FormData,
+): Promise<BulkAttendanceState> {
+  const { user, error } = await requireHr();
+  if (error || !user) return { error: error ?? "Not authorised." };
+
+  const companyId = String(fd.get("companyId") ?? "");
+  const year = Number(fd.get("year"));
+  const month = Number(fd.get("month"));
+  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+  if (!year || !month) return { error: "Invalid period." };
+
+  if (await periodSignedOff(companyId, year, month)) {
+    return {
+      error:
+        "This period has an approved payroll run. Reopen the run before changing attendance, so the change is versioned rather than silent.",
+    };
+  }
+
+  const file = fd.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a CSV file." };
+  if (file.size > 2 * 1024 * 1024) return { error: "The limit is 2MB." };
+
+  const { rows, errors: parseErrors } = parseDaysWorkedCsv(await file.text());
+  if (rows.length === 0) {
+    return { error: "No usable rows found.", parseErrors };
+  }
+
+  /* The month as it stands, for the working days each person actually
+     has: a mid-month joiner has fewer, and the days before they joined
+     are not days they were absent. */
+  const months = await deriveMonth({ companyId, year, month });
+  const byCode = new Map(months.map((m) => [m.empCode, m]));
+
+  const unknownCodes = rows.filter((r) => !byCode.has(r.empCode)).map((r) => r.empCode);
+  if (unknownCodes.length > 0) {
+    return {
+      error: `${unknownCodes.length} employee code(s) not found in this company — nothing was changed.`,
+      unknownCodes: [...new Set(unknownCodes)],
+    };
+  }
+
+  const isOff = (status: string) => status === "weekly_off" || status === "holiday";
+  const period = `${year}-${String(month).padStart(2, "0")}`;
+  const settled: { m: (typeof months)[number]; lopDays: number; paidDays: number; worked: number; workingDays: number }[] = [];
+  const problems: string[] = [];
+
+  for (const row of rows) {
+    const m = byCode.get(row.empCode)!;
+    const employedDays = m.days.filter(
+      (d) =>
+        d.date >= (m.dateOfJoining > `${period}-01` ? m.dateOfJoining : `${period}-01`) &&
+        (!m.dateOfExit || d.date <= m.dateOfExit),
+    ).length;
+    const workingDays = m.days.filter(
+      (d) =>
+        !isOff(d.status) &&
+        d.date >= m.dateOfJoining &&
+        (!m.dateOfExit || d.date <= m.dateOfExit),
+    ).length;
+
+    const outcome = outcomeForDaysWorked({
+      workingDays,
+      employedDays,
+      daysWorked: row.daysWorked,
+      halfDays: row.halfDays,
+    });
+    if (outcome.problem) {
+      problems.push(`${row.empCode} ${m.name}: ${outcome.problem}`);
+      continue;
+    }
+    settled.push({
+      m,
+      lopDays: outcome.lopDays,
+      paidDays: outcome.paidDays,
+      worked: row.daysWorked + row.halfDays / 2,
+      workingDays,
+    });
+  }
+
+  if (problems.length > 0) {
+    return {
+      error:
+        `Nothing was changed. ${problems.length} line(s) cannot stand as written: ` +
+        problems.slice(0, 4).join(" ") +
+        (problems.length > 4 ? ` And ${problems.length - 4} more.` : ""),
+      parseErrors,
+    };
+  }
+
+  const now = new Date().toISOString();
+  const existing = await db
+    .select({ id: s.attendanceInputs.id, employeeId: s.attendanceInputs.employeeId })
+    .from(s.attendanceInputs)
+    .where(
+      and(
+        inArray(
+          s.attendanceInputs.employeeId,
+          settled.map((x) => x.m.employeeId),
+        ),
+        eq(s.attendanceInputs.periodYear, year),
+        eq(s.attendanceInputs.periodMonth, month),
+      ),
+    );
+  const existingId = new Map(existing.map((r) => [r.employeeId, r.id]));
+
+  await db.transaction(async (tx) => {
+    for (const x of settled) {
+      const reason = `Days worked: ${x.worked} of ${x.workingDays} working day(s), from an uploaded register`;
+      const id = existingId.get(x.m.employeeId);
+      if (id) {
+        await tx
+          .update(s.attendanceInputs)
+          .set({
+            lopDays: x.lopDays,
+            overridden: true,
+            overriddenBy: user.email,
+            overriddenAt: now,
+            overrideReason: reason,
+          })
+          .where(eq(s.attendanceInputs.id, id));
+      } else {
+        await tx.insert(s.attendanceInputs).values({
+          id: randomUUID(),
+          employeeId: x.m.employeeId,
+          periodYear: year,
+          periodMonth: month,
+          lopDays: x.lopDays,
+          offDaysWorked: 0,
+          overridden: true,
+          overriddenBy: user.email,
+          overriddenAt: now,
+          overrideReason: reason,
+        });
+      }
+    }
+  });
+
+  await audit({
+    actor: user.email,
+    action: "attendance.days_worked_imported",
+    entity: "attendance",
+    entityId: `${companyId}:${year}-${month}`,
+    after: {
+      employees: settled.length,
+      totalLopDays: settled.reduce((a, x) => a + x.lopDays, 0),
+    },
+  });
+
+  revalidatePath("/console/attendance");
+  revalidatePath("/console/payroll");
+
+  const untouched = months.length - settled.length;
+  const totalLop = settled.reduce((a, x) => a + x.lopDays, 0);
+
+  return {
+    ok:
+      `Set days worked for ${settled.length} employee(s) — ${totalLop.toFixed(2)} day(s) of loss of pay in total. ` +
+      `Weekly offs and holidays are paid on top of the days counted.` +
+      (untouched > 0
+        ? ` ${untouched} employee(s) were not in the file and are unchanged.`
+        : "") +
+      (parseErrors.length > 0 ? ` ${parseErrors.length} line(s) were skipped — see below.` : ""),
+    parseErrors: parseErrors.length > 0 ? parseErrors : undefined,
+  };
 }

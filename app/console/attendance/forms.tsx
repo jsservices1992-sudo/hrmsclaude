@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import {
   recomputeAttendance,
   bulkUploadAttendance,
+  uploadDaysWorked,
   bulkMarkDepartment,
   overrideAttendanceInput,
   clearAttendanceOverride,
@@ -46,6 +47,68 @@ export function RecomputeForm({
  * of raw punch times. Bad rows are skipped and named by line number
  * rather than failing the whole file.
  */
+/**
+ * The simpler of the two imports: how many days each person worked.
+ *
+ * Offered first because it is what most registers hold, and because the
+ * day-by-day file has a trap in it — under this company's setting a day
+ * the file does not mention counts as present, so a register of the days
+ * worked pays everybody in full.
+ */
+export function DaysWorkedUploadForm({
+  companyId, year, month,
+}: {
+  companyId: string; year: number; month: number;
+}) {
+  const [state, action] = useActionState<BulkAttendanceState, FormData>(uploadDaysWorked, {});
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <input type="hidden" name="companyId" value={companyId} />
+      <input type="hidden" name="year" value={year} />
+      <input type="hidden" name="month" value={month} />
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          name="file"
+          type="file"
+          accept=".csv,text/csv"
+          required
+          className="text-sm border border-line rounded-md px-2 py-1.5 bg-surface"
+        />
+        <SubmitButton pendingText="Working…">Upload days worked</SubmitButton>
+      </div>
+      <p className="text-xs text-ink-3">
+        One line per person: <code className="font-mono">empCode,name,daysWorked</code>.
+        Weekly offs and holidays are paid without being counted, so they do not
+        go in the figure — the days not worked become loss of pay.{" "}
+        <a
+          href={`/console/attendance/template/days-worked?company=${companyId}&year=${year}&month=${month}`}
+          className="text-brass hover:underline whitespace-nowrap"
+        >
+          Download template →
+        </a>{" "}
+        <span className="text-ink-3">
+          (everybody, already filled in with a full month — change the ones who were away)
+        </span>
+      </p>
+      <FormFeedback state={state} />
+      {state.parseErrors && state.parseErrors.length > 0 && (
+        <ul className="text-xs text-brass flex flex-col gap-0.5 max-h-32 overflow-y-auto">
+          {state.parseErrors.slice(0, 20).map((e, i) => (
+            <li key={i}>
+              Line {e.line}: {e.message}
+            </li>
+          ))}
+        </ul>
+      )}
+      {state.unknownCodes && state.unknownCodes.length > 0 && (
+        <p className="text-xs text-rust">
+          Unknown employee code(s): {state.unknownCodes.join(", ")}
+        </p>
+      )}
+    </form>
+  );
+}
+
 export function BulkUploadForm({
   companyId, year, month,
 }: {

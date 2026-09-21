@@ -16,6 +16,7 @@ import {
 import {
   RecomputeForm,
   BulkUploadForm,
+  DaysWorkedUploadForm,
   DepartmentBulkMarkForm,
   OverrideCell,
   OverrideAttendanceForm,
@@ -666,9 +667,22 @@ export default async function AttendancePage(
       {/* ---------------- import ---------------- */}
       {tab === "import" && canAct && (
         <div className="grid lg:grid-cols-2 gap-5 items-start">
+          {/* First, because it is the register most companies keep and it
+              cannot be read the wrong way: every day not counted is a day
+              of loss of pay, with nothing resting on what the file leaves
+              out. */}
+          <Card padded={false}>
+            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="label text-ink-2">Days worked — one line per person</span>
+              <span className="label text-teal">simplest</span>
+            </div>
+            <div className="p-4">
+              <DaysWorkedUploadForm companyId={companyId} year={year} month={month} />
+            </div>
+          </Card>
           <Card padded={false}>
             <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Import a CSV register</span>
+              <span className="label text-ink-2">Day by day — a row per person per day</span>
             </div>
             <div className="p-4">
               <BulkUploadForm companyId={companyId} year={year} month={month} />
