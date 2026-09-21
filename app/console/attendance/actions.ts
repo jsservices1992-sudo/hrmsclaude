@@ -319,7 +319,35 @@ async function uploadAttendance(
 
   // Punches alone are raw input — recompute so LOP, sandwich rule and
   // leave interaction all apply the same way a device punch would.
-  await persistMonth({ companyId, year, month });
+  const months = await persistMonth({ companyId, year, month });
+
+  /*
+   * Days the file said nothing about.
+   *
+   * This company counts them present — the setting exists because most
+   * registers record only the exceptions. But somebody who uploads the
+   * days people actually worked expects the rest to be unpaid, gets a
+   * month where everybody is paid in full, and has nothing on the screen
+   * to explain it. The upload knows exactly how many days it is, so it
+   * says so.
+   */
+  const inFile = new Set(deduped.map((r) => `${byCode.get(r.empCode)}|${r.date}`));
+  const unmarkedByEmployee = new Map<string, number>();
+  for (const m of months) {
+    for (const d of m.days) {
+      if (
+        d.status === "present" &&
+        /No attendance recorded/.test(d.basis ?? "") &&
+        !inFile.has(`${m.employeeId}|${d.date}`)
+      ) {
+        unmarkedByEmployee.set(
+          m.employeeId,
+          (unmarkedByEmployee.get(m.employeeId) ?? 0) + 1,
+        );
+      }
+    }
+  }
+  const unmarkedDays = [...unmarkedByEmployee.values()].reduce((a, b) => a + b, 0);
 
   await audit({
     actor: user.email,
@@ -346,6 +374,11 @@ async function uploadAttendance(
      had covered the whole company. */
   const importedFor = new Set(deduped.map((r) => r.empCode)).size;
 
+  const unmarkedNote =
+    unmarkedDays > 0
+      ? ` ${unmarkedDays} working day(s) across ${unmarkedByEmployee.size} employee(s) had no row in the file — this company counts a day with nothing recorded as present and pays it. If your file lists only the days worked, mark the rest absent, or change "Days with no attendance record" under Settings → Organisation.`
+      : "";
+
   const duplicateNote =
     duplicates > 0
       ? ` ${duplicates} row(s) repeated a person and day already in the file — the last one written won.`
@@ -364,7 +397,7 @@ async function uploadAttendance(
       : "";
 
   return {
-    ok: `Imported ${deduped.length} row(s) for ${importedFor} employee(s), and recomputed the month.${duplicateNote}${skippedNote}${outsideNote}`,
+    ok: `Imported ${deduped.length} row(s) for ${importedFor} employee(s), and recomputed the month.${duplicateNote}${unmarkedNote}${skippedNote}${outsideNote}`,
     parseErrors: parseErrors.length > 0 ? parseErrors : undefined,
   };
 }
