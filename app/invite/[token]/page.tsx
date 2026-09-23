@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { inviteStatus, INVITE_MESSAGES } from "@/lib/auth/invite";
+import { AuthShell } from "@/components/auth-shell";
 import { AcceptInviteForm } from "./form";
 
 export const dynamic = "force-dynamic";
@@ -34,31 +35,27 @@ export default async function InvitePage(props: PageProps<"/invite/[token]">) {
   const status = inviteStatus(user);
 
   return (
-    <main className="min-h-dvh grid place-items-center bg-paper px-6 py-16">
-      <div className="w-full max-w-sm flex flex-col gap-6">
-        <div>
-          <p className="label text-amber">Lekha</p>
-          <h1 className="font-display text-2xl font-semibold mt-1">
-            {status === "valid" ? "Set up your account" : "This link cannot be used"}
-          </h1>
-          {status === "valid" ? (
-            <p className="text-sm text-ink-2 mt-1">
-              Choose a password for <span className="font-mono">{user!.email}</span>.
-              Nobody else will know it, including your HR team.
-            </p>
-          ) : (
-            <p className="text-sm text-ink-2 mt-1">{INVITE_MESSAGES[status]}</p>
-          )}
-        </div>
-
-        {status === "valid" ? (
-          <AcceptInviteForm token={token} />
+    <AuthShell
+      title={status === "valid" ? "Set up your account" : "This link cannot be used"}
+      description={
+        status === "valid" ? (
+          <>
+            Choose a password for <span className="font-medium text-ink">{user!.email}</span>.
+            Nobody else will know it, including your HR team.
+          </>
         ) : (
-          <Link href="/login" className="text-sm text-indigo font-semibold hover:text-indigo-2">
+          INVITE_MESSAGES[status]
+        )
+      }
+      footer={
+        status !== "valid" && (
+          <Link href="/login" className="font-semibold text-indigo hover:text-indigo-2">
             Go to sign in →
           </Link>
-        )}
-      </div>
-    </main>
+        )
+      }
+    >
+      {status === "valid" ? <AcceptInviteForm token={token} /> : null}
+    </AuthShell>
   );
 }

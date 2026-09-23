@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { signupEnabled } from "@/lib/auth/signup";
+import { AuthShell } from "@/components/auth-shell";
 import LoginForm from "./login-form";
 
 export const metadata = { title: "Sign in" };
@@ -23,45 +24,28 @@ export default async function LoginPage() {
   if (user) redirect(user.role === "employee" ? "/me" : "/console");
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-5 py-12">
-      <div className="w-full max-w-sm flex flex-col gap-8">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span
-            aria-hidden
-            className="grid h-9 w-9 place-items-center rounded-lg bg-indigo text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
-          >
-            ल
-          </span>
-          <span className="font-display text-2xl font-semibold">Lekha</span>
-        </Link>
-
-        <div className="flex flex-col gap-2">
-          <h1 className="font-display text-3xl font-semibold tracking-[-0.02em]">
-            Sign in
-          </h1>
-          <p className="text-sm text-ink-2">
-            Payroll and employee data are restricted. Every sign-in is recorded.
-          </p>
-        </div>
-
-        <LoginForm />
-
-        <div className="flex flex-col gap-2">
+    <AuthShell
+      title="Sign in"
+      description="Enter the email and password your company gave you."
+      footer={
+        <>
           {signupEnabled() && (
-            <p className="text-sm text-ink-2">
+            <p>
               New here?{" "}
-              <Link href="/signup" className="text-indigo font-semibold hover:text-indigo-2">
+              <Link href="/signup" className="font-semibold text-indigo hover:text-indigo-2">
                 Create your company
               </Link>
             </p>
           )}
-          <p className="text-sm text-ink-2">
-            <Link href="/forgot-password" className="text-indigo font-semibold hover:text-indigo-2">
+          <p>
+            <Link href="/forgot-password" className="font-semibold text-indigo hover:text-indigo-2">
               Forgot your password?
             </Link>
           </p>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <LoginForm />
+    </AuthShell>
   );
 }

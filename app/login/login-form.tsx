@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { login, type LoginState } from "./actions";
+import { authField, authButton } from "@/components/auth-shell";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -10,7 +11,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="w-full px-5 py-2.5 text-sm font-medium rounded-lg bg-indigo text-on-indigo border border-indigo shadow-sm hover:bg-indigo-2 disabled:opacity-60 transition-colors"
+      className={authButton}
     >
       {pending ? "Signing in…" : "Sign in"}
     </button>
@@ -22,20 +23,20 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-5">
       <label className="flex flex-col gap-1.5">
-        <span className="label text-ink-3">Work email</span>
+        <span className="text-sm font-medium text-ink">Work email</span>
         <input
           name="email"
           type="email"
           autoComplete="username"
           required
-          className="px-3 py-2.5 bg-surface border border-line focus:border-ink-3 outline-none rounded-lg"
+          className={authField}
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="label text-ink-3 flex items-center justify-between">
+        <span className="flex items-center justify-between text-sm font-medium text-ink">
           Password
           {/*
            * A freshly issued password is unfamiliar and easy to
@@ -47,7 +48,7 @@ export default function LoginForm() {
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="text-xs font-normal text-ink-3 hover:text-ink-2 underline"
+            className="text-xs font-semibold text-indigo hover:text-indigo-2"
           >
             {showPassword ? "Hide" : "Show"}
           </button>
@@ -57,14 +58,14 @@ export default function LoginForm() {
           type={showPassword ? "text" : "password"}
           autoComplete="current-password"
           required
-          className="px-3 py-2.5 bg-surface border border-line focus:border-ink-3 outline-none rounded-lg"
+          className={authField}
         />
       </label>
 
       {state.error ? (
         <p
           role="alert"
-          className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg"
+          className="rounded-xl border border-rust/25 bg-rust-soft px-3.5 py-2.5 text-sm text-rust"
         >
           {state.error}
         </p>

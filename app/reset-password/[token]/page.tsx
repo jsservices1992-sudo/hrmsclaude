@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { resetStatus, RESET_MESSAGES } from "@/lib/auth/reset";
+import { AuthShell } from "@/components/auth-shell";
 import { ResetPasswordForm } from "./form";
 
 export const dynamic = "force-dynamic";
@@ -29,31 +30,27 @@ export default async function ResetPasswordPage(props: PageProps<"/reset-passwor
   const status = resetStatus(user);
 
   return (
-    <main className="min-h-dvh grid place-items-center bg-paper px-6 py-16">
-      <div className="w-full max-w-sm flex flex-col gap-6">
-        <div>
-          <p className="label text-amber">Lekha</p>
-          <h1 className="font-display text-2xl font-semibold mt-1">
-            {status === "valid" ? "Set a new password" : "This link cannot be used"}
-          </h1>
-          {status === "valid" ? (
-            <p className="text-sm text-ink-2 mt-1">
-              Choose a new password for <span className="font-mono">{user!.email}</span>. Every other
-              session on this account will be signed out.
-            </p>
-          ) : (
-            <p className="text-sm text-ink-2 mt-1">{RESET_MESSAGES[status]}</p>
-          )}
-        </div>
-
-        {status === "valid" ? (
-          <ResetPasswordForm token={token} />
+    <AuthShell
+      title={status === "valid" ? "Set a new password" : "This link cannot be used"}
+      description={
+        status === "valid" ? (
+          <>
+            Choose a new password for <span className="font-medium text-ink">{user!.email}</span>.
+            Every other session on this account will be signed out.
+          </>
         ) : (
-          <Link href="/forgot-password" className="text-sm text-indigo font-semibold hover:text-indigo-2">
+          RESET_MESSAGES[status]
+        )
+      }
+      footer={
+        status !== "valid" && (
+          <Link href="/forgot-password" className="font-semibold text-indigo hover:text-indigo-2">
             Request a new link →
           </Link>
-        )}
-      </div>
-    </main>
+        )
+      }
+    >
+      {status === "valid" ? <ResetPasswordForm token={token} /> : null}
+    </AuthShell>
   );
 }

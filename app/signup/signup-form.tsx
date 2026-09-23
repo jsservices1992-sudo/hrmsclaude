@@ -1,12 +1,13 @@
 "use client";
 
+import { authField, authButton } from "@/components/auth-shell";
+
 import { useActionState } from "react";
 import Link from "next/link";
 import { signup, type SignupState } from "./actions";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/signup";
 
-const field =
-  "w-full px-3 py-2 text-sm bg-surface border border-line outline-none focus:border-indigo";
+const field = authField;
 
 function Field({
   label,
@@ -29,7 +30,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="label text-ink-3">{label}</span>
+      <span className="text-sm font-medium text-ink">{label}</span>
       <input
         defaultValue={defaultValue}
         name={name}
@@ -101,13 +102,13 @@ export function SignupForm() {
       />
 
       {state.error && !Object.keys(e).length && (
-        <p className="text-sm text-rust">{state.error}</p>
+        <p role="alert" className="rounded-xl border border-rust/25 bg-rust-soft px-3.5 py-2.5 text-sm text-rust">{state.error}</p>
       )}
 
       <button
         type="submit"
         disabled={pending}
-        className="px-4 py-2.5 text-sm bg-indigo text-on-indigo hover:opacity-90 disabled:opacity-60 rounded-lg"
+        className={authButton}
       >
         {pending ? "Creating your company…" : "Create company"}
       </button>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthShell } from "@/components/auth-shell";
 import { ForgotPasswordForm } from "./form";
 
 export const metadata = { title: "Reset your password" };
@@ -6,20 +7,16 @@ export const dynamic = "force-dynamic";
 
 export default function ForgotPasswordPage() {
   return (
-    <main className="min-h-dvh grid place-items-center bg-paper px-6 py-16">
-      <div className="w-full max-w-sm flex flex-col gap-6">
-        <div>
-          <p className="label text-amber">Lekha</p>
-          <h1 className="font-display text-2xl font-semibold mt-1">Reset your password</h1>
-          <p className="text-sm text-ink-2 mt-1">
-            Enter the email address you sign in with and we&apos;ll send a link to choose a new one.
-          </p>
-        </div>
-        <ForgotPasswordForm />
-        <Link href="/login" className="text-sm text-indigo font-semibold hover:text-indigo-2">
+    <AuthShell
+      title="Reset your password"
+      description="Enter the email address you sign in with and we'll send a link to choose a new one."
+      footer={
+        <Link href="/login" className="font-semibold text-indigo hover:text-indigo-2">
           ← Back to sign in
         </Link>
-      </div>
-    </main>
+      }
+    >
+      <ForgotPasswordForm />
+    </AuthShell>
   );
 }
