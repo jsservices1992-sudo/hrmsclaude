@@ -429,7 +429,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
       {/* ---------------- hero ---------------- */}
       <section className="rounded-xl border border-line bg-surface">
         <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6 p-5 sm:p-7">
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col">
             <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-indigo-soft px-2.5 py-1 text-xs font-semibold text-indigo">
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-indigo" /> {PERIOD.label} payroll
             </span>
@@ -458,6 +458,16 @@ export default async function DashboardPage(props: PageProps<"/console">) {
               >
                 Reports
               </Link>
+            </div>
+
+            {/* Once the payroll card beside it grew a chart, this column
+                was shorter and its content sat centred with dead air
+                below it. A quiet ground pattern reads as deliberate
+                where a random-height blank does not — the same
+                treatment the marketing hero uses. */}
+            <div aria-hidden className="relative mt-8 flex-1 min-h-[6rem] overflow-hidden rounded-lg">
+              <div className="absolute inset-0 bg-glow opacity-70" />
+              <div className="absolute inset-0 bg-grid opacity-50" />
             </div>
           </div>
 
