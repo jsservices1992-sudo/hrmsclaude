@@ -90,9 +90,9 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border border-line bg-surface rounded-lg">
+    <section className="rounded-xl border border-line bg-surface">
       <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="label text-ink-2">{title}</h2>
+        <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
         {right}
       </div>
       {children}
@@ -144,7 +144,7 @@ export default async function MePage(props: PageProps<"/me">) {
   const myAssets = await loadEmployeeAssets(emp.id);
   const pendingAssetConsent = myAssets.filter((a) => !a.alloc.consentedAt).length;
 
-  const tabs = [
+  const tabs: { id: string; label: string; count?: number }[] = [
     { id: "home", label: "Overview" },
     { id: "payslip", label: "Payslips" },
     { id: "attendance", label: "Attendance" },
@@ -153,9 +153,9 @@ export default async function MePage(props: PageProps<"/me">) {
     { id: "form16", label: "Form 16" },
     { id: "documents", label: "Documents" },
     { id: "profile", label: "Profile" },
-    { id: "assets", label: `Assets${myAssets.length > 0 ? ` (${myAssets.length})` : ""}` },
-    ...(isManager ? [{ id: "team", label: `My team (${reports.length})` }] : []),
-    ...(inbox.length > 0 ? [{ id: "tasks", label: `Tasks (${inbox.length})` }] : []),
+    { id: "assets", label: "Assets", count: myAssets.length },
+    ...(isManager ? [{ id: "team", label: "My team", count: reports.length }] : []),
+    ...(inbox.length > 0 ? [{ id: "tasks", label: "Tasks", count: inbox.length }] : []),
     { id: "settings", label: "Settings" },
   ];
   // "settlement" is reachable only from the F&F tile's link, not from the
@@ -428,49 +428,70 @@ export default async function MePage(props: PageProps<"/me">) {
     todayRecord ? (JSON.parse(todayRecord.punchesJson) as DayPunch[]) : [],
   );
 
+  const initials = `${user.name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}`;
+  const phoneTabs = [
+    { id: "home", label: "Home", d: "M3 8.5 10 3l7 5.5V16a1 1 0 0 1-1 1h-3v-5H7v5H4a1 1 0 0 1-1-1V8.5Z" },
+    { id: "payslip", label: "Payslips", d: "M5 3h10v14l-2.5-1.5L10 17l-2.5-1.5L5 17V3Zm3 4h4m-4 3h4" },
+    { id: "leave", label: "Leave", d: "M4 5h12v11H4zM4 8.5h12M7.5 3v3M12.5 3v3" },
+    { id: "attendance", label: "Attendance", d: "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm0 3v4l2.5 2" },
+  ];
+
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 sm:px-8 py-8 flex flex-col gap-6">
-      <header className="flex items-center justify-between gap-4" data-print="hide">
-        <Link href="/me" className="flex items-center gap-2.5">
-          <span
-            aria-hidden
-            className="grid h-8 w-8 place-items-center rounded-lg bg-indigo text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
-          >
-            ल
-          </span>
-          <span className="font-display text-xl font-semibold">{SITE.name}</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          {canAccessConsole(user) && (
-            <Link href="/console" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-              Console →
-            </Link>
-          )}
-          <form action={logout}>
-            <button type="submit" className="label text-ink-3 hover:text-ink">
-              Sign out
-            </button>
-          </form>
+    <div className="min-h-dvh bg-paper pb-20 sm:pb-0">
+      <header className="sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur-md" data-print="hide">
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4 sm:px-8">
+          <Link href="/me" className="flex items-center gap-2.5">
+            <span
+              aria-hidden
+              className="grid h-8 w-8 place-items-center rounded-lg bg-indigo text-on-indigo text-lg font-bold leading-none"
+            >
+              ल
+            </span>
+            <span className="text-lg font-bold tracking-tight">{SITE.name}</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            {canAccessConsole(user) && (
+              <Link href="/console" className="rounded-lg px-3 py-1.5 text-sm font-semibold text-indigo hover:bg-indigo-soft">
+                Open console
+              </Link>
+            )}
+            <form action={logout}>
+              <button type="submit" className="rounded-lg px-3 py-1.5 text-sm font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink">
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 
-      <div>
-        <p className="label text-amber">My workspace</p>
-        <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">{user.name}</h1>
-        <p className="text-sm text-ink-2 mt-1">
-          <span className="font-mono">{emp.empCode}</span> · {emp.designation} · {row.branch.name}
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-5xl px-4 sm:px-8 py-6 sm:py-8 flex flex-col gap-6">
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-line bg-surface p-5" data-print="hide">
+        <div className="flex min-w-0 items-center gap-4">
+          <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-indigo text-lg font-bold text-on-indigo">
+            {initials}
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-bold tracking-tight text-ink sm:text-2xl">{user.name}</h1>
+            <p className="mt-0.5 truncate text-sm text-ink-2">
+              {emp.designation ?? "—"} · {row.branch.name}
+            </p>
+            <p className="text-xs text-ink-3">{emp.empCode}</p>
+          </div>
+        </div>
+      </section>
 
       {/* First thing on the page and above the tabs: on a phone this is
           the only reason most people open it, and burying it behind a
           tab makes a daily action a three-tap one. */}
       {emp.status !== "exited" && (
-        <section className="border border-line bg-surface rounded-lg">
-          <div className="px-5 py-3.5 border-b border-line-2">
-            <span className="text-[15px] font-semibold text-ink">Attendance</span>
+        <section className="rounded-xl border border-line bg-surface">
+          <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
+            <div>
+              <h2 className="text-[15px] font-semibold text-ink">Today</h2>
+              <p className="text-xs text-ink-3">Mark your attendance from {row.branch.name}</p>
+            </div>
           </div>
-          <div className="p-4">
+          <div className="border-t border-line-2 p-5">
             <PunchForm
               branchName={row.branch.name}
               hasOfficeLocation={
@@ -487,12 +508,9 @@ export default async function MePage(props: PageProps<"/me">) {
         </section>
       )}
 
-      {/* A phone gets one scrolling row rather than four wrapped ones: at a
-          dozen sections, wrapping pushes the page's own content below the
-          fold before it has said anything. */}
       <nav
         aria-label="Sections"
-        className="-mx-5 sm:mx-0 px-5 sm:px-0 flex sm:flex-wrap gap-1 border-b border-line overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 sm:mx-0 px-4 sm:px-0 flex gap-6 overflow-x-auto shadow-[inset_0_-1px_0_var(--line)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         data-print="hide"
       >
         {tabs.map((t) => (
@@ -500,12 +518,38 @@ export default async function MePage(props: PageProps<"/me">) {
             key={t.id}
             href={`/me?tab=${t.id}`}
             aria-current={tab === t.id ? "page" : undefined}
-            className={`shrink-0 whitespace-nowrap px-3 py-2.5 text-sm -mb-px border-b-2 ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 py-3 text-sm font-semibold transition-base ${
               tab === t.id
-                ? "border-indigo text-ink font-medium"
+                ? "border-indigo text-indigo"
                 : "border-transparent text-ink-2 hover:text-ink"
             }`}
           >
+            {t.label}
+            {t.count !== undefined && t.count > 0 && (
+              <span className={`rounded-full px-1.5 text-xs tnum ${tab === t.id ? "bg-indigo text-on-indigo" : "bg-surface-3 text-ink-2"}`}>
+                {t.count}
+              </span>
+            )}
+          </Link>
+        ))}
+      </nav>
+
+      {/* A phone gets an app's tab bar for the four things opened daily. */}
+      <nav
+        aria-label="Quick sections"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md sm:hidden"
+        data-print="hide"
+      >
+        {phoneTabs.map((t) => (
+          <Link
+            key={t.id}
+            href={`/me?tab=${t.id}`}
+            aria-current={tab === t.id ? "page" : undefined}
+            className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold ${tab === t.id ? "text-indigo" : "text-ink-3"}`}
+          >
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+              <path d={t.d} />
+            </svg>
             {t.label}
           </Link>
         ))}
@@ -543,12 +587,12 @@ export default async function MePage(props: PageProps<"/me">) {
                   ? `/me?tab=payslip&year=${latestPublished.year}&month=${latestPublished.month}`
                   : "/me?tab=payslip"
               }
-              className="border border-line bg-surface px-4 py-4 hover:border-ink-3 rounded-lg"
+              className="rounded-xl border border-line bg-surface px-5 py-4 transition-base hover:border-indigo/40 hover:shadow-md"
             >
               <p className="label text-ink-3">
                 Net pay{latestPublished ? ` · ${MONTHS[latestPublished.month - 1]}` : ""}
               </p>
-              <p className="font-display text-xl font-semibold tnum mt-1">
+              <p className="text-2xl font-bold tracking-tight tnum mt-1">
                 {latestPublished ? formatINR(latestPublished.netPaise) : "—"}
               </p>
               <p className="text-xs text-ink-3 mt-1">
@@ -557,18 +601,18 @@ export default async function MePage(props: PageProps<"/me">) {
                   : "No payslip has been approved yet"}
               </p>
             </Link>
-            <Link href="/me?tab=leave" className="border border-line bg-surface px-4 py-4 hover:border-ink-3 rounded-lg">
+            <Link href="/me?tab=leave" className="rounded-xl border border-line bg-surface px-5 py-4 transition-base hover:border-indigo/40 hover:shadow-md">
               <p className="label text-ink-3">Leave balance</p>
-              <p className="font-display text-xl font-semibold tnum mt-1">
+              <p className="text-2xl font-bold tracking-tight tnum mt-1">
                 {balances.reduce((a, b) => a + b.balanceDays, 0)} days
               </p>
               {pendingMine > 0 && (
                 <p className="text-xs text-amber mt-1">{pendingMine} awaiting approval</p>
               )}
             </Link>
-            <Link href="/me?tab=documents" className="border border-line bg-surface px-4 py-4 hover:border-ink-3 rounded-lg">
+            <Link href="/me?tab=documents" className="rounded-xl border border-line bg-surface px-5 py-4 transition-base hover:border-indigo/40 hover:shadow-md">
               <p className="label text-ink-3">Documents</p>
-              <p className="font-display text-xl font-semibold tnum mt-1">
+              <p className="text-2xl font-bold tracking-tight tnum mt-1">
                 {(checklist.completionBps / 100).toFixed(0)}% complete
               </p>
               {checklist.mandatoryMissing.length > 0 && (
@@ -925,7 +969,7 @@ export default async function MePage(props: PageProps<"/me">) {
               ].map(([label, value]) => (
                 <div key={String(label)} className="border border-line bg-surface px-4 py-3 rounded-lg">
                   <p className="label text-ink-3">{label}</p>
-                  <p className="font-display text-xl font-semibold tnum mt-1">{value}</p>
+                  <p className="text-2xl font-bold tracking-tight tnum mt-1">{value}</p>
                 </div>
               ))}
             </div>
@@ -1062,7 +1106,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 balances.map((b) => (
                   <li key={b.id} className="px-4 py-3">
                     <p className="label text-ink-3">{b.leaveType}</p>
-                    <p className="font-display text-xl font-semibold tnum mt-1">{b.balanceDays}</p>
+                    <p className="text-2xl font-bold tracking-tight tnum mt-1">{b.balanceDays}</p>
                   </li>
                 ))
               )}
@@ -1192,19 +1236,19 @@ export default async function MePage(props: PageProps<"/me">) {
               </div>
               <div className="border border-line bg-surface px-4 py-3 rounded-lg">
                 <p className="label text-ink-3">Taxable income</p>
-                <p className="font-display text-xl font-semibold tnum mt-1">
+                <p className="text-2xl font-bold tracking-tight tnum mt-1">
                   {formatINR(worksheet.annual.taxableIncomePaise)}
                 </p>
               </div>
               <div className="border border-line bg-surface px-4 py-3 rounded-lg">
                 <p className="label text-ink-3">Tax for the year</p>
-                <p className="font-display text-xl font-semibold tnum mt-1">
+                <p className="text-2xl font-bold tracking-tight tnum mt-1">
                   {formatINR(worksheet.annual.tax.totalTaxPaise)}
                 </p>
               </div>
               <div className="border border-line bg-surface px-4 py-3 rounded-lg">
                 <p className="label text-ink-3">Deducted so far</p>
-                <p className="font-display text-xl font-semibold tnum mt-1">
+                <p className="text-2xl font-bold tracking-tight tnum mt-1">
                   {formatINR(worksheet.tdsToDatePaise)}
                 </p>
               </div>
@@ -1749,6 +1793,7 @@ export default async function MePage(props: PageProps<"/me">) {
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }
