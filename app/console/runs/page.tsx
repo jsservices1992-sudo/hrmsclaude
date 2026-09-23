@@ -15,7 +15,7 @@ import { CalculateForm, ApproveForm, ReopenForm } from "./run-actions";
 import { RowPopover } from "./row-actions";
 import { RunOutputs } from "@/components/console/run-outputs";
 import {
-  PageHeader, Card, Badge, Select, FilterBar, FilterField, StatCard, EmptyState,
+  PageHeader, Card, Badge, Select, FilterBar, FilterField, EmptyState, MetricStrip
 } from "@/components/console/ui";
 import { MONTHS, STATUS_TONE, canApproveRun, isRecalculable } from "@/lib/payroll/run-status";
 import { periodState, selectablePeriods } from "@/lib/payroll/period-lock";
@@ -204,12 +204,14 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
         }
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Runs" value={allRuns.length} hint={hasFilters ? `${runs.length} shown` : undefined} />
-        <StatCard label="Awaiting approval" value={awaiting} />
-        <StatCard label="Approved" value={approved} />
-        <StatCard label="Pre-flight flags" value={finalCheck ? flags : "—"} />
-      </div>
+      <MetricStrip
+        items={[
+          { label: "Runs", value: (allRuns.length), hint: (hasFilters ? `${runs.length} shown` : undefined) },
+          { label: "Awaiting approval", value: (awaiting) },
+          { label: "Approved", value: (approved) },
+          { label: "Pre-flight flags", value: (finalCheck ? flags : "—") },
+        ]}
+      />
 
       {calcCompany && (
         <Card padded={false}>

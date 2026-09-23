@@ -1,5 +1,4 @@
 import { currentPeriod } from "@/lib/clock";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -13,7 +12,6 @@ import {
   buildRunSteps,
   nextStep,
   progressOf,
-  type RunStep,
   type StepState,
 } from "@/lib/payroll/run-status";
 import {
@@ -22,17 +20,7 @@ import {
   canAccessCompany,
   scopeCompanies,
 } from "@/lib/auth/session";
-import {
-  PageHeader,
-  Card,
-  Select,
-  Input,
-  FilterBar,
-  FilterField,
-  Badge,
-  StatCard,
-  type BadgeTone,
-} from "@/components/console/ui";
+import { Badge, Button, MonthNav, type BadgeTone } from "@/components/console/ui";
 import { loadSodPolicies } from "@/lib/audit/log";
 
 /*
@@ -64,53 +52,12 @@ const STATE_TONE: Record<StepState, BadgeTone> = {
 };
 
 const STATE_LABEL: Record<StepState, string> = {
-  done: "done",
-  ready: "ready",
-  attention: "check",
-  blocked: "blocked",
-  waiting: "waiting",
+  done: "Done",
+  ready: "Ready",
+  attention: "Check",
+  blocked: "Blocked",
+  waiting: "Waiting",
 };
-
-function StepRow({ step, index, isNext }: { step: RunStep; index: number; isNext: boolean }) {
-  const muted = step.state === "waiting";
-  return (
-    <li
-      className={`px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 ${
-        isNext ? "bg-indigo-soft/40" : ""
-      }`}
-    >
-      <span
-        aria-hidden
-        className={`h-6 w-6 shrink-0 rounded-full grid place-items-center font-mono text-xs ${
-          step.state === "done"
-            ? "bg-teal-soft text-teal"
-            : step.state === "blocked"
-              ? "bg-rust-soft text-rust"
-              : muted
-                ? "bg-surface-2 text-ink-3"
-                : "bg-indigo-soft text-indigo"
-        }`}
-      >
-        {step.state === "done" ? "✓" : index + 1}
-      </span>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`text-sm font-medium ${muted ? "text-ink-3" : ""}`}>{step.title}</span>
-          <Badge tone={STATE_TONE[step.state]}>{STATE_LABEL[step.state]}</Badge>
-          {isNext && <span className="label text-indigo">next</span>}
-        </div>
-        <p className={`text-xs mt-0.5 ${muted ? "text-ink-3" : "text-ink-2"}`}>{step.detail}</p>
-      </div>
-
-      {step.href && !muted && (
-        <Link href={step.href} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
-          {step.actionLabel} →
-        </Link>
-      )}
-    </li>
-  );
-}
 
 /**
  * Run payroll — the month as one screen.
@@ -247,64 +194,124 @@ export default async function RunPayrollPage(
   const next = nextStep(steps);
   const progress = progressOf(steps);
   const totals = figures?.totals;
+  const blockingStep = steps.find((st) => st.state === "blocked");
+  const pct = Math.round((progress.done / Math.max(1, progress.total)) * 100);
+  const periodHref = (y: number, m: number) => `/console/payroll/run?company=${companyId}&year=${y}&month=${m}`;
 
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader
-        eyebrow="Run payroll"
-        title={`${MONTHS[month - 1]} ${year}`}
-        description={company.name}
-        actions={
-          <FilterBar action="/console/payroll/run" mode="switch">
-            {companies.length > 1 && (
-              <input type="hidden" name="company" value={companyId} />
-            )}
-            <FilterField label="Month" showLabel={false}>
-              <Select name="month" defaultValue={String(month)} className="w-36">
-                {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </Select>
-            </FilterField>
-            <FilterField label="Year" showLabel={false}>
-              <Input name="year" defaultValue={year} className="tnum w-20" />
-            </FilterField>
-          </FilterBar>
-        }
-      />
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          label="Progress"
-          value={`${progress.done}/${progress.total}`}
-          hint={next ? `Next: ${next.title}` : "Period complete"}
-        />
-        <StatCard label="Employees" value={run?.employees ?? steps[0] ? employees.length : 0} />
-        <StatCard
-          label="Net to pay"
-          value={totals ? formatINR(totals.netPaise) : "—"}
-          hint={run ? `version ${run.version}` : "not calculated"}
-        />
-        <StatCard
-          label="Blocking"
-          value={criticalCount}
-          hint={criticalCount > 0 ? "Approval refused" : "Nothing blocking"}
-        />
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-ink">Run payroll</h1>
+          <p className="mt-1 text-sm text-ink-2">{company.name} · everything between attendance and payslips, in order</p>
+        </div>
+        <MonthNav year={year} month={month} href={periodHref} />
       </div>
 
-      <Card padded={false}>
-        <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[15px] font-semibold text-ink">Steps</span>
-          {next && (
-            <Link href={next.href ?? "#"} className="text-sm font-semibold text-indigo hover:text-indigo-2">
-              Go to {next.title} →
-            </Link>
-          )}
+      {/* ---------------- where the month stands ---------------- */}
+      <section className="rounded-xl border border-line bg-surface">
+        <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1.4fr_1fr]">
+          <div className="flex flex-col justify-between gap-5">
+            <div>
+              <p className="text-sm font-medium text-ink-2">
+                {MONTHS[month - 1]} {year}
+              </p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-ink sm:text-2xl">
+                {!next
+                  ? "This month is complete"
+                  : blockingStep
+                    ? `Blocked at ${blockingStep.title.toLowerCase()}`
+                    : `Next: ${next.title}`}
+              </h2>
+              <p className="mt-1 text-sm text-ink-2">{(blockingStep ?? next)?.detail ?? "Every step is done."}</p>
+            </div>
+            <div>
+              <div className="flex items-center justify-between text-xs font-medium text-ink-2">
+                <span>
+                  {progress.done} of {progress.total} steps done
+                </span>
+                <span className="tnum">{pct}%</span>
+              </div>
+              <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-3">
+                <div className={`h-full rounded-full ${blockingStep ? "bg-rust" : "bg-indigo"}`} style={{ width: `${pct}%` }} />
+              </div>
+              {(blockingStep ?? next)?.href && (
+                <Button href={(blockingStep ?? next)!.href!} variant="primary" className="mt-4">
+                  {(blockingStep ?? next)!.actionLabel ?? "Continue"} →
+                </Button>
+              )}
+            </div>
+          </div>
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line-2">
+            {[
+              { k: "Net to pay", v: totals ? formatINR(totals.netPaise) : "—", hint: run ? `Version ${run.version}` : "Not calculated" },
+              { k: "Employees", v: String(run?.employees ?? employees.length), hint: "In this run" },
+              {
+                k: "Blocking findings",
+                v: String(criticalCount),
+                hint: criticalCount > 0 ? "Approval refused" : "Nothing blocking",
+                bad: criticalCount > 0,
+              },
+              { k: "Status", v: run ? run.status.replace(/_/g, " ") : "Not started", hint: run ? "Latest version" : "Calculate to begin" },
+            ].map((f) => (
+              <div key={f.k} className="min-w-0 bg-surface px-4 py-3.5">
+                <dt className="text-xs text-ink-2">{f.k}</dt>
+                <dd className={`mt-0.5 truncate text-lg font-bold tracking-tight tnum capitalize ${"bad" in f && f.bad ? "text-rust" : "text-ink"}`}>
+                  {f.v}
+                </dd>
+                <dd className="text-xs text-ink-3">{f.hint}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
-        <ol className="divide-y divide-line-2">
-          {steps.map((step, i) => (
-            <StepRow key={step.id} step={step} index={i} isNext={next?.id === step.id} />
-          ))}
+      </section>
+
+      {/* ---------------- the steps ---------------- */}
+      <section className="rounded-xl border border-line bg-surface">
+        <header className="px-5 pt-4 pb-3">
+          <h2 className="text-[15px] font-semibold text-ink">The month, step by step</h2>
+          <p className="mt-0.5 text-sm text-ink-2">Each step opens the screen where its work is done.</p>
+        </header>
+        <ol className="relative border-t border-line-2">
+          {steps.map((step, i) => {
+            const isNext = next?.id === step.id;
+            const muted = step.state === "waiting";
+            const dot =
+              step.state === "done"
+                ? "bg-teal text-on-indigo"
+                : step.state === "blocked"
+                  ? "bg-rust text-on-indigo"
+                  : isNext
+                    ? "bg-indigo text-on-indigo ring-4 ring-indigo-soft"
+                    : "bg-surface border-2 border-line text-ink-3";
+            return (
+              <li
+                key={step.id}
+                className={`relative flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 ${isNext ? "bg-indigo-soft/40" : ""} ${
+                  i < steps.length - 1 ? "border-b border-line-2" : ""
+                }`}
+              >
+                <span aria-hidden className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold tnum ${dot}`}>
+                  {step.state === "done" ? "✓" : step.state === "blocked" ? "!" : i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`text-sm font-semibold ${muted ? "text-ink-3" : "text-ink"}`}>{step.title}</span>
+                    <Badge tone={STATE_TONE[step.state]}>{STATE_LABEL[step.state]}</Badge>
+                    {isNext && <Badge tone="indigo">Up next</Badge>}
+                  </div>
+                  <p className={`mt-0.5 text-sm ${muted ? "text-ink-3" : "text-ink-2"}`}>{step.detail}</p>
+                </div>
+                {step.href && !muted && (
+                  <Button href={step.href} variant={isNext ? "primary" : "default"} size="sm">
+                    {step.actionLabel}
+                  </Button>
+                )}
+              </li>
+            );
+          })}
         </ol>
-      </Card>
+      </section>
     </div>
   );
 }

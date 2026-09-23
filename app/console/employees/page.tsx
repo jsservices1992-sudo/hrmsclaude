@@ -13,7 +13,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { listCompanies } from "@/lib/payroll/load";
-import { PageHeader, Card, StatCard, Button, Input, Select, FilterBar, FilterField, Badge, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { Button, Input, Select, Badge, DrawerButton, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
 import { ProfileChangeDecisionForm } from "./change-request-form";
 import { BulkEmployeeForm } from "./bulk-form";
@@ -136,70 +136,102 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
   if (typeFilter) exportQuery.set("type", typeFilter);
   if (stateFilter) exportQuery.set("state", stateFilter);
 
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        eyebrow="Employee master"
-        title={
-          <>
-            {allRows.length} employees
-            {hasFilters && <span className="text-ink-3 font-normal text-xl"> · {rows.length} shown</span>}
-          </>
-        }
-        description={
-          <>
-            {(() => {
-              const n = new Set(allRows.map((r) => r.company.id)).size;
-              const st = Object.keys(byState).length;
-              return `Across ${n} legal ${n === 1 ? "entity" : "entities"} and ${st} ${st === 1 ? "state" : "states"} — `;
-            })()}
-            {Object.entries(byState)
-              .map(([k, v]) => `${k} ${v}`)
-              .join(" · ")}
-            {user.compensationScope === "none" && (
-              <span className="label text-brass block mt-2">
-                Salary masked for your role · every unmasked view is logged
-              </span>
-            )}
-          </>
-        }
-        actions={
-          (canActOnPeople(user)) && (
-            <div className="flex items-center gap-2">
-              <Button href="#bulk-import" variant="ghost">
-                Import in bulk
-              </Button>
-              <Button href="/console/employees/new" variant="primary">
-                New employee
-              </Button>
-            </div>
-          )
-        }
-      />
+  const multiCompany = new Set(allRows.map((r) => r.company.id)).size > 1;
+  /* Status is the filter people reach for most, so it is a row of tabs
+     with counts, not a dropdown — and the counts replace four stat tiles. */
+  const statusTabs = [
+    { value: "", label: "All", n: allRows.length },
+    { value: "active", label: "Active", n: activeCount },
+    { value: "resigned", label: "Serving notice", n: resignedCount },
+    { value: "exited", label: "Exited", n: exitedCount },
+  ];
+  const withParams = (patch: Record<string, string>) => {
+    const p = new URLSearchParams();
+    const cur: Record<string, string> = { q, status: statusFilter, department: deptFilter, type: typeFilter, state: stateFilter, ...patch };
+    for (const [k, v] of Object.entries(cur)) if (v) p.set(k, v);
+    const qs = p.toString();
+    return qs ? `/console/employees?${qs}` : "/console/employees";
+  };
+  const initials = (f: string, l: string) => `${f[0] ?? ""}${l[0] ?? ""}`.toUpperCase();
+  const statusPill = (st: string) =>
+    st === "active" ? (
+      <Badge tone="teal">Active</Badge>
+    ) : st === "resigned" ? (
+      <Badge tone="brass">Serving notice</Badge>
+    ) : (
+      <Badge tone="neutral">{st.charAt(0).toUpperCase() + st.slice(1)}</Badge>
+    );
 
+  return (
+    <div className="flex flex-col gap-5 max-w-[84rem]">
+      {/* ---------------- header ---------------- */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-ink">Employees</h1>
+          <p className="text-sm text-ink-2 mt-1">
+            {activeCount} active
+            {Object.keys(byState).length > 0 && (
+              <> · {Object.entries(byState).map(([k, v]) => `${k} ${v}`).join(" · ")}</>
+            )}
+            {user.compensationScope === "none" && <> · salary masked for your role</>}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <a href={`/console/employees/export?${exportQuery.toString()}`} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-ink-2 hover:bg-surface-2 hover:text-ink">
+            Export
+          </a>
+          {canActOnPeople(user) && companyIds[0] && (
+            <DrawerButton
+              label="Import"
+              title="Add people in bulk"
+              description="Upload a CSV — for a first import, or whenever a batch joins at once."
+            >
+              <BulkEmployeeForm
+                companyId={companyIds[0]}
+                branchCodes={bulkBranchCodes}
+                departmentCodes={bulkDepartmentCodes}
+                gradeNames={bulkGradeNames}
+              />
+            </DrawerButton>
+          )}
+          {canActOnPeople(user) && (
+            <Button href="/console/employees/new" variant="primary">
+              + Add employee
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* ---------------- requests waiting ---------------- */}
       {pendingChanges.length > 0 && (
-        <Card padded={false}>
-          <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between gap-3">
-            <span className="text-[15px] font-semibold text-ink">
-              Record changes employees have asked for
+        <details className="group rounded-xl border border-amber/30 bg-amber-soft">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm">
+            <span className="flex items-center gap-2.5">
+              <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-amber text-[11px] font-bold text-surface">
+                {pendingChanges.length}
+              </span>
+              <span className="font-semibold text-ink">
+                {pendingChanges.length === 1 ? "An employee has" : `${pendingChanges.length} employees have`} asked to change their record
+              </span>
             </span>
-            <Badge tone="brass">{pendingChanges.length} pending</Badge>
-          </div>
-          <ul className="divide-y divide-line-2">
+            <span className="text-sm font-semibold text-amber group-open:hidden">Review</span>
+            <span className="text-sm font-semibold text-amber hidden group-open:inline">Hide</span>
+          </summary>
+          <ul className="divide-y divide-amber/20 border-t border-amber/20 bg-surface rounded-b-xl">
             {pendingChanges.map(({ req, emp }) => {
               const def = profileFieldFor(req.field);
               const sensitive = def?.sensitive ?? false;
               return (
                 <li key={req.id} className="px-4 py-3 flex flex-col gap-2">
                   <div className="min-w-0">
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-semibold">
                       {emp.firstName} {emp.lastName}
                     </span>
-                    <span className="font-mono text-xs text-ink-3 ml-2">{emp.empCode}</span>
+                    <span className="text-xs text-ink-3 ml-2">{emp.empCode}</span>
                     {sensitive && <Badge tone="rust" className="ml-2">needs payroll approval</Badge>}
-                    <span className="block text-xs text-ink-2 mt-0.5">
+                    <span className="block text-sm text-ink-2 mt-0.5">
                       {def?.label ?? req.field}:{" "}
-                      <span className="font-mono">
+                      <span className="font-medium text-ink">
                         {sensitive
                           ? `${maskAccount(req.currentValue)} → ${maskAccount(req.requestedValue)}`
                           : `${req.currentValue || "—"} → ${req.requestedValue}`}
@@ -212,129 +244,155 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
               );
             })}
           </ul>
-        </Card>
+        </details>
       )}
 
-      {(canActOnPeople(user)) && companyIds[0] && (
-        <Card>
-          <h2 id="bulk-import" className="font-display text-lg font-semibold mb-1">Add people in bulk</h2>
-          <p className="text-sm text-ink-2 mb-3 max-w-[70ch]">
-            For a first import, or whenever a batch joins at once.
-          </p>
-          <BulkEmployeeForm
-            companyId={companyIds[0]}
-            branchCodes={bulkBranchCodes}
-            departmentCodes={bulkDepartmentCodes}
-            gradeNames={bulkGradeNames}
-          />
-        </Card>
-      )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Total employees" value={allRows.length} />
-        <StatCard label="Active" value={activeCount} />
-        <StatCard label="Resigned" value={resignedCount} />
-        <StatCard label="Exited" value={exitedCount} />
-      </div>
-
-      <Card>
-        <FilterBar
-          action="/console/employees"
-          mode="filter"
-          clearHref={hasFilters ? "/console/employees" : null}
-          trailing={
-            <a
-              href={`/console/employees/export?${exportQuery.toString()}`}
-              className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
-            >
-              Download CSV →
-            </a>
-          }
-        >
-          <FilterField label="Search" className="flex-1 min-w-[12rem]">
-            <Input name="q" defaultValue={q} placeholder="Name, code or designation" className="w-full" />
-          </FilterField>
-          <FilterField label="Department" className="w-full sm:w-44">
-            <Select name="department" defaultValue={deptFilter} className="w-full">
-              <option value="">All</option>
+      {/* ---------------- list ---------------- */}
+      <section className="rounded-xl border border-line bg-surface">
+        <div className="flex flex-col gap-3 border-b border-line p-3 sm:p-4">
+          <nav aria-label="Status" className="flex gap-1 overflow-x-auto">
+            {statusTabs.map((t) => {
+              const on = statusFilter === t.value;
+              return (
+                <Link
+                  key={t.label}
+                  href={withParams({ status: t.value })}
+                  aria-current={on ? "page" : undefined}
+                  className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition-base ${
+                    on ? "bg-indigo-soft text-indigo" : "text-ink-2 hover:bg-surface-2 hover:text-ink"
+                  }`}
+                >
+                  {t.label}
+                  <span className={`rounded-full px-1.5 text-xs tnum ${on ? "bg-surface text-indigo" : "bg-surface-2 text-ink-3"}`}>{t.n}</span>
+                </Link>
+              );
+            })}
+          </nav>
+          <form action="/console/employees" className="flex flex-wrap items-center gap-2">
+            {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
+            <label className="relative flex-1 min-w-[14rem]">
+              <span className="sr-only">Search employees</span>
+              <span aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">⌕</span>
+              <Input name="q" defaultValue={q} placeholder="Search by name, code or designation" className="w-full pl-8" />
+            </label>
+            <Select name="department" defaultValue={deptFilter} aria-label="Department" className="w-auto min-w-[9rem]">
+              <option value="">All departments</option>
               {departmentOptions.map(([id, name]) => (
                 <option key={id} value={id}>{name}</option>
               ))}
             </Select>
-          </FilterField>
-          <FilterField label="Status" className="w-full sm:w-44">
-            <Select name="status" defaultValue={statusFilter} className="w-full">
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="resigned">Resigned</option>
-              <option value="exited">Exited</option>
-            </Select>
-          </FilterField>
-          <FilterField label="Type" className="w-full sm:w-44">
-            <Select name="type" defaultValue={typeFilter} className="w-full">
-              <option value="">All</option>
+            <Select name="type" defaultValue={typeFilter} aria-label="Employment type" className="w-auto min-w-[8rem]">
+              <option value="">All types</option>
               <option value="permanent">Permanent</option>
               <option value="probation">Probation</option>
               <option value="contract">Contract</option>
               <option value="intern">Intern</option>
               <option value="consultant">Consultant</option>
             </Select>
-          </FilterField>
-          <FilterField label="State" className="w-full sm:w-44">
-            <Select name="state" defaultValue={stateFilter} className="w-full">
-              <option value="">All</option>
-              {stateOptions.map((st) => (
-                <option key={st} value={st}>{st}</option>
-              ))}
-            </Select>
-          </FilterField>
-        </FilterBar>
-      </Card>
-
-      <div className="overflow-x-auto">
-        <Table className="min-w-[64rem]">
-          <THead>
-            {["Code", "Name", "Designation", "Entity", "Branch", "State", "Joined", "Monthly gross", "PF"].map((h) => (
-              <TH key={h}>{h}</TH>
-            ))}
-          </THead>
-          <TBody>
-            {rows.length === 0 && (
-              <TR>
-                <TD colSpan={9} className="text-center text-ink-3 whitespace-normal">
-                  <span className="block py-4">No employees match these filters.</span>
-                </TD>
-              </TR>
+            {stateOptions.length > 1 && (
+              <Select name="state" defaultValue={stateFilter} aria-label="State" className="w-auto min-w-[7rem]">
+                <option value="">All states</option>
+                {stateOptions.map((st) => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </Select>
             )}
-            {rows.map((r) => (
-              <TR key={r.emp.id}>
-                <TD className="font-mono text-xs text-ink-3">{r.emp.empCode}</TD>
-                <TD className="max-w-[12rem]">
-                  <Link href={`/console/employees/${r.emp.id}`} className="hover:text-indigo hover:underline truncate block" title={`${r.emp.firstName} ${r.emp.lastName}`}>
-                    {r.emp.firstName} {r.emp.lastName}
+            <Button type="submit">Apply</Button>
+            {hasFilters && (
+              <Link href="/console/employees" className="px-2 text-sm font-semibold text-ink-3 hover:text-ink">
+                Clear
+              </Link>
+            )}
+          </form>
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="px-4 py-14 text-center">
+            <p className="font-semibold text-ink">{allRows.length === 0 ? "No employees yet" : "Nobody matches"}</p>
+            <p className="text-sm text-ink-2 mt-1">
+              {allRows.length === 0 ? "Add one, or import a CSV of everyone at once." : "Try a different search, or clear the filters."}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* phone: one card per person */}
+            <ul className="sm:hidden divide-y divide-line-2">
+              {rows.map((r) => (
+                <li key={r.emp.id}>
+                  <Link href={`/console/employees/${r.emp.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-surface-2">
+                    <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-indigo-soft text-sm font-bold text-indigo">
+                      {initials(r.emp.firstName, r.emp.lastName)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-ink">{r.emp.firstName} {r.emp.lastName}</span>
+                      <span className="block truncate text-xs text-ink-3">{r.emp.empCode} · {r.emp.designation ?? "—"}</span>
+                    </span>
+                    <span className="text-right">
+                      <span className="block text-sm font-semibold tnum">
+                        {r.salary ? maskIfNeeded(user, formatINR(r.salary.monthlyGrossPaise)) : "—"}
+                      </span>
+                      {r.emp.status !== "active" && <span className="block mt-0.5">{statusPill(r.emp.status)}</span>}
+                    </span>
                   </Link>
-                  {r.emp.status !== "active" && (
-                    <span className="label text-brass">{r.emp.status}</span>
-                  )}
-                </TD>
-                <TD className="text-ink-2 max-w-[10rem] truncate" title={r.emp.designation ?? undefined}>{r.emp.designation}</TD>
-                <TD className="text-ink-2 max-w-[10rem] truncate" title={r.company.name}>{r.company.name}</TD>
-                <TD className="text-ink-2 max-w-[10rem] truncate" title={r.branch.name}>{r.branch.name}</TD>
-                <TD className="font-mono text-xs whitespace-nowrap">{r.branch.stateCode}</TD>
-                <TD className="font-mono text-xs tnum text-ink-2 whitespace-nowrap">{formatDate(r.emp.dateOfJoining)}</TD>
-                <TD className="font-mono tnum text-right whitespace-nowrap">
-                  {r.salary ? maskIfNeeded(user, formatINR(r.salary.monthlyGrossPaise)) : "—"}
-                </TD>
-                <TD>
-                  <Badge tone={r.emp.hadPriorPfMembership ? "teal" : "neutral"}>
-                    {r.emp.hadPriorPfMembership ? "Member" : "New"}
-                  </Badge>
-                </TD>
-              </TR>
-            ))}
-          </TBody>
-        </Table>
-      </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* wider: a table */}
+            <div className="hidden sm:block">
+              <Table className="rounded-none border-0">
+                <THead>
+                  <TH>Employee</TH>
+                  <TH>Role</TH>
+                  <TH>Location</TH>
+                  {multiCompany && <TH>Company</TH>}
+                  <TH>Joined</TH>
+                  <TH className="text-right">Monthly gross</TH>
+                  <TH>Status</TH>
+                </THead>
+                <TBody>
+                  {rows.map((r) => (
+                    <TR key={r.emp.id}>
+                      <TD>
+                        <Link href={`/console/employees/${r.emp.id}`} className="group flex items-center gap-3 min-w-0">
+                          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-indigo-soft text-xs font-bold text-indigo">
+                            {initials(r.emp.firstName, r.emp.lastName)}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block max-w-[14rem] truncate font-semibold text-ink group-hover:text-indigo">
+                              {r.emp.firstName} {r.emp.lastName}
+                            </span>
+                            <span className="block text-xs text-ink-3">{r.emp.empCode}</span>
+                          </span>
+                        </Link>
+                      </TD>
+                      <TD>
+                        <span className="block max-w-[12rem] truncate" title={r.emp.designation ?? undefined}>{r.emp.designation ?? "—"}</span>
+                        <span className="block text-xs text-ink-3 max-w-[12rem] truncate">{r.department?.name ?? ""}</span>
+                      </TD>
+                      <TD>
+                        <span className="block max-w-[10rem] truncate" title={r.branch.name}>{r.branch.name}</span>
+                        <span className="block text-xs text-ink-3">{r.branch.stateCode}</span>
+                      </TD>
+                      {multiCompany && (
+                        <TD className="text-ink-2"><span className="block max-w-[10rem] truncate" title={r.company.name}>{r.company.name}</span></TD>
+                      )}
+                      <TD className="tnum text-ink-2">{formatDate(r.emp.dateOfJoining)}</TD>
+                      <TD className="text-right tnum font-semibold">
+                        {r.salary ? maskIfNeeded(user, formatINR(r.salary.monthlyGrossPaise)) : <span className="font-normal text-rust">No salary</span>}
+                      </TD>
+                      <TD>{statusPill(r.emp.status)}</TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
+            <p className="border-t border-line-2 px-4 py-2.5 text-xs text-ink-3">
+              Showing {rows.length} of {allRows.length}
+            </p>
+          </>
+        )}
+      </section>
     </div>
   );
 }

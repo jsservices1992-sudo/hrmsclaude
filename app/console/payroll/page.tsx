@@ -17,8 +17,8 @@ import {
 import { recordAccess } from "@/lib/audit/log";
 import { RunOutputs } from "@/components/console/run-outputs";
 import {
-  PageHeader, Card, StatCard, Input, Select, FilterBar, FilterField, Badge, EmptyState,
-  Tabs, TabLink, Table, THead, TH, TBody, TR, TD,
+  PageHeader, Card, Input, Select, FilterBar, FilterField, Badge, EmptyState,
+  Tabs, TabLink, Table, THead, TH, TBody, TR, TD, MetricStrip
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
@@ -145,19 +145,15 @@ export default async function PayrollConsolePage(
         }
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
-        <StatCard label="Headcount" value={String(totals.headcount)} />
-        <StatCard label="Gross" value={formatINR(totals.grossPaise)} />
-        <StatCard label="Deductions" value={formatINR(totals.deductionsPaise)} />
-        <StatCard
-          label="Net disbursement"
-          value={<span className="text-ink font-medium">{formatINR(totals.netPaise)}</span>}
-        />
-        <StatCard
-          label="Employer cost"
-          value={formatINR(totals.grossPaise + totals.employerCostPaise)}
-        />
-      </div>
+      <MetricStrip
+        items={[
+          { label: "Headcount", value: (String(totals.headcount)) },
+          { label: "Gross", value: (formatINR(totals.grossPaise)) },
+          { label: "Deductions", value: (formatINR(totals.deductionsPaise)) },
+          { label: "Net disbursement", value: (<span className="text-ink font-medium">{formatINR(totals.netPaise)}</span>) },
+          { label: "Employer cost", value: (formatINR(totals.grossPaise + totals.employerCostPaise)) },
+        ]}
+      />
 
       <div
         className={`border px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs ${

@@ -18,7 +18,6 @@ import { PrintButton } from "@/components/console/print-button";
 import {
   PageHeader,
   Card,
-  StatCard,
   Button,
   Input,
   Select,
@@ -31,7 +30,7 @@ import {
   TBody,
   TR,
   TD,
-  EmptyState,
+  EmptyState, MetricStrip
 } from "@/components/console/ui";
 
 export const metadata = { title: "Payslips" };
@@ -208,12 +207,14 @@ export default async function PayslipsPage(
         />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Payslips" value={rows.length} hint={hasFilters ? `of ${preview.results.length}` : undefined} />
-        <StatCard label="Total gross" value={formatINR(totals.gross)} />
-        <StatCard label="Total net" value={formatINR(totals.net)} />
-        <StatCard label="With loss of pay" value={totals.lop} />
-      </div>
+      <MetricStrip
+        items={[
+          { label: "Payslips", value: (rows.length), hint: (hasFilters ? `of ${preview.results.length}` : undefined) },
+          { label: "Total gross", value: (formatINR(totals.gross)) },
+          { label: "Total net", value: (formatINR(totals.net)) },
+          { label: "With loss of pay", value: (totals.lop) },
+        ]}
+      />
 
       <Card>
         <FilterBar

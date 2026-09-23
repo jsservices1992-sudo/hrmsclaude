@@ -5,7 +5,7 @@ import { formatINR } from "@/lib/payroll/money";
 import { getSessionUser, canSeeCompensation, canAccessCompany, canMutate } from "@/lib/auth/session";
 import { ApproveForm, ReopenForm } from "../run-actions";
 import { MONTHS, STATUS_TONE, canApproveRun } from "@/lib/payroll/run-status";
-import { PageHeader, Card, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { PageHeader, Card, Badge, Table, THead, TH, TBody, TR, TD, MetricStrip } from "@/components/console/ui";
 import { formatDateTime } from "@/lib/format/date";
 import { loadSodPolicies } from "@/lib/audit/log";
 
@@ -92,12 +92,14 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
         </Card>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Employees" value={totals.headcount} />
-        <StatCard label="Gross" value={formatINR(totals.grossPaise)} />
-        <StatCard label="Deductions" value={formatINR(totals.deductionsPaise)} />
-        <StatCard label="Net" value={formatINR(totals.netPaise)} />
-      </div>
+      <MetricStrip
+        items={[
+          { label: "Employees", value: (totals.headcount) },
+          { label: "Gross", value: (formatINR(totals.grossPaise)) },
+          { label: "Deductions", value: (formatINR(totals.deductionsPaise)) },
+          { label: "Net", value: (formatINR(totals.netPaise)) },
+        ]}
+      />
 
       <div className="flex flex-wrap items-start gap-4">
         {canApprove && <ApproveForm runId={run.id} />}

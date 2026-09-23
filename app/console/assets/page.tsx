@@ -12,7 +12,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { CreateAssetForm } from "./forms";
-import { PageHeader, Card, Input, Select, FilterBar, FilterField, Badge, StatCard, EmptyState, Table, THead, TH, TBody, TR, TD, type BadgeTone } from "@/components/console/ui";
+import { PageHeader, Card, Input, Select, FilterBar, FilterField, Badge, EmptyState, Table, THead, TH, TBody, TR, TD, type BadgeTone, MetricStrip } from "@/components/console/ui";
 
 export const metadata = { title: "Assets" };
 
@@ -86,22 +86,18 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
         description={company.name}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard
-          label="Total assets"
-          value={allRows.length}
-          hint={
-            [
+      <MetricStrip
+        items={[
+          { label: "Total assets", value: (allRows.length), hint: ([
               byStatus.under_repair ? `${byStatus.under_repair} under repair` : "",
               byStatus.lost ? `${byStatus.lost} lost` : "",
             ]
               .filter(Boolean)
-              .join(" · ") || undefined
-          }
-        />
-        <StatCard label="Assigned" value={byStatus.issued ?? 0} />
-        <StatCard label="Free (in stock)" value={byStatus.in_stock ?? 0} />
-      </div>
+              .join(" · ") || undefined) },
+          { label: "Assigned", value: (byStatus.issued ?? 0) },
+          { label: "Free (in stock)", value: (byStatus.in_stock ?? 0) },
+        ]}
+      />
 
       <FilterBar
         action="/console/assets"

@@ -17,7 +17,6 @@ import {
 import {
   PageHeader,
   Card,
-  StatCard,
   Select,
   Input,
   FilterBar,
@@ -31,7 +30,7 @@ import {
   TH,
   TBody,
   TR,
-  TD,
+  TD, MetricStrip
 } from "@/components/console/ui";
 import {
   AddVariablePayForm,
@@ -191,16 +190,14 @@ export default async function VariablePayPage(
         }
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Overtime" value={formatINR(totalBy("ot"))} />
-        <StatCard label="Bonus" value={formatINR(totalBy("bonus"))} />
-        <StatCard label="Incentive" value={formatINR(totalBy("incentive"))} />
-        <StatCard
-          label="Deductions"
-          value={formatINR(deductions)}
-          hint={`Net effect ${formatINR(earnings - deductions)}`}
-        />
-      </div>
+      <MetricStrip
+        items={[
+          { label: "Overtime", value: (formatINR(totalBy("ot"))) },
+          { label: "Bonus", value: (formatINR(totalBy("bonus"))) },
+          { label: "Incentive", value: (formatINR(totalBy("incentive"))) },
+          { label: "Deductions", value: (formatINR(deductions)), hint: (`Net effect ${formatINR(earnings - deductions)}`) },
+        ]}
+      />
 
       {canAct && (
         <Card padded={false}>

@@ -15,7 +15,6 @@ import {
   FilterBar,
   FilterField,
   Badge,
-  StatCard,
   Tabs,
   TabLink,
   Table,
@@ -25,6 +24,7 @@ import {
   TR,
   TD,
   EmptyState,
+  MetricStrip,
 } from "@/components/console/ui";
 import {
   ReassignTeamForm,
@@ -143,13 +143,15 @@ function HiringView({
 }) {
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard label="Approved" value={hiring.totalApproved} hint="Budgeted headcount" />
-        <StatCard label="Committed" value={hiring.totalProjected} hint="After leavers and joiners" />
-        <StatCard label="Open to hire" value={hiring.totalOpen} />
-        <StatCard label="Joining" value={hiring.totalIncoming} hint="Offers out or onboarding" />
-        <StatCard label="Leaving" value={hiring.totalLeaving} hint="Seats freeing up" />
-      </div>
+      <MetricStrip
+        items={[
+          { label: "Approved", value: (hiring.totalApproved), hint: "Budgeted headcount" },
+          { label: "Committed", value: (hiring.totalProjected), hint: "After leavers and joiners" },
+          { label: "Open to hire", value: (hiring.totalOpen) },
+          { label: "Joining", value: (hiring.totalIncoming), hint: "Offers out or onboarding" },
+          { label: "Leaving", value: (hiring.totalLeaving), hint: "Seats freeing up" },
+        ]}
+      />
 
       <Card padded={false}>
         <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
@@ -271,28 +273,16 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
         description={`${org.headcount} active · ${org.roots.length} at the top · ${departmentRows.length} departments · ${org.maxDepth + 1} levels deep`}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Active headcount" value={org.headcount} />
-        <StatCard
-          label="Managers"
-          value={org.spans.length}
-          hint={org.spans.length > 0 ? `largest team ${org.spans[0].total}` : undefined}
-        />
-        <StatCard
-          label="Teams needing a manager"
-          value={org.orphans.filter((o) => !o.replacementName).length}
-          hint={org.orphans.length > 0 ? `${org.orphans.length} leaver(s) with reports` : "None"}
-        />
-        <StatCard
-          label="Open to hire"
-          value={hiring.totalOpen}
-          hint={
-            hiring.unplanned > 0
+      <MetricStrip
+        items={[
+          { label: "Active headcount", value: (org.headcount) },
+          { label: "Managers", value: (org.spans.length), hint: (org.spans.length > 0 ? `largest team ${org.spans[0].total}` : undefined) },
+          { label: "Teams needing a manager", value: (org.orphans.filter((o) => !o.replacementName).length), hint: (org.orphans.length > 0 ? `${org.orphans.length} leaver(s) with reports` : "None") },
+          { label: "Open to hire", value: (hiring.totalOpen), hint: (hiring.unplanned > 0
               ? `${hiring.unplanned} department(s) have no plan set`
-              : `across ${hiring.planned} planned department(s)`
-          }
-        />
-      </div>
+              : `across ${hiring.planned} planned department(s)`) },
+        ]}
+      />
 
       {/* Leavers whose team has nowhere to go — the thing that silently
           breaks an org chart the day somebody's notice runs out. */}

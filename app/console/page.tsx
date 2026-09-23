@@ -428,13 +428,13 @@ export default async function DashboardPage(props: PageProps<"/console">) {
 
       {/* ---------------- hero ---------------- */}
       <section className="rounded-xl border border-line bg-surface">
-        <div className="relative grid lg:grid-cols-[1.2fr_1fr] gap-6 p-6 sm:p-8">
+        <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6 p-5 sm:p-7">
           <div className="flex flex-col justify-center">
-            <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-brass/25 bg-brass-soft px-3 py-1 text-xs font-semibold text-brass">
-              <span aria-hidden>●</span> {PERIOD.label} · payroll month
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-indigo-soft px-2.5 py-1 text-xs font-semibold text-indigo">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-indigo" /> {PERIOD.label} payroll
             </span>
-            <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-ink mt-4 balance">
-              Welcome back, <span className="text-brass">{firstName}</span>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-ink mt-4 balance">
+              Welcome back, {firstName}
             </h1>
             <p className="text-ink-2 mt-2">
               {entityLine} · {headcount[0]?.n ?? 0} active employees
@@ -462,7 +462,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
           </div>
 
           {seesPay ? (
-            <div className="rounded-xl border border-line bg-surface shadow-md p-5">
+            <div className="rounded-xl border border-line bg-surface-2/50 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-ink">This month&rsquo;s payroll</p>
@@ -480,9 +480,8 @@ export default async function DashboardPage(props: PageProps<"/console">) {
                   {runStatus}
                 </span>
               </div>
-              <div className="mt-4 h-1 rounded-full bg-indigo" />
-              <p className="label text-ink-3 mt-4">Net to pay</p>
-              <p className="font-display text-3xl font-extrabold tracking-tight text-indigo tnum mt-1">
+              <p className="text-xs font-medium text-ink-2 mt-4">Net to pay</p>
+              <p className="text-3xl font-bold tracking-tight text-ink tnum mt-1">
                 {formatINR(previewNet)}
               </p>
               <div className="flex flex-col gap-2 mt-4">

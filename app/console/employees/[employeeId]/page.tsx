@@ -43,7 +43,7 @@ import {
 } from "@/components/console/salary-breakup-table";
 import { loadWorksheet } from "@/lib/tax/load";
 import { payModeSummary } from "@/lib/payroll/pay-mode";
-import { Card, Badge, THead, TH, TBody, TR, TD, Tabs, TabLink } from "@/components/console/ui";
+import { Card, Badge, THead, TH, TBody, TR, TD, Tabs, TabLink, Alert, Button } from "@/components/console/ui";
 import { computeProfessionalTax, computeLwf } from "@/lib/payroll/statutory";
 import { formatDate } from "@/lib/format/date";
 
@@ -51,9 +51,9 @@ export const metadata = { title: "Employee" };
 
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return (
-    <div className="px-4 py-2.5 border-b border-line-2 grid grid-cols-[10rem_1fr] gap-4">
-      <span className="label text-ink-3">{k}</span>
-      <span className="text-sm">{v ?? <span className="text-ink-3">—</span>}</span>
+    <div className="grid grid-cols-[9rem_1fr] gap-4 border-b border-line-2 px-5 py-3 last:border-0">
+      <span className="text-sm text-ink-2">{k}</span>
+      <span className="text-sm font-medium text-ink min-w-0 break-words">{v ?? <span className="font-normal text-ink-3">—</span>}</span>
     </div>
   );
 }
@@ -262,77 +262,93 @@ export default async function EmployeeDetailPage(
     today,
   });
 
-  const TABS = [
-    { id: "profile", label: "Profile" },
-    { id: "edit", label: "Edit" },
-    { id: "custom", label: "Custom fields" },
-    { id: "documents", label: `Documents (${detail.documents.length})` },
-    { id: "assets", label: `Assets (${heldAssets.length})` },
+  const TABS: { id: string; label: string; count?: number }[] = [
+    { id: "profile", label: "Overview" },
     ...(canSeeCompensation(user) ? [{ id: "salary", label: "Salary & payroll" }] : []),
-    { id: "history", label: `History (${history.length})` },
+    { id: "documents", label: "Documents", count: detail.documents.length },
+    { id: "assets", label: "Assets", count: heldAssets.length },
+    { id: "custom", label: "Custom fields" },
+    { id: "history", label: "History", count: history.length },
+    { id: "edit", label: "Edit" },
   ];
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/console/employees" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-          ← Employees
-        </Link>
-        <div className="flex flex-wrap items-baseline gap-3 mt-2">
-          <h1 className="font-display text-3xl font-semibold">
-            {e.firstName} {e.middleName ? e.middleName + " " : ""}
-            {e.lastName}
-          </h1>
-          <span className="font-mono text-sm text-ink-3">{e.empCode}</span>
-          {e.status !== "active" && (
-            <Badge tone="brass" className="px-2 py-1">
-              {e.status}
-            </Badge>
-          )}
+      <section className="rounded-xl border border-line bg-surface">
+        <div className="flex flex-wrap items-start justify-between gap-5 p-5 sm:p-6">
+          <div className="flex min-w-0 items-center gap-4">
+            <span aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-indigo text-xl font-bold text-on-indigo">
+              {`${e.firstName[0] ?? ""}${e.lastName[0] ?? ""}`.toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight text-ink">
+                  {e.firstName} {e.middleName ? e.middleName + " " : ""}
+                  {e.lastName}
+                </h1>
+                {e.status === "active" ? (
+                  <Badge tone="teal">Active</Badge>
+                ) : (
+                  <Badge tone="brass">{e.status.charAt(0).toUpperCase() + e.status.slice(1)}</Badge>
+                )}
+              </div>
+              <p className="mt-0.5 text-sm text-ink-2">
+                {e.designation ?? "—"} · {department?.name ?? e.department ?? "No department"}
+              </p>
+              <p className="mt-0.5 text-xs text-ink-3">
+                {e.empCode} · {branch.name}, {branch.stateCode} · {company.name}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {!detail.exitCase && e.status === "active" && canMutate(user) && (
+              <Button href={`/console/exits?employee=${e.id}`} variant="ghost">
+                Record an exit
+              </Button>
+            )}
+            <Button href={`/console/employees/${e.id}?tab=edit`} variant="primary">
+              Edit details
+            </Button>
+          </div>
         </div>
-        <p className="text-sm text-ink-2 mt-1">
-          {e.designation} · {department?.name ?? e.department} · {branch.name} (
-          {branch.stateCode}) · {company.name}
-        </p>
-      </div>
-
-      {/* Without this the exit module had no entrance from the one page
-          somebody is actually looking at when they need it. */}
-      {!detail.exitCase && e.status === "active" && canMutate(user) && (
-        <div className="rounded-md border border-line bg-surface-2 px-4 py-3 text-sm flex flex-wrap items-center gap-2">
-          <span className="text-ink-2">Leaving the company?</span>
-          <Link
-            href={`/console/exits?employee=${e.id}`}
-            className="text-brass hover:underline"
-          >
-            Record an exit →
-          </Link>
-        </div>
-      )}
+        <dl className="grid grid-cols-2 border-t border-line-2 sm:grid-cols-4">
+          {[
+            { k: "Joined", v: formatDate(e.dateOfJoining) },
+            { k: "Reports to", v: manager?.name ?? "—" },
+            {
+              k: "Monthly gross",
+              v: detail.salary ? maskIfNeeded(user, formatINR(detail.salary.monthlyGrossPaise)) : "Not set",
+            },
+            { k: "PAN", v: e.pan ? "On file" : "Missing" },
+          ].map((f) => (
+            <div key={f.k} className="min-w-0 border-r border-line-2 px-5 py-3 last:border-0 [&:nth-child(2)]:max-sm:border-0">
+              <dt className="text-xs text-ink-3">{f.k}</dt>
+              <dd className={`mt-0.5 truncate text-sm font-semibold tnum ${f.v === "Missing" || f.v === "Not set" ? "text-rust" : "text-ink"}`}>
+                {f.v}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       {detail.exitCase && (
-        <div className="rounded-md border border-brass/40 bg-brass-soft px-4 py-3 text-sm">
-          <span className="label text-brass">Exit in progress</span>{" "}
-          <span className="text-ink-2">
-            {detail.exitCase.exitType.replace(/_/g, " ")} · last working day{" "}
-            {formatDate(detail.exitCase.lastWorkingDay)} ·{" "}
-            <Link
-              href={`/console/exits/${detail.exitCase.id}`}
-              className="underline text-ink"
-            >
-              open settlement
-            </Link>
-          </span>
-        </div>
+        <Alert
+          tone="warning"
+          title="Exit in progress"
+          action={
+            <Button href={`/console/exits/${detail.exitCase.id}`} size="sm">
+              Open settlement
+            </Button>
+          }
+        >
+          {detail.exitCase.exitType.replace(/_/g, " ")} · last working day {formatDate(detail.exitCase.lastWorkingDay)}
+        </Alert>
       )}
 
       {expiring.length > 0 && (
-        <div className="rounded-md border border-rust/40 bg-rust-soft px-4 py-3 text-sm">
-          <span className="label text-rust">Documents expiring</span>{" "}
-          <span className="text-ink-2">
-            {expiring.map((d) => `${d.label} (${formatDate(d.expiresOn)})`).join(", ")}
-          </span>
-        </div>
+        <Alert tone="danger" title="Documents expiring">
+          {expiring.map((d) => `${d.label} (${formatDate(d.expiresOn)})`).join(", ")}
+        </Alert>
       )}
 
       <Tabs>
@@ -341,6 +357,7 @@ export default async function EmployeeDetailPage(
             key={t.id}
             href={`/console/employees/${e.id}?tab=${t.id}`}
             active={tab === t.id}
+            count={t.count}
           >
             {t.label}
           </TabLink>

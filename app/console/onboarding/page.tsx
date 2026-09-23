@@ -17,6 +17,7 @@ import {
 } from "@/lib/auth/session";
 import {
   PageHeader,
+  DrawerButton,
   Card,
   Button,
   Input,
@@ -24,14 +25,13 @@ import {
   FilterBar,
   FilterField,
   Badge,
-  StatCard,
   Table,
   THead,
   TH,
   TBody,
   TR,
   TD,
-  type BadgeTone,
+  type BadgeTone, MetricStrip
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
@@ -92,57 +92,41 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        eyebrow="Onboarding"
-        title={`${inFlight.length} joiners in flight`}
-        description="The joiner completes their own profile and documents before day one. A record cannot convert to an employee while PAN or bank details are missing — those two would break the first payroll."
+        title="Joiners"
+        description={`${inFlight.length} in onboarding. Each joiner fills in their own profile and documents before day one.`}
         actions={
           canAdd && (
             <div className="flex items-center gap-2">
-              <Button href="#bulk-onboarding" variant="ghost">
-                Import in bulk
-              </Button>
+              {companyIds[0] && (
+                <DrawerButton
+                  label="Import"
+                  title="Add joiners in bulk"
+                  description="For a batch of offers at once — each still gets its own documents, offer and verification."
+                >
+                  <BulkJoinerForm
+                    companyId={companyIds[0]}
+                    branchCodes={bulkBranchCodes}
+                    departmentCodes={bulkDepartmentCodes}
+                    gradeNames={bulkGradeNames}
+                  />
+                </DrawerButton>
+              )}
               <Button href="/console/onboarding/new" variant="primary">
-                New joiner
+                + Add joiner
               </Button>
             </div>
           )
         }
       />
 
-      {canAdd && companyIds[0] && (
-        <Card>
-          <h2 id="bulk-onboarding" className="font-display text-lg font-semibold mb-1">
-            Add joiners in bulk
-          </h2>
-          <p className="text-sm text-ink-2 mb-3 max-w-[70ch]">
-            For a batch of offers landing at once. Each is still a
-            complete onboarding record afterwards — documents, the
-            offer and background verification happen per person, same
-            as adding one by hand.
-          </p>
-          <BulkJoinerForm
-            companyId={companyIds[0]}
-            branchCodes={bulkBranchCodes}
-            departmentCodes={bulkDepartmentCodes}
-            gradeNames={bulkGradeNames}
-          />
-        </Card>
-      )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Total candidates" value={allJoiners.length} />
-        <StatCard label="In flight" value={inFlight.length} hint="Not yet joined or dropped" />
-        <StatCard
-          label="Ready to join"
-          value={inFlight.length - blocked.length}
-          hint={inFlight.length > 0 ? `of ${inFlight.length} in flight` : undefined}
-        />
-        <StatCard
-          label="Blocked"
-          value={blocked.length}
-          hint={blocked.length > 0 ? "Would break first payroll" : "Nothing blocked"}
-        />
-      </div>
+      <MetricStrip
+        items={[
+          { label: "Total candidates", value: (allJoiners.length) },
+          { label: "In flight", value: (inFlight.length), hint: "Not yet joined or dropped" },
+          { label: "Ready to join", value: (inFlight.length - blocked.length), hint: (inFlight.length > 0 ? `of ${inFlight.length} in flight` : undefined) },
+          { label: "Blocked", value: (blocked.length), hint: (blocked.length > 0 ? "Would break first payroll" : "Nothing blocked") },
+        ]}
+      />
 
       {blocked.length > 0 && (
         <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm rounded-lg">

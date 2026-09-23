@@ -9,10 +9,9 @@ import { listCompanies } from "@/lib/payroll/load";
 import {
   PageHeader,
   Card,
-  StatCard,
   Badge,
   EmptyState,
-  type BadgeTone,
+  type BadgeTone, MetricStrip
 } from "@/components/console/ui";
 import {
   CreateUserForm,
@@ -106,19 +105,14 @@ export default async function UsersPage(
         />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Accounts" value={rows.length} />
-        <StatCard label="Can sign in" value={rows.filter((r) => r.active).length} />
-        <StatCard
-          label="Administrators"
-          value={activeAdmins}
-          hint={activeAdmins === 1 ? "Only one — add a second" : undefined}
-        />
-        <StatCard
-          label="Self-service"
-          value={rows.filter((r) => r.role === "employee").length}
-        />
-      </div>
+      <MetricStrip
+        items={[
+          { label: "Accounts", value: (rows.length) },
+          { label: "Can sign in", value: (rows.filter((r) => r.active).length) },
+          { label: "Administrators", value: (activeAdmins), hint: (activeAdmins === 1 ? "Only one — add a second" : undefined) },
+          { label: "Self-service", value: (rows.filter((r) => r.role === "employee").length) },
+        ]}
+      />
 
       {activeAdmins === 1 && (
         <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm rounded-lg">
