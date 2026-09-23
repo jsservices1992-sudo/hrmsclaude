@@ -59,7 +59,7 @@ export default function AttendancePage() {
               title="Four ways in, one record out."
               lede="Most workforces in this segment are mixed — desk staff, field teams and a factory or warehouse. All four capture methods write to the same attendance record with the same validation."
             />
-            <div className="border border-line bg-surface">
+            <div className="border border-line bg-surface rounded-lg">
               {CAPTURE.map((c, i) => (
                 <div
                   key={c.m}

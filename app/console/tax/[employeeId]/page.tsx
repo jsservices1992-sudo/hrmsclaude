@@ -121,7 +121,7 @@ export default async function TaxWorksheetPage(
       </div>
 
       {w.warnings.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
           <p className="label text-brass mb-1.5">Before you rely on this</p>
           <ul className="text-sm text-ink-2 max-w-[74ch] flex flex-col gap-1">
             {w.warnings.map((warn, i) => (
@@ -406,7 +406,7 @@ export default async function TaxWorksheetPage(
 
       {/* the February forecast */}
       {w.ifNothingProved && w.ifNothingProved.additionalTaxPaise > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
           <p className="label text-rust mb-1.5">
             If nothing further is substantiated
           </p>

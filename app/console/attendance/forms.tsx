@@ -247,7 +247,7 @@ export function DepartmentBulkMarkForm({
       </div>
 
       {scope === "people" && (
-        <div className="border border-line bg-surface-2 p-3 max-h-56 overflow-y-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-1">
+        <div className="border border-line bg-surface-2 p-3 max-h-56 overflow-y-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-1 rounded-lg">
           {employees.map((e) => (
             <label key={e.id} className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="employeeIds" value={e.id} className="h-4 w-4" />

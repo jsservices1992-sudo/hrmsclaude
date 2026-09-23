@@ -151,7 +151,7 @@ export default async function PayrollConsolePage(
         }
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
         <StatCard label="Headcount" value={String(totals.headcount)} />
         <StatCard label="Gross" value={formatINR(totals.grossPaise)} />
         <StatCard label="Deductions" value={formatINR(totals.deductionsPaise)} />
@@ -362,7 +362,7 @@ export default async function PayrollConsolePage(
           ) : (
             <>
               {criticalCount > 0 && (
-                <p className="px-4 py-2 border-b border-line-2 bg-rust-soft text-sm text-ink-2">
+                <p className="px-4 py-2 border-b border-line-2 bg-rust-soft text-sm text-ink-2 rounded-lg">
                   Approval is blocked until the {criticalCount} blocking issue(s) below are resolved.
                 </p>
               )}

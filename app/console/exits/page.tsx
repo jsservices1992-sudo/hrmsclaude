@@ -138,7 +138,7 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
       )}
 
       {needingAttention.length > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
           <p className="label text-rust mb-1.5">Settlements past their deadline</p>
           <ul className="text-sm text-ink-2 max-w-[76ch] flex flex-col gap-1">
             {needingAttention.map((q) => (

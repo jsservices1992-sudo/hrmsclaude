@@ -58,7 +58,7 @@ export function UploadDocumentForm({
             type="file"
             accept="application/pdf,image/jpeg,image/png"
             required
-            className="text-sm file:mr-3 file:px-3 file:py-1.5 file:text-sm file:border file:border-line file:bg-surface-2 file:text-ink-2 border border-line px-2.5 py-1"
+            className="text-sm file:mr-3 file:px-3 file:py-1.5 file:text-sm file:border file:border-line file:bg-surface-2 file:text-ink-2 border border-line px-2.5 py-1 rounded-lg"
           />
         </label>
 
@@ -546,7 +546,7 @@ export function EmployeeSignInCard({
       {state.error && <p className="text-xs text-rust">{state.error}</p>}
       {state.ok && <p className="text-xs text-teal max-w-[70ch]">{state.ok}</p>}
       {state.link && (
-        <code className="text-xs font-mono bg-surface-2 border border-line px-2 py-1.5 break-all select-all">
+        <code className="text-xs font-mono bg-surface-2 border border-line px-2 py-1.5 break-all select-all rounded-lg">
           {state.link}
         </code>
       )}

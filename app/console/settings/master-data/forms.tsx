@@ -148,7 +148,7 @@ export function LeaveTypeForm({
 }) {
   const [state, action] = useActionState<MasterState, FormData>(saveLeaveType, {});
   return (
-    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3">
+    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3 rounded-lg">
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <div className="flex flex-wrap items-end gap-2">
@@ -296,7 +296,7 @@ export function ShiftForm({
   const [state, action] = useActionState<MasterState, FormData>(saveShift, {});
   const offDays = new Set((editing?.weeklyOffDays ?? "0").split(","));
   return (
-    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3">
+    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3 rounded-lg">
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <div className="flex flex-wrap items-end gap-2">
@@ -377,7 +377,7 @@ export function PayComponentForm({
 }) {
   const [state, action] = useActionState<MasterState, FormData>(savePayComponent, {});
   return (
-    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3">
+    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3 rounded-lg">
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
       {structureId && <input type="hidden" name="structureId" value={structureId} />}
@@ -503,7 +503,7 @@ export function LoanSchemeForm({
 }) {
   const [state, action] = useActionState<MasterState, FormData>(saveLoanScheme, {});
   return (
-    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3">
+    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3 rounded-lg">
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <div className="flex flex-wrap items-end gap-2">
@@ -679,7 +679,7 @@ export function VariablePayTypeForm({
 }) {
   const [state, action] = useActionState<MasterState, FormData>(saveVariablePayType, {});
   return (
-    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3">
+    <form action={action} className="flex flex-col gap-2 border border-line-2 p-3 rounded-lg">
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <div className="flex flex-wrap items-end gap-2">
@@ -774,7 +774,7 @@ export function IndiaHolidaysForm({ companyId }: { companyId: string }) {
         calendar is left alone.
       </p>
 
-      <div className="border border-line bg-surface-2 px-3 py-2.5">
+      <div className="border border-line bg-surface-2 px-3 py-2.5 rounded-lg">
         <span className="label text-ink-3">Still to add, with this year&apos;s dates</span>
         <p className="text-xs text-ink-3 mt-1 max-w-[80ch]">
           These move with the lunar calendar or a state notification, so their

@@ -172,7 +172,7 @@ export function FeatureCard({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 p-6 bg-surface border border-line">
+    <div className="flex flex-col gap-2 p-6 bg-surface border border-line rounded-lg">
       {code ? <span className="label text-ink-3">{code}</span> : null}
       <h3 className="font-display text-lg font-semibold leading-snug balance">{title}</h3>
       <p className="text-sm text-ink-2 leading-relaxed pretty">{children}</p>
@@ -203,7 +203,7 @@ export function Callout({
   };
   return (
     <div
-      className={`bg-surface border border-line border-l-[3px] ${tones[tone]} p-5 sm:p-6 max-w-[64ch]`}
+      className={`bg-surface border border-line border-l-[3px] ${tones[tone]} p-5 sm:p-6 max-w-[64ch] rounded-lg`}
     >
       <p className={`label mb-2 ${labelTones[tone]}`}>{label}</p>
       <div className="text-ink-2 leading-relaxed pretty">{children}</div>

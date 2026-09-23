@@ -105,7 +105,7 @@ export default function SiteNav() {
               </button>
 
               {productOpen && (
-                <div className="absolute left-0 top-full mt-1 w-[26rem] border border-line bg-surface shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)]">
+                <div className="absolute left-0 top-full mt-1 w-[26rem] border border-line bg-surface shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)] rounded-lg">
                   <ul className="divide-y divide-line-2">
                     {PRODUCT_NAV.map((item) => (
                       <li key={item.href}>

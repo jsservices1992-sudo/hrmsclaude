@@ -49,7 +49,7 @@ export default async function ComplianceConfigPage() {
         warns about is fixed teaches people to ignore warnings.
       */}
       {unverified > 0 ? (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
           <p className="label text-rust mb-1.5">Not fit for real payroll yet</p>
           <p className="text-sm text-ink-2 max-w-[70ch]">
             <strong className="text-ink tnum">{unverified}</strong> of the
@@ -67,7 +67,7 @@ export default async function ComplianceConfigPage() {
           </p>
         </div>
       ) : (
-        <div className="border-2 border-teal bg-teal-soft px-5 py-4">
+        <div className="border-2 border-teal bg-teal-soft px-5 py-4 rounded-lg">
           <p className="label text-teal mb-1.5">Checked and attested</p>
           <p className="text-sm text-ink-2 max-w-[70ch]">
             Every PT slab and LWF rate has been marked verified against a named
@@ -118,7 +118,7 @@ export default async function ComplianceConfigPage() {
       )}
 
       {missingSlabs.length > 0 && (
-        <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm">
+        <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm rounded-lg">
           <span className="label text-brass">Gap</span>{" "}
           <span className="text-ink-2">
             {missingSlabs.map((j) => j.name).join(", ")} levy PT but have no slab

@@ -132,7 +132,7 @@ export default async function ApiAdminPage() {
                     .map((sub) => (
                       <div
                         key={sub.id}
-                        className="border border-line-2 px-3 py-2 flex flex-col gap-1.5"
+                        className="border border-line-2 px-3 py-2 flex flex-col gap-1.5 rounded-lg"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <code className="text-xs break-all">{sub.url}</code>
@@ -147,7 +147,7 @@ export default async function ApiAdminPage() {
                           {sub.events.split(",").map((e) => (
                             <code
                               key={e}
-                              className="text-[11px] px-1.5 py-0.5 bg-canvas border border-line-2"
+                              className="text-[11px] px-1.5 py-0.5 bg-canvas border border-line-2 rounded-lg"
                             >
                               {e}
                             </code>

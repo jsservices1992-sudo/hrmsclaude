@@ -104,7 +104,7 @@ export default async function JoinerDetailPage(
       />
 
       {j.convertedEmployeeId && (
-        <div className="border border-teal/40 bg-teal-soft px-4 py-3 text-sm">
+        <div className="border border-teal/40 bg-teal-soft px-4 py-3 text-sm rounded-lg">
           <span className="label text-teal">Converted</span>{" "}
           <span className="text-ink-2">
             This joiner became an employee on {j.convertedAt?.slice(0, 10)} —{" "}
@@ -156,7 +156,7 @@ export default async function JoinerDetailPage(
       </Card>
 
       {readiness.blockers.length > 0 && (
-        <div className="border border-rust/40 bg-rust-soft px-4 py-3">
+        <div className="border border-rust/40 bg-rust-soft px-4 py-3 rounded-lg">
           <p className="label text-rust mb-1.5">Blockers</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {readiness.blockers.map((b, i) => <li key={i}>{b}</li>)}
@@ -164,7 +164,7 @@ export default async function JoinerDetailPage(
         </div>
       )}
       {readiness.warnings.length > 0 && (
-        <div className="border border-brass/40 bg-brass-soft px-4 py-3">
+        <div className="border border-brass/40 bg-brass-soft px-4 py-3 rounded-lg">
           <p className="label text-brass mb-1.5">Outstanding</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {readiness.warnings.map((w, i) => <li key={i}>{w}</li>)}
@@ -185,7 +185,7 @@ export default async function JoinerDetailPage(
             </div>
             <div>
               <p className="label text-ink-3 mb-1">Candidate portal link</p>
-              <code className="block text-xs bg-surface-2 px-2 py-1.5 break-all border border-line-2">
+              <code className="block text-xs bg-surface-2 px-2 py-1.5 break-all border border-line-2 rounded-lg">
                 {portalUrl}
               </code>
               <p className="text-xs text-ink-3 mt-1">
@@ -403,7 +403,7 @@ export default async function JoinerDetailPage(
       {/* Rehire — offered ahead of a plain conversion, because for a
           former employee the plain conversion is the wrong one. */}
       {canAct && j.status !== "joined" && formerMatch && (
-        <div className="border-2 border-brass bg-surface p-5">
+        <div className="border-2 border-brass bg-surface p-5 rounded-lg">
           <p className="label text-brass mb-2">They have worked here before</p>
           <RehireForm
             joinerId={j.id}
@@ -423,7 +423,7 @@ export default async function JoinerDetailPage(
 
       {/* Convert */}
       {canAct && j.status !== "joined" && (
-        <div className="border-2 border-indigo bg-surface p-5">
+        <div className="border-2 border-indigo bg-surface p-5 rounded-lg">
           <p className="label text-indigo mb-2">Convert to employee</p>
           <p className="text-sm text-ink-2 mb-4 max-w-[64ch]">
             Allocates a gapless employee code, copies the submitted profile,

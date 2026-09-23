@@ -60,7 +60,7 @@ export default async function WorkflowInstancePage(
       </div>
 
       {view.overdue.length > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
           <p className="label text-rust mb-1.5">Past its deadline</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {view.overdue.map((o) => (

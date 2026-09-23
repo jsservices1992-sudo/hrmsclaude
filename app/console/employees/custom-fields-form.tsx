@@ -62,7 +62,7 @@ export default function CustomFieldsForm({
                         {f.label}
                         <span className="text-rust ml-2">restricted</span>
                       </span>
-                      <div className="px-3 py-2 text-sm bg-surface-2 border border-line text-ink-3">
+                      <div className="px-3 py-2 text-sm bg-surface-2 border border-line text-ink-3 rounded-lg">
                         •••••
                       </div>
                     </div>

@@ -20,12 +20,12 @@ function Reveal({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
   return (
-    <div className="border border-brass/50 bg-brass-soft px-3 py-2.5 flex flex-col gap-2">
+    <div className="border border-brass/50 bg-brass-soft px-3 py-2.5 flex flex-col gap-2 rounded-lg">
       <p className="text-xs font-medium text-ink-1">
         {label} — shown once. Copy it now; it cannot be shown again.
       </p>
       <div className="flex items-center gap-2">
-        <code className="flex-1 px-2 py-1.5 text-xs bg-surface border border-line font-mono break-all">
+        <code className="flex-1 px-2 py-1.5 text-xs bg-surface border border-line font-mono break-all rounded-lg">
           {value}
         </code>
         <Button

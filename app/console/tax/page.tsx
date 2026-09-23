@@ -85,7 +85,7 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
       />
 
       {!configVerified ? (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
           <p className="label text-rust mb-1.5">Unverified tax configuration</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             Slabs, the standard deduction, cess, surcharge and the section 87A
@@ -96,7 +96,7 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
           </p>
         </div>
       ) : (
-        <div className="border-2 border-teal bg-teal-soft px-5 py-4">
+        <div className="border-2 border-teal bg-teal-soft px-5 py-4 rounded-lg">
           <p className="label text-teal mb-1.5">Core rates checked</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             Slabs (all three old-regime age bands), the standard deduction,
@@ -130,7 +130,7 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
       </div>
 
       {noPan.length > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
           <p className="label text-rust mb-1.5">
             Section 206AA — no valid PAN
           </p>
@@ -144,7 +144,7 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
       )}
 
       {notStarted.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
           <p className="label text-brass mb-1.5">No declaration filed</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {notStarted.length} employee(s) have filed nothing for the year, so

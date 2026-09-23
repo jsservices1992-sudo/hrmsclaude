@@ -143,7 +143,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
       </div>
 
       {blocked.length > 0 && (
-        <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm">
+        <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm rounded-lg">
           <span className="label text-rust">Not ready to join</span>{" "}
           <span className="text-ink-2">
             {blocked.length} joiner(s) have blockers that would break their first

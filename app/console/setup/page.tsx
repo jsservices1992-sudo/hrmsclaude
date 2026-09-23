@@ -71,7 +71,7 @@ export default async function SetupPage() {
         )}
       </Card>
 
-      <ol className="flex flex-col gap-px bg-line border border-line">
+      <ol className="flex flex-col gap-px bg-line border border-line rounded-lg">
         {progress.steps.map((step, i) => (
           <li
             key={step.id}

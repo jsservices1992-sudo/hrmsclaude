@@ -84,7 +84,7 @@ export default function LifecyclePage() {
             <div className="flex flex-col gap-8">
               <div>
                 <p className="label text-brass mb-4">Document checklist — India default</p>
-                <div className="border border-line bg-surface">
+                <div className="border border-line bg-surface rounded-lg">
                   {DOCS.map((d, i) => (
                     <div
                       key={d.g}
@@ -105,7 +105,7 @@ export default function LifecyclePage() {
 
               <div>
                 <p className="label text-brass mb-4">Statutory forms, pre-filled</p>
-                <div className="border border-line bg-surface">
+                <div className="border border-line bg-surface rounded-lg">
                   {FORMS.map((f, i) => (
                     <div
                       key={f.f}

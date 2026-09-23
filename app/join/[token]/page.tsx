@@ -65,7 +65,7 @@ export default async function JoinerPortalPage(
       </header>
 
       <main className="mx-auto w-full max-w-3xl px-5 sm:px-8 py-8 flex flex-col gap-8">
-        <div className="border border-line bg-surface flex flex-wrap">
+        <div className="border border-line bg-surface flex flex-wrap rounded-lg">
           {[
             { l: "Role", v: j.designation ?? "—" },
             { l: "Starting", v: j.proposedDoj },
@@ -79,7 +79,7 @@ export default async function JoinerPortalPage(
         </div>
 
         {j.offerStatus === "sent" && (
-          <section className="border-2 border-indigo bg-surface p-5 flex flex-col gap-3">
+          <section className="border-2 border-indigo bg-surface p-5 flex flex-col gap-3 rounded-lg">
             <h2 className="font-display text-xl font-semibold">Your offer</h2>
             <p className="text-sm text-ink-2">
               Accepting confirms you intend to join on {formatDate(j.proposedDoj)}. Your
@@ -90,13 +90,13 @@ export default async function JoinerPortalPage(
         )}
 
         {j.offerStatus === "accepted" && (
-          <div className="border border-teal/40 bg-teal-soft px-4 py-3 text-sm text-teal">
+          <div className="border border-teal/40 bg-teal-soft px-4 py-3 text-sm text-teal rounded-lg">
             Offer accepted{j.offerRespondedAt ? ` on ${formatDate(j.offerRespondedAt)}` : ""}. Thank you.
           </div>
         )}
 
         {j.profileSubmittedAt && (
-          <div className="border border-line bg-surface px-4 py-3 text-sm text-ink-2">
+          <div className="border border-line bg-surface px-4 py-3 text-sm text-ink-2 rounded-lg">
             <span className="label text-ink-3">Saved</span> — you submitted these
             details on {formatDate(j.profileSubmittedAt)}. You can update them
             until your first day.
@@ -129,7 +129,7 @@ export default async function JoinerPortalPage(
             Upload is not available in this build — your HR contact will collect
             these directly.
           </p>
-          <ul className="border border-line bg-surface divide-y divide-line-2">
+          <ul className="border border-line bg-surface divide-y divide-line-2 rounded-lg">
             {documents.map((d) => (
               <li key={d.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
                 <span className="text-sm">

@@ -219,7 +219,7 @@ export default function CompliancePage() {
               lede="The applicable set is derived from your registrations and your branches&rsquo; states — so the calendar changes by itself when you open an office, rather than depending on someone remembering."
             />
             <div className="flex flex-col gap-5">
-              <div className="border border-line bg-surface">
+              <div className="border border-line bg-surface rounded-lg">
                 {[
                   { d: "By the 15th", t: "EPF remittance and ECR filing" },
                   { d: "By the 15th", t: "ESIC contribution payment" },

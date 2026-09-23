@@ -24,7 +24,7 @@ const RUN_LINES = [
 
 function RunSummary() {
   return (
-    <div className="bg-surface border border-line shadow-[0_1px_0_0_var(--line-2)]">
+    <div className="bg-surface border border-line shadow-[0_1px_0_0_var(--line-2)] rounded-lg">
       <div className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-line bg-surface-2">
         <div className="flex flex-col">
           <span className="label text-ink-3">Payroll run</span>
@@ -32,7 +32,7 @@ function RunSummary() {
             Example Industries Pvt Ltd
           </span>
         </div>
-        <span className="label px-2 py-1 bg-teal-soft text-teal shrink-0">
+        <span className="label px-2 py-1 bg-teal-soft text-teal shrink-0 rounded-lg">
           Approved
         </span>
       </div>
@@ -213,7 +213,7 @@ export default function HomePage() {
             title="One employee record, end to end."
             lede="Everything shares one source of truth. Attendance feeds payroll, an exit feeds the final settlement, and every figure carries the settings that produced it."
           />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-line mt-10 border border-line">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-line mt-10 border border-line rounded-lg">
             {NAV.map((item) => (
               <Link
                 key={item.href}
@@ -347,7 +347,7 @@ export default function HomePage() {
       {/* CTA */}
       <Section>
         <Container>
-          <div className="bg-indigo text-on-indigo p-8 sm:p-12 flex flex-col lg:flex-row lg:items-center gap-8 justify-between">
+          <div className="bg-indigo text-on-indigo p-8 sm:p-12 flex flex-col lg:flex-row lg:items-center gap-8 justify-between rounded-lg">
             <div className="max-w-xl flex flex-col gap-3">
               <h2 className="font-display text-3xl sm:text-4xl font-semibold leading-[1.1] tracking-[-0.02em] balance">
                 Bring us your hardest month.
@@ -367,7 +367,7 @@ export default function HomePage() {
               </Link>
               <Link
                 href="/payroll"
-                className="inline-flex items-center px-5 py-3 text-sm font-medium border border-white/30 hover:border-white/60 transition-colors"
+                className="inline-flex items-center px-5 py-3 text-sm font-medium border border-white/30 hover:border-white/60 transition-colors rounded-lg"
               >
                 How the engine works
               </Link>

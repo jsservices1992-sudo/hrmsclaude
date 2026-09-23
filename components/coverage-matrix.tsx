@@ -16,13 +16,13 @@ const FILTERS: { key: Filter; label: string }[] = [
 function Badge({ on, flagged }: { on: boolean; flagged?: boolean }) {
   if (flagged) {
     return (
-      <span className="label inline-block min-w-[5.5rem] text-center px-2 py-1 bg-brass-soft text-brass">
+      <span className="label inline-block min-w-[5.5rem] text-center px-2 py-1 bg-brass-soft text-brass rounded-lg">
         Verify
       </span>
     );
   }
   return on ? (
-    <span className="label inline-block min-w-[5.5rem] text-center px-2 py-1 bg-teal-soft text-teal">
+    <span className="label inline-block min-w-[5.5rem] text-center px-2 py-1 bg-teal-soft text-teal rounded-lg">
       Applies
     </span>
   ) : (
@@ -87,13 +87,13 @@ export default function CoverageMatrix() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search state or UT…"
-            className="w-full sm:w-56 px-3 py-1.5 text-sm bg-surface border border-line placeholder:text-ink-3 focus:border-ink-3 outline-none"
+            className="w-full sm:w-56 px-3 py-1.5 text-sm bg-surface border border-line placeholder:text-ink-3 focus:border-ink-3 outline-none rounded-lg"
           />
         </label>
       </div>
 
       {/* table */}
-      <div className="border border-line bg-surface overflow-x-auto">
+      <div className="border border-line bg-surface overflow-x-auto rounded-lg">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-surface-2 border-b border-line">

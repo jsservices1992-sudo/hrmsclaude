@@ -171,8 +171,8 @@
   --shadow-ring: var(--shadow-ring);
 
   --font-display: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
-  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-sans: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
+  --font-mono: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
 }
 
 * {
@@ -251,13 +251,18 @@ dialog::backdrop {
   backdrop-filter: blur(4px);
 }
 
-/* Uppercase mono labels used throughout as the utility voice */
+/* The small utility voice: field labels, table heads, eyebrows. */
 .label {
   font-family: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0;
   font-weight: 600;
+}
+
+/* Codes and figures keep their columns without a typewriter face. */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

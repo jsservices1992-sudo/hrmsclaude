@@ -623,7 +623,7 @@ export default async function EmployeeDetailPage(
           )}
 
           {checklist.warnings.length > 0 && (
-            <div className="px-4 py-3 border-t border-line bg-brass-soft">
+            <div className="px-4 py-3 border-t border-line bg-brass-soft rounded-lg">
               <p className="label text-brass mb-1.5">
                 Checklist · {(checklist.completionBps / 100).toFixed(0)}% of
                 mandatory documents complete
@@ -877,10 +877,10 @@ export default async function EmployeeDetailPage(
                   )}
                   {h.before && h.after && (
                     <div className="mt-1.5 grid sm:grid-cols-2 gap-2 text-xs">
-                      <code className="block bg-rust-soft text-rust px-2 py-1 break-all">
+                      <code className="block bg-rust-soft text-rust px-2 py-1 break-all rounded-lg">
                         − {h.before}
                       </code>
-                      <code className="block bg-teal-soft text-teal px-2 py-1 break-all">
+                      <code className="block bg-teal-soft text-teal px-2 py-1 break-all rounded-lg">
                         + {h.after}
                       </code>
                     </div>

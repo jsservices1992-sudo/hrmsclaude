@@ -24,7 +24,7 @@ export function UploadExitDocumentForm({
         type="file"
         accept="application/pdf,image/jpeg,image/png"
         required
-        className="text-xs border border-line px-2 py-1 bg-surface w-40"
+        className="text-xs border border-line px-2 py-1 bg-surface w-40 rounded-lg"
       />
       <Button type="submit" size="sm" className="text-xs hover:border-indigo hover:text-indigo">
         Upload

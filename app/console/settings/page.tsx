@@ -92,7 +92,7 @@ export default async function SettingsPage() {
                 ].map((x) => (
                   <div key={x.k} className="px-4 py-3 border-r border-b border-line-2">
                     <dt className="label text-ink-3">{x.k}</dt>
-                    <dd className="text-sm mt-0.5 font-mono tnum break-all">{x.v}</dd>
+                    <dd className="text-sm mt-0.5 font-mono tnum break-words">{x.v}</dd>
                   </div>
                 ))}
               </dl>

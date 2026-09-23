@@ -47,14 +47,14 @@ export default async function EmployeeFlexiPage(
       </div>
 
       {regime === "new" && comparison.differencePaise > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
           <p className="label text-brass mb-1.5">This declaration saves no tax</p>
           <p className="text-sm text-ink-2 max-w-[70ch]">{comparison.advice}</p>
         </div>
       )}
 
       {validation.warnings.length > 0 && (
-        <div className="border border-brass/40 bg-brass-soft px-4 py-3">
+        <div className="border border-brass/40 bg-brass-soft px-4 py-3 rounded-lg">
           <p className="label text-brass mb-1.5">Notes</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {validation.warnings.map((w, i) => <li key={i}>{w}</li>)}

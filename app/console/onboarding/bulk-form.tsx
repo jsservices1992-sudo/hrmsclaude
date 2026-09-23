@@ -39,7 +39,7 @@ export function BulkJoinerForm({
         </span>
       </div>
 
-      <dl className="grid sm:grid-cols-3 gap-px bg-line border border-line text-xs">
+      <dl className="grid sm:grid-cols-3 gap-px bg-line border border-line text-xs rounded-lg">
         {[
           { label: "branchCode", values: branchCodes, required: true, href: "/console/settings", add: "Add a branch" },
           { label: "departmentCode", values: departmentCodes, required: false, href: "/console/settings/master-data?tab=org", add: "Add departments" },
@@ -86,7 +86,7 @@ export function BulkJoinerForm({
               type="file"
               accept=".csv,text/csv"
               required
-              className="text-sm border border-line px-2 py-1.5 bg-surface"
+              className="text-sm border border-line px-2 py-1.5 bg-surface rounded-lg"
             />
           </label>
           <SubmitButton pendingText="Checking…">Import joiners</SubmitButton>
@@ -97,7 +97,7 @@ export function BulkJoinerForm({
       {state.error && <p className="text-sm text-rust max-w-[70ch]">{state.error}</p>}
 
       {state.problems && state.problems.length > 0 && (
-        <div className="border border-rust/40 bg-rust-soft">
+        <div className="border border-rust/40 bg-rust-soft rounded-lg">
           <div className="px-3 py-2 border-b border-rust/20">
             <span className="label text-rust">
               Fix these and upload again — nothing was imported

@@ -186,7 +186,7 @@ export default async function ExitDetailPage(
       </Card>
 
       {!seesComp ? (
-        <p className="text-ink-2 text-sm border border-line-2 bg-surface px-4 py-3">
+        <p className="text-ink-2 text-sm border border-line-2 bg-surface px-4 py-3 rounded-lg">
           The notice, settlement and tax figures below carry pay data and
           need compensation scope, which your account does not have.
         </p>
@@ -369,7 +369,7 @@ export default async function ExitDetailPage(
           </Card>
 
           {settlement.warnings.length > 0 && (
-            <div className="border border-brass/40 bg-brass-soft px-4 py-3">
+            <div className="border border-brass/40 bg-brass-soft px-4 py-3 rounded-lg">
               <p className="label text-brass mb-1.5">Findings</p>
               <ul className="text-sm text-ink-2 flex flex-col gap-1">
                 {settlement.warnings.map((w, i) => (

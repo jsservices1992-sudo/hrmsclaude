@@ -127,7 +127,7 @@ export default async function CompanySettingsPage(
       </div>
 
       {missingRegs.length > 0 && (
-        <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm">
+        <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm rounded-lg">
           <span className="label text-rust">Missing registrations</span>{" "}
           <span className="text-ink-2">
             {missingRegs.join(", ")} — these states levy the tax and you employ
@@ -153,7 +153,7 @@ export default async function CompanySettingsPage(
         (isAdmin ? (
           <>
             {hasRuns && (
-              <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm text-ink-2">
+              <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
                 <span className="label text-brass">Saved runs exist</span> —
                 changing a payroll convention will require a reason, because it
                 changes what every future part-month is worth.

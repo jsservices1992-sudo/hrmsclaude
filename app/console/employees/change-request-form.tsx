@@ -19,19 +19,19 @@ export function ProfileChangeDecisionForm({ requestId }: { requestId: string }) 
       <input
         name="decisionNote"
         placeholder="Note (required to reject)"
-        className="px-2.5 py-1 text-xs bg-surface border border-line w-52 outline-none focus:border-ink-3"
+        className="px-2.5 py-1 text-xs bg-surface border border-line w-52 outline-none focus:border-ink-3 rounded-lg"
       />
       <button
         name="decision"
         value="approved"
-        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-teal hover:text-teal"
+        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-teal hover:text-teal rounded-lg"
       >
         Approve
       </button>
       <button
         name="decision"
         value="rejected"
-        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-rust hover:text-rust"
+        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-rust hover:text-rust rounded-lg"
       >
         Reject
       </button>

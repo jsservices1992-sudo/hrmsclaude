@@ -373,7 +373,7 @@ export function BranchForm({
         </FormField>
       </div>
 
-      <div className="border border-line-2 bg-surface-2/50 p-4">
+      <div className="border border-line-2 bg-surface-2/50 p-4 rounded-lg">
         <p className="label text-ink-3 mb-3">
           Statutory overrides — leave blank to inherit from the company
         </p>
@@ -514,10 +514,10 @@ export function CompanyLogoForm({
           <img
             src={logoUrl}
             alt="Company logo"
-            className="h-12 w-auto max-w-[10rem] object-contain border border-line bg-surface p-1"
+            className="h-12 w-auto max-w-[10rem] object-contain border border-line bg-surface p-1 rounded-lg"
           />
         ) : (
-          <span className="h-12 w-12 border border-line bg-surface-2 grid place-items-center text-xs text-ink-3">
+          <span className="h-12 w-12 border border-line bg-surface-2 grid place-items-center text-xs text-ink-3 rounded-lg">
             none
           </span>
         )}
@@ -531,7 +531,7 @@ export function CompanyLogoForm({
               type="file"
               accept="image/png,image/jpeg"
               required
-              className="text-sm border border-line px-2 py-1.5 bg-surface"
+              className="text-sm border border-line px-2 py-1.5 bg-surface rounded-lg"
             />
           </label>
           <SubmitButton pendingText="Uploading…">Upload</SubmitButton>

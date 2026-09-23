@@ -24,9 +24,9 @@ function Submit({ label }: { label: string }) {
 
 function Feedback({ state }: { state: OnboardState }) {
   if (state.error)
-    return <p role="alert" className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2">{state.error}</p>;
+    return <p role="alert" className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg">{state.error}</p>;
   if (state.ok)
-    return <p role="status" className="text-sm text-teal border border-teal/40 bg-teal-soft px-3 py-2">{state.ok}</p>;
+    return <p role="status" className="text-sm text-teal border border-teal/40 bg-teal-soft px-3 py-2 rounded-lg">{state.ok}</p>;
   return null;
 }
 
@@ -84,7 +84,7 @@ export function ProfileForm({
           <Field label="Date of birth" name="dateOfBirth" type="date" defaultValue={values.dateOfBirth} error={err("dateOfBirth")} />
           <label className="flex flex-col gap-1.5">
             <span className="label text-ink-3">Gender</span>
-            <select name="gender" defaultValue={values.gender ?? "other"} className="px-3 py-2.5 text-sm bg-surface border border-line">
+            <select name="gender" defaultValue={values.gender ?? "other"} className="px-3 py-2.5 text-sm bg-surface border border-line rounded-lg">
               <option value="female">Female</option>
               <option value="male">Male</option>
               <option value="other">Prefer not to say</option>

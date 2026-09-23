@@ -107,7 +107,7 @@ export function SignupForm() {
       <button
         type="submit"
         disabled={pending}
-        className="px-4 py-2.5 text-sm bg-indigo text-on-indigo hover:opacity-90 disabled:opacity-60"
+        className="px-4 py-2.5 text-sm bg-indigo text-on-indigo hover:opacity-90 disabled:opacity-60 rounded-lg"
       >
         {pending ? "Creating your company…" : "Create company"}
       </button>

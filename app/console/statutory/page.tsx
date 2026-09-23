@@ -174,7 +174,7 @@ export default async function StatutoryPage(
       />
 
       {calendar && calendar.missingRegistrations.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
           <p className="label text-brass mb-1.5">Registrations not on file</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {company.name} has no {calendar.missingRegistrations.join(", ")}{" "}
@@ -689,7 +689,7 @@ export default async function StatutoryPage(
           {register && (
             <a
               href={`/console/statutory/download/wage-register?${query}`}
-              className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+              className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 rounded-lg"
             >
               Wage register ↓
             </a>
@@ -697,26 +697,26 @@ export default async function StatutoryPage(
           {register && (
             <a
               href={`/console/statutory/download/attendance-register?${query}`}
-              className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+              className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 rounded-lg"
             >
               Attendance register ↓
             </a>
           )}
           <a
             href={`/console/statutory/download/leave-register?${query}`}
-            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 rounded-lg"
           >
             Leave register ↓
           </a>
           <a
             href={`/console/statutory/download/bonus-register?company=${companyId}&year=${month >= 4 ? year : year - 1}`}
-            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 rounded-lg"
           >
             Bonus register (FY{month >= 4 ? year : year - 1}–{String((month >= 4 ? year : year - 1) + 1).slice(2)}) ↓
           </a>
           <a
             href={`/console/statutory/download/employee-register?company=${companyId}`}
-            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 rounded-lg"
           >
             Register of employees ↓
           </a>
@@ -727,7 +727,7 @@ export default async function StatutoryPage(
                 {j.register?.kind === "punjab_act" && (
                   <a
                     href={`/console/statutory/download/shops-act-employees?${query}&state=${code}`}
-                    className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+                    className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 rounded-lg"
                   >
                     {code} — Form C ↓
                   </a>
@@ -735,7 +735,7 @@ export default async function StatutoryPage(
                 {register && (
                   <a
                     href={`/console/statutory/download/shops-act-register?${query}&state=${code}`}
-                    className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+                    className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 rounded-lg"
                   >
                     {code} — {j.register?.kind === "punjab_act" ? "Form D" : "register"} ↓
                   </a>

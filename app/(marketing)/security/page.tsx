@@ -141,7 +141,7 @@ export default function SecurityPage() {
                 eyebrow="Platform"
                 title="The boring guarantees."
               />
-              <div className="border border-line bg-surface">
+              <div className="border border-line bg-surface rounded-lg">
                 {[
                   { k: "Data residency", v: "All customer data stored in India." },
                   { k: "Encryption", v: "TLS in transit; encrypted at rest, with compensation and bank fields encrypted separately." },

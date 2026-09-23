@@ -129,7 +129,7 @@ export default async function LoanDetailPage(
       </div>
 
       {loan.status === "on_hold" && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
           <p className="label text-brass mb-1.5">Recovery paused</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {loan.holdReason ?? "No reason recorded."}

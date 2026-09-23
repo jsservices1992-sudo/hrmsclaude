@@ -116,7 +116,7 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
       </div>
 
       {inArrears.length > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
           <p className="label text-rust mb-1.5">Recovery fell short</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {inArrears.length} loan(s) carry arrears, because taking the full
@@ -129,7 +129,7 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
       )}
 
       {onHold.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
           <p className="label text-brass mb-1.5">Recovery on hold</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {onHold.length} loan(s) are paused and will not be recovered in the
@@ -292,7 +292,7 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
                   </TD>
                   <TD className="w-32">
                     <div
-                      className="h-1.5 bg-surface-2 border border-line-2"
+                      className="h-1.5 bg-surface-2 border border-line-2 rounded-lg"
                       role="img"
                       aria-label={`${(r.progressBps / 100).toFixed(0)}% repaid`}
                     >

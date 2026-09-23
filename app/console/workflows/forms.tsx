@@ -160,7 +160,7 @@ export function TemplateBuilder({
 
       <ol className="flex flex-col gap-2">
         {steps.map((step, i) => (
-          <li key={i} className="border border-line bg-surface px-3 py-3 flex flex-col gap-2">
+          <li key={i} className="border border-line bg-surface px-3 py-3 flex flex-col gap-2 rounded-lg">
             <div className="flex flex-wrap items-end gap-2">
               <span className="font-mono text-xs text-ink-3 w-6 pb-2">{i + 1}.</span>
               <label className="flex flex-col gap-1 flex-1 min-w-[16rem]">
@@ -304,7 +304,7 @@ export function TemplateBuilder({
                 },
               ])
             }
-            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3"
+            className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 rounded-lg"
           >
             + Add step
           </button>
@@ -359,7 +359,7 @@ export function DepartmentOwnersPanel({
 function RemoveDepartmentOwnerForm({ id, email }: { id: string; email: string }) {
   const [, action] = useActionState<WorkflowState, FormData>(removeDepartmentOwner, {});
   return (
-    <form action={action} className="inline-flex items-center gap-1 border border-line px-2 py-0.5 text-xs">
+    <form action={action} className="inline-flex items-center gap-1 border border-line px-2 py-0.5 text-xs rounded-lg">
       <input type="hidden" name="id" value={id} />
       {email}
       <button type="submit" className="text-ink-3 hover:text-rust" aria-label={`Remove ${email}`}>

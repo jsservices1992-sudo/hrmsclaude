@@ -10,7 +10,7 @@ function Problems({ state }: { state: ImportState }) {
       {state.ok && <p className="text-sm text-teal max-w-[70ch]">{state.ok}</p>}
       {state.error && <p className="text-sm text-rust max-w-[70ch]">{state.error}</p>}
       {state.problems && state.problems.length > 0 && (
-        <div className="border border-rust/40 bg-rust-soft">
+        <div className="border border-rust/40 bg-rust-soft rounded-lg">
           <div className="px-3 py-2 border-b border-rust/20">
             <span className="label text-rust">
               Fix these and upload again — nothing was imported
@@ -72,13 +72,13 @@ function Uploader({
             type="file"
             accept=".csv,text/csv"
             required
-            className="text-sm border border-line px-2 py-1.5 bg-surface"
+            className="text-sm border border-line px-2 py-1.5 bg-surface rounded-lg"
           />
           <SubmitButton pendingText="Checking…">{label}</SubmitButton>
         </div>
 
         {state.confirm && (
-          <div className="border border-brass/40 bg-brass-soft">
+          <div className="border border-brass/40 bg-brass-soft rounded-lg">
             <div className="px-3 py-2 border-b border-brass/20">
               <span className="label text-brass">
                 These leave types are not set up yet — create them?

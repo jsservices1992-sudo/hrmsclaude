@@ -278,7 +278,7 @@ function UserMenu({
           </span>
           <span className="hidden sm:flex flex-col items-start leading-tight min-w-0">
             <span className="text-sm truncate max-w-[10rem]">{user.name}</span>
-            <span className="label text-ink-3">{user.role.replace(/_/g, " ")}</span>
+            <span className="label text-ink-3 capitalize">{user.role.replace(/_/g, " ")}</span>
           </span>
           <IconChevron className="h-3 w-3 text-ink-3 rotate-90" />
         </button>
@@ -290,7 +290,7 @@ function UserMenu({
             <p className="text-sm font-medium">{user.name}</p>
             <p className="font-mono text-xs text-ink-2 break-all">{user.email}</p>
             <div className="flex flex-wrap gap-1.5 mt-2">
-              <span className="label px-1.5 py-0.5 rounded-sm bg-surface-2 text-ink-3">
+              <span className="label px-2 py-0.5 rounded-full bg-surface-2 text-ink-3 capitalize">
                 {user.role.replace(/_/g, " ")}
               </span>
               {user.compensationScope === "none" && (

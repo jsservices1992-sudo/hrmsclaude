@@ -148,7 +148,7 @@ export default async function SettlementPage(
       )}
 
       {fnf.warnings.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
           <p className="label text-brass mb-1.5">Before you release this</p>
           <ul className="text-sm text-ink-2 max-w-[76ch] flex flex-col gap-1">
             {[...new Set(fnf.warnings)].map((w, i) => (
@@ -336,8 +336,8 @@ export default async function SettlementPage(
 
       {/* ---------- demand & recovery ---------- */}
       {receivable && (
-        <div className="border-2 border-rust bg-surface">
-          <div className="px-4 py-2.5 border-b border-line bg-rust-soft flex flex-wrap items-center justify-between gap-2">
+        <div className="border-2 border-rust bg-surface rounded-lg">
+          <div className="px-4 py-2.5 border-b border-line bg-rust-soft flex flex-wrap items-center justify-between gap-2 rounded-lg">
             <span className="label text-rust">Demand outstanding</span>
             <span className="label text-rust">{receivable.status.replace(/_/g, " ")}</span>
           </div>
@@ -388,7 +388,7 @@ export default async function SettlementPage(
           whether the shortfall is recovered is a decision, and it was one
           nothing in the application could make. */}
       {canAct && (
-        <div className="border border-line bg-surface" data-print="hide">
+        <div className="border border-line bg-surface rounded-lg" data-print="hide">
           <div className="px-4 py-2.5 border-b border-line bg-surface-2">
             <span className="label text-ink-2">Notice period and gratuity</span>
           </div>
@@ -424,7 +424,7 @@ export default async function SettlementPage(
 
       {/* ---------- actions ---------- */}
       {canAct && (
-        <div className="border border-line bg-surface" data-print="hide">
+        <div className="border border-line bg-surface rounded-lg" data-print="hide">
           <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
             <span className="label text-ink-2">Settlement</span>
             {stored && (

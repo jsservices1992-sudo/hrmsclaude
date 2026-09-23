@@ -18,7 +18,7 @@ export function PrintButton({
       type="button"
       data-print="hide"
       onClick={() => window.print()}
-      className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 whitespace-nowrap"
+      className="px-3 py-1.5 text-xs border border-line bg-surface hover:border-ink-3 whitespace-nowrap rounded-lg"
     >
       {label}
     </button>

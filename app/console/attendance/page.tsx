@@ -295,7 +295,7 @@ export default async function AttendancePage(
       />
 
       {company.weeklyOffWorkTreatment === "comp_off" && !compOffType?.name && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4">
+        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
           <p className="label text-rust mb-1.5">Compensatory offs have nowhere to go</p>
           <p className="text-sm text-ink-2 max-w-[76ch]">
             This company credits a compensatory off for a day worked on a weekly
@@ -342,7 +342,7 @@ export default async function AttendancePage(
         </Card>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
         <StatCard label="Employees" value={months.length} />
         <StatCard
           label="Unpaid days"

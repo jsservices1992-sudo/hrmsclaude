@@ -1,6 +1,6 @@
 export function Table({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`overflow-x-auto rounded-md border border-line ${className}`}>
+    <div className={`overflow-x-auto rounded-xl border border-line bg-surface ${className}`}>
       <table className="w-full text-sm border-collapse">{children}</table>
     </div>
   );
@@ -15,7 +15,7 @@ export function THead({ children }: { children: React.ReactNode }) {
 }
 
 export function TH({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <th className={`label text-left text-ink-3 px-3 py-2 whitespace-nowrap ${className}`}>{children}</th>;
+  return <th className={`text-xs font-semibold text-left text-ink-2 px-3 py-2.5 whitespace-nowrap ${className}`}>{children}</th>;
 }
 
 export function TBody({ children }: { children: React.ReactNode }) {
@@ -40,7 +40,7 @@ export function TD({
   ...props
 }: React.ComponentProps<"td">) {
   return (
-    <td className={`px-3 py-2 whitespace-nowrap ${className}`} {...props}>
+    <td className={`px-3 py-2.5 whitespace-nowrap ${className}`} {...props}>
       {children}
     </td>
   );

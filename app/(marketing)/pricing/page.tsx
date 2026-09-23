@@ -103,7 +103,7 @@ export default function PricingPage() {
                       {plan.name}
                     </h2>
                     {plan.featured ? (
-                      <span className="label px-2 py-1 bg-indigo text-on-indigo shrink-0">
+                      <span className="label px-2 py-1 bg-indigo text-on-indigo shrink-0 rounded-lg">
                         Most chosen
                       </span>
                     ) : null}
@@ -187,7 +187,7 @@ export default function PricingPage() {
                 </Link>
                 <Link
                   href="/compliance"
-                  className="inline-flex items-center px-5 py-3 text-sm font-medium border border-line bg-surface hover:border-ink-3 transition-colors"
+                  className="inline-flex items-center px-5 py-3 text-sm font-medium border border-line bg-surface hover:border-ink-3 transition-colors rounded-lg"
                 >
                   Check your states
                 </Link>
@@ -239,7 +239,7 @@ export default function PricingPage() {
 
       <Section>
         <Container>
-          <div className="bg-indigo text-on-indigo p-8 sm:p-12 flex flex-col lg:flex-row lg:items-center gap-8 justify-between">
+          <div className="bg-indigo text-on-indigo p-8 sm:p-12 flex flex-col lg:flex-row lg:items-center gap-8 justify-between rounded-lg">
             <div className="max-w-xl flex flex-col gap-3">
               <h2 className="font-display text-3xl sm:text-4xl font-semibold leading-[1.1] tracking-[-0.02em] balance">
                 One month of real data.

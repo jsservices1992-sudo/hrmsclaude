@@ -8,10 +8,10 @@ export function StatCard({
   hint?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-line bg-surface shadow-sm p-4">
-      <p className="label text-ink-3">{label}</p>
-      <p className="font-display text-2xl font-semibold mt-1.5 tnum">{value}</p>
-      {hint && <p className="text-xs text-ink-2 mt-1">{hint}</p>}
+    <div className="min-w-0 rounded-xl border border-line bg-surface shadow-sm px-4 py-3.5">
+      <p className="text-xs font-medium text-ink-2">{label}</p>
+      <p className="font-display text-[clamp(1.05rem,0.7rem+1vw,1.5rem)] font-bold tracking-tight mt-1.5 tnum whitespace-nowrap">{value}</p>
+      {hint && <p className="text-xs text-ink-3 mt-1">{hint}</p>}
     </div>
   );
 }

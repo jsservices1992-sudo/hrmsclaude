@@ -68,7 +68,7 @@ export function ApplyLeaveForm({
         <input name="reason" className={field} placeholder="Optional" />
       </label>
       <div className="flex flex-wrap items-center gap-3">
-        <button className="px-4 py-2 text-sm border border-line bg-surface hover:border-indigo hover:text-indigo">
+        <button className="px-4 py-2 text-sm border border-line bg-surface hover:border-indigo hover:text-indigo rounded-lg">
           Apply
         </button>
         <span className="text-xs text-ink-3">
@@ -100,19 +100,19 @@ export function TeamLeaveForm({ requestId }: { requestId: string }) {
       <input
         name="note"
         placeholder="Reason (required to reject)"
-        className="px-2.5 py-1 text-xs bg-surface border border-line w-48 outline-none focus:border-ink-3"
+        className="px-2.5 py-1 text-xs bg-surface border border-line w-48 outline-none focus:border-ink-3 rounded-lg"
       />
       <button
         name="decision"
         value="approved"
-        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-teal hover:text-teal"
+        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-teal hover:text-teal rounded-lg"
       >
         Approve
       </button>
       <button
         name="decision"
         value="rejected"
-        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-rust hover:text-rust"
+        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-rust hover:text-rust rounded-lg"
       >
         Reject
       </button>
@@ -158,7 +158,7 @@ export function UploadOwnDocumentForm({
             type="file"
             accept="application/pdf,image/jpeg,image/png"
             required
-            className="text-sm border border-line px-2 py-1"
+            className="text-sm border border-line px-2 py-1 rounded-lg"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -167,7 +167,7 @@ export function UploadOwnDocumentForm({
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button className="px-4 py-2 text-sm border border-line bg-surface hover:border-indigo hover:text-indigo">
+        <button className="px-4 py-2 text-sm border border-line bg-surface hover:border-indigo hover:text-indigo rounded-lg">
           Upload
         </button>
         <span className="text-xs text-ink-3">PDF, JPEG or PNG up to 5MB. HR verifies it.</span>
@@ -471,14 +471,14 @@ export function TaxDeclarationForm({
           <button
             name="intent"
             value="save"
-            className="px-4 py-2 text-sm border border-line bg-surface hover:border-ink-3"
+            className="px-4 py-2 text-sm border border-line bg-surface hover:border-ink-3 rounded-lg"
           >
             Save draft
           </button>
           <button
             name="intent"
             value="submit"
-            className="px-4 py-2 text-sm border border-indigo text-indigo bg-surface hover:bg-indigo hover:text-on-indigo"
+            className="px-4 py-2 text-sm border border-indigo text-indigo bg-surface hover:bg-indigo hover:text-on-indigo rounded-lg"
           >
             Submit declaration
           </button>
@@ -572,19 +572,19 @@ export function TeamRegularisationForm({ requestId }: { requestId: string }) {
       <input
         name="decisionNote"
         placeholder="Note (required to reject)"
-        className="px-2.5 py-1 text-xs bg-surface border border-line w-48 outline-none focus:border-ink-3"
+        className="px-2.5 py-1 text-xs bg-surface border border-line w-48 outline-none focus:border-ink-3 rounded-lg"
       />
       <button
         name="decision"
         value="approved"
-        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-teal hover:text-teal"
+        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-teal hover:text-teal rounded-lg"
       >
         Approve
       </button>
       <button
         name="decision"
         value="rejected"
-        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-rust hover:text-rust"
+        className="px-2.5 py-1 text-xs border border-line bg-surface hover:border-rust hover:text-rust rounded-lg"
       >
         Reject
       </button>

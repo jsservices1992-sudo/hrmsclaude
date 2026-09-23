@@ -109,7 +109,7 @@ export function RunOutputs(props: {
   }
 
   return (
-    <div className="border border-line bg-surface" data-print="hide">
+    <div className="border border-line bg-surface rounded-lg" data-print="hide">
       <div className="px-4 py-2.5 border-b border-line bg-surface-2">
         <span className="label text-ink-2">What this run produces</span>
       </div>

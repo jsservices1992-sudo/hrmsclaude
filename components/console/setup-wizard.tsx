@@ -30,7 +30,7 @@ export async function SetupWizard({
   const nextLabel = next ? next.title : "the checklist";
 
   return (
-    <section className="border border-indigo/30 bg-indigo/[0.03]">
+    <section className="border border-indigo/30 bg-indigo/[0.03] rounded-lg">
       <AdvanceOnSave
         stepId={at.step.id}
         href={nextHref}

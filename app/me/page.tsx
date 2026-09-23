@@ -90,7 +90,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border border-line bg-surface">
+    <section className="border border-line bg-surface rounded-lg">
       <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="label text-ink-2">{title}</h2>
         {right}
@@ -466,7 +466,7 @@ export default async function MePage(props: PageProps<"/me">) {
           the only reason most people open it, and burying it behind a
           tab makes a daily action a three-tap one. */}
       {emp.status !== "exited" && (
-        <section className="border border-line bg-surface">
+        <section className="border border-line bg-surface rounded-lg">
           <div className="px-4 py-2.5 border-b border-line bg-surface-2">
             <span className="label text-ink-2">Attendance</span>
           </div>
@@ -517,7 +517,7 @@ export default async function MePage(props: PageProps<"/me">) {
           {settlementVisible && (
             <Link
               href="/me?tab=settlement"
-              className="border-2 border-indigo bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-surface-2"
+              className="border-2 border-indigo bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-surface-2 rounded-lg"
             >
               <div>
                 <p className="label text-indigo">Full &amp; final settlement</p>
@@ -543,7 +543,7 @@ export default async function MePage(props: PageProps<"/me">) {
                   ? `/me?tab=payslip&year=${latestPublished.year}&month=${latestPublished.month}`
                   : "/me?tab=payslip"
               }
-              className="border border-line bg-surface px-4 py-4 hover:border-ink-3"
+              className="border border-line bg-surface px-4 py-4 hover:border-ink-3 rounded-lg"
             >
               <p className="label text-ink-3">
                 Net pay{latestPublished ? ` · ${MONTHS[latestPublished.month - 1]}` : ""}
@@ -557,7 +557,7 @@ export default async function MePage(props: PageProps<"/me">) {
                   : "No payslip has been approved yet"}
               </p>
             </Link>
-            <Link href="/me?tab=leave" className="border border-line bg-surface px-4 py-4 hover:border-ink-3">
+            <Link href="/me?tab=leave" className="border border-line bg-surface px-4 py-4 hover:border-ink-3 rounded-lg">
               <p className="label text-ink-3">Leave balance</p>
               <p className="font-display text-xl font-semibold tnum mt-1">
                 {balances.reduce((a, b) => a + b.balanceDays, 0)} days
@@ -566,7 +566,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 <p className="text-xs text-brass mt-1">{pendingMine} awaiting approval</p>
               )}
             </Link>
-            <Link href="/me?tab=documents" className="border border-line bg-surface px-4 py-4 hover:border-ink-3">
+            <Link href="/me?tab=documents" className="border border-line bg-surface px-4 py-4 hover:border-ink-3 rounded-lg">
               <p className="label text-ink-3">Documents</p>
               <p className="font-display text-xl font-semibold tnum mt-1">
                 {(checklist.completionBps / 100).toFixed(0)}% complete
@@ -825,7 +825,7 @@ export default async function MePage(props: PageProps<"/me">) {
           <div className="flex flex-wrap items-center justify-between gap-3" data-print="hide">
             <form action="/me" className="flex items-end gap-2">
               <input type="hidden" name="tab" value="payslip" />
-              <select name="month" defaultValue={month} className="px-3 py-2 text-sm bg-surface border border-line">
+              <select name="month" defaultValue={month} className="px-3 py-2 text-sm bg-surface border border-line rounded-lg">
                 {MONTHS.map((m, i) => (
                   <option key={m} value={i + 1}>
                     {m}
@@ -836,9 +836,9 @@ export default async function MePage(props: PageProps<"/me">) {
                 name="year"
                 type="number"
                 defaultValue={year}
-                className="px-3 py-2 text-sm bg-surface border border-line font-mono tnum w-24"
+                className="px-3 py-2 text-sm bg-surface border border-line font-mono tnum w-24 rounded-lg"
               />
-              <button className="px-3 py-2 text-sm border border-line bg-surface hover:border-ink-3">
+              <button className="px-3 py-2 text-sm border border-line bg-surface hover:border-ink-3 rounded-lg">
                 Show
               </button>
             </form>
@@ -848,7 +848,7 @@ export default async function MePage(props: PageProps<"/me">) {
           {slip ? (
             <PayslipDocument slip={slip} />
           ) : (
-            <div className="border border-line bg-surface px-5 py-6" data-print="hide">
+            <div className="border border-line bg-surface px-5 py-6 rounded-lg" data-print="hide">
               <p className="text-sm text-ink-2 max-w-[60ch]">
                 {payslipBlockedReason ?? "No payslip is available for this month."}
               </p>
@@ -897,7 +897,7 @@ export default async function MePage(props: PageProps<"/me">) {
         <div className="flex flex-col gap-4">
           <form action="/me" className="flex items-end gap-2">
             <input type="hidden" name="tab" value="attendance" />
-            <select name="month" defaultValue={month} className="px-3 py-2 text-sm bg-surface border border-line">
+            <select name="month" defaultValue={month} className="px-3 py-2 text-sm bg-surface border border-line rounded-lg">
               {MONTHS.map((m, i) => (
                 <option key={m} value={i + 1}>
                   {m}
@@ -908,9 +908,9 @@ export default async function MePage(props: PageProps<"/me">) {
               name="year"
               type="number"
               defaultValue={year}
-              className="px-3 py-2 text-sm bg-surface border border-line font-mono tnum w-24"
+              className="px-3 py-2 text-sm bg-surface border border-line font-mono tnum w-24 rounded-lg"
             />
-            <button className="px-3 py-2 text-sm border border-line bg-surface hover:border-ink-3">
+            <button className="px-3 py-2 text-sm border border-line bg-surface hover:border-ink-3 rounded-lg">
               Show
             </button>
           </form>
@@ -923,7 +923,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 ["Loss of pay", attendanceMonth.summary.lopDays],
                 ["Hours worked", attendanceMonth.summary.workedHours],
               ].map(([label, value]) => (
-                <div key={String(label)} className="border border-line bg-surface px-4 py-3">
+                <div key={String(label)} className="border border-line bg-surface px-4 py-3 rounded-lg">
                   <p className="label text-ink-3">{label}</p>
                   <p className="font-display text-xl font-semibold tnum mt-1">{value}</p>
                 </div>
@@ -1186,23 +1186,23 @@ export default async function MePage(props: PageProps<"/me">) {
         <div className="flex flex-col gap-4">
           {worksheet && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="border border-line bg-surface px-4 py-3">
+              <div className="border border-line bg-surface px-4 py-3 rounded-lg">
                 <p className="label text-ink-3">Regime</p>
                 <p className="font-display text-xl font-semibold mt-1 capitalize">{worksheet.regime}</p>
               </div>
-              <div className="border border-line bg-surface px-4 py-3">
+              <div className="border border-line bg-surface px-4 py-3 rounded-lg">
                 <p className="label text-ink-3">Taxable income</p>
                 <p className="font-display text-xl font-semibold tnum mt-1">
                   {formatINR(worksheet.annual.taxableIncomePaise)}
                 </p>
               </div>
-              <div className="border border-line bg-surface px-4 py-3">
+              <div className="border border-line bg-surface px-4 py-3 rounded-lg">
                 <p className="label text-ink-3">Tax for the year</p>
                 <p className="font-display text-xl font-semibold tnum mt-1">
                   {formatINR(worksheet.annual.tax.totalTaxPaise)}
                 </p>
               </div>
-              <div className="border border-line bg-surface px-4 py-3">
+              <div className="border border-line bg-surface px-4 py-3 rounded-lg">
                 <p className="label text-ink-3">Deducted so far</p>
                 <p className="font-display text-xl font-semibold tnum mt-1">
                   {formatINR(worksheet.tdsToDatePaise)}
@@ -1212,7 +1212,7 @@ export default async function MePage(props: PageProps<"/me">) {
           )}
 
           {regimeComparison && (
-            <div className="border border-line bg-surface px-5 py-4">
+            <div className="border border-line bg-surface px-5 py-4 rounded-lg">
               <p className="label text-ink-3">Which regime costs you less</p>
               <p className="text-sm text-ink-2 mt-1.5 max-w-[70ch]">
                 On what you have declared, the{" "}
@@ -1229,7 +1229,7 @@ export default async function MePage(props: PageProps<"/me">) {
           )}
 
           {worksheet && worksheet.warnings.length > 0 && (
-            <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+            <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
               <p className="label text-brass mb-1.5">Worth knowing</p>
               <ul className="text-sm text-ink-2 flex flex-col gap-1">
                 {worksheet.warnings.map((w, i) => (
@@ -1313,7 +1313,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 <select
                   name="fy"
                   defaultValue={financialYear}
-                  className="px-3 py-2 text-sm bg-surface border border-line"
+                  className="px-3 py-2 text-sm bg-surface border border-line rounded-lg"
                 >
                   {[CURRENT_FY, CURRENT_FY - 1, CURRENT_FY - 2].map((y) => (
                     <option key={y} value={y}>
@@ -1322,7 +1322,7 @@ export default async function MePage(props: PageProps<"/me">) {
                   ))}
                 </select>
               </label>
-              <button className="px-3 py-2 text-sm border border-line bg-surface hover:border-ink-3">
+              <button className="px-3 py-2 text-sm border border-line bg-surface hover:border-ink-3 rounded-lg">
                 Show
               </button>
             </form>
@@ -1330,7 +1330,7 @@ export default async function MePage(props: PageProps<"/me">) {
           </div>
 
           {!form16 ? (
-            <div className="border border-line bg-surface px-5 py-6" data-print="hide">
+            <div className="border border-line bg-surface px-5 py-6 rounded-lg" data-print="hide">
               <p className="text-sm text-ink-2 max-w-[60ch]">
                 Nothing has been run for {fyLabel(financialYear)} yet, so there is
                 no salary or tax to certify.
@@ -1339,7 +1339,7 @@ export default async function MePage(props: PageProps<"/me">) {
           ) : (
             <>
               {!form16.form.complete && (
-                <div className="border-2 border-brass bg-brass-soft px-5 py-4" data-print="hide">
+                <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg" data-print="hide">
                   <p className="label text-brass mb-1">Provisional</p>
                   <p className="text-sm text-ink-2 max-w-[70ch]">
                     {fyLabel(financialYear)} is not over. This is your position
@@ -1377,7 +1377,7 @@ export default async function MePage(props: PageProps<"/me">) {
       {tab === "documents" && (
         <div className="flex flex-col gap-4">
           {checklist.warnings.length > 0 && (
-            <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+            <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
               <p className="label text-brass mb-1.5">Still needed</p>
               <ul className="text-sm text-ink-2 flex flex-col gap-1">
                 {checklist.warnings.map((w, i) => (
@@ -1628,7 +1628,7 @@ export default async function MePage(props: PageProps<"/me">) {
                     </p>
                   </div>
                   {item.daysOverdue > 0 && (
-                    <span className="label px-1.5 py-0.5 bg-rust-soft text-rust">
+                    <span className="label px-1.5 py-0.5 bg-rust-soft text-rust rounded-lg">
                       {item.daysOverdue} day(s) over
                     </span>
                   )}

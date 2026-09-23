@@ -121,7 +121,7 @@ export default async function UsersPage(
       </div>
 
       {activeAdmins === 1 && (
-        <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm">
+        <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm rounded-lg">
           <span className="label text-brass">One administrator</span>{" "}
           <span className="text-ink-2">
             If this account is lost there is no way back into the instance

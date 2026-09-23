@@ -218,7 +218,7 @@ export default function PayrollPage() {
             lede="Every transition records who, when, and on what version of the inputs. Backward transitions require a reason and always create a new version rather than mutating the last one."
           />
 
-          <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-line mt-10 border border-line">
+          <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-line mt-10 border border-line rounded-lg">
             {STATES.map((s, i) => (
               <li key={s.s} className="bg-surface p-5 flex flex-col gap-1.5">
                 <span className="label text-brass tnum">

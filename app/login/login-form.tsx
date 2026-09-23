@@ -30,7 +30,7 @@ export default function LoginForm() {
           type="email"
           autoComplete="username"
           required
-          className="px-3 py-2.5 bg-surface border border-line focus:border-ink-3 outline-none"
+          className="px-3 py-2.5 bg-surface border border-line focus:border-ink-3 outline-none rounded-lg"
         />
       </label>
 
@@ -57,14 +57,14 @@ export default function LoginForm() {
           type={showPassword ? "text" : "password"}
           autoComplete="current-password"
           required
-          className="px-3 py-2.5 bg-surface border border-line focus:border-ink-3 outline-none"
+          className="px-3 py-2.5 bg-surface border border-line focus:border-ink-3 outline-none rounded-lg"
         />
       </label>
 
       {state.error ? (
         <p
           role="alert"
-          className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2"
+          className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg"
         >
           {state.error}
         </p>

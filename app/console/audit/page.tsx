@@ -209,7 +209,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
       />
 
       {/* ---------- audit pack ---------- */}
-      <div className="border-2 border-indigo bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="border-2 border-indigo bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-4 rounded-lg">
         <div>
           <p className="label text-indigo mb-1">Audit pack</p>
           <p className="text-sm text-ink-2 max-w-[64ch]">
@@ -221,7 +221,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
         </div>
         <a
           href={`/console/audit/pack?${query}`}
-          className="px-4 py-2 text-sm border border-indigo text-indigo bg-surface hover:bg-indigo hover:text-white whitespace-nowrap"
+          className="px-4 py-2 text-sm border border-indigo text-indigo bg-surface hover:bg-indigo hover:text-white whitespace-nowrap rounded-lg"
         >
           Download pack ↓
         </a>

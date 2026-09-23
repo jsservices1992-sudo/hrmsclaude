@@ -59,7 +59,7 @@ export function NewJoinerForm({
   return (
     <form action={action} className="flex flex-col gap-5">
       <input type="hidden" name="companyId" value={companyId} />
-      <div className="border border-line bg-surface">
+      <div className="border border-line bg-surface rounded-lg">
         <div className="px-4 py-2.5 border-b border-line bg-surface-2">
           <span className="label text-ink-2">Candidate</span>
         </div>
@@ -80,7 +80,7 @@ export function NewJoinerForm({
         </div>
       </div>
 
-      <div className="border border-line bg-surface">
+      <div className="border border-line bg-surface rounded-lg">
         <div className="px-4 py-2.5 border-b border-line bg-surface-2">
           <span className="label text-ink-2">Placement &amp; offer</span>
         </div>
@@ -220,7 +220,7 @@ export function UploadJoinerDocumentForm({ docId }: { docId: string }) {
         type="file"
         accept="application/pdf,image/jpeg,image/png"
         required
-        className="text-xs border border-line px-2 py-1 bg-surface"
+        className="text-xs border border-line px-2 py-1 bg-surface rounded-lg"
       />
       <Button type="submit" size="sm" className="text-xs hover:border-indigo hover:text-indigo">
         Upload
@@ -266,7 +266,7 @@ export function ConvertForm({
         </label>
       )}
       {!canConvert && (
-        <p className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2">
+        <p className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg">
           Blocked: {blockers.join("; ")}.
         </p>
       )}
@@ -350,7 +350,7 @@ export function RehireForm({
       </label>
 
       {!canConvert && (
-        <p className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2">
+        <p className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg">
           Blocked: {blockers.join("; ")}.
         </p>
       )}

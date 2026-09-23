@@ -510,7 +510,7 @@ export default async function PayrollSettingsPage(
             component list apply.
           </p>
           {structures.filter((st) => st.isDefault).length > 1 && (
-            <p className="text-sm text-rust max-w-[70ch] border border-rust/40 bg-rust-soft px-3 py-2">
+            <p className="text-sm text-rust max-w-[70ch] border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg">
               More than one structure is marked default. Which one an employee
               resolves to is then not decided by anything you chose — open the
               one that should win and make it default, which clears the others.
@@ -667,14 +667,14 @@ export default async function PayrollSettingsPage(
           />
 
           {tail.tailDays > 0 && (
-            <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm">
+            <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm rounded-lg">
               <span className="label text-brass">Untracked tail</span>{" "}
               <span className="text-ink-2">{tail.note}</span>
             </div>
           )}
 
           {periods.some((p) => !p.stored && p.derived.conflict) && (
-            <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm">
+            <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm rounded-lg">
               <p className="label text-rust mb-1.5">Impossible calendar</p>
               <ul className="text-ink-2 flex flex-col gap-1">
                 {periods
@@ -738,7 +738,7 @@ export default async function PayrollSettingsPage(
 
       {tab === "statutory" && (
         <div className="flex flex-col gap-4">
-          <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm text-ink-2">
+          <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
             <span className="label text-brass">Effective dated</span> — editing
             writes a new version from the date you give. Runs already saved keep
             the version they used, so history stays reproducible.
@@ -944,7 +944,7 @@ export default async function PayrollSettingsPage(
           </p>
 
           {orphans.length > 0 && (
-            <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm">
+            <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm rounded-lg">
               <span className="label text-rust">In no group</span>{" "}
               <span className="text-ink-2">
                 {orphans.length} employee(s) match no group and would drop out of

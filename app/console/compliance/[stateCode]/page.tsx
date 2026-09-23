@@ -50,7 +50,7 @@ export default async function JurisdictionDetailPage(
       </div>
 
       {!isAdmin && (
-        <p className="text-sm text-brass border border-brass/40 bg-brass-soft px-4 py-3">
+        <p className="text-sm text-brass border border-brass/40 bg-brass-soft px-4 py-3 rounded-lg">
           Only an administrator can change statutory rules. You can review what is configured.
         </p>
       )}

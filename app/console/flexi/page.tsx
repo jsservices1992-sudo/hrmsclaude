@@ -100,7 +100,7 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
       </div>
 
       {wastedOnNewRegime.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4">
+        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
           <p className="label text-brass mb-1.5">Declaring under the new regime</p>
           <p className="text-sm text-ink-2 max-w-[72ch]">
             {wastedOnNewRegime.length} employee(s) have allocated a flexi basket
