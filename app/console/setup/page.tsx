@@ -6,7 +6,7 @@ import { wizardSteps, withWizard } from "@/lib/onboarding/wizard";
 import { loadWizardFacts } from "@/lib/onboarding/setup-load";
 import { PageHeader, Card, Badge } from "@/components/console/ui";
 
-export const metadata = { title: "Set up" };
+export const metadata = { title: "Setup checklist" };
 export const dynamic = "force-dynamic";
 
 /**

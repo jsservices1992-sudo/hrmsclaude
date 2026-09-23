@@ -35,7 +35,7 @@ import {
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
-export const metadata = { title: "Onboarding" };
+export const metadata = { title: "Joiners" };
 
 const STATUS_TONE: Record<string, BadgeTone> = {
   draft: "neutral",

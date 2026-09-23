@@ -28,7 +28,7 @@ import {
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
-export const metadata = { title: "Payroll run" };
+export const metadata = { title: "Payroll register" };
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",

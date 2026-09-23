@@ -9,7 +9,7 @@ import { PageHeader, Card, Badge } from "@/components/console/ui";
 import { SalaryImportForm, LeaveBalanceImportForm } from "./forms";
 import { SetupWizard } from "@/components/console/setup-wizard";
 
-export const metadata = { title: "Migrate" };
+export const metadata = { title: "Import data" };
 export const dynamic = "force-dynamic";
 
 /**

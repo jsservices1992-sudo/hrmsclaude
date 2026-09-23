@@ -10,7 +10,7 @@ import {
   RegistrationForm,
   CompanyLogoForm,
 } from "../../forms";
-import { Badge, Card, Tabs, TabLink, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { Badge, Card, Tabs, TabLink, Table, THead, TH, TBody, TR, TD, Alert } from "@/components/console/ui";
 import { SetupWizard } from "@/components/console/setup-wizard";
 
 export const metadata = { title: "Company settings" };
@@ -112,29 +112,35 @@ export default async function CompanySettingsPage(
     <div className="flex flex-col gap-6">
       <SetupWizard companyId={companyId} stepId={setupStep} />
 
-      <div>
-        <Link href="/console/settings" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-          ← Settings
-        </Link>
-        <div className="flex flex-wrap items-baseline gap-3 mt-2">
-          <h1 className="text-2xl font-bold tracking-tight text-ink">{company.name}</h1>
-          {company.isDefault && <Badge tone="teal">Default</Badge>}
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-line bg-surface p-5">
+        <div className="flex min-w-0 items-center gap-4">
+          <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-indigo text-lg font-bold text-on-indigo">
+            {company.name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-ink">{company.name}</h1>
+              {company.isDefault && <Badge tone="teal">Default</Badge>}
+            </div>
+            <p className="mt-0.5 text-sm text-ink-2">
+              {company.legalName}
+              {company.cin && <> · CIN {company.cin}</>}
+            </p>
+          </div>
         </div>
-        <p className="text-sm text-ink-2 mt-1">
-          {company.legalName}
-          {company.cin && <> · <span className="font-mono">{company.cin}</span></>}
-        </p>
-      </div>
+        <Link
+          href={`/console/settings/payroll?company=${companyId}`}
+          className="rounded-lg border border-line px-3.5 py-2 text-sm font-semibold text-ink hover:bg-surface-2"
+        >
+          Payroll rules
+        </Link>
+      </section>
 
       {missingRegs.length > 0 && (
-        <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm rounded-lg">
-          <span className="label text-rust">Missing registrations</span>{" "}
-          <span className="text-ink-2">
-            {missingRegs.join(", ")} — these states levy the tax and you employ
-            people there, but no registration number is on file. Returns cannot
-            be filed without them.
-          </span>
-        </div>
+        <Alert tone="danger" title={`Missing registrations: ${missingRegs.join(", ")}`}>
+          You employ people in states that levy these, but no registration number is on file — the
+          returns cannot be filed until one is added under Registrations.
+        </Alert>
       )}
 
       <Tabs>

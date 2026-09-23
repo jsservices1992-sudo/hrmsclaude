@@ -42,8 +42,6 @@ import {
   Select,
   FilterBar,
   FilterField,
-  Tabs,
-  TabLink,
   Table,
   THead,
   TH,
@@ -52,6 +50,7 @@ import {
   TD,
   Badge,
   Tooltip,
+  Alert,
 } from "@/components/console/ui";
 import { SetupWizard } from "@/components/console/setup-wizard";
 import { checkSlabCoverage } from "@/lib/payroll/statutory";
@@ -60,7 +59,7 @@ import { loadSodPolicies } from "@/lib/audit/log";
 import { SodToggle } from "../../audit/forms";
 import { formatDate } from "@/lib/format/date";
 
-export const metadata = { title: "Payroll settings" };
+export const metadata = { title: "Payroll rules" };
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -228,12 +227,12 @@ export default async function PayrollSettingsPage(
   });
 
   const TABS = [
-    { id: "conventions", label: "How pay is calculated" },
-    { id: "departments", label: `Department overrides (${deptOverrides.length})` },
-    { id: "structures", label: `Salary structures (${structures.length})` },
-    { id: "controls", label: "Approval controls" },
-    { id: "statutory", label: `Statutory rates (${params.length})` },
-    { id: "banks", label: `Bank accounts (${banks.length})` },
+    { id: "conventions", label: "How pay is calculated", count: undefined as number | undefined },
+    { id: "structures", label: "Salary structures", count: structures.length },
+    { id: "departments", label: "Department overrides", count: deptOverrides.length },
+    { id: "controls", label: "Approval controls", count: undefined },
+    { id: "statutory", label: "Statutory rates", count: params.length },
+    { id: "banks", label: "Bank accounts", count: banks.length },
   ];
 
   /*
@@ -247,11 +246,11 @@ export default async function PayrollSettingsPage(
    */
   const ADVANCED_TABS = [
     { id: "calendar", label: "Calendar & cut-offs", configured: calendars.length > 0 },
-    { id: "groups", label: `Groups (${groups.length})`, configured: groups.length > 0 },
+    { id: "groups", label: "Groups", configured: groups.length > 0 },
   ];
   for (const advanced of ADVANCED_TABS) {
     if (advanced.configured || tab === advanced.id) {
-      TABS.push({ id: advanced.id, label: advanced.label });
+      TABS.push({ id: advanced.id, label: advanced.label, count: undefined });
     }
   }
   const hiddenAdvanced = ADVANCED_TABS.filter(
@@ -286,48 +285,56 @@ export default async function PayrollSettingsPage(
     <div className="flex flex-col gap-6">
       <SetupWizard companyId={companyId} stepId={setupStep} />
 
-      <div>
-        <Link href="/console/settings" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-          ← Settings
-        </Link>
-        <PageHeader
-          title={`Payroll settings — ${company.name}`}
-          description="These decide what every part-month is worth. They are versioned, and changing one after a run exists requires a reason."
-        />
-      </div>
+      <PageHeader
+        title="Payroll rules"
+        description={`${company.name} · what every part-month is worth. Rules are versioned; changing one after a run needs a reason.`}
+      />
 
       {!isAdmin && (
-        <Card>
-          <span className="label text-ink-3">Read only</span> — only an
-          administrator can change payroll settings.
-        </Card>
+        <Alert tone="info" title="View only">
+          Only an administrator can change payroll rules.
+        </Alert>
       )}
 
-      <Tabs>
-        {TABS.map((t) => (
-          <TabLink
-            key={t.id}
-            href={`/console/settings/payroll?company=${companyId}&tab=${t.id}${setupStep ? `&setup=${setupStep}` : ""}`}
-            active={tab === t.id}
-          >
-            {t.label}
-          </TabLink>
-        ))}
-        {hiddenAdvanced.length > 0 && (
-          <span className="ml-auto flex items-center gap-3 pl-3 text-xs text-ink-3">
-            More:
-            {hiddenAdvanced.map((a) => (
-              <Link
-                key={a.id}
-                href={`/console/settings/payroll?company=${companyId}&tab=${a.id}`}
-                className="hover:underline hover:text-ink-2"
-              >
-                {a.label}
-              </Link>
-            ))}
-          </span>
-        )}
-      </Tabs>
+      <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
+        <nav aria-label="Payroll rules" className="lg:sticky lg:top-20">
+          <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+            {TABS.map((t) => {
+              const on = tab === t.id;
+              return (
+                <li key={t.id} className="shrink-0">
+                  <Link
+                    href={`/console/settings/payroll?company=${companyId}&tab=${t.id}${setupStep ? `&setup=${setupStep}` : ""}`}
+                    aria-current={on ? "page" : undefined}
+                    className={`flex items-center justify-between gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-base ${
+                      on ? "bg-surface text-indigo shadow-[inset_0_0_0_1px_var(--line)]" : "text-ink-2 hover:bg-surface hover:text-ink"
+                    }`}
+                  >
+                    {t.label}
+                    {t.count !== undefined && t.count > 0 && (
+                      <span className={`rounded-full px-1.5 text-xs tnum ${on ? "bg-indigo-soft text-indigo" : "bg-surface-3 text-ink-3"}`}>{t.count}</span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {hiddenAdvanced.length > 0 && (
+            <div className="mt-4 hidden border-t border-line pt-3 lg:block">
+              <p className="px-3 text-xs font-semibold text-ink-3">Advanced</p>
+              {hiddenAdvanced.map((a) => (
+                <Link
+                  key={a.id}
+                  href={`/console/settings/payroll?company=${companyId}&tab=${a.id}`}
+                  className="mt-1 block rounded-lg px-3 py-1.5 text-sm text-ink-3 hover:bg-surface hover:text-ink"
+                >
+                  {a.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </nav>
+        <div className="flex min-w-0 flex-col gap-6">
 
       {tab === "conventions" && (
         <PayrollSettingsForm
@@ -1033,6 +1040,8 @@ export default async function PayrollSettingsPage(
           </p>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, scopeCompanies } from "@/lib/auth/session";
 import { SetDefaultForm } from "./forms";
-import { PageHeader, Button, Card, Badge } from "@/components/console/ui";
+import { PageHeader, Button, Badge, Alert } from "@/components/console/ui";
 
 export const metadata = { title: "Settings" };
 
@@ -29,98 +29,85 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        eyebrow="Settings"
-        title="Companies & branches"
-        description="Each legal entity carries its own statutory registrations, payroll conventions and approval chain. A branch inherits the company's registrations unless you override them."
+        title="Companies"
+        description="Each legal entity has its own registrations, payroll rules and approvals. Branches inherit them unless you override."
         actions={
           isAdmin && (
             <Button href="/console/settings/companies/new" variant="primary">
-              New company
+              + Add company
             </Button>
           )
         }
       />
 
       {!isAdmin && (
-        <Card>
-          <span className="label text-ink-3">Read only</span> — only an
-          administrator can change company or branch configuration.
-        </Card>
+        <Alert tone="info" title="View only">
+          Only an administrator can change company or branch settings.
+        </Alert>
       )}
 
-      <div className="flex flex-col gap-4">
+      <div className="grid gap-4 lg:grid-cols-2">
         {companies.map((c) => {
           const own = branches.filter((b) => b.companyId === c.id);
           const states = Array.from(new Set(own.map((b) => b.stateCode)));
           return (
-            <Card key={c.id} padded={false}>
-              <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <Link
-                    href={`/console/settings/companies/${c.id}`}
-                    className="font-display text-lg font-semibold hover:text-indigo hover:underline"
-                  >
-                    {c.name}
-                  </Link>
-                  {c.isDefault && <Badge tone="teal">Default</Badge>}
-                </div>
-                <div className="flex items-center gap-3">
-                  {isAdmin && !c.isDefault && <SetDefaultForm companyId={c.id} />}
-                  <Link
-                    href={`/console/settings/payroll?company=${c.id}`}
-                    className="text-sm font-semibold text-indigo hover:text-indigo-2"
-                  >
-                    Payroll settings
-                  </Link>
-                  <Link
-                    href={`/console/settings/companies/${c.id}`}
-                    className="text-sm font-semibold text-indigo hover:text-indigo-2"
-                  >
-                    Configure →
-                  </Link>
-                </div>
+            <section key={c.id} className="flex flex-col rounded-xl border border-line bg-surface transition-base hover:border-indigo/30">
+              <div className="flex items-start justify-between gap-3 p-5">
+                <Link href={`/console/settings/companies/${c.id}`} className="group flex min-w-0 items-center gap-3">
+                  <span aria-hidden className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-indigo-soft text-sm font-bold text-indigo">
+                    {c.name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-base font-semibold text-ink group-hover:text-indigo">{c.name}</span>
+                      {c.isDefault && <Badge tone="teal">Default</Badge>}
+                    </span>
+                    <span className="block truncate text-xs text-ink-3">{c.legalName}</span>
+                  </span>
+                </Link>
+                {isAdmin && !c.isDefault && <SetDefaultForm companyId={c.id} />}
               </div>
 
-              <dl className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6">
+              <dl className="grid grid-cols-3 border-y border-line-2">
                 {[
-                  { k: "Legal name", v: c.legalName },
-                  { k: "PAN", v: c.pan ?? "—" },
-                  { k: "TAN", v: c.tan ?? "—" },
-                  { k: "Active headcount", v: String(headById[c.id] ?? 0) },
+                  { k: "Employees", v: String(headById[c.id] ?? 0) },
                   { k: "Branches", v: String(own.length) },
                   { k: "States", v: states.join(", ") || "—" },
                 ].map((x) => (
-                  <div key={x.k} className="px-4 py-3 border-r border-b border-line-2">
-                    <dt className="label text-ink-3">{x.k}</dt>
-                    <dd className="text-sm mt-0.5 font-mono tnum break-words">{x.v}</dd>
+                  <div key={x.k} className="min-w-0 border-r border-line-2 px-5 py-3 last:border-0">
+                    <dt className="text-xs text-ink-3">{x.k}</dt>
+                    <dd className="mt-0.5 truncate text-lg font-bold tracking-tight tnum text-ink">{x.v}</dd>
                   </div>
                 ))}
               </dl>
 
-              <div className="px-4 py-2.5 border-t border-line-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-2">
-                <span>
-                  Proration{" "}
-                  <span className="font-mono text-ink">
-                    {c.prorationBasis.replace("_", " ")}
+              <div className="flex flex-wrap gap-1.5 px-5 py-3">
+                {[
+                  `PAN ${c.pan ?? "missing"}`,
+                  `TAN ${c.tan ?? "missing"}`,
+                  `${c.prorationBasis.replace("_", " ")} days`,
+                  `Round ${c.roundingMode}`,
+                  `PF on ${c.epfOnActualBasic ? "actual basic" : "ceiling"}`,
+                  `Sandwich ${c.sandwichRule ? "on" : "off"}`,
+                ].map((chip) => (
+                  <span
+                    key={chip}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${chip.endsWith("missing") ? "bg-rust-soft text-rust" : "bg-surface-2 text-ink-2"}`}
+                  >
+                    {chip}
                   </span>
-                </span>
-                <span>
-                  Rounding <span className="font-mono text-ink">{c.roundingMode}</span>
-                </span>
-                <span>
-                  EPF base{" "}
-                  <span className="font-mono text-ink">
-                    {c.epfOnActualBasic ? "actual basic" : "ceiling"}
-                  </span>
-                </span>
-                <span>
-                  Sandwich rule{" "}
-                  <span className="font-mono text-ink">
-                    {c.sandwichRule ? "on" : "off"}
-                  </span>
-                </span>
+                ))}
               </div>
-            </Card>
+
+              <div className="mt-auto flex items-center justify-end gap-2 border-t border-line-2 px-5 py-3">
+                <Button href={`/console/settings/payroll?company=${c.id}`} variant="ghost" size="sm">
+                  Payroll rules
+                </Button>
+                <Button href={`/console/settings/companies/${c.id}`} size="sm">
+                  Configure
+                </Button>
+              </div>
+            </section>
           );
         })}
       </div>

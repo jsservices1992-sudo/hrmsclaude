@@ -32,7 +32,7 @@ import {
 import { PageHeader, Card, Select, Button, FilterBar, FilterField, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD, MonthNav } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
-export const metadata = { title: "Banking & accounting" };
+export const metadata = { title: "Bank & accounting" };
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",

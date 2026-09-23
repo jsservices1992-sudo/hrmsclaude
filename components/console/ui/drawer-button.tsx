@@ -15,6 +15,7 @@ export function DrawerButton({
   description,
   variant = "default",
   defaultOpen = false,
+  hideTrigger = false,
   children,
 }: {
   label: React.ReactNode;
@@ -23,14 +24,18 @@ export function DrawerButton({
   variant?: ButtonVariant;
   /** Opened on arrival — when a link elsewhere came here to do this. */
   defaultOpen?: boolean;
+  /** No button of its own — opened only by arriving with defaultOpen. */
+  hideTrigger?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={buttonClasses(variant)}>
-        {label}
-      </button>
+      {!hideTrigger && (
+        <button type="button" onClick={() => setOpen(true)} className={buttonClasses(variant)}>
+          {label}
+        </button>
+      )}
       <Drawer open={open} onClose={() => setOpen(false)} title={title} description={description}>
         {children}
       </Drawer>

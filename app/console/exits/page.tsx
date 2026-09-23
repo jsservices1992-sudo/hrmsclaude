@@ -34,7 +34,7 @@ import {
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
-export const metadata = { title: "Exits" };
+export const metadata = { title: "Leavers & settlement" };
 
 const TYPE_LABEL: Record<string, string> = {
   resignation: "Resignation",

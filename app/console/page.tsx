@@ -26,7 +26,7 @@ import {
 import { Card, Badge } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
-export const metadata = { title: "Dashboard" };
+export const metadata = { title: "Home" };
 
 
 

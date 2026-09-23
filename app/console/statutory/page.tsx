@@ -25,7 +25,7 @@ import { RecordFilingForm } from "./forms";
 import { PageHeader, Card, Badge, type BadgeTone, Table, THead, TH, TBody, TR, TD, MonthNav } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
-export const metadata = { title: "Statutory returns" };
+export const metadata = { title: "Returns & filings" };
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",

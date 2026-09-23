@@ -6,13 +6,15 @@ export function DropdownMenu({
   trigger,
   children,
   align = "end",
+  block = false,
 }: {
   trigger: (props: { onClick: () => void; open: boolean }) => React.ReactNode;
   children: (props: { close: () => void }) => React.ReactNode;
   align?: "start" | "end";
+  block?: boolean;
 }) {
   return (
-    <Popover trigger={trigger} align={align} panelClassName="min-w-[12rem] py-1">
+    <Popover trigger={trigger} align={align} block={block} panelClassName="min-w-[12rem] py-1">
       {({ close }) => <div role="menu">{children({ close })}</div>}
     </Popover>
   );

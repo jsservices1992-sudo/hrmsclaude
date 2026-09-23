@@ -150,7 +150,9 @@ function CompanySwitcher({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const fromUrl = params.get("company");
+  /* A company's own settings page names it in the path, not the query. */
+  const fromPath = pathname.match(/^\/console\/settings\/companies\/([^/]+)/)?.[1] ?? null;
+  const fromUrl = fromPath ?? params.get("company");
   const current =
     (fromUrl && companies.some((c) => c.id === fromUrl) ? fromUrl : null) ?? selected;
   const currentName = companies.find((c) => c.id === current)?.name ?? "All companies";
@@ -169,6 +171,7 @@ function CompanySwitcher({
   return (
     <DropdownMenu
       align="start"
+      block={wide}
       trigger={({ onClick, open }) =>
         wide ? (
           <button

@@ -12,7 +12,7 @@ import {
   ShiftForm, PayComponentForm, LoanSchemeForm, GlAccountForm, GlMappingForm,
   VariablePayTypeForm,
 } from "./forms";
-import { PageHeader, Card, Tabs, TabLink, Table, THead, TH, TBody, TR, TD, Badge, EmptyState } from "@/components/console/ui";
+import { PageHeader, Card, Tabs, TabLink, Table, THead, TH, TBody, TR, TD, Badge, EmptyState, DrawerButton } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 import { SetupWizard } from "@/components/console/setup-wizard";
 
@@ -82,7 +82,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
         eyebrow="Master data"
-        title="Org, leave, pay & loan configuration"
+        title="Master data"
         description={
           <>
             What onboarding, attendance, payroll and banking all read from.
@@ -121,9 +121,15 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
               </TBody>
             </Table>
             {canEdit && (
-              <div className="p-4 border-t border-line-2">
-                {editDept && <p className="label text-amber mb-2">Editing {editDept.name}</p>}
+              <div className="flex justify-end border-t border-line-2 px-5 py-3">
+                <DrawerButton
+                  key={editDept?.id ?? "new"}
+                  label="+ Add department"
+                  title={editDept ? `Edit ${editDept.name}` : "Add department"}
+                  defaultOpen={Boolean(editDept)}
+                >
                 <DepartmentForm key={editDept?.id ?? "new"} companyId={companyId} editing={editDept ? { id: editDept.id, name: editDept.name, code: editDept.code, costCentre: editDept.costCentre } : undefined} />
+                </DrawerButton>
               </div>
             )}
           </Card>
@@ -147,9 +153,15 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
               </TBody>
             </Table>
             {canEdit && (
-              <div className="p-4 border-t border-line-2">
-                {editGrade && <p className="label text-amber mb-2">Editing {editGrade.name}</p>}
+              <div className="flex justify-end border-t border-line-2 px-5 py-3">
+                <DrawerButton
+                  key={editGrade?.id ?? "new"}
+                  label="+ Add grade"
+                  title={editGrade ? `Edit ${editGrade.name}` : "Add grade"}
+                  defaultOpen={Boolean(editGrade)}
+                >
                 <GradeForm key={editGrade?.id ?? "new"} companyId={companyId} editing={editGrade ?? undefined} />
+                </DrawerButton>
               </div>
             )}
           </Card>
@@ -178,9 +190,15 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
               </TBody>
             </Table>
             {canEdit && (
-              <div className="p-4 border-t border-line-2">
-                {editLeaveType && <p className="label text-amber mb-2">Editing {editLeaveType.name}</p>}
+              <div className="flex justify-end border-t border-line-2 px-5 py-3">
+                <DrawerButton
+                  key={editLeaveType?.id ?? "new"}
+                  label="+ Add leave type"
+                  title={editLeaveType ? `Edit ${editLeaveType.name}` : "Add leave type"}
+                  defaultOpen={Boolean(editLeaveType)}
+                >
                 <LeaveTypeForm key={editLeaveType?.id ?? "new"} companyId={companyId} editing={editLeaveType ?? undefined} />
+                </DrawerButton>
               </div>
             )}
           </Card>
@@ -209,14 +227,22 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
               </TBody>
             </Table>
             {canEdit && (
-              <div className="p-4 border-t border-line-2">
-                {editHoliday && <p className="label text-amber mb-2">Editing {editHoliday.name}</p>}
+              <div className="flex justify-end border-t border-line-2 px-5 py-3">
+                <DrawerButton
+                  key={editHoliday?.id ?? "new"}
+                  label="+ Add holiday"
+                  title={editHoliday ? `Edit ${editHoliday.name}` : "Add holiday"}
+                  defaultOpen={Boolean(editHoliday)}
+                >
                 <HolidayForm key={editHoliday?.id ?? "new"} companyId={companyId} branches={branches} editing={editHoliday ?? undefined} />
+                </DrawerButton>
               </div>
             )}
             {canEdit && !editHoliday && (
-              <div className="p-4 border-t border-line-2">
-                <IndiaHolidaysForm companyId={companyId} />
+              <div className="flex justify-end border-t border-line-2 px-5 py-3">
+                <DrawerButton label="Load national holidays" variant="ghost" title="Load national holidays">
+                  <IndiaHolidaysForm companyId={companyId} />
+                </DrawerButton>
               </div>
             )}
           </Card>
@@ -244,9 +270,15 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             </TBody>
           </Table>
           {canEdit && (
-            <div className="p-4 border-t border-line-2">
-              {editShift && <p className="label text-amber mb-2">Editing {editShift.name}</p>}
+            <div className="flex justify-end border-t border-line-2 px-5 py-3">
+              <DrawerButton
+                key={editShift?.id ?? "new"}
+                label="+ Add shift"
+                title={editShift ? `Edit ${editShift.name}` : "Add shift"}
+                defaultOpen={Boolean(editShift)}
+              >
               <ShiftForm key={editShift?.id ?? "new"} companyId={companyId} editing={editShift ?? undefined} />
+              </DrawerButton>
             </div>
           )}
         </Card>
@@ -278,14 +310,20 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             </TBody>
           </Table>
           {canEdit && (
-            <div className="p-4 border-t border-line-2">
-              {editComponent && <p className="label text-amber mb-2">Editing {editComponent.name}</p>}
+            <div className="flex justify-end border-t border-line-2 px-5 py-3">
+              <DrawerButton
+                key={editComponent?.id ?? "new"}
+                label="+ Add pay component"
+                title={editComponent ? `Edit ${editComponent.name}` : "Add pay component"}
+                defaultOpen={Boolean(editComponent)}
+              >
               <PayComponentForm
                 key={editComponent?.id ?? "new"}
                 companyId={companyId}
                 otherComponents={payComponents.filter((c) => c.id !== editComponent?.id).map((c) => ({ code: c.code, name: c.name }))}
                 editing={editComponent ?? undefined}
               />
+              </DrawerButton>
             </div>
           )}
           <p className="px-4 py-3 text-xs text-ink-3 border-t border-line-2">
@@ -371,9 +409,15 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             </TBody>
           </Table>
           {canEdit && (
-            <div className="p-4 border-t border-line-2">
-              {editScheme && <p className="label text-amber mb-2">Editing {editScheme.label}</p>}
+            <div className="flex justify-end border-t border-line-2 px-5 py-3">
+              <DrawerButton
+                key={editScheme?.id ?? "new"}
+                label="+ Add loan scheme"
+                title={editScheme ? `Edit ${editScheme.label}` : "Add loan scheme"}
+                defaultOpen={Boolean(editScheme)}
+              >
               <LoanSchemeForm key={editScheme?.id ?? "new"} companyId={companyId} editing={editScheme ?? undefined} />
+              </DrawerButton>
             </div>
           )}
         </Card>
@@ -400,9 +444,15 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
               </TBody>
             </Table>
             {canEdit && (
-              <div className="p-4 border-t border-line-2">
-                {editAccount && <p className="label text-amber mb-2">Editing {editAccount.name}</p>}
+              <div className="flex justify-end border-t border-line-2 px-5 py-3">
+                <DrawerButton
+                  key={editAccount?.id ?? "new"}
+                  label="+ Add account"
+                  title={editAccount ? `Edit ${editAccount.name}` : "Add account"}
+                  defaultOpen={Boolean(editAccount)}
+                >
                 <GlAccountForm key={editAccount?.id ?? "new"} companyId={companyId} editing={editAccount ?? undefined} />
+                </DrawerButton>
               </div>
             )}
           </Card>
@@ -422,12 +472,14 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
               </TBody>
             </Table>
             {canEdit && (
-              <div className="p-4 border-t border-line-2">
+              <div className="flex justify-end border-t border-line-2 px-5 py-3">
+                <DrawerButton label="+ Map a component" title="Map a pay component to accounts">
                 <GlMappingForm
                   companyId={companyId}
                   components={payComponents.map((c) => ({ code: c.code, name: c.name }))}
                   accounts={glAccounts.map((a) => ({ code: a.code, name: a.name }))}
                 />
+                </DrawerButton>
               </div>
             )}
             <p className="px-4 py-3 text-xs text-ink-3 border-t border-line-2">

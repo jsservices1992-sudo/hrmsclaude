@@ -21,7 +21,7 @@ import {
 import { StartPendingForm, StepActionForm, TemplateBuilder, DepartmentOwnersPanel } from "./forms";
 import { PageHeader, Card, Badge, type BadgeTone, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 
-export const metadata = { title: "Workflows" };
+export const metadata = { title: "Approval workflows" };
 
 const STATUS_TONE: Record<string, BadgeTone> = {
   running: "brass",
