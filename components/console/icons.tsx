@@ -239,3 +239,42 @@ export const ICONS = {
 } as const;
 
 export type IconName = keyof typeof ICONS;
+
+export const IconUpload = (p: P) => (
+  <Svg {...p}>
+    <path d="M10 13V4M6.5 7.5 10 4l3.5 3.5" />
+    <path d="M4 12.5V15a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 16 15v-2.5" />
+  </Svg>
+);
+
+export const IconFile = (p: P) => (
+  <Svg {...p}>
+    <path d="M11.5 3H6a1.5 1.5 0 0 0-1.5 1.5v11A1.5 1.5 0 0 0 6 17h8a1.5 1.5 0 0 0 1.5-1.5V7L11.5 3Z" />
+    <path d="M11.5 3v4h4M7.5 11h5M7.5 13.5h3" />
+  </Svg>
+);
+
+export const IconGrid = (p: P) => (
+  <Svg {...p}>
+    <rect x="3" y="3" width="14" height="14" rx="2" />
+    <path d="M3 8h14M3 12.5h14M8 3v14M12.5 3v14" />
+  </Svg>
+);
+
+export const IconRefresh = (p: P) => (
+  <Svg {...p}>
+    <path d="M16 10a6 6 0 1 1-1.8-4.3M16 4v3.5h-3.5" />
+  </Svg>
+);
+
+export const IconArrowLeft = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 5 7 10l5 5" />
+  </Svg>
+);
+
+export const IconArrowRight = (p: P) => (
+  <Svg {...p}>
+    <path d="m8 5 5 5-5 5" />
+  </Svg>
+);

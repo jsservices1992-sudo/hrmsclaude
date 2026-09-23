@@ -28,10 +28,22 @@ import {
 } from "./forms";
 import { AttendanceDayRow } from "./day-editor";
 import {
-  PageHeader, Card, Select, Input, Button, StatCard, Badge, EmptyState,
-  FilterBar, FilterField,
-  Tabs, TabLink, Table, THead, TH, TBody, TR, TD,
+  Badge,
+  Table,
+  THead,
+  TH,
+  TBody,
+  TR,
+  TD,
+  EmptyState,
+  Panel,
+  MetricStrip,
+  MonthNav,
+  Alert,
+  Tabs,
+  TabLink,
 } from "@/components/console/ui";
+import { IconUpload, IconFile, IconUsers, IconDownload } from "@/components/console/icons";
 import { formatINR } from "@/lib/payroll/money";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 import { paidDaysForPeriod, type ProrationBasis } from "@/lib/payroll/proration";
@@ -261,146 +273,127 @@ export default async function AttendancePage(
     Math.max(...distances) - Math.min(...distances) < 250 &&
     Math.min(...distances) > 100;
 
-  return (
-    <div className="flex flex-col gap-5">
-      <PageHeader
-        eyebrow="Attendance & leave"
-        title={`${MONTHS[month - 1]} ${year}`}
-        description={company.name}
-        actions={
-          /* Two separate forms, side by side — a form cannot be nested
-             inside another, and the recompute posts to an action while the
-             period picker is a plain GET. */
-          <div className="flex flex-wrap items-end gap-2">
-            <FilterBar action="/console/attendance" mode="switch" hidden={{ tab }}>
-              {companies.length > 1 && (
-                <input type="hidden" name="company" value={companyId} />
-              )}
-              <FilterField label="Month" showLabel={false}>
-                <Select name="month" defaultValue={String(month)} className="w-36">
-                  {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                </Select>
-              </FilterField>
-              <FilterField label="Year" showLabel={false}>
-                <Input name="year" defaultValue={year} className="tnum w-20" />
-              </FilterField>
-            </FilterBar>
-            {canAct && <RecomputeForm companyId={companyId} year={year} month={month} />}
-          </div>
-        }
-      />
+  const periodHref = (y: number, m: number) =>
+    `/console/attendance?company=${companyId}&year=${y}&month=${m}&tab=${tab}`;
+  const initials = (name: string) =>
+    name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
-      {company.weeklyOffWorkTreatment === "comp_off" && !compOffType?.name && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
-          <p className="label text-rust mb-1.5">Compensatory offs have nowhere to go</p>
-          <p className="text-sm text-ink-2 max-w-[76ch]">
-            This company credits a compensatory off for a day worked on a weekly
-            off, and no leave type is marked to receive them — so nothing is
-            being credited. Mark one under Settings → Master data → Leave &amp;
-            holidays.
+  return (
+    <div className="flex flex-col gap-6 max-w-[84rem]">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">Attendance</h1>
+          <p className="mt-1 text-sm text-ink-2">
+            {company.name} · what each person is paid for this month
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <MonthNav year={year} month={month} href={periodHref} />
+          {canAct && <RecomputeForm companyId={companyId} year={year} month={month} />}
+        </div>
+      </div>
+
+      {company.weeklyOffWorkTreatment === "comp_off" && !compOffType?.name && (
+        <Alert tone="danger" title="Compensatory offs have nowhere to go">
+          A day worked on a weekly off earns a comp-off, but no leave type is set to receive them.
+          Mark one under Settings → Master data → Leave &amp; holidays.
+        </Alert>
       )}
 
       {refusedPunches.length > 0 && (
-        <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="label text-ink-2">Punches turned away</span>
-            <Badge tone={looksMisplaced ? "rust" : "neutral"}>
-              {refusedPunches.length} recent
-            </Badge>
-          </div>
-          {looksMisplaced && (
-            <p className="px-4 py-3 text-sm text-rust border-b border-line-2 max-w-[80ch]">
-              All of these land at much the same distance, which is what a
-              misplaced office pin looks like rather than people punching from
-              home. Check the branch location — there is a button on the branch
-              form to set it from a phone standing at the office.
-            </p>
-          )}
+        <Panel
+          title="Punches turned away"
+          badge={<Badge tone={looksMisplaced ? "rust" : "neutral"}>{refusedPunches.length} recent</Badge>}
+          description={
+            looksMisplaced
+              ? "They all land at about the same distance — that is a misplaced office pin, not people punching from home. Check the branch location."
+              : undefined
+          }
+          flush
+        >
           <ul className="divide-y divide-line-2">
             {refusedPunches.map((p, i) => (
-              <li key={i} className="px-4 py-2 text-xs flex flex-wrap gap-x-4 gap-y-1">
-                <span className="font-mono text-ink-3 w-36 shrink-0">
-                  {formatDateTime(p.at)}
-                </span>
-                <span className="font-mono w-20 shrink-0">{p.empCode}</span>
-                <span className="w-40 shrink-0">{p.firstName} {p.lastName}</span>
-                <span className="text-ink-2 flex-1 min-w-[18rem]">
-                  {p.distanceMetres != null ? `${Math.round(p.distanceMetres)}m away` : p.reason}
+              <li key={i} className="px-5 py-2.5 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="font-medium w-44 shrink-0 truncate">{p.firstName} {p.lastName}</span>
+                <span className="text-xs text-ink-3 w-36 shrink-0">{formatDateTime(p.at)}</span>
+                <span className="text-ink-2 flex-1 min-w-[12rem]">
+                  {p.distanceMetres != null ? `${Math.round(p.distanceMetres)} m from the office` : p.reason}
                   {p.accuracyMetres != null && (
-                    <span className="text-ink-3"> · device accurate to {Math.round(p.accuracyMetres)}m</span>
+                    <span className="text-ink-3"> · accurate to {Math.round(p.accuracyMetres)} m</span>
                   )}
                 </span>
               </li>
             ))}
           </ul>
-        </Card>
+        </Panel>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
-        <StatCard label="Employees" value={months.length} />
-        <StatCard
-          label="Unpaid days"
-          value={`${totalLop.toFixed(2)} d`}
-          hint={`across ${withLop.length} employee(s)`}
-        />
-        <StatCard label="Holidays" value={holidayRows.filter((h) => !h.restricted).length} />
-        <StatCard label="Pending approvals" value={pendingCount} />
-        <StatCard
-          label="Incentives &amp; deductions"
-          value={adjustments.length}
-          hint="one-off, this month only"
-        />
-      </div>
+      <MetricStrip
+        items={[
+          { label: "Employees", value: months.length },
+          {
+            label: "Unpaid days",
+            value: totalLop.toFixed(1),
+            hint: withLop.length > 0 ? `${withLop.length} ${withLop.length === 1 ? "person" : "people"}` : "Everyone paid in full",
+            tone: totalLop > 0 ? "danger" : "default",
+          },
+          { label: "Holidays", value: holidayRows.filter((h) => !h.restricted).length },
+          { label: "Waiting for you", value: pendingCount, tone: pendingCount > 0 ? "warning" : "default" },
+          { label: "Incentives & deductions", value: adjustments.length },
+        ]}
+      />
 
+      <div className="flex flex-col gap-5">
       <Tabs>
         <TabLink href={`/console/attendance?${q}&tab=input`} active={tab === "input"}>
-          Payroll input
+          Paid days
         </TabLink>
-        <TabLink href={`/console/attendance?${q}&tab=approvals`} active={tab === "approvals"}>
-          Approvals{pendingCount > 0 ? ` (${pendingCount})` : ""}
+        <TabLink href={`/console/attendance?${q}&tab=approvals`} active={tab === "approvals"} count={pendingCount}>
+          Approvals
         </TabLink>
         <TabLink href={`/console/attendance?${q}&tab=grid`} active={tab === "grid"}>
-          Month grid
+          Calendar
         </TabLink>
         {canAct && (
-          <TabLink href={`/console/attendance?${q}&tab=adjustments`} active={tab === "adjustments"}>
+          <TabLink href={`/console/attendance?${q}&tab=adjustments`} active={tab === "adjustments"} count={adjustments.length}>
             Incentives &amp; deductions
           </TabLink>
         )}
         {canAct && (
           <TabLink href={`/console/attendance?${q}&tab=import`} active={tab === "import"}>
-            Import
+            Upload
           </TabLink>
         )}
       </Tabs>
 
       {/* ---------------- payroll input ---------------- */}
       {tab === "input" && (
-        <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="label text-ink-2">Paid days the run will read</span>
+        <Panel
+          title="Paid days"
+          description="What payroll will pay each person for this month. Override anyone whose figure is wrong."
+          actions={
             <a
               href={`/console/attendance/export?${q}`}
-              className="label text-brass hover:underline whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm font-semibold text-ink hover:bg-surface-2"
             >
-              Download CSV →
+              <IconDownload className="h-4 w-4" /> Export
             </a>
-          </div>
+          }
+          flush
+        >
           {/* No horizontal-scroll wrapper: these five columns fit, and a
               container that scrolls on one axis clips the other, which cut
               the override popover off on the lower rows. */}
           <div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-line">
-                  <th className="label text-ink-3 text-left px-3 py-2">Employee</th>
-                  <th className="label text-ink-3 px-3 py-2 text-left">The month</th>
-                  <th className="hidden sm:table-cell label text-ink-3 px-3 py-2 text-right">Derived</th>
-                  <th className="label text-ink-3 px-3 py-2 text-right">Feeds payroll</th>
-                  <th className="hidden sm:table-cell label text-ink-3 px-3 py-2 text-left">Source</th>
-                  {canAct && <th className="label text-ink-3 px-3 py-2 text-right">&nbsp;</th>}
+                <tr className="border-b border-line bg-surface-2/60">
+                  <th className="text-xs font-semibold text-ink-2 text-left px-3 py-2.5">Employee</th>
+                  <th className="text-xs font-semibold text-ink-2 px-3 py-2.5 text-left">Attendance</th>
+                  <th className="hidden sm:table-cell text-xs font-semibold text-ink-2 px-3 py-2.5 text-right">From attendance</th>
+                  <th className="text-xs font-semibold text-ink-2 px-3 py-2.5 text-right">Paid days</th>
+                  <th className="hidden sm:table-cell text-xs font-semibold text-ink-2 px-3 py-2.5 text-left">Source</th>
+                  {canAct && <th className="text-xs font-semibold text-ink-2 px-3 py-2.5 text-right">&nbsp;</th>}
                 </tr>
               </thead>
               <tbody>
@@ -419,11 +412,18 @@ export default async function AttendancePage(
                     m.summary.leaveDays === 0;
                   return (
                     <tr key={m.employeeId} className="group border-b border-line-2 last:border-0 hover:bg-surface-2/60 align-top">
-                      <td className="px-3 py-2 whitespace-nowrap max-w-[14rem] truncate" title={m.name}>
-                        {m.name}
-                        <span className="block font-mono text-xs text-ink-3">{m.empCode}</span>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <span className="flex items-center gap-3 min-w-0">
+                          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-indigo-soft text-xs font-bold text-indigo">
+                            {initials(m.name)}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block max-w-[12rem] truncate font-semibold" title={m.name}>{m.name}</span>
+                            <span className="block text-xs text-ink-3">{m.empCode}</span>
+                          </span>
+                        </span>
                       </td>
-                      <td className="px-3 py-2 text-xs text-ink-2 whitespace-nowrap">
+                      <td className="px-3 py-3 text-xs text-ink-2 whitespace-nowrap">
                         {m.summary.presentDays > 0 && `${m.summary.presentDays} present`}
                         {m.summary.halfDays > 0 && ` · ${m.summary.halfDays} half`}
                         {m.summary.leaveDays > 0 && ` · ${m.summary.leaveDays} leave`}
@@ -438,25 +438,35 @@ export default async function AttendancePage(
                           </span>
                         )}
                       </td>
-                      <td className="hidden sm:table-cell px-3 py-2 text-right font-mono tnum text-ink-3 whitespace-nowrap">
+                      <td className="hidden sm:table-cell px-3 py-3 text-right tnum text-ink-3 whitespace-nowrap">
                         {derivedPaid.toFixed(1)}
                         <span className="text-ink-3"> / {daysInThisMonth}</span>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono tnum whitespace-nowrap">
-                        <span className={feedingPaid < daysInThisMonth ? "text-rust font-medium" : ""}>
-                          {feedingPaid.toFixed(1)}
+                      <td className="px-3 py-3 text-right whitespace-nowrap">
+                        <span className="inline-flex flex-col items-end gap-1">
+                          <span className="tnum">
+                            <span className={`font-semibold ${feedingPaid < daysInThisMonth ? "text-rust" : "text-ink"}`}>
+                              {feedingPaid.toFixed(1)}
+                            </span>
+                            <span className="text-ink-3"> / {daysInThisMonth}</span>
+                          </span>
+                          <span aria-hidden className="block h-1.5 w-24 overflow-hidden rounded-full bg-surface-3">
+                            <span
+                              className={`block h-full rounded-full ${feedingPaid < daysInThisMonth ? "bg-rust" : "bg-teal"}`}
+                              style={{ width: `${Math.min(100, (feedingPaid / daysInThisMonth) * 100)}%` }}
+                            />
+                          </span>
                         </span>
-                        <span className="text-ink-3"> / {daysInThisMonth}</span>
                       </td>
-                      <td className="hidden sm:table-cell px-3 py-2">
+                      <td className="hidden sm:table-cell px-3 py-3">
                         {stored?.overridden ? (
-                          <Badge tone="brass" >overridden</Badge>
+                          <Badge tone="brass">Overridden</Badge>
                         ) : (
-                          <span className="text-xs text-ink-3">derived</span>
+                          <span className="text-xs text-ink-3">From attendance</span>
                         )}
                       </td>
                       {canAct && (
-                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                        <td className="px-3 py-3 text-right whitespace-nowrap">
                           <OverrideCell name={m.name} overridden={Boolean(stored?.overridden)}>
                             <OverrideAttendanceForm
                               employeeId={m.employeeId}
@@ -479,25 +489,22 @@ export default async function AttendancePage(
               </tbody>
             </table>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {/* ---------------- approvals ---------------- */}
       {tab === "approvals" && (
-        <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Leave &amp; corrections awaiting a decision</span>
-          </div>
+        <Panel title="Waiting for a decision" description="Leave requests and attendance corrections for this month." flush>
           {pendingCount === 0 ? (
             <EmptyState title="Nothing waiting" description="Every leave request and correction for this period has been decided." />
           ) : (
             <ul className="divide-y divide-line-2">
               {pendingLeave.map(({ req, type, emp }) => (
-                <li key={req.id} className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <li key={req.id} className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="text-sm font-medium">{emp.firstName} {emp.lastName}</span>
+                    <span className="text-sm font-semibold">{emp.firstName} {emp.lastName}</span>
                     {!type.paid && <Badge tone="rust" className="ml-2">unpaid</Badge>}
-                    <span className="block text-xs text-ink-2 mt-0.5">
+                    <span className="block text-sm text-ink-2 mt-0.5">
                       {type.name} · {formatDate(req.fromDate)} → {formatDate(req.toDate)} · {req.days} day(s)
                       {req.reason && ` · ${req.reason}`}
                     </span>
@@ -506,11 +513,11 @@ export default async function AttendancePage(
                 </li>
               ))}
               {pendingReg.map(({ req, emp }) => (
-                <li key={req.id} className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <li key={req.id} className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="text-sm font-medium">{emp.firstName} {emp.lastName}</span>
+                    <span className="text-sm font-semibold">{emp.firstName} {emp.lastName}</span>
                     <Badge tone="brass" className="ml-2">correction</Badge>
-                    <span className="block text-xs text-ink-2 mt-0.5">
+                    <span className="block text-sm text-ink-2 mt-0.5">
                       {formatDate(req.date)} · was {req.originalStatus} · {req.reason}
                     </span>
                   </div>
@@ -519,14 +526,17 @@ export default async function AttendancePage(
               ))}
             </ul>
           )}
-        </Card>
+        </Panel>
       )}
 
       {/* ---------------- month grid ---------------- */}
       {tab === "grid" && (
-        <Card padded={false} className="overflow-x-auto">
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="label text-ink-2">Month grid</span>
+        <Panel
+          title="Calendar"
+          description="Every day of the month. Click a day to change it."
+          flush
+        >
+          <div className="px-5 py-2.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
             <span className="flex flex-wrap gap-3 text-xs text-ink-2">
               {Object.entries(MARK).map(([k, m]) => (
                 <span key={k} className="flex items-center gap-1">
@@ -535,16 +545,17 @@ export default async function AttendancePage(
               ))}
             </span>
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line">
-                <th className="label text-ink-3 text-left px-3 py-2 sticky left-0 bg-surface">Employee</th>
+                <th className="text-xs font-semibold text-ink-2 text-left px-3 py-2 sticky left-0 bg-surface">Employee</th>
                 {Array.from({ length: total }, (_, i) => (
-                  <th key={i} className="label text-ink-3 px-1 py-2 font-mono tnum w-6 text-center">
+                  <th key={i} className="text-xs font-semibold text-ink-3 px-1 py-2 tnum w-6 text-center">
                     {i + 1}
                   </th>
                 ))}
-                <th className="label text-ink-3 px-3 py-2 text-right">LOP</th>
+                <th className="text-xs font-semibold text-ink-2 px-3 py-2 text-right">LOP</th>
               </tr>
             </thead>
             <tbody>
@@ -570,9 +581,10 @@ export default async function AttendancePage(
               ))}
             </tbody>
           </table>
+          </div>
           {holidayRows.length > 0 && (
-            <div className="px-4 py-2.5 border-t border-line flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-2">
-              <span className="label text-ink-3">Holidays</span>
+            <div className="px-5 py-3 border-t border-line-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-2">
+              <span className="font-semibold text-ink-2">Holidays</span>
               {holidayRows.map((h) => (
                 <span key={h.id} className="whitespace-nowrap">
                   <span className="font-mono tnum text-ink-3">{h.date.slice(8)}</span> {h.name}
@@ -581,35 +593,20 @@ export default async function AttendancePage(
               ))}
             </div>
           )}
-        </Card>
+        </Panel>
       )}
 
       {/* ---------------- adjustments ---------------- */}
       {tab === "adjustments" && canAct && (
-        <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="label text-ink-2">
-              Incentives &amp; deductions for {MONTHS[month - 1]} {year}
-            </span>
-            <Link
-              href={`/console/payroll/inputs?company=${companyId}&year=${year}&month=${month}`}
-              className="label text-brass hover:underline whitespace-nowrap"
-            >
-              Add one →
-            </Link>
-          </div>
+        <Panel
+          title="Incentives & deductions"
+          description={`One-off amounts for ${MONTHS[month - 1]} ${year} only — a bonus, overtime, a recovery. Folded in the next time the month is calculated.`}
+          flush
+        >
           {adjustments.length === 0 ? (
             <EmptyState
               title="Nothing added for this month"
-              description="A bonus, an incentive, overtime, or a one-off deduction — anything that applies to this month only and is not part of somebody's salary. It is folded in the next time the month is calculated."
-              action={
-                <Link
-                  href={`/console/payroll/inputs?company=${companyId}&year=${year}&month=${month}`}
-                  className="label text-brass hover:underline"
-                >
-                  Add an incentive or deduction →
-                </Link>
-              }
+              description="Add one below — it applies to this month only."
             />
           ) : (
             <Table className="border-0 rounded-none">
@@ -648,7 +645,7 @@ export default async function AttendancePage(
             </Table>
           )}
           {canMutateMoney && (
-            <div className="px-4 py-3 border-t border-line">
+            <div className="px-5 py-4 border-t border-line-2 bg-surface-2/40 rounded-b-xl">
               <AddAdjustmentForm
                 companyId={companyId}
                 year={year}
@@ -657,52 +654,48 @@ export default async function AttendancePage(
               />
             </div>
           )}
-        </Card>
+        </Panel>
       )}
 
-      {/* ---------------- import ---------------- */}
+      {/* ---------------- upload ---------------- */}
       {tab === "import" && canAct && (
-        <div className="grid lg:grid-cols-2 gap-5 items-start">
-          {/* First, because it is the register most companies keep and it
-              cannot be read the wrong way: every day not counted is a day
-              of loss of pay, with nothing resting on what the file leaves
-              out. */}
-          <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="label text-ink-2">Days worked — one line per person</span>
-              <span className="label text-teal">simplest</span>
-            </div>
-            <div className="p-4">
+        <div className="flex flex-col gap-5">
+          <div className="grid lg:grid-cols-2 gap-5 items-start">
+            <Panel
+              icon={<IconFile />}
+              title="Days worked"
+              badge={<Badge tone="teal">Recommended</Badge>}
+              description="One line per person with the number of days they worked."
+            >
               <DaysWorkedUploadForm companyId={companyId} year={year} month={month} />
-            </div>
-          </Card>
-          <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Day by day — a row per person per day</span>
-            </div>
-            <div className="p-4">
+            </Panel>
+            <Panel
+              icon={<IconUpload />}
+              title="Day-by-day register"
+              description="A row for each person for each day — present, absent, leave, off."
+            >
               <BulkUploadForm companyId={companyId} year={year} month={month} />
-            </div>
-          </Card>
-          <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Mark a whole department</span>
-            </div>
-            <div className="p-4">
-              <DepartmentBulkMarkForm
-                companyId={companyId}
-                year={year}
-                month={month}
-                departments={departments}
-                employees={activeEmployees.map((e) => ({
-                  id: e.id,
-                  label: `${e.empCode} — ${e.firstName} ${e.lastName}`,
-                }))}
-              />
-            </div>
-          </Card>
+            </Panel>
+          </div>
+          <Panel
+            icon={<IconUsers />}
+            title="Mark many people at once"
+            description="Everyone, a department or a few people — present, absent or off for a range of days."
+          >
+            <DepartmentBulkMarkForm
+              companyId={companyId}
+              year={year}
+              month={month}
+              departments={departments}
+              employees={activeEmployees.map((e) => ({
+                id: e.id,
+                label: `${e.empCode} — ${e.firstName} ${e.lastName}`,
+              }))}
+            />
+          </Panel>
         </div>
       )}
+      </div>
     </div>
   );
 }

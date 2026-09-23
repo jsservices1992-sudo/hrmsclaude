@@ -21,3 +21,8 @@ export { Alert, type AlertTone } from "./alert";
 export { Skeleton, PageSkeleton } from "./skeleton";
 export { Drawer } from "./drawer";
 export { Stepper, type Step, type StepStatus } from "./stepper";
+export { DrawerButton } from "./drawer-button";
+export { Panel } from "./panel";
+export { FileDrop } from "./file-drop";
+export { MetricStrip } from "./metric-strip";
+export { MonthNav } from "./month-nav";

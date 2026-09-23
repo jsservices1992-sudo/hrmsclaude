@@ -1,5 +1,7 @@
 "use client";
 
+import { IconDownload } from "@/components/console/icons";
+
 import { useActionState, useState } from "react";
 import {
   recomputeAttendance,
@@ -21,6 +23,7 @@ import {
   Textarea,
   Select,
   SubmitButton,
+  FileDrop,
   FormFeedback,
   FormDialog,
 } from "@/components/console/ui";
@@ -66,30 +69,24 @@ export function DaysWorkedUploadForm({
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          name="file"
-          type="file"
-          accept=".csv,text/csv"
-          required
-          className="text-sm border border-line rounded-md px-2 py-1.5 bg-surface"
-        />
-        <SubmitButton pendingText="Working…">Upload days worked</SubmitButton>
-      </div>
-      <p className="text-xs text-ink-3">
-        One line per person: <code className="font-mono">empCode,name,daysWorked</code>.
-        Weekly offs and holidays are paid without being counted, so they do not
-        go in the figure — the days not worked become loss of pay.{" "}
+      <FileDrop hint="One line per person · empCode, name, daysWorked" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <a
           href={`/console/attendance/template/days-worked?company=${companyId}&year=${year}&month=${month}`}
-          className="text-brass hover:underline whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo hover:text-indigo-2"
         >
-          Download template →
-        </a>{" "}
-        <span className="text-ink-3">
-          (everybody, already filled in with a full month — change the ones who were away)
-        </span>
-      </p>
+          <IconDownload className="h-4 w-4" /> Template, filled for everyone
+        </a>
+        <SubmitButton variant="primary" pendingText="Uploading…">Upload</SubmitButton>
+      </div>
+      <details className="text-xs text-ink-3">
+        <summary className="cursor-pointer font-medium text-ink-2 hover:text-ink">How the file is read</summary>
+        <p className="mt-1.5 max-w-[60ch]">
+          <code className="font-mono">empCode,name,daysWorked</code>. Weekly offs and holidays are paid
+          without being counted, so leave them out — the days not worked become loss of pay. The
+          template has everybody on a full month; change only the people who were away.
+        </p>
+      </details>
       <FormFeedback state={state} />
       {state.parseErrors && state.parseErrors.length > 0 && (
         <ul className="text-xs text-brass flex flex-col gap-0.5 max-h-32 overflow-y-auto">
@@ -120,30 +117,24 @@ export function BulkUploadForm({
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          name="file"
-          type="file"
-          accept=".csv,text/csv"
-          required
-          className="text-sm border border-line rounded-md px-2 py-1.5 bg-surface"
-        />
-        <SubmitButton pendingText="Working…">Upload CSV</SubmitButton>
-      </div>
-      <p className="text-xs text-ink-3">
-        Columns: <code className="font-mono">empCode,date,status</code> — status is
-        one of {BULK_STATUSES.join(", ")} — or the shorthand a register
-        actually uses: P, A, HD, OD, WO, Holiday. A header row is optional.{" "}
+      <FileDrop hint="A row per person per day · empCode, date, status" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <a
           href={`/console/attendance/template?company=${companyId}&year=${year}&month=${month}`}
-          className="text-brass hover:underline whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo hover:text-indigo-2"
         >
-          Download template →
-        </a>{" "}
-        <span className="text-ink-3">
-          (every active employee, already filled in — edit the exceptions)
-        </span>
-      </p>
+          <IconDownload className="h-4 w-4" /> Template, filled for everyone
+        </a>
+        <SubmitButton variant="primary" pendingText="Uploading…">Upload</SubmitButton>
+      </div>
+      <details className="text-xs text-ink-3">
+        <summary className="cursor-pointer font-medium text-ink-2 hover:text-ink">How the file is read</summary>
+        <p className="mt-1.5 max-w-[60ch]">
+          <code className="font-mono">empCode,date,status</code> — status is one of{" "}
+          {BULK_STATUSES.join(", ")}, or the register shorthand P, A, HD, OD, WO, Holiday. A header row
+          is optional. The template has every active employee filled in; edit the exceptions.
+        </p>
+      </details>
       <FormFeedback state={state} />
       {state.parseErrors && state.parseErrors.length > 0 && (
         <ul className="text-xs text-brass flex flex-col gap-0.5 max-h-32 overflow-y-auto">
@@ -201,7 +192,7 @@ export function DepartmentBulkMarkForm({
 
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Who</span>
+          <span className="text-xs font-medium text-ink-2">Who</span>
           <Select
             className="w-44"
             value={scope}
@@ -215,7 +206,7 @@ export function DepartmentBulkMarkForm({
 
         {scope === "department" && (
           <label className="flex flex-col gap-1">
-            <span className="label text-ink-3">Department</span>
+            <span className="text-xs font-medium text-ink-2">Department</span>
             <Select name="departmentId" className="w-44" required defaultValue="">
               <option value="" disabled>Choose…</option>
               {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -224,16 +215,16 @@ export function DepartmentBulkMarkForm({
         )}
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">From</span>
+          <span className="text-xs font-medium text-ink-2">From</span>
           <Input name="fromDate" type="date" defaultValue={iso(1)} min={iso(1)} max={iso(last)} className="font-mono" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">To</span>
+          <span className="text-xs font-medium text-ink-2">To</span>
           <Input name="toDate" type="date" defaultValue={iso(last)} min={iso(1)} max={iso(last)} className="font-mono" />
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Mark as</span>
+          <span className="text-xs font-medium text-ink-2">Mark as</span>
           <Select name="status" className="w-36" defaultValue="present">
             {BULK_STATUSES.map((v) => (
               <option key={v} value={v}>
@@ -243,7 +234,7 @@ export function DepartmentBulkMarkForm({
           </Select>
         </label>
 
-        <SubmitButton pendingText="Working…">Mark attendance</SubmitButton>
+        <SubmitButton variant="primary" pendingText="Working…">Apply</SubmitButton>
       </div>
 
       {scope === "people" && (
@@ -260,18 +251,14 @@ export function DepartmentBulkMarkForm({
         </div>
       )}
 
-      <p className="text-xs text-ink-3 max-w-[80ch]">
-        {scope === "company"
-          ? "Everybody active in this company."
-          : scope === "department"
-            ? "Everybody active in the department chosen."
-            : "Only the people ticked below."}{" "}
-        Sundays and holidays inside the range keep being Sundays and
-        holidays — attendance is re-derived afterwards, and an off day
-        stays off and paid whatever the mark says. Marking a range as
-        Weekly off makes those days off for these people even where the
-        calendar says otherwise.
-      </p>
+      <details className="text-xs text-ink-3">
+        <summary className="cursor-pointer font-medium text-ink-2 hover:text-ink">What happens to Sundays and holidays</summary>
+        <p className="mt-1.5 max-w-[60ch]">
+          They stay Sundays and holidays — attendance is re-derived afterwards, and an off day stays
+          off and paid whatever the mark says. Marking a range as Weekly off makes those days off for
+          these people even where the calendar says otherwise.
+        </p>
+      </details>
 
       <FormFeedback state={state} />
     </form>
