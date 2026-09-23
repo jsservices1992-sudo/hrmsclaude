@@ -198,3 +198,117 @@ export function TrendBadge({ deltaPercent }: { deltaPercent: number }) {
     </span>
   );
 }
+
+/* ------------------------------ columns ------------------------------ */
+
+export type ColumnPoint = {
+  key: string;
+  label: string;
+  /** Two series side by side — gross and net, say. */
+  a: number;
+  b: number;
+  /** Not yet calculated: drawn hollow so it cannot be read as a result. */
+  provisional?: boolean;
+};
+
+/**
+ * Month by month, two series side by side, one scale for both.
+ *
+ * Gridlines sit at round figures, every label names a value the chart
+ * reaches, and a month that is only a preview is drawn as an outline so
+ * nobody mistakes an estimate for a payroll that has been run.
+ */
+export function ColumnChart({
+  points,
+  aLabel,
+  bLabel,
+  format,
+}: {
+  points: ColumnPoint[];
+  aLabel: string;
+  bLabel: string;
+  format: (v: number) => string;
+}) {
+  const W = 640;
+  const H = 220;
+  const pad = { top: 12, right: 8, bottom: 28, left: 64 };
+  const innerW = W - pad.left - pad.right;
+  const innerH = H - pad.top - pad.bottom;
+
+  const rawMax = Math.max(1, ...points.flatMap((p) => [p.a, p.b]));
+  /* A round top so the gridlines land on figures a person would say. */
+  const magnitude = 10 ** Math.floor(Math.log10(rawMax));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((s) => rawMax / s <= 4) ?? magnitude * 10;
+  const top = Math.ceil(rawMax / step) * step;
+  const ticks = Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step);
+
+  const y = (v: number) => pad.top + innerH - (v / top) * innerH;
+  const group = innerW / Math.max(1, points.length);
+  const barW = Math.min(22, group * 0.3);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-4 text-xs text-ink-2">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--indigo)" }} />
+          {aLabel}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--brass)" }} />
+          {bLabel}
+        </span>
+        {points.some((p) => p.provisional) && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm border border-dashed border-ink-3" />
+            Not yet run
+          </span>
+        )}
+      </div>
+      <div className="overflow-x-auto">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[480px] h-auto" role="img" aria-label={`${aLabel} and ${bLabel} by month`}>
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={pad.left} x2={W - pad.right} y1={y(t)} y2={y(t)} stroke="var(--grid)" strokeWidth={1} />
+              <text x={pad.left - 8} y={y(t)} textAnchor="end" dominantBaseline="middle" fontSize="10" fill="var(--ink-3)">
+                {format(t)}
+              </text>
+            </g>
+          ))}
+          {points.map((p, i) => {
+            const cx = pad.left + group * i + group / 2;
+            const bars = [
+              { v: p.a, x: cx - barW - 2, color: "var(--indigo)" },
+              { v: p.b, x: cx + 2, color: "var(--brass)" },
+            ];
+            return (
+              <g key={p.key}>
+                {bars.map((b, j) => {
+                  const h = Math.max(0, y(0) - y(b.v));
+                  return (
+                    <rect
+                      key={j}
+                      x={b.x}
+                      y={y(b.v)}
+                      width={barW}
+                      height={h}
+                      rx={4}
+                      fill={p.provisional ? "transparent" : b.color}
+                      stroke={p.provisional ? b.color : "none"}
+                      strokeDasharray={p.provisional ? "3 3" : undefined}
+                      strokeWidth={p.provisional ? 1.5 : 0}
+                    >
+                      <title>{`${p.label}: ${format(b.v)}`}</title>
+                    </rect>
+                  );
+                })}
+                <text x={cx} y={H - 8} textAnchor="middle" fontSize="11" fill="var(--ink-2)">
+                  {p.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
