@@ -179,8 +179,12 @@
   --font-mono: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
 }
 
-* {
-  border-color: var(--line);
+/* In the base layer so a border-colour utility (border-indigo, border-rust…)
+   can win; unlayered, this beat every one of them. */
+@layer base {
+  * {
+    border-color: var(--line);
+  }
 }
 
 html {

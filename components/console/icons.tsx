@@ -278,3 +278,32 @@ export const IconArrowRight = (p: P) => (
     <path d="m8 5 5 5-5 5" />
   </Svg>
 );
+
+export const IconClock = (p: P) => (
+  <Svg {...p}>
+    <circle cx="10" cy="10" r="7" />
+    <path d="M10 6v4l2.5 2" />
+  </Svg>
+);
+
+export const IconSun = (p: P) => (
+  <Svg {...p}>
+    <circle cx="10" cy="10" r="3" />
+    <path d="M10 2.5v1.5M10 16v1.5M2.5 10H4M16 10h1.5M4.7 4.7l1 1M14.3 14.3l1 1M4.7 15.3l1-1M14.3 5.7l1-1" />
+  </Svg>
+);
+
+export const IconInbox = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 11.5 5 4.5h10l2 7V15a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 15v-3.5Z" />
+    <path d="M3 11.5h4l1 2h4l1-2h4" />
+  </Svg>
+);
+
+export const IconCoins = (p: P) => (
+  <Svg {...p}>
+    <ellipse cx="8" cy="6" rx="4.5" ry="2" />
+    <path d="M3.5 6v4c0 1.1 2 2 4.5 2s4.5-.9 4.5-2V6" />
+    <path d="M7.5 14c.7 1 2.6 1.5 4.5 1.5 2.5 0 4.5-.9 4.5-2v-4c0-1-1.6-1.8-3.8-2" />
+  </Svg>
+);

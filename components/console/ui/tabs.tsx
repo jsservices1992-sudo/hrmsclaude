@@ -3,7 +3,7 @@ import Link from "next/link";
 /** Underlined tabs across the top of a panel or page section. */
 export function Tabs({ children }: { children: React.ReactNode }) {
   return (
-    <div className="max-w-full overflow-x-auto border-b border-line">
+    <div className="max-w-full overflow-x-auto shadow-[inset_0_-1px_0_var(--line)]">
       <div role="tablist" className="flex items-center gap-6">
         {children}
       </div>
@@ -28,7 +28,7 @@ export function TabLink({
       href={href}
       role="tab"
       aria-selected={active}
-      className={`relative -mb-px flex items-center gap-2 whitespace-nowrap border-b-2 py-3 text-sm font-semibold transition-base focus-visible:outline-none focus-visible:text-indigo ${
+      className={`relative flex items-center gap-2 whitespace-nowrap border-b-2 py-3 text-sm font-semibold transition-base focus-visible:outline-none focus-visible:text-indigo ${
         active ? "border-indigo text-indigo" : "border-transparent text-ink-2 hover:text-ink hover:border-line"
       }`}
     >

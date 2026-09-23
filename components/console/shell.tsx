@@ -140,9 +140,12 @@ const looksLikeRecord = (seg: string) => /\d/.test(seg) && seg.length > 6;
 function CompanySwitcher({
   companies,
   selected,
+  wide = false,
 }: {
   companies: { id: string; name: string }[];
   selected: string | null;
+  /** Full-width, two-line, for the top of the sidebar. */
+  wide?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -166,22 +169,42 @@ function CompanySwitcher({
   return (
     <DropdownMenu
       align="start"
-      trigger={({ onClick, open }) => (
-        <button
-          type="button"
-          onClick={onClick}
-          aria-expanded={open}
-          aria-haspopup="true"
-          aria-label={`Company: ${currentName}. Change company`}
-          className="flex items-center gap-2 min-h-9 max-w-[14rem] rounded-lg border border-line bg-surface px-2.5 text-sm font-semibold text-ink hover:bg-surface-2 transition-base focus-visible:shadow-ring"
-        >
-          <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center rounded bg-indigo-soft text-[10px] font-bold text-indigo">
-            {currentName.slice(0, 1).toUpperCase()}
-          </span>
-          <span className="truncate">{currentName}</span>
-          <IconChevron className="h-3 w-3 shrink-0 text-ink-3 rotate-90" />
-        </button>
-      )}
+      trigger={({ onClick, open }) =>
+        wide ? (
+          <button
+            type="button"
+            onClick={onClick}
+            aria-expanded={open}
+            aria-haspopup="true"
+            aria-label={`Company: ${currentName}. Change company`}
+            className="flex w-full items-center gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-2 text-left hover:bg-surface-2 transition-base focus-visible:shadow-ring"
+          >
+            <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-indigo-soft text-xs font-bold text-indigo">
+              {currentName.slice(0, 2).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-ink">{currentName}</span>
+              <span className="block text-xs text-ink-3">{current ? "Company" : `${companies.length} companies`}</span>
+            </span>
+            <IconChevron className="h-3 w-3 shrink-0 text-ink-3 rotate-90" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onClick}
+            aria-expanded={open}
+            aria-haspopup="true"
+            aria-label={`Company: ${currentName}. Change company`}
+            className="flex items-center gap-2 min-h-9 max-w-[12rem] rounded-lg border border-line bg-surface px-2.5 text-sm font-semibold text-ink hover:bg-surface-2 transition-base focus-visible:shadow-ring"
+          >
+            <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center rounded bg-indigo-soft text-[10px] font-bold text-indigo">
+              {currentName.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="truncate">{currentName}</span>
+            <IconChevron className="h-3 w-3 shrink-0 text-ink-3 rotate-90" />
+          </button>
+        )
+      }
     >
       {({ close }) => (
         <div className="w-64">
@@ -442,6 +465,13 @@ export default function ConsoleShell({
             )}
           </div>
 
+          {!collapsed && companies.length > 1 && (
+            <div className="px-3 pt-3">
+              <Suspense fallback={null}>
+                <CompanySwitcher companies={companies} selected={selectedCompany} wide />
+              </Suspense>
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto px-2">
             <NavList nav={nav} pathname={pathname} collapsed={collapsed} />
           </div>
@@ -494,7 +524,7 @@ export default function ConsoleShell({
         <div className="flex-1 flex flex-col min-w-0">
           <header
             data-print="hide"
-            className="sticky top-0 z-30 h-14 shrink-0 border-b border-line bg-surface/80 backdrop-blur-md"
+            className="sticky top-0 z-30 h-14 shrink-0 border-b border-line bg-surface/90 backdrop-blur-md"
           >
             <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -507,9 +537,11 @@ export default function ConsoleShell({
                   <IconMenu />
                 </button>
                 {companies.length > 1 && (
-                  <Suspense fallback={null}>
-                    <CompanySwitcher companies={companies} selected={selectedCompany} />
-                  </Suspense>
+                  <div className={collapsed ? "" : "lg:hidden"}>
+                    <Suspense fallback={null}>
+                      <CompanySwitcher companies={companies} selected={selectedCompany} />
+                    </Suspense>
+                  </div>
                 )}
                 <div className={companies.length > 1 ? "hidden md:block min-w-0" : "min-w-0"}>
                   <Breadcrumbs pathname={pathname} />
@@ -522,7 +554,9 @@ export default function ConsoleShell({
             </div>
           </header>
 
-          <main className="flex-1 px-4 sm:px-6 py-6 min-w-0">{children}</main>
+          <main className="flex-1 min-w-0 px-4 py-6 sm:px-8 sm:py-8">
+            <div className="mx-auto w-full max-w-[84rem]">{children}</div>
+          </main>
         </div>
       </div>
     </ToastProvider>

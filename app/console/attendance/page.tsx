@@ -42,8 +42,9 @@ import {
   Alert,
   Tabs,
   TabLink,
+  ChoiceCards,
 } from "@/components/console/ui";
-import { IconUpload, IconFile, IconUsers, IconDownload } from "@/components/console/icons";
+import { IconUpload, IconFile, IconUsers, IconDownload, IconClock, IconSun, IconInbox, IconCoins } from "@/components/console/icons";
 import { formatINR } from "@/lib/payroll/money";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 import { paidDaysForPeriod, type ProrationBasis } from "@/lib/payroll/proration";
@@ -282,7 +283,7 @@ export default async function AttendancePage(
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">Attendance</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">Attendance</h1>
           <p className="mt-1 text-sm text-ink-2">
             {company.name} · what each person is paid for this month
           </p>
@@ -330,16 +331,23 @@ export default async function AttendancePage(
 
       <MetricStrip
         items={[
-          { label: "Employees", value: months.length },
+          { label: "Employees", value: months.length, icon: <IconUsers /> },
           {
             label: "Unpaid days",
             value: totalLop.toFixed(1),
-            hint: withLop.length > 0 ? `${withLop.length} ${withLop.length === 1 ? "person" : "people"}` : "Everyone paid in full",
-            tone: totalLop > 0 ? "danger" : "default",
+            hint: withLop.length > 0 ? `${withLop.length} ${withLop.length === 1 ? "person" : "people"}` : "All paid in full",
+            tone: totalLop > 0 ? "danger" : "success",
+            icon: <IconClock />,
           },
-          { label: "Holidays", value: holidayRows.filter((h) => !h.restricted).length },
-          { label: "Waiting for you", value: pendingCount, tone: pendingCount > 0 ? "warning" : "default" },
-          { label: "Incentives & deductions", value: adjustments.length },
+          { label: "Holidays", value: holidayRows.filter((h) => !h.restricted).length, icon: <IconSun /> },
+          {
+            label: "Waiting for you",
+            value: pendingCount,
+            hint: pendingCount > 0 ? "Leave & corrections" : "Nothing to decide",
+            tone: pendingCount > 0 ? "warning" : "default",
+            icon: <IconInbox />,
+          },
+          { label: "One-off pay", value: adjustments.length, hint: "Incentives & deductions", icon: <IconCoins /> },
         ]}
       />
 
@@ -659,41 +667,44 @@ export default async function AttendancePage(
 
       {/* ---------------- upload ---------------- */}
       {tab === "import" && canAct && (
-        <div className="flex flex-col gap-5">
-          <div className="grid lg:grid-cols-2 gap-5 items-start">
-            <Panel
-              icon={<IconFile />}
-              title="Days worked"
-              badge={<Badge tone="teal">Recommended</Badge>}
-              description="One line per person with the number of days they worked."
-            >
-              <DaysWorkedUploadForm companyId={companyId} year={year} month={month} />
-            </Panel>
-            <Panel
-              icon={<IconUpload />}
-              title="Day-by-day register"
-              description="A row for each person for each day — present, absent, leave, off."
-            >
-              <BulkUploadForm companyId={companyId} year={year} month={month} />
-            </Panel>
-          </div>
-          <Panel
-            icon={<IconUsers />}
-            title="Mark many people at once"
-            description="Everyone, a department or a few people — present, absent or off for a range of days."
-          >
-            <DepartmentBulkMarkForm
-              companyId={companyId}
-              year={year}
-              month={month}
-              departments={departments}
-              employees={activeEmployees.map((e) => ({
-                id: e.id,
-                label: `${e.empCode} — ${e.firstName} ${e.lastName}`,
-              }))}
-            />
-          </Panel>
-        </div>
+        <ChoiceCards
+          label="How to add attendance"
+          choices={[
+            {
+              key: "days",
+              title: "Days worked",
+              badge: "Easiest",
+              description: "One line per person — how many days they worked.",
+              icon: <IconFile />,
+              content: <DaysWorkedUploadForm companyId={companyId} year={year} month={month} />,
+            },
+            {
+              key: "register",
+              title: "Daily register",
+              description: "A row per person per day — present, absent, leave.",
+              icon: <IconUpload />,
+              content: <BulkUploadForm companyId={companyId} year={year} month={month} />,
+            },
+            {
+              key: "mark",
+              title: "Mark many at once",
+              description: "Everyone or a department, for a range of days.",
+              icon: <IconUsers />,
+              content: (
+                <DepartmentBulkMarkForm
+                  companyId={companyId}
+                  year={year}
+                  month={month}
+                  departments={departments}
+                  employees={activeEmployees.map((e) => ({
+                    id: e.id,
+                    label: `${e.empCode} — ${e.firstName} ${e.lastName}`,
+                  }))}
+                />
+              ),
+            },
+          ]}
+        />
       )}
       </div>
     </div>
