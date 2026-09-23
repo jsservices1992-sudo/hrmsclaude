@@ -37,7 +37,7 @@ export default async function InvitePage(props: PageProps<"/invite/[token]">) {
     <main className="min-h-dvh grid place-items-center bg-paper px-6 py-16">
       <div className="w-full max-w-sm flex flex-col gap-6">
         <div>
-          <p className="label text-brass">Lekha</p>
+          <p className="label text-amber">Lekha</p>
           <h1 className="font-display text-2xl font-semibold mt-1">
             {status === "valid" ? "Set up your account" : "This link cannot be used"}
           </h1>
@@ -54,7 +54,7 @@ export default async function InvitePage(props: PageProps<"/invite/[token]">) {
         {status === "valid" ? (
           <AcceptInviteForm token={token} />
         ) : (
-          <Link href="/login" className="text-sm text-brass hover:underline">
+          <Link href="/login" className="text-sm text-indigo font-semibold hover:text-indigo-2">
             Go to sign in →
           </Link>
         )}

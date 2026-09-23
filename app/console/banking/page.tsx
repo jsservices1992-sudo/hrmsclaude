@@ -29,7 +29,7 @@ import {
   ExportJournalForm,
   PostProvisionsForm,
 } from "./forms";
-import { PageHeader, Card, Select, Input, Button, FilterBar, FilterField, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { PageHeader, Card, Select, Button, FilterBar, FilterField, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD, MonthNav } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Banking & accounting" };
@@ -91,10 +91,10 @@ function Notice({
   return (
     <div
       className={`border-2 px-5 py-4 ${
-        tone === "rust" ? "border-rust bg-rust-soft" : "border-brass bg-brass-soft"
+        tone === "rust" ? "border-rust bg-rust-soft" : "border-amber bg-amber-soft"
       }`}
     >
-      <p className={`label mb-1.5 ${tone === "rust" ? "text-rust" : "text-brass"}`}>
+      <p className={`label mb-1.5 ${tone === "rust" ? "text-rust" : "text-amber"}`}>
         {label}
       </p>
       <ul className="text-sm text-ink-2 max-w-[76ch] flex flex-col gap-1">
@@ -158,7 +158,7 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
         eyebrow="Banking & accounting"
-        title={`${MONTHS[month - 1]} ${year}`}
+        title="Bank & accounting"
         description={
           <>
             {company.name}
@@ -168,6 +168,12 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
           </>
         }
         actions={
+          <div className="flex flex-wrap items-center gap-2">
+          <MonthNav
+            year={year}
+            month={month}
+            href={(y, m) => `/console/banking?company=${companyId}&dimension=${dimension}&year=${y}&month=${m}`}
+          />
           <FilterBar
             action="/console/banking"
             mode="switch"
@@ -176,23 +182,8 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
             {companies.length > 1 && (
               <input type="hidden" name="company" value={companyId} />
             )}
-            <FilterField label="Month" showLabel={false}>
-              <Select name="month" defaultValue={month}>
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
-            </FilterField>
-            <FilterField label="Year" showLabel={false}>
-              <Input
-                name="year"
-                type="number"
-                defaultValue={year}
-                className="font-mono tnum w-24"
-              />
-            </FilterField>
+            <input type="hidden" name="month" value={month} />
+            <input type="hidden" name="year" value={year} />
             <FilterField label="Split" showLabel={false}>
               <Select name="dimension" defaultValue={dimension}>
                 {DIMENSIONS.map((d) => (
@@ -203,6 +194,7 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
               </Select>
             </FilterField>
           </FilterBar>
+          </div>
         }
       />
 
@@ -275,7 +267,7 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
                   · format{" "}
                   {FORMAT_LABELS[formatForBank(payments.disbursingAccount.fileFormat)]}
                   {!formatIsBankSpecific(payments.disbursingAccount.fileFormat) && (
-                    <span className="text-brass">
+                    <span className="text-amber">
                       {" "}
                       — no layout is built for{" "}
                       {payments.disbursingAccount.fileFormat}, so the generic
@@ -359,7 +351,7 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
                 They appear on the{" "}
                 <a
                   href={`/console/banking/download/payment-register?${query}`}
-                  className="text-brass hover:underline"
+                  className="text-indigo font-semibold hover:text-indigo-2"
                 >
                   payment register
                 </a>
@@ -509,7 +501,7 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
             }
           >
             {journalData.chart.isDefault && (
-              <p className="px-4 py-2 text-xs text-brass border-b border-line-2">
+              <p className="px-4 py-2 text-xs text-amber border-b border-line-2">
                 Using the shipped default chart of accounts. Map it to the
                 customer&rsquo;s own ledger before anyone posts from it.
               </p>

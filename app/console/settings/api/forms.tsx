@@ -20,7 +20,7 @@ function Reveal({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
   return (
-    <div className="border border-brass/50 bg-brass-soft px-3 py-2.5 flex flex-col gap-2 rounded-lg">
+    <div className="border border-amber/50 bg-amber-soft px-3 py-2.5 flex flex-col gap-2 rounded-lg">
       <p className="text-xs font-medium text-ink-1">
         {label} — shown once. Copy it now; it cannot be shown again.
       </p>

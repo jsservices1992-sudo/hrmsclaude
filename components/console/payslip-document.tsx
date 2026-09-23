@@ -377,7 +377,7 @@ export function PayslipDocument({
       )}
 
       {slip.warnings.length > 0 && (
-        <p data-print="hide" className={`border-x border-b ${RULE} px-3 py-1.5 text-brass`}>
+        <p data-print="hide" className={`border-x border-b ${RULE} px-3 py-1.5 text-amber`}>
           {slip.warnings.join(" · ")}
         </p>
       )}

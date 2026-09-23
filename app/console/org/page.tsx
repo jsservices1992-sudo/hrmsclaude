@@ -175,7 +175,7 @@ function HiringView({
             {hiring.departments.map((d) => (
               <TR key={d.departmentId ?? "none"}>
                 <TD>
-                  <span className="font-mono text-xs text-brass mr-2">{d.code}</span>
+                  <span className="font-mono text-xs text-amber mr-2">{d.code}</span>
                   {d.name}
                 </TD>
                 <TD className="text-right tnum font-mono">

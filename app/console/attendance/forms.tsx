@@ -89,7 +89,7 @@ export function DaysWorkedUploadForm({
       </details>
       <FormFeedback state={state} />
       {state.parseErrors && state.parseErrors.length > 0 && (
-        <ul className="text-xs text-brass flex flex-col gap-0.5 max-h-32 overflow-y-auto">
+        <ul className="text-xs text-amber flex flex-col gap-0.5 max-h-32 overflow-y-auto">
           {state.parseErrors.slice(0, 20).map((e, i) => (
             <li key={i}>
               Line {e.line}: {e.message}
@@ -137,7 +137,7 @@ export function BulkUploadForm({
       </details>
       <FormFeedback state={state} />
       {state.parseErrors && state.parseErrors.length > 0 && (
-        <ul className="text-xs text-brass flex flex-col gap-0.5 max-h-32 overflow-y-auto">
+        <ul className="text-xs text-amber flex flex-col gap-0.5 max-h-32 overflow-y-auto">
           {state.parseErrors.slice(0, 20).map((e, i) => (
             <li key={i}>
               Line {e.line}: {e.message}
@@ -295,7 +295,7 @@ export function OverrideCell({
           aria-label={`Override paid days for ${name}`}
           className={`label px-1.5 py-0.5 rounded transition-base ${
             overridden
-              ? "text-brass hover:bg-brass-soft"
+              ? "text-amber hover:bg-amber-soft"
               : "text-ink-3 hover:text-indigo opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
           }`}
         >

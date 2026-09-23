@@ -17,8 +17,14 @@ import {
 import { recordAccess } from "@/lib/audit/log";
 import { RunOutputs } from "@/components/console/run-outputs";
 import {
-  PageHeader, Card, Input, Select, FilterBar, FilterField, Badge, EmptyState,
-  Tabs, TabLink, Table, THead, TH, TBody, TR, TD, MetricStrip
+  PageHeader,
+  Card,
+  Badge,
+  EmptyState,
+  Tabs,
+  TabLink,
+  MetricStrip,
+  MonthNav,
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
@@ -124,24 +130,10 @@ export default async function PayrollConsolePage(
             ? `Register · v${preview.run?.version} ${preview.run?.status.replace(/_/g, " ")}`
             : "Register · not yet calculated"
         }
-        title={`${MONTHS[month - 1]} ${year}`}
+        title="Payroll register"
         description={company.name}
         actions={
-          <FilterBar action="/console/payroll" mode="switch" hidden={{ tab }}>
-            {companies.length > 1 && (
-              <input type="hidden" name="company" value={companyId} />
-            )}
-            <FilterField label="Month" showLabel={false}>
-              <Select name="month" defaultValue={String(month)} className="w-36">
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </Select>
-            </FilterField>
-            <FilterField label="Year" showLabel={false}>
-              <Input name="year" defaultValue={year} className="tnum w-20" />
-            </FilterField>
-          </FilterBar>
+          <MonthNav year={year} month={month} href={(y, m) => `/console/payroll?company=${companyId}&tab=${tab}&year=${y}&month=${m}`} />
         }
       />
 

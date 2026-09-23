@@ -322,7 +322,7 @@ export function RehireForm({
             ? "border-rust/40 bg-rust-soft text-rust"
             : candidate.rehireEligible === "eligible"
               ? "border-teal/40 bg-teal-soft text-ink-2"
-              : "border-brass/40 bg-brass-soft text-ink-2"
+              : "border-amber/40 bg-amber-soft text-ink-2"
         }`}
       >
         {candidate.rehireEligible === null

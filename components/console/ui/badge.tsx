@@ -3,7 +3,7 @@ export type BadgeTone = "neutral" | "indigo" | "brass" | "teal" | "rust";
 const toneClasses: Record<BadgeTone, string> = {
   neutral: "bg-surface-2 text-ink-3",
   indigo: "bg-indigo-soft text-indigo",
-  brass: "bg-brass-soft text-brass",
+  brass: "bg-amber-soft text-amber",
   teal: "bg-teal-soft text-teal",
   rust: "bg-rust-soft text-rust",
 };

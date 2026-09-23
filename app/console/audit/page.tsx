@@ -25,10 +25,6 @@ import {
 import {
   PageHeader,
   Card,
-  Select,
-  Input,
-  FilterBar,
-  FilterField,
   Badge,
   type BadgeTone,
   Table,
@@ -37,6 +33,7 @@ import {
   TBody,
   TR,
   TD,
+  MonthNav,
 } from "@/components/console/ui";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 
@@ -176,32 +173,12 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
         title="Payroll audit"
         description="For any rupee paid in any period: what it was, how it was computed, who authorised it, and what it was before the last change."
         actions={
-          <FilterBar
-            action="/console/audit"
-            mode="switch"
-            hidden={companies.length > 1 ? undefined : { company: companyId }}
-          >
-            {companies.length > 1 && (
-              <input type="hidden" name="company" value={companyId} />
-            )}
-            <FilterField label="Month" showLabel={false}>
-              <Select name="month" defaultValue={month}>
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
-            </FilterField>
-            <FilterField label="Year" showLabel={false}>
-              <Input name="year" type="number" defaultValue={year} className="font-mono tnum w-24" />
-            </FilterField>
-          </FilterBar>
+          <MonthNav year={year} month={month} href={(y, m) => `/console/audit?company=${companyId}&year=${y}&month=${m}`} />
         }
       />
 
       {/* ---------- audit pack ---------- */}
-      <div className="border-2 border-indigo bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-4 rounded-lg">
+      <div className="border border-indigo/40 bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-4 rounded-xl">
         <div>
           <p className="label text-indigo mb-1">Audit pack</p>
           <p className="text-sm text-ink-2 max-w-[64ch]">
@@ -315,7 +292,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
                   </span>
                   <span
                     className={`label tnum ${
-                      diff.totals.netDeltaPaise === 0 ? "text-ink-3" : "text-brass"
+                      diff.totals.netDeltaPaise === 0 ? "text-ink-3" : "text-amber"
                     }`}
                   >
                     net {diff.totals.netDeltaPaise >= 0 ? "+" : "−"}
@@ -324,7 +301,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
                 </div>
 
                 {diff.warnings.length > 0 && (
-                  <ul className="px-4 py-2.5 text-xs text-brass border-b border-line-2 flex flex-col gap-1">
+                  <ul className="px-4 py-2.5 text-xs text-amber border-b border-line-2 flex flex-col gap-1">
                     {diff.warnings.map((w, i) => (
                       <li key={i}>· {w}</li>
                     ))}
@@ -418,7 +395,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
         title="Compensation & bank data access"
         right={
           bulkReads.length > 0 ? (
-            <span className="label text-brass">{bulkReads.length} bulk reads</span>
+            <span className="label text-amber">{bulkReads.length} bulk reads</span>
           ) : (
             <span className="label text-ink-3">{access.length} recent reads</span>
           )
@@ -467,7 +444,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
                     </td>
                     <td
                       className={`px-4 py-2 font-mono tnum ${
-                        a.rowCount >= 10 ? "text-brass" : "text-ink-3"
+                        a.rowCount >= 10 ? "text-amber" : "text-ink-3"
                       }`}
                     >
                       {a.rowCount}
@@ -521,7 +498,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
           </TBody>
         </Table>
 
-        <p className="px-4 py-2 text-xs text-brass border-t border-line-2 max-w-[78ch]">
+        <p className="px-4 py-2 text-xs text-amber border-t border-line-2 max-w-[78ch]">
           These periods are unverified against the current text of each Act.
           Treat them as a starting position for a customer&rsquo;s own legal
           review, not as advice.

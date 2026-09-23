@@ -35,7 +35,7 @@ export function FormField({
           </span>
         )}
         {!required && needed && (
-          <span className="label text-brass font-normal normal-case tracking-normal">
+          <span className="label text-amber font-normal normal-case tracking-normal">
             · {needed}
           </span>
         )}

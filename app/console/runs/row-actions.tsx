@@ -35,7 +35,7 @@ export function RowPopover({
           aria-label={title}
           className={`label px-1.5 py-0.5 rounded transition-base ${
             tone === "brass"
-              ? "text-brass hover:bg-brass-soft"
+              ? "text-amber hover:bg-amber-soft"
               : "text-ink-3 hover:text-indigo"
           }`}
         >

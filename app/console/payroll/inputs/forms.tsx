@@ -55,7 +55,7 @@ export function AddVariablePayForm({
     return (
       <p className="text-sm text-ink-2">
         No pay types configured yet. Add them in{" "}
-        <a href="/console/settings/master-data?tab=variable" className="text-brass hover:underline">
+        <a href="/console/settings/master-data?tab=variable" className="text-indigo font-semibold hover:text-indigo-2">
           Settings → Master data
         </a>
         .
@@ -117,7 +117,7 @@ export function AddVariablePayForm({
               damage to an asset needs a type of its own —{" "}
               <a
                 href="/console/settings/master-data?tab=variable"
-                className="text-brass hover:underline"
+                className="text-indigo font-semibold hover:text-indigo-2"
               >
                 add one with the deduction category
               </a>
@@ -253,7 +253,7 @@ export function BulkVariablePayForm({
     return (
       <p className="text-sm text-ink-2">
         No pay types configured yet. Add them in{" "}
-        <a href="/console/settings/master-data" className="text-brass hover:underline">
+        <a href="/console/settings/master-data" className="text-indigo font-semibold hover:text-indigo-2">
           Settings → Master data
         </a>
         .

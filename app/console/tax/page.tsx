@@ -70,8 +70,8 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
       />
 
       {!configVerified ? (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
-          <p className="label text-rust mb-1.5">Unverified tax configuration</p>
+        <div className="border border-rust/25 bg-rust-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-rust mb-1">Unverified tax configuration</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             Slabs, the standard deduction, cess, surcharge and the section 87A
             rebate in configuration set{" "}
@@ -81,8 +81,8 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
           </p>
         </div>
       ) : (
-        <div className="border-2 border-teal bg-teal-soft px-5 py-4 rounded-lg">
-          <p className="label text-teal mb-1.5">Core rates checked</p>
+        <div className="border border-teal/25 bg-teal-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-teal mb-1">Core rates checked</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             Slabs (all three old-regime age bands), the standard deduction,
             cess, the surcharge schedule and section 87A — both regimes, in
@@ -115,8 +115,8 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
       </div>
 
       {noPan.length > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
-          <p className="label text-rust mb-1.5">
+        <div className="border border-rust/25 bg-rust-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-rust mb-1">
             Section 206AA — no valid PAN
           </p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
@@ -129,8 +129,8 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
       )}
 
       {notStarted.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-          <p className="label text-brass mb-1.5">No declaration filed</p>
+        <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-amber mb-1">No declaration filed</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {notStarted.length} employee(s) have filed nothing for the year, so
             they are being projected with no deductions at all, on whichever

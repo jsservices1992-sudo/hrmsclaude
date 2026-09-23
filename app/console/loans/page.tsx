@@ -101,8 +101,8 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
       </div>
 
       {inArrears.length > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
-          <p className="label text-rust mb-1.5">Recovery fell short</p>
+        <div className="border border-rust/25 bg-rust-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-rust mb-1">Recovery fell short</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {inArrears.length} loan(s) carry arrears, because taking the full
             instalment would have pushed net pay below the scheme floor. The
@@ -114,8 +114,8 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
       )}
 
       {onHold.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-          <p className="label text-brass mb-1.5">Recovery on hold</p>
+        <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-amber mb-1">Recovery on hold</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {onHold.length} loan(s) are paused and will not be recovered in the
             next run. On an interest-bearing scheme the balance keeps growing

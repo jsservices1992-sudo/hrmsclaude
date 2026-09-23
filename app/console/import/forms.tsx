@@ -30,7 +30,7 @@ function Problems({ state }: { state: ImportState }) {
                   {p.fix && (
                     <>
                       {" "}
-                      <a href={p.fix.href} className="text-brass hover:underline whitespace-nowrap">
+                      <a href={p.fix.href} className="text-indigo font-semibold hover:text-indigo-2 whitespace-nowrap">
                         {p.fix.label} →
                       </a>
                     </>
@@ -72,16 +72,16 @@ function Uploader({
         </div>
 
         {state.confirm && (
-          <div className="border border-brass/40 bg-brass-soft rounded-lg">
-            <div className="px-3 py-2 border-b border-brass/20">
-              <span className="label text-brass">
+          <div className="border border-amber/40 bg-amber-soft rounded-lg">
+            <div className="px-3 py-2 border-b border-amber/20">
+              <span className="label text-amber">
                 These leave types are not set up yet — create them?
               </span>
             </div>
             <p className="px-3 py-2 font-mono text-xs text-ink">
               {state.confirm.leaveTypes.join(", ")}
             </p>
-            <div className="px-3 py-2.5 border-t border-brass/20 flex flex-col gap-2">
+            <div className="px-3 py-2.5 border-t border-amber/20 flex flex-col gap-2">
               <p className="text-xs text-ink-2 max-w-[70ch]">
                 Each is created with the balance you are importing and nothing
                 else — no accrual, no carry-forward — so nothing starts adding

@@ -196,7 +196,7 @@ export function HoldForm({ loanId }: { loanId: string }) {
           <input type="checkbox" name="waiveInterest" />
           Waive interest
         </label>
-        <SubmitButton variant="default" size="sm" className="hover:border-brass hover:text-brass" pendingText="Working…">
+        <SubmitButton variant="default" size="sm" className="hover:border-amber hover:text-indigo" pendingText="Working…">
           Hold recovery
         </SubmitButton>
       </div>

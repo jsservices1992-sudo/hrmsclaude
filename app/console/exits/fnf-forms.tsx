@@ -154,7 +154,7 @@ export function ReopenForm({ exitCaseId }: { exitCaseId: string }) {
           placeholder="Why it is being reopened"
           className="flex-1 min-w-[20rem]"
         />
-        <Button type="submit" size="sm" className="hover:border-brass hover:text-brass">
+        <Button type="submit" size="sm" className="hover:border-amber hover:text-indigo">
           Reopen for correction
         </Button>
       </div>

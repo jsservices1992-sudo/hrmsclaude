@@ -180,7 +180,7 @@ export function Form16Document({
 
       <footer className={`px-3 py-2.5 border-t ${RULE} text-ink-3 flex flex-col gap-1`}>
         {!form.complete && (
-          <p className="text-brass font-medium">
+          <p className="text-amber font-medium">
             Provisional — the financial year is not complete, so these figures
             are the position to date and will move with the remaining payrolls.
           </p>

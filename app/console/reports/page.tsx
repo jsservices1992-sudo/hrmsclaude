@@ -19,16 +19,13 @@ import {
 } from "@/lib/reports/load";
 import {
   Card,
-  Select,
-  Input,
-  FilterBar,
-  FilterField,
   Table,
   THead,
   TH,
   TBody,
   TR,
   TD,
+  MonthNav,
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 import { currentPeriod } from "@/lib/clock";
@@ -189,21 +186,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
   const selected = reportId ? ITEM_BY_ID.get(reportId)! : null;
 
   const filters = (
-    <FilterBar action="/console/reports" mode="switch" hidden={reportId ? { report: reportId } : undefined}>
-      {companies.length > 1 && (
-        <input type="hidden" name="company" value={companyId} />
-      )}
-      <FilterField label="Month" showLabel={false}>
-        <Select name="month" defaultValue={month}>
-          {MONTHS.map((m, i) => (
-            <option key={m} value={i + 1}>{m}</option>
-          ))}
-        </Select>
-      </FilterField>
-      <FilterField label="Year" showLabel={false}>
-        <Input name="year" type="number" defaultValue={year} className="w-24" />
-      </FilterField>
-    </FilterBar>
+    <MonthNav year={year} month={month} href={(y, m) => `/console/reports?${reportId ? `report=${reportId}&` : ""}company=${companyId}&year=${y}&month=${m}`} />
   );
 
   /* ============================ library ============================ */
@@ -213,10 +196,10 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
         <section className="rounded-xl border border-line bg-surface">
               <div className="relative flex flex-wrap items-end justify-between gap-5 p-6 sm:p-8">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-brass/25 bg-brass-soft px-3 py-1 text-xs font-semibold text-brass">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-soft px-2.5 py-1 text-xs font-semibold text-indigo">
                 {MONTHS[month - 1]} {year} · {company.name}
               </span>
-              <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-ink mt-4">
+              <h1 className="text-2xl font-bold tracking-tight text-ink mt-4">
                 Reports
               </h1>
               <p className="text-ink-2 mt-2 max-w-[60ch]">
@@ -409,7 +392,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
           <Tile label="Paid less" value={String(variance.flagged.length - up)} tone="rust" />
         </div>
         {variance.warnings.length > 0 && (
-          <p className="rounded-lg bg-brass-soft px-4 py-3 text-sm text-brass">{variance.warnings.join(" ")}</p>
+          <p className="rounded-lg bg-amber-soft px-4 py-3 text-sm text-amber">{variance.warnings.join(" ")}</p>
         )}
         <Section title="Who changed, and why">
           {variance.flagged.length === 0 ? (
@@ -598,7 +581,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
               {selected.icon}
             </span>
             <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">{selected.title}</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-ink">{selected.title}</h1>
               <p className="text-sm text-ink-2 mt-1">
                 {selected.description} · {company.name} · {MONTHS[month - 1]} {year}
               </p>

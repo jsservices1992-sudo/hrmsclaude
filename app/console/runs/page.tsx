@@ -239,7 +239,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
 
           <p
             className={`px-4 py-2.5 text-sm border-b border-line-2 ${
-              calcState.open ? "text-ink-2" : "text-brass"
+              calcState.open ? "text-ink-2" : "text-amber"
             }`}
           >
             {calcState.reason}
@@ -418,13 +418,13 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                           )}
                           {run.reopenReason && (
                             <span>
-                              Reopened: <span className="text-brass">{run.reopenReason}</span>
+                              Reopened: <span className="text-amber">{run.reopenReason}</span>
                             </span>
                           )}
                           {canMutate(user) &&
                             ["calculated", "in_review"].includes(run.status) &&
                             isPreparer && (
-                              <span className="text-brass">
+                              <span className="text-amber">
                                 You prepared this run — a second person must approve it.
                               </span>
                             )}
@@ -564,7 +564,7 @@ function FinalCheckPanel({
                 <Link
                   key={e.id}
                   href={`/console/employees/${e.id}?tab=salary`}
-                  className="text-ink-3 hover:text-brass hover:underline"
+                  className="text-ink-3 hover:text-indigo font-semibold hover:text-indigo-2"
                 >
                   {e.empCode} — {e.name}: {(e.share * 100).toFixed(1)}%, short by{" "}
                   {formatINR(e.shortfallPaise)}

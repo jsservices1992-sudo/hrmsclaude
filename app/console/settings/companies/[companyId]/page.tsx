@@ -117,7 +117,7 @@ export default async function CompanySettingsPage(
           ← Settings
         </Link>
         <div className="flex flex-wrap items-baseline gap-3 mt-2">
-          <h1 className="font-display text-3xl font-semibold">{company.name}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">{company.name}</h1>
           {company.isDefault && <Badge tone="teal">Default</Badge>}
         </div>
         <p className="text-sm text-ink-2 mt-1">
@@ -153,8 +153,8 @@ export default async function CompanySettingsPage(
         (isAdmin ? (
           <>
             {hasRuns && (
-              <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
-                <span className="label text-brass">Saved runs exist</span> —
+              <div className="border border-amber/40 bg-amber-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
+                <span className="label text-amber">Saved runs exist</span> —
                 changing a payroll convention will require a reason, because it
                 changes what every future part-month is worth.
               </div>

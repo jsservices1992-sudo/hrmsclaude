@@ -59,7 +59,7 @@ export function GenerateFileForm({
         </SubmitButton>
       </div>
       {hasOutstanding && (
-        <p className="text-xs text-brass max-w-[70ch]">
+        <p className="text-xs text-amber max-w-[70ch]">
           A file is already outstanding for this run. Regenerating supersedes
           it — the earlier file must not then be uploaded.
         </p>

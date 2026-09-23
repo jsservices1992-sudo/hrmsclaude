@@ -51,7 +51,7 @@ export default async function JoinerPortalPage(
             </span>
             <span className="font-display text-xl font-semibold">{SITE.name}</span>
           </div>
-          <p className="label text-brass">Welcome</p>
+          <p className="label text-amber">Welcome</p>
           <h1 className="font-display text-3xl sm:text-4xl font-semibold mt-2 tracking-[-0.02em]">
             Hello {j.firstName}
           </h1>
@@ -79,7 +79,7 @@ export default async function JoinerPortalPage(
         </div>
 
         {j.offerStatus === "sent" && (
-          <section className="border-2 border-indigo bg-surface p-5 flex flex-col gap-3 rounded-lg">
+          <section className="border border-indigo/40 bg-surface p-5 flex flex-col gap-3 rounded-xl">
             <h2 className="font-display text-xl font-semibold">Your offer</h2>
             <p className="text-sm text-ink-2">
               Accepting confirms you intend to join on {formatDate(j.proposedDoj)}. Your

@@ -336,7 +336,7 @@ function UserMenu({
                 {user.role.replace(/_/g, " ")}
               </span>
               {user.compensationScope === "none" && (
-                <span className="label px-1.5 py-0.5 rounded-sm bg-brass-soft text-brass">
+                <span className="label px-1.5 py-0.5 rounded-sm bg-amber-soft text-amber">
                   Salary masked
                 </span>
               )}

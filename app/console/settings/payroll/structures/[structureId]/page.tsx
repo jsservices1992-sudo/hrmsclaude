@@ -163,7 +163,7 @@ export default async function StructureDetailPage(
                   <TD>{l.componentLabel}</TD>
                   <TD className="text-ink-2">
                     {l.calcMethodOverride ? (
-                      <span className="text-brass">{l.calcMethodOverride.replace(/_/g, " ")}</span>
+                      <span className="text-amber">{l.calcMethodOverride.replace(/_/g, " ")}</span>
                     ) : (
                       <span className="text-ink-3">{l.componentCalcMethod.replace(/_/g, " ")} (inherited)</span>
                     )}

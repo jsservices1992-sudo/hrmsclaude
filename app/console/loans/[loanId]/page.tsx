@@ -74,7 +74,7 @@ export default async function LoanDetailPage(
         <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
           <div>
             <p className="label text-ink-3">{loan.scheme}</p>
-            <h1 className="font-display text-2xl sm:text-3xl font-semibold mt-1">
+            <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">
               {employee.firstName} {employee.lastName}
             </h1>
             <p className="text-sm text-ink-2 mt-1">
@@ -94,12 +94,12 @@ export default async function LoanDetailPage(
         <div
           className={`border-2 px-5 py-4 ${
             detail.reconciles
-              ? "border-brass bg-brass-soft"
+              ? "border-amber bg-amber-soft"
               : "border-rust bg-rust-soft"
           }`}
         >
           <p
-            className={`label mb-1.5 ${detail.reconciles ? "text-brass" : "text-rust"}`}
+            className={`label mb-1.5 ${detail.reconciles ? "text-amber" : "text-rust"}`}
           >
             {detail.reconciles ? "Note" : "The ledger does not reconcile"}
           </p>
@@ -129,8 +129,8 @@ export default async function LoanDetailPage(
       </div>
 
       {loan.status === "on_hold" && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-          <p className="label text-brass mb-1.5">Recovery paused</p>
+        <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-amber mb-1">Recovery paused</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {loan.holdReason ?? "No reason recorded."}
             {loan.holdUntil && ` Held until ${loan.holdUntil}.`} Nothing will be

@@ -14,15 +14,18 @@ export function DrawerButton({
   title,
   description,
   variant = "default",
+  defaultOpen = false,
   children,
 }: {
   label: React.ReactNode;
   title: string;
   description?: React.ReactNode;
   variant?: ButtonVariant;
+  /** Opened on arrival — when a link elsewhere came here to do this. */
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className={buttonClasses(variant)}>

@@ -84,7 +84,7 @@ function Kpi({
 }) {
   const chip: Record<string, string> = {
     indigo: "bg-indigo-soft text-indigo",
-    brass: "bg-brass-soft text-brass",
+    brass: "bg-amber-soft text-amber",
     teal: "bg-teal-soft text-teal",
     rust: "bg-rust-soft text-rust",
   };
@@ -408,8 +408,8 @@ export default async function DashboardPage(props: PageProps<"/console">) {
       )}
 
       {denied && (
-        <div className="rounded-xl border border-brass/40 bg-brass-soft px-4 py-3">
-          <p className="text-sm font-semibold text-brass mb-1">Access denied</p>
+        <div className="rounded-xl border border-amber/40 bg-amber-soft px-4 py-3">
+          <p className="text-sm font-semibold text-amber mb-1">Access denied</p>
           <p className="text-sm text-ink-2">
             Your role cannot view{" "}
             {denied === "payslip"
@@ -473,7 +473,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
                     run?.status === "approved"
                       ? "bg-teal-soft text-teal"
                       : run
-                        ? "bg-brass-soft text-brass"
+                        ? "bg-amber-soft text-amber"
                         : "bg-surface-3 text-ink-2"
                   }`}
                 >
@@ -491,10 +491,10 @@ export default async function DashboardPage(props: PageProps<"/console">) {
               </div>
               <p
                 className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-                  findingsCount === 0 ? "bg-teal-soft text-teal" : "bg-brass-soft text-brass"
+                  findingsCount === 0 ? "bg-teal-soft text-teal" : "bg-amber-soft text-amber"
                 }`}
               >
-                <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${findingsCount === 0 ? "bg-teal" : "bg-brass"}`} />
+                <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${findingsCount === 0 ? "bg-teal" : "bg-amber"}`} />
                 {findingsCount === 0 ? "No findings to review" : `${findingsCount} finding(s) to review`}
               </p>
             </div>
@@ -583,7 +583,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
                     <span className="flex items-center gap-2.5 text-sm text-ink">
                       <span
                         aria-hidden
-                        className={`h-2 w-2 rounded-full shrink-0 ${t.tone === "rust" ? "bg-rust" : "bg-brass"}`}
+                        className={`h-2 w-2 rounded-full shrink-0 ${t.tone === "rust" ? "bg-rust" : "bg-amber"}`}
                       />
                       {t.label}
                     </span>

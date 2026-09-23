@@ -60,7 +60,7 @@ export function UploadDocumentForm({
 
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">
-            Expires on {chosen?.expires && <span className="text-brass">· tracked</span>}
+            Expires on {chosen?.expires && <span className="text-amber">· tracked</span>}
           </span>
           <Input name="expiresOn" type="date" className="font-mono" />
         </label>

@@ -50,13 +50,13 @@ export default async function LoginPage() {
           {signupEnabled() && (
             <p className="text-sm text-ink-2">
               New here?{" "}
-              <Link href="/signup" className="text-brass hover:underline">
+              <Link href="/signup" className="text-indigo font-semibold hover:text-indigo-2">
                 Create your company
               </Link>
             </p>
           )}
           <p className="text-sm text-ink-2">
-            <Link href="/forgot-password" className="text-brass hover:underline">
+            <Link href="/forgot-password" className="text-indigo font-semibold hover:text-indigo-2">
               Forgot your password?
             </Link>
           </p>

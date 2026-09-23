@@ -128,13 +128,13 @@ export default async function SettlementPage(
         <div
           className={`border-2 px-5 py-4 ${
             ageing.status === "due_soon"
-              ? "border-brass bg-brass-soft"
+              ? "border-amber bg-amber-soft"
               : "border-rust bg-rust-soft"
           }`}
         >
           <p
             className={`label mb-1.5 ${
-              ageing.status === "due_soon" ? "text-brass" : "text-rust"
+              ageing.status === "due_soon" ? "text-amber" : "text-rust"
             }`}
           >
             {ageing.status === "gratuity_overdue"
@@ -148,8 +148,8 @@ export default async function SettlementPage(
       )}
 
       {fnf.warnings.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-          <p className="label text-brass mb-1.5">Before you release this</p>
+        <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-amber mb-1">Before you release this</p>
           <ul className="text-sm text-ink-2 max-w-[76ch] flex flex-col gap-1">
             {[...new Set(fnf.warnings)].map((w, i) => (
               <li key={i}>· {w}</li>
@@ -336,7 +336,7 @@ export default async function SettlementPage(
 
       {/* ---------- demand & recovery ---------- */}
       {receivable && (
-        <div className="border-2 border-rust bg-surface rounded-lg">
+        <div className="border border-rust/40 bg-surface rounded-xl">
           <div className="px-4 py-2.5 border-b border-line bg-rust-soft flex flex-wrap items-center justify-between gap-2 rounded-lg">
             <span className="label text-rust">Demand outstanding</span>
             <span className="label text-rust">{receivable.status.replace(/_/g, " ")}</span>

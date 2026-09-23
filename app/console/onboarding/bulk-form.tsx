@@ -56,7 +56,7 @@ export function BulkJoinerForm({
               ) : (
                 <span className="text-ink-2">
                   none yet —{" "}
-                  <a href={f.href} className="text-brass hover:underline">
+                  <a href={f.href} className="text-indigo font-semibold hover:text-indigo-2">
                     {f.add} →
                   </a>
                   {!f.required && <span className="text-ink-3"> (or leave blank)</span>}
@@ -110,7 +110,7 @@ export function BulkJoinerForm({
                   {p.fix && (
                     <>
                       {" "}
-                      <a href={p.fix.href} className="text-brass hover:underline whitespace-nowrap">
+                      <a href={p.fix.href} className="text-indigo font-semibold hover:text-indigo-2 whitespace-nowrap">
                         {p.fix.label} →
                       </a>
                     </>

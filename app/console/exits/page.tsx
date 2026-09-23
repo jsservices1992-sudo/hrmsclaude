@@ -30,7 +30,7 @@ import {
   TBody,
   TR,
   TD,
-  type BadgeTone,
+  type BadgeTone, DrawerButton
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
@@ -115,33 +115,31 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
     <div className="flex flex-col gap-6">
       <PageHeader
         eyebrow="Exit & settlement"
-        title={
-          <>
-            {allCases.length} exit cases
-            {hasFilters && <span className="text-ink-3 font-normal text-xl"> · {cases.length} shown</span>}
-          </>
+        title="Leavers & settlement"
+        description={`${allCases.length} exit ${allCases.length === 1 ? "case" : "cases"}${hasFilters ? ` · ${cases.length} shown` : ""}. Settlement is released only once clearance closes.`}
+        actions={
+          canMutate(user) &&
+          companies.length > 0 && (
+            <DrawerButton
+              label="+ Record an exit"
+              variant="primary"
+              title="Record an exit"
+              description="Starts the clearance checklist and the full & final settlement."
+              defaultOpen={typeof sp.employee === "string"}
+            >
+              <StartExitForm
+                companyId={companies[0].id}
+                employees={exitable}
+                defaultEmployeeId={typeof sp.employee === "string" ? sp.employee : undefined}
+              />
+            </DrawerButton>
+          )
         }
-        description="Settlement cannot be released until clearance closes. Ageing is measured from the last working day, which is the number an HR head is actually judged on."
       />
 
-      {canMutate(user) && companies.length > 0 && (
-        <Card padded={false}>
-          <div className="px-5 py-3.5 border-b border-line-2">
-            <span className="text-[15px] font-semibold text-ink">Record an exit</span>
-          </div>
-          <div className="p-4">
-            <StartExitForm
-              companyId={companies[0].id}
-              employees={exitable}
-              defaultEmployeeId={typeof sp.employee === "string" ? sp.employee : undefined}
-            />
-          </div>
-        </Card>
-      )}
-
       {needingAttention.length > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
-          <p className="label text-rust mb-1.5">Settlements past their deadline</p>
+        <div className="border border-rust/25 bg-rust-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-rust mb-1">Settlements past their deadline</p>
           <ul className="text-sm text-ink-2 max-w-[76ch] flex flex-col gap-1">
             {needingAttention.map((q) => (
               <li key={q.exitCase.id}>
@@ -191,9 +189,9 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
                 </TD>
                 <TD>
                   {q.pendingClearance === 0 ? (
-                    <span className="label text-teal">closed</span>
+                    <Badge tone="teal">Cleared</Badge>
                   ) : (
-                    <span className="label text-rust">{q.pendingClearance} open</span>
+                    <Badge tone="rust">{q.pendingClearance} open</Badge>
                   )}
                 </TD>
                 <TD>

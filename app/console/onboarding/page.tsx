@@ -213,7 +213,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
                       {j.status === "joined" ? (
                         <span className="label text-teal">joined</span>
                       ) : (
-                        <span className={`label tnum ${daysToJoin < 0 ? "text-rust" : daysToJoin <= 7 ? "text-brass" : "text-ink-3"}`}>
+                        <span className={`label tnum ${daysToJoin < 0 ? "text-rust" : daysToJoin <= 7 ? "text-amber" : "text-ink-3"}`}>
                           {daysToJoin < 0 ? `${Math.abs(daysToJoin)}d late` : `${daysToJoin}d`}
                         </span>
                       )}
@@ -236,7 +236,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 w-14 bg-surface-2 overflow-hidden">
                           <div
-                            className={readiness.canConvert ? "h-full bg-teal" : "h-full bg-brass"}
+                            className={readiness.canConvert ? "h-full bg-teal" : "h-full bg-amber"}
                             style={{ width: `${readiness.percent}%` }}
                           />
                         </div>

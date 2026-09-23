@@ -80,7 +80,7 @@ export default async function ExitDetailPage(
         className={`border px-4 py-3 flex items-start gap-3 text-sm ${
           clearanceComplete
             ? "border-teal/40 bg-teal-soft text-teal"
-            : "border-brass/40 bg-brass-soft text-brass"
+            : "border-amber/40 bg-amber-soft text-amber"
         }`}
       >
         <span aria-hidden className="mt-1.5 h-1.5 w-1.5 bg-current shrink-0" />
@@ -369,8 +369,8 @@ export default async function ExitDetailPage(
           </Card>
 
           {settlement.warnings.length > 0 && (
-            <div className="border border-brass/40 bg-brass-soft px-4 py-3 rounded-lg">
-              <p className="label text-brass mb-1.5">Findings</p>
+            <div className="border border-amber/40 bg-amber-soft px-4 py-3 rounded-lg">
+              <p className="label text-amber mb-1.5">Findings</p>
               <ul className="text-sm text-ink-2 flex flex-col gap-1">
                 {settlement.warnings.map((w, i) => (
                   <li key={i}>{w}</li>

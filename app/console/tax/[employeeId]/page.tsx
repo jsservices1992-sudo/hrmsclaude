@@ -96,7 +96,7 @@ export default async function TaxWorksheetPage(
         <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
           <div>
             <p className="label text-ink-3">FY {fyLabel(CURRENT_FY)}</p>
-            <h1 className="font-display text-2xl sm:text-3xl font-semibold mt-1">
+            <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">
               {emp.firstName} {emp.lastName}
             </h1>
             <p className="text-sm text-ink-2 mt-1">
@@ -121,8 +121,8 @@ export default async function TaxWorksheetPage(
       </div>
 
       {w.warnings.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-          <p className="label text-brass mb-1.5">Before you rely on this</p>
+        <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-amber mb-1">Before you rely on this</p>
           <ul className="text-sm text-ink-2 max-w-[74ch] flex flex-col gap-1">
             {w.warnings.map((warn, i) => (
               <li key={i}>· {warn}</li>
@@ -406,8 +406,8 @@ export default async function TaxWorksheetPage(
 
       {/* the February forecast */}
       {w.ifNothingProved && w.ifNothingProved.additionalTaxPaise > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
-          <p className="label text-rust mb-1.5">
+        <div className="border border-rust/25 bg-rust-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-rust mb-1">
             If nothing further is substantiated
           </p>
           <p className="text-sm text-ink-2 max-w-[74ch]">

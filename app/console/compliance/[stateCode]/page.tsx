@@ -43,14 +43,14 @@ export default async function JurisdictionDetailPage(
         <Link href="/console/compliance" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Statutory configuration
         </Link>
-        <h1 className="font-display text-3xl font-semibold mt-2">{jur.name}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink mt-2">{jur.name}</h1>
         <p className="text-sm text-ink-2 mt-1">
           <span className="font-mono">{jur.stateCode}</span> · {jur.kind === "ut" ? "Union territory" : "State"}
         </p>
       </div>
 
       {!isAdmin && (
-        <p className="text-sm text-brass border border-brass/40 bg-brass-soft px-4 py-3 rounded-lg">
+        <p className="text-sm text-amber border border-amber/40 bg-amber-soft px-4 py-3 rounded-lg">
           Only an administrator can change statutory rules. You can review what is configured.
         </p>
       )}
@@ -63,7 +63,7 @@ export default async function JurisdictionDetailPage(
           <Badge tone={jur.lwfApplicable ? "teal" : "neutral"}>
             LWF {jur.lwfApplicable ? "levied" : "none"}
           </Badge>
-          {jur.verificationNote && <span className="text-xs text-brass">{jur.verificationNote}</span>}
+          {jur.verificationNote && <span className="text-xs text-amber">{jur.verificationNote}</span>}
         </div>
         {isAdmin && (
           <JurisdictionForm

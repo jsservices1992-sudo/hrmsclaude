@@ -49,8 +49,8 @@ export default async function ComplianceConfigPage() {
         warns about is fixed teaches people to ignore warnings.
       */}
       {unverified > 0 ? (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
-          <p className="label text-rust mb-1.5">Not fit for real payroll yet</p>
+        <div className="border border-rust/25 bg-rust-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-rust mb-1">Not fit for real payroll yet</p>
           <p className="text-sm text-ink-2 max-w-[70ch]">
             <strong className="text-ink tnum">{unverified}</strong> of the
             seeded PT slabs and LWF rates are marked <code>verified: false</code>.
@@ -67,8 +67,8 @@ export default async function ComplianceConfigPage() {
           </p>
         </div>
       ) : (
-        <div className="border-2 border-teal bg-teal-soft px-5 py-4 rounded-lg">
-          <p className="label text-teal mb-1.5">Checked and attested</p>
+        <div className="border border-teal/25 bg-teal-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-teal mb-1">Checked and attested</p>
           <p className="text-sm text-ink-2 max-w-[70ch]">
             Every PT slab and LWF rate has been marked verified against a named
             source. The audit log records who attested to each row and when, and
@@ -110,7 +110,7 @@ export default async function ComplianceConfigPage() {
                     {j.stateCode}
                   </span>
                 </p>
-                <p className="text-sm text-brass mt-0.5">{j.verificationNote}</p>
+                <p className="text-sm text-amber mt-0.5">{j.verificationNote}</p>
               </li>
             ))}
           </ul>
@@ -118,8 +118,8 @@ export default async function ComplianceConfigPage() {
       )}
 
       {missingSlabs.length > 0 && (
-        <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm rounded-lg">
-          <span className="label text-brass">Gap</span>{" "}
+        <div className="border border-amber/40 bg-amber-soft px-4 py-3 text-sm rounded-lg">
+          <span className="label text-amber">Gap</span>{" "}
           <span className="text-ink-2">
             {missingSlabs.map((j) => j.name).join(", ")} levy PT but have no slab
             configured — a run for these states raises a validation finding.
@@ -193,7 +193,7 @@ export default async function ComplianceConfigPage() {
                   <TD>
                     {j.name}
                     {j.verificationNote && (
-                      <span className="label text-brass ml-2">verify</span>
+                      <span className="label text-amber ml-2">verify</span>
                     )}
                   </TD>
                   <TD className="font-mono text-xs text-ink-3">

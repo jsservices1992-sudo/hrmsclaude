@@ -9,7 +9,7 @@ export type DayCell = { date: string; status: string; basis: string };
 
 const MARK: Record<string, { ch: string; cls: string; title: string }> = {
   present: { ch: "P", cls: "text-teal", title: "Present" },
-  half_day: { ch: "½", cls: "text-brass", title: "Half day" },
+  half_day: { ch: "½", cls: "text-amber", title: "Half day" },
   absent: { ch: "A", cls: "text-rust font-semibold", title: "Absent" },
   weekly_off: { ch: "·", cls: "text-ink-3", title: "Weekly off" },
   holiday: { ch: "H", cls: "text-indigo", title: "Holiday" },

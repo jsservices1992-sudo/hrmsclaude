@@ -38,7 +38,7 @@ export default async function WorkflowInstancePage(
           ← Workflows
         </Link>
         <p className="label text-ink-3 mt-3">{view.templateName}</p>
-        <h1 className="font-display text-2xl sm:text-3xl font-semibold mt-1">
+        <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">
           {view.subject.firstName} {view.subject.lastName}
         </h1>
         <p className="text-sm text-ink-2 mt-1">
@@ -60,8 +60,8 @@ export default async function WorkflowInstancePage(
       </div>
 
       {view.overdue.length > 0 && (
-        <div className="border-2 border-rust bg-rust-soft px-5 py-4 rounded-lg">
-          <p className="label text-rust mb-1.5">Past its deadline</p>
+        <div className="border border-rust/25 bg-rust-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-rust mb-1">Past its deadline</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {view.overdue.map((o) => (
               <li key={o.key}>

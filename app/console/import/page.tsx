@@ -44,7 +44,7 @@ function Step({
             {complete ? "\u2713" : n}
           </span>
           <div className="min-w-0">
-            <h2 className="font-display text-lg font-semibold">{title}</h2>
+            <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
             <p className="text-sm text-ink-2 mt-0.5 max-w-[68ch]">{why}</p>
           </div>
         </div>
@@ -55,9 +55,9 @@ function Step({
         )}
       </div>
       {blocked ? (
-        <p className="text-sm text-ink-2 border border-brass/40 bg-brass-soft px-3 py-2 rounded-lg">
+        <p className="text-sm text-ink-2 border border-amber/40 bg-amber-soft px-3 py-2 rounded-lg">
           {blocked.message}{" "}
-          <Link href={blocked.href} className="text-brass hover:underline whitespace-nowrap">
+          <Link href={blocked.href} className="text-indigo font-semibold hover:text-indigo-2 whitespace-nowrap">
             {blocked.label} \u2192
           </Link>
         </p>

@@ -101,7 +101,7 @@ export default async function SetupPage() {
             <Link
               href={withWizard(step.href, step.id)}
               className={`label whitespace-nowrap hover:underline ${
-                step.done ? "text-ink-3" : "text-brass"
+                step.done ? "text-ink-3" : "text-amber"
               }`}
             >
               {step.done ? "Review →" : "Set up →"}
@@ -132,11 +132,11 @@ export default async function SetupPage() {
           The professional tax, welfare fund and minimum wage figures, and the
           core income tax rates — slabs, standard deduction, cess, surcharge
           and the section 87A rebate — have been checked; see{" "}
-          <Link href="/console/compliance" className="text-brass hover:underline">
+          <Link href="/console/compliance" className="text-indigo font-semibold hover:text-indigo-2">
             statutory configuration
           </Link>{" "}
           and{" "}
-          <Link href="/console/tax" className="text-brass hover:underline">
+          <Link href="/console/tax" className="text-indigo font-semibold hover:text-indigo-2">
             income tax &amp; TDS
           </Link>{" "}
           for who signed off on what. Special-rate income, the full Chapter

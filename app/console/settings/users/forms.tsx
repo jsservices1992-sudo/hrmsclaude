@@ -19,8 +19,8 @@ function Feedback({ state }: { state: UserAdminState }) {
       {state.error && <p className="text-xs text-rust max-w-[70ch]">{state.error}</p>}
       {state.ok && <p className="text-xs text-teal max-w-[70ch]">{state.ok}</p>}
       {state.password && (
-        <div className="border-2 border-brass bg-brass-soft px-3 py-2.5 max-w-[46ch] rounded-lg">
-          <p className="label text-brass">Password — shown once</p>
+        <div className="border border-amber/30 bg-amber-soft px-3 py-2.5 max-w-[46ch] rounded-lg">
+          <p className="label text-amber">Password — shown once</p>
           <p className="font-mono text-base mt-1 select-all break-all">{state.password}</p>
           <p className="text-xs text-ink-2 mt-1.5">
             Give this to them over a channel you trust. It is not stored in
@@ -185,7 +185,7 @@ export function ResetPasswordForm({ userId }: { userId: string }) {
   return (
     <form action={action} className="flex flex-col gap-2">
       <input type="hidden" name="userId" value={userId} />
-      <button className="text-xs text-ink-3 hover:text-brass text-left">
+      <button className="text-xs text-ink-3 hover:text-indigo text-left">
         Issue a new password
       </button>
       <Feedback state={state} />

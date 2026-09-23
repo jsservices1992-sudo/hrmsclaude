@@ -36,7 +36,7 @@ export default async function EmployeeFlexiPage(
         <Link href="/console/flexi" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           &larr; Flexible benefits
         </Link>
-        <h1 className="font-display text-2xl sm:text-3xl font-semibold mt-2">
+        <h1 className="text-2xl font-bold tracking-tight text-ink mt-2">
           {employee.firstName} {employee.lastName}
         </h1>
         <p className="text-sm text-ink-2 mt-1">
@@ -47,15 +47,15 @@ export default async function EmployeeFlexiPage(
       </div>
 
       {regime === "new" && comparison.differencePaise > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-          <p className="label text-brass mb-1.5">This declaration saves no tax</p>
+        <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-amber mb-1">This declaration saves no tax</p>
           <p className="text-sm text-ink-2 max-w-[70ch]">{comparison.advice}</p>
         </div>
       )}
 
       {validation.warnings.length > 0 && (
-        <div className="border border-brass/40 bg-brass-soft px-4 py-3 rounded-lg">
-          <p className="label text-brass mb-1.5">Notes</p>
+        <div className="border border-amber/40 bg-amber-soft px-4 py-3 rounded-lg">
+          <p className="text-sm font-semibold text-amber mb-1">Notes</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {validation.warnings.map((w, i) => <li key={i}>{w}</li>)}
           </ul>
@@ -120,7 +120,7 @@ export default async function EmployeeFlexiPage(
                     {c.row.billRef && ` · ${c.row.billRef}`}
                   </p>
                   {c.row.decisionNote && (
-                    <p className="text-xs text-brass mt-0.5">{c.row.decisionNote}</p>
+                    <p className="text-xs text-amber mt-0.5">{c.row.decisionNote}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

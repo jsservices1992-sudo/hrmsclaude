@@ -116,8 +116,8 @@ export default async function JoinerDetailPage(
       )}
 
       {duplicates.length > 0 && (
-        <div className={`border px-4 py-3 ${strongDup ? "border-rust/40 bg-rust-soft" : "border-brass/40 bg-brass-soft"}`}>
-          <p className={`label mb-1.5 ${strongDup ? "text-rust" : "text-brass"}`}>
+        <div className={`border px-4 py-3 ${strongDup ? "border-rust/40 bg-rust-soft" : "border-amber/40 bg-amber-soft"}`}>
+          <p className={`label mb-1.5 ${strongDup ? "text-rust" : "text-amber"}`}>
             {strongDup ? "Strong duplicate match" : "Possible duplicate"}
           </p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
@@ -157,15 +157,15 @@ export default async function JoinerDetailPage(
 
       {readiness.blockers.length > 0 && (
         <div className="border border-rust/40 bg-rust-soft px-4 py-3 rounded-lg">
-          <p className="label text-rust mb-1.5">Blockers</p>
+          <p className="text-sm font-semibold text-rust mb-1">Blockers</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {readiness.blockers.map((b, i) => <li key={i}>{b}</li>)}
           </ul>
         </div>
       )}
       {readiness.warnings.length > 0 && (
-        <div className="border border-brass/40 bg-brass-soft px-4 py-3 rounded-lg">
-          <p className="label text-brass mb-1.5">Outstanding</p>
+        <div className="border border-amber/40 bg-amber-soft px-4 py-3 rounded-lg">
+          <p className="text-sm font-semibold text-amber mb-1">Outstanding</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {readiness.warnings.map((w, i) => <li key={i}>{w}</li>)}
           </ul>
@@ -403,8 +403,8 @@ export default async function JoinerDetailPage(
       {/* Rehire — offered ahead of a plain conversion, because for a
           former employee the plain conversion is the wrong one. */}
       {canAct && j.status !== "joined" && formerMatch && (
-        <div className="border-2 border-brass bg-surface p-5 rounded-lg">
-          <p className="label text-brass mb-2">They have worked here before</p>
+        <div className="border border-amber/40 bg-surface p-5 rounded-xl">
+          <p className="label text-amber mb-2">They have worked here before</p>
           <RehireForm
             joinerId={j.id}
             candidate={{
@@ -423,7 +423,7 @@ export default async function JoinerDetailPage(
 
       {/* Convert */}
       {canAct && j.status !== "joined" && (
-        <div className="border-2 border-indigo bg-surface p-5 rounded-lg">
+        <div className="border border-indigo/40 bg-surface p-5 rounded-xl">
           <p className="label text-indigo mb-2">Convert to employee</p>
           <p className="text-sm text-ink-2 mb-4 max-w-[64ch]">
             Allocates a gapless employee code, copies the submitted profile,

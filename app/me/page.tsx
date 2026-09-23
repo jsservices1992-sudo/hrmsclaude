@@ -74,7 +74,7 @@ const ASSET_CATEGORY_LABEL: Record<string, string> = {
 };
 
 const LEAVE_TONE: Record<string, string> = {
-  pending: "bg-brass-soft text-brass",
+  pending: "bg-amber-soft text-amber",
   approved: "bg-teal-soft text-teal",
   rejected: "bg-rust-soft text-rust",
   cancelled: "bg-surface-2 text-ink-3",
@@ -114,7 +114,7 @@ export default async function MePage(props: PageProps<"/me">) {
       <div className="mx-auto max-w-md px-5 py-20 text-center flex flex-col gap-4">
         <p className="text-ink-2">Your account is not linked to an employee record.</p>
         {canAccessConsole(user) && (
-          <Link href="/console" className="label text-brass underline">
+          <Link href="/console" className="label text-amber underline">
             Go to the console →
           </Link>
         )}
@@ -455,8 +455,8 @@ export default async function MePage(props: PageProps<"/me">) {
       </header>
 
       <div>
-        <p className="label text-brass">My workspace</p>
-        <h1 className="font-display text-2xl sm:text-3xl font-semibold mt-1">{user.name}</h1>
+        <p className="label text-amber">My workspace</p>
+        <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">{user.name}</h1>
         <p className="text-sm text-ink-2 mt-1">
           <span className="font-mono">{emp.empCode}</span> · {emp.designation} · {row.branch.name}
         </p>
@@ -517,7 +517,7 @@ export default async function MePage(props: PageProps<"/me">) {
           {settlementVisible && (
             <Link
               href="/me?tab=settlement"
-              className="border-2 border-indigo bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-surface-2 rounded-lg"
+              className="border border-indigo/40 bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-surface-2 rounded-xl"
             >
               <div>
                 <p className="label text-indigo">Full &amp; final settlement</p>
@@ -563,7 +563,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 {balances.reduce((a, b) => a + b.balanceDays, 0)} days
               </p>
               {pendingMine > 0 && (
-                <p className="text-xs text-brass mt-1">{pendingMine} awaiting approval</p>
+                <p className="text-xs text-amber mt-1">{pendingMine} awaiting approval</p>
               )}
             </Link>
             <Link href="/me?tab=documents" className="border border-line bg-surface px-4 py-4 hover:border-ink-3 rounded-lg">
@@ -771,7 +771,7 @@ export default async function MePage(props: PageProps<"/me">) {
               title="My change requests"
               right={
                 pendingProfile > 0 ? (
-                  <span className="label text-brass">{pendingProfile} pending</span>
+                  <span className="label text-amber">{pendingProfile} pending</span>
                 ) : undefined
               }
             >
@@ -803,7 +803,7 @@ export default async function MePage(props: PageProps<"/me">) {
                               ? "bg-teal-soft text-teal"
                               : r.status === "rejected"
                                 ? "bg-rust-soft text-rust"
-                                : "bg-brass-soft text-brass"
+                                : "bg-amber-soft text-amber"
                           }`}
                         >
                           {r.status}
@@ -956,7 +956,7 @@ export default async function MePage(props: PageProps<"/me">) {
                               d.status === "absent"
                                 ? "bg-rust-soft text-rust"
                                 : d.status === "half_day"
-                                  ? "bg-brass-soft text-brass"
+                                  ? "bg-amber-soft text-amber"
                                   : d.status === "present" || d.status === "on_duty"
                                     ? "bg-teal-soft text-teal"
                                     : "bg-surface-2 text-ink-3"
@@ -968,7 +968,7 @@ export default async function MePage(props: PageProps<"/me">) {
                         <td className="px-4 py-1.5 font-mono text-xs tnum text-ink-2">
                           {d.workedMinutes > 0 ? formatMinutes(d.workedMinutes) : "—"}
                         </td>
-                        <td className={`px-4 py-1.5 font-mono text-xs tnum ${d.lateMinutes > 0 ? "text-brass" : "text-ink-3"}`}>
+                        <td className={`px-4 py-1.5 font-mono text-xs tnum ${d.lateMinutes > 0 ? "text-amber" : "text-ink-3"}`}>
                           {d.lateMinutes > 0 ? `${d.lateMinutes}m` : "—"}
                         </td>
                         <td className={`px-4 py-1.5 font-mono text-xs tnum ${d.lopUnits > 0 ? "text-rust" : "text-ink-3"}`}>
@@ -995,7 +995,7 @@ export default async function MePage(props: PageProps<"/me">) {
             title="My corrections"
             right={
               pendingCorrections > 0 ? (
-                <span className="label text-brass">{pendingCorrections} pending</span>
+                <span className="label text-amber">{pendingCorrections} pending</span>
               ) : undefined
             }
           >
@@ -1035,7 +1035,7 @@ export default async function MePage(props: PageProps<"/me">) {
                               ? "bg-teal-soft text-teal"
                               : r.status === "rejected"
                                 ? "bg-rust-soft text-rust"
-                                : "bg-brass-soft text-brass"
+                                : "bg-amber-soft text-amber"
                           }`}
                         >
                           {r.status}
@@ -1229,8 +1229,8 @@ export default async function MePage(props: PageProps<"/me">) {
           )}
 
           {worksheet && worksheet.warnings.length > 0 && (
-            <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-              <p className="label text-brass mb-1.5">Worth knowing</p>
+            <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+              <p className="text-sm font-semibold text-amber mb-1">Worth knowing</p>
               <ul className="text-sm text-ink-2 flex flex-col gap-1">
                 {worksheet.warnings.map((w, i) => (
                   <li key={i}>· {w}</li>
@@ -1280,7 +1280,7 @@ export default async function MePage(props: PageProps<"/me">) {
                           ? "bg-teal-soft text-teal"
                           : p.status === "rejected"
                             ? "bg-rust-soft text-rust"
-                            : "bg-brass-soft text-brass"
+                            : "bg-amber-soft text-amber"
                       }`}
                     >
                       {p.status}
@@ -1290,7 +1290,7 @@ export default async function MePage(props: PageProps<"/me">) {
               </ul>
               <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2">
                 Upload the evidence under{" "}
-                <Link href="/me?tab=documents" className="text-brass hover:underline">
+                <Link href="/me?tab=documents" className="text-indigo font-semibold hover:text-indigo-2">
                   Documents
                 </Link>
                 . Anything not accepted by the
@@ -1339,8 +1339,8 @@ export default async function MePage(props: PageProps<"/me">) {
           ) : (
             <>
               {!form16.form.complete && (
-                <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg" data-print="hide">
-                  <p className="label text-brass mb-1">Provisional</p>
+                <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl" data-print="hide">
+                  <p className="label text-amber mb-1">Provisional</p>
                   <p className="text-sm text-ink-2 max-w-[70ch]">
                     {fyLabel(financialYear)} is not over. This is your position
                     to date and it will move with the payrolls still to run —
@@ -1377,8 +1377,8 @@ export default async function MePage(props: PageProps<"/me">) {
       {tab === "documents" && (
         <div className="flex flex-col gap-4">
           {checklist.warnings.length > 0 && (
-            <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-              <p className="label text-brass mb-1.5">Still needed</p>
+            <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+              <p className="text-sm font-semibold text-amber mb-1">Still needed</p>
               <ul className="text-sm text-ink-2 flex flex-col gap-1">
                 {checklist.warnings.map((w, i) => (
                   <li key={i}>· {w}</li>
@@ -1418,7 +1418,7 @@ export default async function MePage(props: PageProps<"/me">) {
                               i.expiry.status === "expired"
                                 ? "text-rust"
                                 : i.expiry.status === "expiring"
-                                  ? "text-brass"
+                                  ? "text-amber"
                                   : "text-ink-3"
                             }`}
                           >
@@ -1443,7 +1443,7 @@ export default async function MePage(props: PageProps<"/me">) {
                               ? "bg-teal-soft text-teal"
                               : i.status === "missing" || i.status === "expired"
                                 ? "bg-rust-soft text-rust"
-                                : "bg-brass-soft text-brass"
+                                : "bg-amber-soft text-amber"
                           }`}
                         >
                           {i.status === "unverified" ? "with HR" : i.status}
@@ -1527,7 +1527,7 @@ export default async function MePage(props: PageProps<"/me">) {
             title="Attendance corrections"
             right={
               teamCorrections.length > 0 ? (
-                <span className="label text-brass">{teamCorrections.length} pending</span>
+                <span className="label text-amber">{teamCorrections.length} pending</span>
               ) : undefined
             }
           >

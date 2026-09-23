@@ -36,7 +36,7 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
   if (!plan) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="font-display text-2xl font-semibold">Flexible benefits</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-ink">Flexible benefits</h1>
         <p className="text-ink-2">
           No flexi plan is configured for {company.name} this financial year.
         </p>
@@ -89,8 +89,8 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
       </div>
 
       {wastedOnNewRegime.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-          <p className="label text-brass mb-1.5">Declaring under the new regime</p>
+        <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-amber mb-1">Declaring under the new regime</p>
           <p className="text-sm text-ink-2 max-w-[72ch]">
             {wastedOnNewRegime.length} employee(s) have allocated a flexi basket
             while on the new regime, where these exemptions are unavailable.

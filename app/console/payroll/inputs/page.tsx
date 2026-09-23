@@ -17,10 +17,6 @@ import {
 import {
   PageHeader,
   Card,
-  Select,
-  Input,
-  FilterBar,
-  FilterField,
   Badge,
   EmptyState,
   Tabs,
@@ -30,7 +26,9 @@ import {
   TH,
   TBody,
   TR,
-  TD, MetricStrip
+  TD,
+  MetricStrip,
+  MonthNav,
 } from "@/components/console/ui";
 import {
   AddVariablePayForm,
@@ -174,19 +172,7 @@ export default async function VariablePayPage(
         title="Incentives &amp; deductions"
         description={`${company?.name ?? ""} · ${MONTHS[month - 1]} ${year}`}
         actions={
-          <FilterBar action="/console/payroll/inputs" mode="switch">
-            {companies.length > 1 && (
-              <input type="hidden" name="company" value={companyId} />
-            )}
-            <FilterField label="Month" showLabel={false}>
-              <Select name="month" defaultValue={String(month)} className="w-36">
-                {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </Select>
-            </FilterField>
-            <FilterField label="Year" showLabel={false}>
-              <Input name="year" defaultValue={year} className="tnum w-20" />
-            </FilterField>
-          </FilterBar>
+          <MonthNav year={year} month={month} href={(y, m) => `/console/payroll/inputs?company=${companyId}&year=${y}&month=${m}`} />
         }
       />
 
@@ -226,7 +212,7 @@ export default async function VariablePayPage(
                 The most recent run is{" "}
                 <Link
                   href={`/console/payroll/inputs?company=${companyId}&year=${runElsewhere.year}&month=${runElsewhere.month}`}
-                  className="text-brass hover:underline"
+                  className="text-indigo font-semibold hover:text-indigo-2"
                 >
                   {MONTHS[runElsewhere.month - 1]} {runElsewhere.year}
                 </Link>

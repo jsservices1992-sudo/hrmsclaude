@@ -115,8 +115,8 @@ export default async function UsersPage(
       />
 
       {activeAdmins === 1 && (
-        <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm rounded-lg">
-          <span className="label text-brass">One administrator</span>{" "}
+        <div className="border border-amber/40 bg-amber-soft px-4 py-3 text-sm rounded-lg">
+          <span className="label text-amber">One administrator</span>{" "}
           <span className="text-ink-2">
             If this account is lost there is no way back into the instance
             without database access. Add a second administrator.
@@ -127,7 +127,7 @@ export default async function UsersPage(
       {editing && (
         <Card>
           <div className="flex items-baseline justify-between gap-3 mb-3">
-            <h2 className="font-display text-lg font-semibold">
+            <h2 className="text-[15px] font-semibold text-ink">
               {editing.email}
             </h2>
             <Link
@@ -199,7 +199,7 @@ export default async function UsersPage(
                   <div className="flex flex-col gap-1 items-start">
                     <Link
                       href={`/console/settings/users?edit=${r.id}`}
-                      className="text-xs text-brass hover:underline"
+                      className="text-xs text-indigo font-semibold hover:text-indigo-2"
                     >
                       Edit
                     </Link>
@@ -214,7 +214,7 @@ export default async function UsersPage(
       </Card>
 
       <Card>
-        <h2 className="font-display text-lg font-semibold mb-3">Add an account</h2>
+        <h2 className="text-[15px] font-semibold text-ink mb-3">Add an account</h2>
         <CreateUserForm companies={companyOptions} employees={employeeOptions} />
       </Card>
     </div>

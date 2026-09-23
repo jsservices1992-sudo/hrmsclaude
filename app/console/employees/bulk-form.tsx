@@ -59,7 +59,7 @@ export function BulkEmployeeForm({
               ) : (
                 <span className="text-ink-2">
                   none yet —{" "}
-                  <a href={f.href} className="text-brass hover:underline">
+                  <a href={f.href} className="text-indigo font-semibold hover:text-indigo-2">
                     {f.add} →
                   </a>
                   {!f.required && <span className="text-ink-3"> (or leave blank)</span>}
@@ -80,9 +80,9 @@ export function BulkEmployeeForm({
         </div>
 
         {state.confirm && (
-          <div className="border border-brass/40 bg-brass-soft rounded-lg">
-            <div className="px-3 py-2 border-b border-brass/20">
-              <span className="label text-brass">
+          <div className="border border-amber/40 bg-amber-soft rounded-lg">
+            <div className="px-3 py-2 border-b border-amber/20">
+              <span className="label text-amber">
                 These are not in the system yet — create them?
               </span>
             </div>
@@ -102,7 +102,7 @@ export function BulkEmployeeForm({
                   </div>
                 ))}
             </dl>
-            <div className="px-3 py-2.5 border-t border-brass/20 flex flex-col gap-2">
+            <div className="px-3 py-2.5 border-t border-amber/20 flex flex-col gap-2">
               <p className="text-xs text-ink-2 max-w-[70ch]">
                 Each is created with its code as its name and nothing else — fill in
                 the detail in Settings afterwards.
@@ -157,7 +157,7 @@ export function BulkEmployeeForm({
                   {p.fix && (
                     <>
                       {" "}
-                      <a href={p.fix.href} className="text-brass hover:underline whitespace-nowrap">
+                      <a href={p.fix.href} className="text-indigo font-semibold hover:text-indigo-2 whitespace-nowrap">
                         {p.fix.label} →
                       </a>
                     </>

@@ -398,7 +398,7 @@ export default async function EmployeeDetailPage(
             <Row k="Employment type" v={e.employmentType} />
             <Row k="Date of joining" v={<span className="font-mono tnum">{formatDate(e.dateOfJoining)}</span>} />
             <Row k="Probation ends" v={e.probationEndDate ? <span className="font-mono tnum">{formatDate(e.probationEndDate)}</span> : null} />
-            <Row k="Confirmed on" v={e.confirmationDate ? <span className="font-mono tnum">{formatDate(e.confirmationDate)}</span> : <span className="text-brass">Not confirmed</span>} />
+            <Row k="Confirmed on" v={e.confirmationDate ? <span className="font-mono tnum">{formatDate(e.confirmationDate)}</span> : <span className="text-amber">Not confirmed</span>} />
             <Row
               k="Reports to"
               v={
@@ -560,7 +560,7 @@ export default async function EmployeeDetailPage(
                       {d.expiresOn ? (
                         <span
                           className={`font-mono text-xs tnum ${
-                            expired ? "text-rust" : soon ? "text-brass" : "text-ink-2"
+                            expired ? "text-rust" : soon ? "text-amber" : "text-ink-2"
                           }`}
                         >
                           {formatDate(d.expiresOn)}
@@ -640,8 +640,8 @@ export default async function EmployeeDetailPage(
           )}
 
           {checklist.warnings.length > 0 && (
-            <div className="px-4 py-3 border-t border-line bg-brass-soft rounded-lg">
-              <p className="label text-brass mb-1.5">
+            <div className="px-4 py-3 border-t border-line bg-amber-soft rounded-lg">
+              <p className="label text-amber mb-1.5">
                 Checklist · {(checklist.completionBps / 100).toFixed(0)}% of
                 mandatory documents complete
               </p>
@@ -890,7 +890,7 @@ export default async function EmployeeDetailPage(
                     <span className="font-mono text-xs">{h.actor}</span>
                   </div>
                   {h.reason && (
-                    <p className="text-xs text-brass mt-1">{h.reason}</p>
+                    <p className="text-xs text-amber mt-1">{h.reason}</p>
                   )}
                   {h.before && h.after && (
                     <div className="mt-1.5 grid sm:grid-cols-2 gap-2 text-xs">

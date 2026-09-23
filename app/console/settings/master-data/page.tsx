@@ -122,7 +122,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             </Table>
             {canEdit && (
               <div className="p-4 border-t border-line-2">
-                {editDept && <p className="label text-brass mb-2">Editing {editDept.name}</p>}
+                {editDept && <p className="label text-amber mb-2">Editing {editDept.name}</p>}
                 <DepartmentForm key={editDept?.id ?? "new"} companyId={companyId} editing={editDept ? { id: editDept.id, name: editDept.name, code: editDept.code, costCentre: editDept.costCentre } : undefined} />
               </div>
             )}
@@ -148,7 +148,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             </Table>
             {canEdit && (
               <div className="p-4 border-t border-line-2">
-                {editGrade && <p className="label text-brass mb-2">Editing {editGrade.name}</p>}
+                {editGrade && <p className="label text-amber mb-2">Editing {editGrade.name}</p>}
                 <GradeForm key={editGrade?.id ?? "new"} companyId={companyId} editing={editGrade ?? undefined} />
               </div>
             )}
@@ -179,7 +179,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             </Table>
             {canEdit && (
               <div className="p-4 border-t border-line-2">
-                {editLeaveType && <p className="label text-brass mb-2">Editing {editLeaveType.name}</p>}
+                {editLeaveType && <p className="label text-amber mb-2">Editing {editLeaveType.name}</p>}
                 <LeaveTypeForm key={editLeaveType?.id ?? "new"} companyId={companyId} editing={editLeaveType ?? undefined} />
               </div>
             )}
@@ -210,7 +210,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             </Table>
             {canEdit && (
               <div className="p-4 border-t border-line-2">
-                {editHoliday && <p className="label text-brass mb-2">Editing {editHoliday.name}</p>}
+                {editHoliday && <p className="label text-amber mb-2">Editing {editHoliday.name}</p>}
                 <HolidayForm key={editHoliday?.id ?? "new"} companyId={companyId} branches={branches} editing={editHoliday ?? undefined} />
               </div>
             )}
@@ -245,7 +245,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           </Table>
           {canEdit && (
             <div className="p-4 border-t border-line-2">
-              {editShift && <p className="label text-brass mb-2">Editing {editShift.name}</p>}
+              {editShift && <p className="label text-amber mb-2">Editing {editShift.name}</p>}
               <ShiftForm key={editShift?.id ?? "new"} companyId={companyId} editing={editShift ?? undefined} />
             </div>
           )}
@@ -279,7 +279,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           </Table>
           {canEdit && (
             <div className="p-4 border-t border-line-2">
-              {editComponent && <p className="label text-brass mb-2">Editing {editComponent.name}</p>}
+              {editComponent && <p className="label text-amber mb-2">Editing {editComponent.name}</p>}
               <PayComponentForm
                 key={editComponent?.id ?? "new"}
                 companyId={companyId}
@@ -372,7 +372,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           </Table>
           {canEdit && (
             <div className="p-4 border-t border-line-2">
-              {editScheme && <p className="label text-brass mb-2">Editing {editScheme.label}</p>}
+              {editScheme && <p className="label text-amber mb-2">Editing {editScheme.label}</p>}
               <LoanSchemeForm key={editScheme?.id ?? "new"} companyId={companyId} editing={editScheme ?? undefined} />
             </div>
           )}
@@ -401,7 +401,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             </Table>
             {canEdit && (
               <div className="p-4 border-t border-line-2">
-                {editAccount && <p className="label text-brass mb-2">Editing {editAccount.name}</p>}
+                {editAccount && <p className="label text-amber mb-2">Editing {editAccount.name}</p>}
                 <GlAccountForm key={editAccount?.id ?? "new"} companyId={companyId} editing={editAccount ?? undefined} />
               </div>
             )}

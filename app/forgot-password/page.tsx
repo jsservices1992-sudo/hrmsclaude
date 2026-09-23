@@ -9,14 +9,14 @@ export default function ForgotPasswordPage() {
     <main className="min-h-dvh grid place-items-center bg-paper px-6 py-16">
       <div className="w-full max-w-sm flex flex-col gap-6">
         <div>
-          <p className="label text-brass">Lekha</p>
+          <p className="label text-amber">Lekha</p>
           <h1 className="font-display text-2xl font-semibold mt-1">Reset your password</h1>
           <p className="text-sm text-ink-2 mt-1">
             Enter the email address you sign in with and we&apos;ll send a link to choose a new one.
           </p>
         </div>
         <ForgotPasswordForm />
-        <Link href="/login" className="text-sm text-brass hover:underline">
+        <Link href="/login" className="text-sm text-indigo font-semibold hover:text-indigo-2">
           ← Back to sign in
         </Link>
       </div>

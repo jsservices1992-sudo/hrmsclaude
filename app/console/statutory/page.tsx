@@ -22,7 +22,7 @@ import {
 import { loadForm26q } from "@/lib/statutory/form26q-load";
 import { QUARTER_MONTHS, type Q } from "@/lib/statutory/form26q";
 import { RecordFilingForm } from "./forms";
-import { PageHeader, Card, Badge, type BadgeTone, Select, Input, FilterBar, FilterField, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { PageHeader, Card, Badge, type BadgeTone, Table, THead, TH, TBody, TR, TD, MonthNav } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Statutory returns" };
@@ -65,10 +65,10 @@ function Warnings({ items, tone = "brass" }: { items: string[]; tone?: "brass" |
   return (
     <div
       className={`border-2 px-5 py-4 ${
-        tone === "rust" ? "border-rust bg-rust-soft" : "border-brass bg-brass-soft"
+        tone === "rust" ? "border-rust bg-rust-soft" : "border-amber bg-amber-soft"
       }`}
     >
-      <p className={`label mb-1.5 ${tone === "rust" ? "text-rust" : "text-brass"}`}>
+      <p className={`label mb-1.5 ${tone === "rust" ? "text-rust" : "text-amber"}`}>
         {tone === "rust" ? "Blocking" : "Before you file"}
       </p>
       <ul className="text-sm text-ink-2 max-w-[76ch] flex flex-col gap-1">
@@ -131,7 +131,7 @@ export default async function StatutoryPage(
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
         eyebrow="Statutory returns & compliance"
-        title={`${MONTHS[month - 1]} ${year}`}
+        title="Returns & filings"
         description={
           <>
             {company.name}
@@ -141,33 +141,13 @@ export default async function StatutoryPage(
           </>
         }
         actions={
-          <FilterBar
-            action="/console/statutory"
-            mode="switch"
-            hidden={companies.length === 1 ? { company: companyId } : undefined}
-          >
-            {companies.length > 1 && (
-              <input type="hidden" name="company" value={companyId} />
-            )}
-            <FilterField label="Month" showLabel={false}>
-              <Select name="month" defaultValue={month}>
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
-            </FilterField>
-            <FilterField label="Year" showLabel={false}>
-              <Input name="year" type="number" defaultValue={year} className="font-mono tnum w-24" />
-            </FilterField>
-          </FilterBar>
+          <MonthNav year={year} month={month} href={(y, m) => `/console/statutory?company=${companyId}&year=${y}&month=${m}`} />
         }
       />
 
       {calendar && calendar.missingRegistrations.length > 0 && (
-        <div className="border-2 border-brass bg-brass-soft px-5 py-4 rounded-lg">
-          <p className="label text-brass mb-1.5">Registrations not on file</p>
+        <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
+          <p className="text-sm font-semibold text-amber mb-1">Registrations not on file</p>
           <p className="text-sm text-ink-2 max-w-[74ch]">
             {company.name} has no {calendar.missingRegistrations.join(", ")}{" "}
             recorded, so the related filings are not listed below. Add them under
@@ -225,7 +205,7 @@ export default async function StatutoryPage(
                         item.daysUntilDue < 0
                           ? "text-rust"
                           : item.daysUntilDue <= 3
-                            ? "text-brass"
+                            ? "text-amber"
                             : "text-ink-3"
                       }`}
                     >
@@ -480,7 +460,7 @@ export default async function StatutoryPage(
       <Panel
         title={`ESIC half-yearly — ${halfYearly.label}`}
         right={
-          <span className={`label ${halfYearly.complete ? "text-teal" : "text-brass"}`}>
+          <span className={`label ${halfYearly.complete ? "text-teal" : "text-amber"}`}>
             {halfYearly.complete
               ? "all six months present"
               : `${halfYearly.monthsMissing.length} month(s) missing`}

@@ -72,7 +72,7 @@ const MONTHS = [
 /** Compact per-status marks for the month grid. */
 const MARK: Record<string, { ch: string; cls: string; title: string }> = {
   present: { ch: "P", cls: "text-teal", title: "Present" },
-  half_day: { ch: "½", cls: "text-brass", title: "Half day" },
+  half_day: { ch: "½", cls: "text-amber", title: "Half day" },
   absent: { ch: "A", cls: "text-rust font-semibold", title: "Absent" },
   weekly_off: { ch: "·", cls: "text-ink-3", title: "Weekly off" },
   holiday: { ch: "H", cls: "text-indigo", title: "Holiday" },
@@ -596,7 +596,7 @@ export default async function AttendancePage(
               {holidayRows.map((h) => (
                 <span key={h.id} className="whitespace-nowrap">
                   <span className="font-mono tnum text-ink-3">{h.date.slice(8)}</span> {h.name}
-                  {h.restricted && <span className="text-brass"> (restricted)</span>}
+                  {h.restricted && <span className="text-amber"> (restricted)</span>}
                 </span>
               ))}
             </div>

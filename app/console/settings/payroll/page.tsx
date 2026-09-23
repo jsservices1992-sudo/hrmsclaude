@@ -379,7 +379,7 @@ export default async function PayrollSettingsPage(
                     <TD className="font-mono tnum text-ink-2">{headcountByDept[d.id] ?? 0}</TD>
                     <TD className="text-ink-2">
                       {o?.prorationBasis ? (
-                        <span className="text-brass">{o.prorationBasis.replace(/_/g, " ")}</span>
+                        <span className="text-amber">{o.prorationBasis.replace(/_/g, " ")}</span>
                       ) : (
                         <span className="text-ink-3">inherits ({company.prorationBasis.replace(/_/g, " ")})</span>
                       )}
@@ -389,7 +389,7 @@ export default async function PayrollSettingsPage(
                     </TD>
                     <TD className="text-ink-2">
                       {o?.roundingMode ? (
-                        <span className="text-brass">{o.roundingMode}</span>
+                        <span className="text-amber">{o.roundingMode}</span>
                       ) : (
                         <span className="text-ink-3">inherits ({company.roundingMode})</span>
                       )}
@@ -583,7 +583,7 @@ export default async function PayrollSettingsPage(
                       <TD>{d.name}</TD>
                       <TD className="text-ink-2">
                         {o ? (
-                          <span className="text-brass">{structureNameById[o.structureId] ?? o.structureId}</span>
+                          <span className="text-amber">{structureNameById[o.structureId] ?? o.structureId}</span>
                         ) : (
                           <span className="text-ink-3">Inherits company default</span>
                         )}
@@ -600,7 +600,7 @@ export default async function PayrollSettingsPage(
                             );
                           }
                           return (
-                            <span className="block text-xs text-brass">
+                            <span className="block text-xs text-amber">
                               {reach.total - reach.pinned} of {reach.total} follow it — {reach.pinned} have a
                               structure named on their own salary record, which wins
                             </span>
@@ -656,8 +656,8 @@ export default async function PayrollSettingsPage(
           />
 
           {tail.tailDays > 0 && (
-            <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm rounded-lg">
-              <span className="label text-brass">Untracked tail</span>{" "}
+            <div className="border border-amber/40 bg-amber-soft px-4 py-3 text-sm rounded-lg">
+              <span className="label text-amber">Untracked tail</span>{" "}
               <span className="text-ink-2">{tail.note}</span>
             </div>
           )}
@@ -727,8 +727,8 @@ export default async function PayrollSettingsPage(
 
       {tab === "statutory" && (
         <div className="flex flex-col gap-4">
-          <div className="border border-brass/40 bg-brass-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
-            <span className="label text-brass">Effective dated</span> — editing
+          <div className="border border-amber/40 bg-amber-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
+            <span className="label text-amber">Effective dated</span> — editing
             writes a new version from the date you give. Runs already saved keep
             the version they used, so history stays reproducible.
           </div>
