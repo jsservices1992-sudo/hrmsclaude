@@ -14,7 +14,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { ProofDecisionForm } from "./forms";
-import { PageHeader, Card, Select, FilterBar, FilterField, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { PageHeader, Card, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 
 export const metadata = { title: "Income tax & TDS" };
 
@@ -66,21 +66,6 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
             {company.name} · {rows.length} active employees · projection recomputed
             on every declaration, proof and salary change
           </>
-        }
-        actions={
-          companies.length > 1 && (
-            <FilterBar action="/console/tax" mode="switch">
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId}>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </FilterField>
-            </FilterBar>
-          )
         }
       />
 

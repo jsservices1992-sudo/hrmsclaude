@@ -177,11 +177,7 @@ export default async function VariablePayPage(
         actions={
           <FilterBar action="/console/payroll/inputs" mode="switch">
             {companies.length > 1 && (
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId} className="w-40">
-                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </Select>
-              </FilterField>
+              <input type="hidden" name="company" value={companyId} />
             )}
             <FilterField label="Month" showLabel={false}>
               <Select name="month" defaultValue={String(month)} className="w-36">

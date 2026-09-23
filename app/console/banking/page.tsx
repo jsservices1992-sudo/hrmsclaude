@@ -174,15 +174,7 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
             hidden={companies.length > 1 ? undefined : { company: companyId }}
           >
             {companies.length > 1 && (
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId}>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </FilterField>
+              <input type="hidden" name="company" value={companyId} />
             )}
             <FilterField label="Month" showLabel={false}>
               <Select name="month" defaultValue={month}>

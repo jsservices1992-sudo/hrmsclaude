@@ -293,17 +293,6 @@ export default async function PayrollSettingsPage(
         <PageHeader
           title={`Payroll settings — ${company.name}`}
           description="These decide what every part-month is worth. They are versioned, and changing one after a run exists requires a reason."
-          actions={
-            companies.length > 1 && (
-              <FilterBar action="/console/settings/payroll" mode="switch" hidden={{ tab }}>
-                <FilterField label="Company" showLabel={false}>
-                  <Select name="company" defaultValue={companyId}>
-                    {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </Select>
-                </FilterField>
-              </FilterBar>
-            )
-          }
         />
       </div>
 

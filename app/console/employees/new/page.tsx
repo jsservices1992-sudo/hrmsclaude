@@ -9,7 +9,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import EmployeeForm from "../employee-form";
-import { PageHeader, Select, FilterBar, FilterField } from "@/components/console/ui";
+import { PageHeader } from "@/components/console/ui";
 import { SetupWizard } from "@/components/console/setup-wizard";
 
 export const metadata = { title: "New employee" };
@@ -53,21 +53,6 @@ export default async function NewEmployeePage(
             Creating in <span className="font-medium text-ink">{company.name}</span>. Statutory
             applicability follows the branch you choose.
           </>
-        }
-        actions={
-          companies.length > 1 && (
-            <FilterBar action="/console/employees/new" mode="switch">
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId}>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </FilterField>
-            </FilterBar>
-          )
         }
       />
 

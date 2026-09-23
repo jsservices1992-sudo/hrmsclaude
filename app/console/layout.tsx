@@ -4,9 +4,12 @@ import {
   canAccessConsole,
   canSeeCompensation,
   isTenantWide,
+  scopeCompanies,
 } from "@/lib/auth/session";
+import { listCompanies } from "@/lib/payroll/load";
+import { selectedCompanyId } from "@/lib/company-cookie-server";
 import { logout } from "@/app/login/actions";
-import { CONSOLE_SECTIONS } from "@/lib/console-nav";
+import { navFor } from "@/lib/console-nav";
 import ConsoleShell from "@/components/console/shell";
 
 // Console reads live database rows; prerendering would freeze them at build.
@@ -23,19 +26,9 @@ export default async function ConsoleLayout({
   if (!canAccessConsole(user)) redirect("/me");
 
   // Filtered on the server, so a hidden route is never named to the client.
-  const sections = CONSOLE_SECTIONS.map((section) => ({
-    ...section,
-    groups: section.groups
-      .map((group) => ({
-        ...group,
-        items: group.items.filter(
-          (item) =>
-            (!item.needsCompensation || canSeeCompensation(user)) &&
-            (!item.needsTenantWide || isTenantWide(user)),
-        ),
-      }))
-      .filter((group) => group.items.length > 0),
-  })).filter((section) => section.groups.length > 0);
+  const nav = navFor({ compensation: canSeeCompensation(user), tenantWide: isTenantWide(user) });
+  const companies = scopeCompanies(user, await listCompanies()).map((c) => ({ id: c.id, name: c.name }));
+  const selected = await selectedCompanyId();
 
   return (
     <ConsoleShell
@@ -45,7 +38,9 @@ export default async function ConsoleLayout({
         role: user.role,
         compensationScope: user.compensationScope,
       }}
-      sections={sections}
+      nav={nav}
+      companies={companies}
+      selectedCompany={companies.some((c) => c.id === selected) ? selected : null}
       signOut={
         <form action={logout}>
           <button type="submit" className="text-sm text-rust hover:underline">

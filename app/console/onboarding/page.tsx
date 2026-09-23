@@ -1,3 +1,5 @@
+import { narrowToSelected } from "@/lib/company-cookie";
+import { selectedCompanyId } from "@/lib/company-cookie-server";
 import { today } from "@/lib/clock";
 import Link from "next/link";
 import { listJoiners } from "@/lib/onboarding/load";
@@ -48,7 +50,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
   const TODAY = today();
   const user = (await getSessionUser())!;
   const sp = await props.searchParams;
-  const companies = scopeCompanies(user, await listCompanies());
+  const companies = narrowToSelected(scopeCompanies(user, await listCompanies()), await selectedCompanyId());
   const allJoiners = await listJoiners(companies.map((c) => c.id));
 
   const inFlight = allJoiners.filter((j) => j.joiner.status !== "joined" && j.joiner.status !== "dropped");

@@ -1,3 +1,5 @@
+import { narrowToSelected } from "@/lib/company-cookie";
+import { selectedCompanyId } from "@/lib/company-cookie-server";
 import Link from "next/link";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
@@ -37,7 +39,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
   const sp = await props.searchParams;
 
   // A user confined to one entity must not see another entity's people.
-  const companies = scopeCompanies(user, await listCompanies());
+  const companies = narrowToSelected(scopeCompanies(user, await listCompanies()), await selectedCompanyId());
   const companyIds = companies.map((c) => c.id);
 
   const allRows = companyIds.length

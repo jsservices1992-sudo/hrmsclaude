@@ -9,7 +9,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { NewJoinerForm } from "../forms";
-import { PageHeader, Select, FilterBar, FilterField } from "@/components/console/ui";
+import { PageHeader } from "@/components/console/ui";
 
 export const metadata = { title: "New joiner" };
 
@@ -47,21 +47,6 @@ export default async function NewJoinerPage(
             statutory declarations and provisioning tasks — plus a private portal
             link for the candidate. No employee record exists until conversion.
           </>
-        }
-        actions={
-          companies.length > 1 && (
-            <FilterBar action="/console/onboarding/new" mode="switch">
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId}>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </FilterField>
-            </FilterBar>
-          )
         }
       />
 

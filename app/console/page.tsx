@@ -1,3 +1,5 @@
+import { narrowToSelected } from "@/lib/company-cookie";
+import { selectedCompanyId } from "@/lib/company-cookie-server";
 import { setupProgress } from "@/lib/onboarding/setup";
 import { loadSetupFacts } from "@/lib/onboarding/setup-load";
 import { today, currentPeriod } from "@/lib/clock";
@@ -119,7 +121,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
   const sp = await props.searchParams;
   const denied = typeof sp.denied === "string" ? sp.denied : null;
 
-  const companies = scopeCompanies(user, await listCompanies());
+  const companies = narrowToSelected(scopeCompanies(user, await listCompanies()), await selectedCompanyId());
   const companyIds = companies.map((c) => c.id);
   const seesPay = canSeeCompensation(user);
 

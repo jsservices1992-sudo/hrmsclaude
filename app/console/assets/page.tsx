@@ -84,19 +84,6 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
           </>
         }
         description={company.name}
-        actions={
-          companies.length > 1 && (
-            <FilterBar action="/console/assets" mode="switch">
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId}>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </Select>
-              </FilterField>
-            </FilterBar>
-          )
-        }
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

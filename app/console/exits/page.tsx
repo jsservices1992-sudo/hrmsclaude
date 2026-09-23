@@ -1,3 +1,5 @@
+import { narrowToSelected } from "@/lib/company-cookie";
+import { selectedCompanyId } from "@/lib/company-cookie-server";
 import { today as clockToday } from "@/lib/clock";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -59,7 +61,7 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
   if (!canAccessConsole(user)) redirect("/console?denied=exits");
   const sp = await props.searchParams;
 
-  const companies = scopeCompanies(user, await listCompanies());
+  const companies = narrowToSelected(scopeCompanies(user, await listCompanies()), await selectedCompanyId());
   const allCases = await listExitCases(companies.map((c) => c.id));
 
   const typeFilter = typeof sp.type === "string" ? sp.type : "";

@@ -273,14 +273,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
           }
         >
           {companies.length > 1 && (
-            <FilterField label="Company">
-              <Select name="company" defaultValue={companyFilter} className="w-40">
-                <option value="">All companies</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </Select>
-            </FilterField>
+            <input type="hidden" name="company" value={companyFilter} />
           )}
           <FilterField label="Year">
             <Select name="year" defaultValue={yearFilter} className="w-28">

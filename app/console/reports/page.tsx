@@ -191,13 +191,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
   const filters = (
     <FilterBar action="/console/reports" mode="switch" hidden={reportId ? { report: reportId } : undefined}>
       {companies.length > 1 && (
-        <FilterField label="Company" showLabel={false}>
-          <Select name="company" defaultValue={companyId}>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
-        </FilterField>
+        <input type="hidden" name="company" value={companyId} />
       )}
       <FilterField label="Month" showLabel={false}>
         <Select name="month" defaultValue={month}>

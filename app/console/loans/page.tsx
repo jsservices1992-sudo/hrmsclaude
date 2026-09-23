@@ -80,21 +80,6 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
             through payroll, never below the scheme&rsquo;s net-pay floor
           </>
         }
-        actions={
-          companies.length > 1 && (
-            <FilterBar action="/console/loans" mode="switch">
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId}>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </FilterField>
-            </FilterBar>
-          )
-        }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

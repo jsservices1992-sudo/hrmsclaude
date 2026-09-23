@@ -12,7 +12,6 @@ import { getSessionUser, scopeCompanies, canMutate,
 import {
   PageHeader,
   Card,
-  Select,
   FilterBar,
   FilterField,
   Badge,
@@ -270,19 +269,6 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
         eyebrow="Organisation"
         title="Structure & reporting"
         description={`${org.headcount} active · ${org.roots.length} at the top · ${departmentRows.length} departments · ${org.maxDepth + 1} levels deep`}
-        actions={
-          companies.length > 1 && (
-            <FilterBar action="/console/org" mode="switch">
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId}>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </Select>
-              </FilterField>
-            </FilterBar>
-          )
-        }
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

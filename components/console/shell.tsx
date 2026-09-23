@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { SITE } from "@/lib/site";
 import {
   SEGMENT_LABELS,
   isItemActive,
-  type ConsoleNavSection,
+  type ConsoleNavEntry,
 } from "@/lib/console-nav";
+import { COMPANY_COOKIE } from "@/lib/company-cookie";
 import { ICONS, IconMenu, IconClose, IconPanel, IconChevron, IconSearch } from "./icons";
 import { DropdownMenu, DropdownItem } from "./ui/dropdown-menu";
 import { ToastProvider } from "./ui/toast";
@@ -42,12 +43,6 @@ function Brand({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-const OPEN_KEY = "lekha.sidebar.open";
-
-/* Both stable references: a fallback or parser rebuilt every render would
-   make the stored value look like it had changed on every pass. */
-const NONE_CLOSED: string[] = [];
-const parseClosed = (raw: string) => JSON.parse(raw) as string[];
 // "1" is what earlier versions wrote; both still read as collapsed.
 const parseBool = (raw: string) => raw === "1" || raw === "true";
 
@@ -59,135 +54,159 @@ const readShortcutHint = () =>
     : "Ctrl K";
 
 /**
- * One section's worth of nav, openable.
- *
- * Thirty-odd links all shown at once is a list nobody reads; the section
- * holding the page you are on is open on arrival, because collapsing the
- * thing you just clicked into would be worse than showing everything.
+ * Seven destinations. The one you are inside opens to show its pages;
+ * the rest stay one line each, so the list is short enough to read at a
+ * glance and where you are is never in doubt.
  */
-function NavSection({
-  section,
+function NavList({
+  nav,
   pathname,
   collapsed,
-  open,
-  onToggle,
   onNavigate,
 }: {
-  section: ConsoleNavSection;
+  nav: ConsoleNavEntry[];
   pathname: string;
   collapsed: boolean;
-  open: boolean;
-  onToggle: () => void;
   onNavigate?: () => void;
 }) {
-  const items = (
-    <>
-      {section.groups.map((group, gi) => (
-        <div key={group.label ?? `g${gi}`} className="flex flex-col gap-0.5">
-          {group.label && !collapsed && (
-            <p className="label text-ink-3 px-3 pb-0.5">{group.label}</p>
-          )}
-          {group.items.map((item) => {
-            const active = isItemActive(item, pathname);
-            const Icon = ICONS[item.icon];
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onNavigate}
-                aria-current={active ? "page" : undefined}
-                title={collapsed ? item.label : undefined}
-                className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-base ${
-                  active
-                    ? "bg-indigo-soft text-indigo font-semibold"
-                    : "text-ink-2 hover:text-ink hover:bg-surface-2"
-                } ${collapsed ? "justify-center" : ""}`}
-              >
-                {active && (
-                  <span
-                    aria-hidden
-                    className="absolute left-0 inset-y-1.5 w-[3px] rounded-full bg-indigo"
-                  />
-                )}
-                <Icon />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </Link>
-            );
-          })}
-        </div>
-      ))}
-    </>
-  );
-
-  // Collapsed to icons, or a section with no heading: nothing to open.
-  if (!section.label) return <div className="flex flex-col gap-2.5">{items}</div>;
-  if (collapsed) {
-    return (
-      <div className="flex flex-col gap-2.5">
-        <div className="mx-3 border-t border-line" />
-        {items}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-2.5">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="flex items-center gap-1.5 px-3 py-1 rounded-md text-ink-3 hover:text-ink hover:bg-surface-2 transition-base"
-      >
-        <IconChevron
-          className={`h-3 w-3 shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
-        />
-        <span className="label">{section.label}</span>
-      </button>
-      {open && items}
-    </div>
+    <nav aria-label="Console" className="flex flex-col gap-0.5 py-3">
+      {nav.map((entry) => {
+        const active = isItemActive(entry, pathname);
+        const Icon = ICONS[entry.icon];
+        const open = active && !collapsed && (entry.children?.length ?? 0) > 1;
+        return (
+          <div key={entry.label}>
+            <Link
+              href={entry.href}
+              onClick={onNavigate}
+              aria-current={active && !entry.children ? "page" : undefined}
+              title={collapsed ? entry.label : undefined}
+              className={`flex items-center gap-2.5 px-3 min-h-10 rounded-lg text-sm transition-base focus-visible:shadow-ring ${
+                !active
+                  ? "text-ink-2 hover:text-ink hover:bg-surface-2"
+                  : open
+                    ? "text-ink font-semibold"
+                    : "bg-indigo-soft text-indigo font-semibold"
+              } ${collapsed ? "justify-center" : ""}`}
+            >
+              <span className={active ? "text-indigo" : ""}>
+                <Icon />
+              </span>
+              {!collapsed && <span className="truncate">{entry.label}</span>}
+            </Link>
+            {open && (
+              <ul className="mt-0.5 mb-1.5 ml-[1.35rem] border-l border-line pl-2 flex flex-col gap-0.5">
+                {entry.children!.map((child) => {
+                  const on = isItemActive(child, pathname);
+                  return (
+                    <li key={child.href}>
+                      <Link
+                        href={child.href}
+                        onClick={onNavigate}
+                        aria-current={on ? "page" : undefined}
+                        className={`block px-2.5 py-1.5 rounded-md text-[13px] transition-base focus-visible:shadow-ring ${
+                          on ? "bg-indigo-soft text-indigo font-semibold" : "text-ink-2 hover:text-ink hover:bg-surface-2"
+                        }`}
+                      >
+                        {child.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </nav>
   );
 }
 
-function NavList({
-  sections,
-  pathname,
-  collapsed,
-  onNavigate,
+/* Written here as well as by proxy.ts, so the choice holds even on a
+   page reached without ?company= in its address. */
+function rememberCompany(id: string | null) {
+  document.cookie = `${COMPANY_COOKIE}=${id ?? "all"}; path=/; max-age=31536000; samesite=lax`;
+}
+
+/* A uuid, or a code with digits in it — a record, not a section. */
+const looksLikeRecord = (seg: string) => /\d/.test(seg) && seg.length > 6;
+
+/**
+ * The one place a company is chosen. Switching keeps you on the same
+ * screen for the new company; on a single record (an employee, a run)
+ * it steps back to the list, because that record belongs to the old one.
+ */
+function CompanySwitcher({
+  companies,
+  selected,
 }: {
-  sections: ConsoleNavSection[];
-  pathname: string;
-  collapsed: boolean;
-  onNavigate?: () => void;
+  companies: { id: string; name: string }[];
+  selected: string | null;
 }) {
-  const activeLabel =
-    sections.find((sec) =>
-      sec.groups.some((g) => g.items.some((i) => isItemActive(i, pathname))),
-    )?.label ?? null;
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const fromUrl = params.get("company");
+  const current =
+    (fromUrl && companies.some((c) => c.id === fromUrl) ? fromUrl : null) ?? selected;
+  const currentName = companies.find((c) => c.id === current)?.name ?? "All companies";
 
-  const [closed, setClosed] = useStored<string[]>(OPEN_KEY, NONE_CLOSED, parseClosed);
-
-  const toggle = (label: string) => {
-    setClosed(
-      closed.includes(label)
-        ? closed.filter((l) => l !== label)
-        : [...closed, label],
-    );
+  const choose = (id: string | null) => {
+    rememberCompany(id);
+    const parts = pathname.split("/");
+    const cut = parts.findIndex(looksLikeRecord);
+    const path = cut > 0 ? parts.slice(0, cut).join("/") : pathname;
+    const next = new URLSearchParams(cut > 0 ? "" : params.toString());
+    if (id) next.set("company", id);
+    else next.set("company", "");
+    router.push(`${path}?${next.toString()}`);
   };
 
   return (
-    <nav aria-label="Console" className="flex flex-col gap-5 py-4">
-      {sections.map((section, i) => (
-        <NavSection
-          key={section.label ?? `s${i}`}
-          section={section}
-          pathname={pathname}
-          collapsed={collapsed}
-          open={section.label === activeLabel || !closed.includes(section.label ?? "")}
-          onToggle={() => toggle(section.label ?? "")}
-          onNavigate={onNavigate}
-        />
-      ))}
-    </nav>
+    <DropdownMenu
+      align="start"
+      trigger={({ onClick, open }) => (
+        <button
+          type="button"
+          onClick={onClick}
+          aria-expanded={open}
+          aria-haspopup="true"
+          aria-label={`Company: ${currentName}. Change company`}
+          className="flex items-center gap-2 min-h-9 max-w-[14rem] rounded-lg border border-line bg-surface px-2.5 text-sm font-semibold text-ink hover:bg-surface-2 transition-base focus-visible:shadow-ring"
+        >
+          <span aria-hidden className="grid h-5 w-5 shrink-0 place-items-center rounded bg-indigo-soft text-[10px] font-bold text-indigo">
+            {currentName.slice(0, 1).toUpperCase()}
+          </span>
+          <span className="truncate">{currentName}</span>
+          <IconChevron className="h-3 w-3 shrink-0 text-ink-3 rotate-90" />
+        </button>
+      )}
+    >
+      {({ close }) => (
+        <div className="w-64">
+          <p className="px-3 pt-2 pb-1 text-xs font-semibold text-ink-3">Show</p>
+          {[{ id: null as string | null, name: "All companies" }, ...companies].map((c) => {
+            const on = c.id === current;
+            return (
+              <DropdownItem
+                key={c.id ?? "all"}
+                aria-checked={on}
+                role="menuitemradio"
+                onClick={() => {
+                  close();
+                  choose(c.id);
+                }}
+                className={`flex items-center justify-between gap-3 ${on ? "text-indigo font-semibold" : ""}`}
+              >
+                <span className="truncate">{c.name}</span>
+                {on && <span aria-hidden>✓</span>}
+              </DropdownItem>
+            );
+          })}
+        </div>
+      )}
+    </DropdownMenu>
   );
 }
 
@@ -335,12 +354,16 @@ function UserMenu({
 
 export default function ConsoleShell({
   user,
-  sections,
+  nav,
+  companies,
+  selectedCompany,
   signOut,
   children,
 }: {
   user: ShellUser;
-  sections: ConsoleNavSection[];
+  nav: ConsoleNavEntry[];
+  companies: { id: string; name: string }[];
+  selectedCompany: string | null;
   signOut: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -420,7 +443,7 @@ export default function ConsoleShell({
           </div>
 
           <div className="flex-1 overflow-y-auto px-2">
-            <NavList sections={sections} pathname={pathname} collapsed={collapsed} />
+            <NavList nav={nav} pathname={pathname} collapsed={collapsed} />
           </div>
 
           {collapsed && (
@@ -457,7 +480,7 @@ export default function ConsoleShell({
               </div>
               <div className="px-2">
                 <NavList
-                  sections={sections}
+                  nav={nav}
                   pathname={pathname}
                   collapsed={false}
                   onNavigate={() => setDrawer(false)}
@@ -483,7 +506,14 @@ export default function ConsoleShell({
                 >
                   <IconMenu />
                 </button>
-                <Breadcrumbs pathname={pathname} />
+                {companies.length > 1 && (
+                  <Suspense fallback={null}>
+                    <CompanySwitcher companies={companies} selected={selectedCompany} />
+                  </Suspense>
+                )}
+                <div className={companies.length > 1 ? "hidden md:block min-w-0" : "min-w-0"}>
+                  <Breadcrumbs pathname={pathname} />
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <SearchTrigger />

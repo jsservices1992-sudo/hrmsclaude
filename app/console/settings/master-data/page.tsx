@@ -12,7 +12,7 @@ import {
   ShiftForm, PayComponentForm, LoanSchemeForm, GlAccountForm, GlMappingForm,
   VariablePayTypeForm,
 } from "./forms";
-import { PageHeader, Card, Select, FilterBar, FilterField, Tabs, TabLink, Table, THead, TH, TBody, TR, TD, Badge, EmptyState } from "@/components/console/ui";
+import { PageHeader, Card, Tabs, TabLink, Table, THead, TH, TBody, TR, TD, Badge, EmptyState } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 import { SetupWizard } from "@/components/console/setup-wizard";
 
@@ -88,19 +88,6 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
             What onboarding, attendance, payroll and banking all read from.
             {!canEdit && " Your role can view this, not change it."}
           </>
-        }
-        actions={
-          companies.length > 1 && (
-            <FilterBar action="/console/settings/master-data" mode="switch" hidden={{ tab }}>
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId}>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </Select>
-              </FilterField>
-            </FilterBar>
-          )
         }
       />
 

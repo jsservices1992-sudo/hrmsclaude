@@ -12,7 +12,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { ClaimDecisionForm } from "./forms";
-import { PageHeader, Card, Select, FilterBar, FilterField, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { PageHeader, Card, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Flexible benefits" };
@@ -71,17 +71,6 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
               {plan.row.claimClosesOn}
             </span>
           </>
-        }
-        actions={
-          companies.length > 1 && (
-            <FilterBar action="/console/flexi" mode="switch">
-              <FilterField label="Company" showLabel={false}>
-                <Select name="company" defaultValue={companyId}>
-                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </Select>
-              </FilterField>
-            </FilterBar>
-          )
         }
       />
 

@@ -14,178 +14,125 @@ export type ConsoleNavItem = {
   alsoMatches?: string[];
 };
 
-export type ConsoleNavGroup = {
-  /** Null renders the items without a sub-heading. */
-  label: string | null;
-  items: ConsoleNavItem[];
-};
+/**
+ * A top-level destination. Seven of them, named for the job somebody
+ * came to do — not for how the code is split. One with `children` is a
+ * module: it opens to show its pages while you are inside it.
+ */
+export type ConsoleNavEntry = ConsoleNavItem & { children?: ConsoleNavItem[] };
 
-export type ConsoleNavSection = {
-  /** Null renders the section without a top-level heading. */
-  label: string | null;
-  groups: ConsoleNavGroup[];
-};
-
-export const CONSOLE_SECTIONS: ConsoleNavSection[] = [
+export const CONSOLE_NAV: ConsoleNavEntry[] = [
+  { href: "/console", label: "Home", icon: "home", exact: true },
   {
-    /* Always visible, never a section to open: the two things everybody
-       lands on. */
-    label: null,
-    groups: [
-      {
-        label: null,
-        items: [
-          { href: "/console", label: "Dashboard", icon: "home", exact: true },
-          { href: "/console/reports", label: "Reports", icon: "table" },
-        ],
-      },
+    href: "/console/employees",
+    label: "People",
+    icon: "users",
+    alsoMatches: ["/console/org", "/console/onboarding", "/console/exits", "/console/assets"],
+    children: [
+      { href: "/console/employees", label: "Employees", icon: "users" },
+      { href: "/console/org", label: "Org chart", icon: "sitemap" },
+      { href: "/console/onboarding", label: "Joiners", icon: "userPlus" },
+      { href: "/console/exits", label: "Leavers & settlement", icon: "userMinus" },
+      { href: "/console/assets", label: "Assets", icon: "box" },
     ],
   },
+  { href: "/console/attendance", label: "Attendance", icon: "calendar" },
   {
-    label: "Workforce",
-    groups: [
-      {
-        label: "People",
-        items: [
-          { href: "/console/employees", label: "Employees", icon: "users" },
-          { href: "/console/org", label: "Org chart", icon: "sitemap" },
-          { href: "/console/onboarding", label: "Onboarding", icon: "userPlus" },
-          { href: "/console/exits", label: "Exits & settlement", icon: "userMinus" },
-        ],
-      },
-      {
-        /* Attendance and assets keep their own heading — a different daily
-           job — but they are still about the same people, so they no longer
-           sit in a section of their own. */
-        label: "Day to day",
-        items: [
-          { href: "/console/attendance", label: "Attendance & leave", icon: "calendar" },
-          { href: "/console/assets", label: "Assets", icon: "box" },
-        ],
-      },
-    ],
-  },
-  {
+    href: "/console/payroll/run",
     label: "Payroll",
-    groups: [
+    icon: "banknote",
+    needsCompensation: true,
+    alsoMatches: [
+      "/console/payroll",
+      "/console/payslip",
+      "/console/runs",
+      "/console/tax",
+      "/console/loans",
+      "/console/flexi",
+      "/console/banking",
+    ],
+    children: [
       {
-        /* One door, not four. The register, incentives, and approvals
-           were each their own nav item — one workflow with four
-           entrances, none of which said what to do next. Run payroll
-           is that answer: a status page that already links to every
-           one of these, in the order they actually happen. Landing on
-           any of them straight (a bookmark, a step link) still lights
-           this item up, so where you are stays visible. */
-        label: null,
-        items: [
-          {
-            href: "/console/payroll/run",
-            label: "Run payroll",
-            icon: "check",
-            needsCompensation: true,
-            alsoMatches: [
-              "/console/payroll",
-              "/console/payroll/inputs",
-              "/console/payroll/payslips",
-              "/console/payslip",
-              "/console/runs",
-            ],
-          },
+        /* One door, not four: the register, incentives, payslips and
+           approvals are steps of the month, reached from here. */
+        href: "/console/payroll/run",
+        label: "Run payroll",
+        icon: "check",
+        needsCompensation: true,
+        alsoMatches: [
+          "/console/payroll",
+          "/console/payroll/inputs",
+          "/console/payroll/payslips",
+          "/console/payslip",
+          "/console/runs",
         ],
       },
-      {
-        label: "Pay components",
-        items: [
-          {
-            href: "/console/flexi",
-            label: "Flexible benefits",
-            icon: "sliders",
-            needsCompensation: true,
-          },
-          {
-            href: "/console/tax",
-            label: "Income tax & TDS",
-            icon: "percent",
-            needsCompensation: true,
-          },
-          {
-            href: "/console/loans",
-            label: "Loans & recoveries",
-            icon: "banknote",
-            needsCompensation: true,
-          },
-          {
-            href: "/console/banking",
-            label: "Banking & accounting",
-            icon: "ledger",
-            needsCompensation: true,
-          },
-        ],
-      },
+      { href: "/console/banking", label: "Bank & accounting", icon: "ledger", needsCompensation: true },
+      { href: "/console/tax", label: "Income tax & TDS", icon: "percent", needsCompensation: true },
+      { href: "/console/loans", label: "Loans & recoveries", icon: "banknote", needsCompensation: true },
+      { href: "/console/flexi", label: "Flexible benefits", icon: "sliders", needsCompensation: true },
     ],
   },
   {
+    href: "/console/statutory",
     label: "Compliance",
-    groups: [
-      {
-        label: null,
-        items: [
-          { href: "/console/compliance", label: "Statutory rules", icon: "shield" },
-          {
-            href: "/console/statutory",
-            label: "Returns & filings",
-            icon: "stamp",
-            needsCompensation: true,
-          },
-          { href: "/console/workflows", label: "Workflows", icon: "flow" },
-          {
-            href: "/console/audit",
-            label: "Audit & controls",
-            icon: "history",
-            needsTenantWide: true,
-          },
-        ],
-      },
+    icon: "shield",
+    alsoMatches: ["/console/compliance", "/console/audit"],
+    children: [
+      { href: "/console/statutory", label: "Returns & filings", icon: "stamp", needsCompensation: true },
+      { href: "/console/compliance", label: "Statutory rules", icon: "shield" },
+      { href: "/console/audit", label: "Audit log", icon: "history", needsTenantWide: true },
     ],
   },
+  { href: "/console/reports", label: "Reports", icon: "table" },
   {
-    /* Administration and Governance were two headings over eight items
-       nobody visits twice a week. One section, two groups. */
+    href: "/console/settings",
     label: "Settings",
-    groups: [
+    icon: "building",
+    alsoMatches: ["/console/setup", "/console/import", "/console/workflows", "/console/account"],
+    children: [
       {
-        label: "Organisation",
-        items: [
-          {
-            href: "/console/settings",
-            label: "Organisation",
-            icon: "building",
-            exact: true,
-            alsoMatches: ["/console/settings/companies"],
-          },
-          { href: "/console/setup", label: "Set up", icon: "check" },
-          { href: "/console/import", label: "Migrate", icon: "box" },
-          { href: "/console/settings/payroll", label: "Payroll settings", icon: "sliders" },
-          { href: "/console/settings/master-data", label: "Master data", icon: "table" },
-        ],
+        href: "/console/settings",
+        label: "Company",
+        icon: "building",
+        exact: true,
+        alsoMatches: ["/console/settings/companies"],
       },
-      {
-        label: "Access",
-        items: [
-          {
-            /* Not tenant-wide: a company administrator manages their own
-               company's logins. The page scopes what it lists. */
-            href: "/console/settings/users",
-            label: "Accounts",
-            icon: "users",
-          },
-          { href: "/console/account", label: "My account", icon: "userPlus" },
-          { href: "/console/settings/api", label: "API & webhooks", icon: "flow" },
-        ],
-      },
+      { href: "/console/settings/payroll", label: "Payroll rules", icon: "sliders" },
+      { href: "/console/settings/master-data", label: "Master data", icon: "table" },
+      { href: "/console/settings/users", label: "Users & access", icon: "users" },
+      { href: "/console/workflows", label: "Approval workflows", icon: "flow" },
+      { href: "/console/import", label: "Import data", icon: "box" },
+      { href: "/console/settings/api", label: "API & webhooks", icon: "flow" },
+      { href: "/console/setup", label: "Setup checklist", icon: "check" },
     ],
   },
 ];
+
+/** The nav a given user sees: hidden pages are never named to them. */
+export function navFor(
+  can: { compensation: boolean; tenantWide: boolean },
+  nav: ConsoleNavEntry[] = CONSOLE_NAV,
+): ConsoleNavEntry[] {
+  const allowed = (i: ConsoleNavItem) =>
+    (!i.needsCompensation || can.compensation) && (!i.needsTenantWide || can.tenantWide);
+  return nav
+    .map((e) => (e.children ? { ...e, children: e.children.filter(allowed) } : e))
+    .filter((e) => allowed(e) && (!e.children || e.children.length > 0))
+    .map((e) =>
+      /* A module whose first page is hidden opens on the first one left. */
+      e.children && !e.children.some((c) => c.href === e.href) ? { ...e, href: e.children[0].href } : e,
+    );
+}
+
+/** Every page in the nav, flat — what the command palette offers as "Go to". */
+export function navPages(nav: ConsoleNavEntry[]): { href: string; label: string; module: string }[] {
+  return nav.flatMap((e) =>
+    e.children
+      ? e.children.map((c) => ({ href: c.href, label: c.label, module: e.label }))
+      : [{ href: e.href, label: e.label, module: "" }],
+  );
+}
 
 /** Suggested actions shown in the command palette when the query is empty. */
 export const QUICK_ACTIONS: { label: string; href: string; icon: IconName }[] = [
@@ -197,13 +144,13 @@ export const QUICK_ACTIONS: { label: string; href: string; icon: IconName }[] = 
 
 /** Human labels for breadcrumbs, keyed by path segment. */
 export const SEGMENT_LABELS: Record<string, string> = {
-  console: "Console",
+  console: "Home",
   employees: "Employees",
   org: "Org chart",
-  onboarding: "Onboarding",
+  onboarding: "Joiners",
   assets: "Assets",
-  exits: "Exits & settlement",
-  attendance: "Attendance & leave",
+  exits: "Leavers & settlement",
+  attendance: "Attendance",
   payroll: "Payroll",
   payslip: "Payslip",
   runs: "Runs & approvals",
@@ -214,9 +161,9 @@ export const SEGMENT_LABELS: Record<string, string> = {
   tax: "Income tax & TDS",
   loans: "Loans & recoveries",
   statutory: "Returns & filings",
-  banking: "Banking & accounting",
-  workflows: "Workflows",
-  audit: "Audit & controls",
+  banking: "Bank & accounting",
+  workflows: "Approval workflows",
+  audit: "Audit log",
   reports: "Reports",
   api: "API & webhooks",
   inputs: "Incentives & deductions",
@@ -224,6 +171,9 @@ export const SEGMENT_LABELS: Record<string, string> = {
   "master-data": "Master data",
   account: "My account",
   new: "New",
+  import: "Import data",
+  setup: "Setup checklist",
+  users: "Users & access",
 };
 
 export function isItemActive(item: ConsoleNavItem, pathname: string): boolean {
