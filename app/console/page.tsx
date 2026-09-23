@@ -66,39 +66,44 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="px-5 pb-5 pt-1 text-sm text-ink-3">{children}</p>;
 }
 
-/** A headline number, with a tinted icon chip — read at a glance. */
-function Kpi({
+/**
+ * A headline number, with a tinted icon chip — read at a glance. Sized
+ * to sit four-up inside the hero rather than as its own full-height
+ * card, since that is the only place this renders now.
+ */
+function MiniStat({
   label,
   value,
-  hint,
   icon,
   tone = "indigo",
   href,
 }: {
   label: string;
   value: React.ReactNode;
-  hint?: React.ReactNode;
   icon: React.ReactNode;
-  tone?: "indigo" | "brass" | "teal" | "rust";
-  href?: string;
+  tone?: "indigo" | "amber" | "teal" | "rust";
+  href: string;
 }) {
   const chip: Record<string, string> = {
     indigo: "bg-indigo-soft text-indigo",
-    brass: "bg-amber-soft text-amber",
+    amber: "bg-amber-soft text-amber",
     teal: "bg-teal-soft text-teal",
     rust: "bg-rust-soft text-rust",
   };
-  const body = (
-    <Card className="h-full transition-base hover:shadow-md hover:-translate-y-px">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-medium text-ink-2">{label}</p>
-        <span className={`grid h-8 w-8 place-items-center rounded-lg ${chip[tone]}`}>{icon}</span>
-      </div>
-      <p className="font-display text-[28px] leading-none font-bold tracking-tight text-ink mt-3 tnum">{value}</p>
-      {hint && <p className="text-xs text-ink-3 mt-2">{hint}</p>}
-    </Card>
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 rounded-lg border border-line-2 bg-surface-2/40 px-3.5 py-3 transition-base hover:bg-surface-2"
+    >
+      <span aria-hidden className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${chip[tone]}`}>
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-lg font-bold tracking-tight tnum text-ink">{value}</span>
+        <span className="block truncate text-xs text-ink-2">{label}</span>
+      </span>
+    </Link>
   );
-  return href ? <Link href={href} className="block">{body}</Link> : body;
 }
 
 /** One line of the payroll preview card — label left, figure right. */
@@ -460,14 +465,40 @@ export default async function DashboardPage(props: PageProps<"/console">) {
               </Link>
             </div>
 
-            {/* Once the payroll card beside it grew a chart, this column
-                was shorter and its content sat centred with dead air
-                below it. A quiet ground pattern reads as deliberate
-                where a random-height blank does not — the same
-                treatment the marketing hero uses. */}
-            <div aria-hidden className="relative mt-8 flex-1 min-h-[6rem] overflow-hidden rounded-lg">
-              <div className="absolute inset-0 bg-glow opacity-70" />
-              <div className="absolute inset-0 bg-grid opacity-50" />
+            {/* The KPIs used to sit in their own row below the hero,
+                which left this column short and the row under it empty
+                of anything else. Moving them here fills the column at
+                the height it actually needs, and they are gone from
+                below rather than repeated. */}
+            <div className="mt-auto grid grid-cols-2 gap-3 pt-8">
+              <MiniStat
+                label="Active employees"
+                value={headcount[0]?.n ?? 0}
+                icon={<IconUsers className="h-4 w-4" />}
+                href="/console/employees"
+              />
+              {seesPay && (
+                <MiniStat
+                  label="Monthly cost to company"
+                  value={compact(previewGross + previewEmployer)}
+                  icon={<span className="text-sm font-bold">₹</span>}
+                  href="/console/payroll/run"
+                />
+              )}
+              <MiniStat
+                label="Pending approvals"
+                value={approvals}
+                icon={<IconCheck className="h-4 w-4" />}
+                tone={approvals ? "amber" : "teal"}
+                href="/console/attendance?tab=approvals"
+              />
+              <MiniStat
+                label={seesPay ? "Open exits" : "Joining soon"}
+                value={seesPay ? openExits.length : activeJoiners.length}
+                icon={seesPay ? <IconUserMinus className="h-4 w-4" /> : <IconUserPlus className="h-4 w-4" />}
+                tone={seesPay && openExits.length ? "rust" : "teal"}
+                href={seesPay ? "/console/exits" : "/console/onboarding"}
+              />
             </div>
           </div>
 
@@ -526,43 +557,6 @@ export default async function DashboardPage(props: PageProps<"/console">) {
           )}
         </div>
       </section>
-
-      {/* ---------------- KPIs ---------------- */}
-      <div className={`grid grid-cols-2 gap-4 ${seesPay ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
-        <Kpi
-          label="Active employees"
-          value={headcount[0]?.n ?? 0}
-          icon={<IconUsers className="h-4 w-4" />}
-          hint={activeJoiners.length ? `${activeJoiners.length} joining soon` : "Nobody joining right now"}
-          href="/console/employees"
-        />
-        {seesPay && (
-          <Kpi
-            label="Monthly cost to company"
-            value={compact(previewGross + previewEmployer)}
-            icon={<span className="text-sm font-bold">₹</span>}
-            tone="brass"
-            hint="Gross plus employer contributions"
-            href="/console/payroll/run"
-          />
-        )}
-        <Kpi
-          label="Pending approvals"
-          value={approvals}
-          icon={<IconCheck className="h-4 w-4" />}
-          tone={approvals ? "brass" : "teal"}
-          hint={approvals ? "Leave and attendance corrections" : "All caught up"}
-          href="/console/attendance?tab=approvals"
-        />
-        <Kpi
-          label={seesPay ? "Open exits" : "Joining soon"}
-          value={seesPay ? openExits.length : activeJoiners.length}
-          icon={seesPay ? <IconUserMinus className="h-4 w-4" /> : <IconUserPlus className="h-4 w-4" />}
-          tone={seesPay && openExits.length ? "rust" : "teal"}
-          hint={seesPay ? (openExits.length ? "Settlement pending" : "No exits in progress") : undefined}
-          href={seesPay ? "/console/exits" : "/console/onboarding"}
-        />
-      </div>
 
       {/* ---------------- trend + to-do ---------------- */}
       <div className="grid lg:grid-cols-[1.6fr_1fr] gap-5">
