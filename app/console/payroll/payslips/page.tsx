@@ -30,7 +30,7 @@ import {
   TBody,
   TR,
   TD,
-  EmptyState, MetricStrip
+  EmptyState, MetricStrip, MonthNav
 } from "@/components/console/ui";
 
 export const metadata = { title: "Payslips" };
@@ -153,8 +153,8 @@ export default async function PayslipsPage(
             ← Back to list
           </Link>
           <PageHeader
-            title={`Payslips · ${MONTHS[month - 1]} ${year}`}
-            description={`${preview.company.name} · ${rows.length} payslip(s) · one per page when printed`}
+            title="Payslips"
+            description={`${preview.company.name} · ${MONTHS[month - 1]} ${year} · ${rows.length} payslip(s) · one per page when printed`}
             actions={<PrintButton label="Print all / save as PDF" />}
           />
         </div>
@@ -185,7 +185,7 @@ export default async function PayslipsPage(
           ← Register
         </Link>
         <PageHeader
-          title={`Payslips · ${MONTHS[month - 1]} ${year}`}
+          title="Payslips"
           description={
             preview.source === "run"
               ? `${preview.company.name} · ${preview.results.length} employees · figures of record from run v${preview.run?.version}`
@@ -193,6 +193,16 @@ export default async function PayslipsPage(
           }
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              <MonthNav
+                year={year}
+                month={month}
+                href={(y, m) => {
+                  const p = new URLSearchParams(filterQuery);
+                  p.set("year", String(y));
+                  p.set("month", String(m));
+                  return `/console/payroll/payslips?${p.toString()}`;
+                }}
+              />
               <a
                 href={`/console/payroll/payslips/export?${filterQuery.toString()}`}
                 className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
@@ -241,16 +251,8 @@ export default async function PayslipsPage(
               <option value="warnings">With findings</option>
             </Select>
           </FilterField>
-          <FilterField label="Month" showLabel={false} className="w-full sm:w-36">
-            <Select name="month" defaultValue={String(month)} className="w-full">
-              {MONTHS.map((m, i) => (
-                <option key={m} value={i + 1}>{m}</option>
-              ))}
-            </Select>
-          </FilterField>
-          <FilterField label="Year" showLabel={false} className="w-full sm:w-24">
-            <Input name="year" defaultValue={year} className="tnum w-full" />
-          </FilterField>
+          <input type="hidden" name="month" value={month} />
+          <input type="hidden" name="year" value={year} />
         </FilterBar>
       </Card>
 
