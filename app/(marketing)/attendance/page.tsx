@@ -67,7 +67,7 @@ export default function AttendancePage() {
                     i > 0 ? "border-t border-line-2" : ""
                   }`}
                 >
-                  <span className="label text-brass pt-1">{c.m}</span>
+                  <span className="text-xs font-semibold text-indigo pt-1">{c.m}</span>
                   <p className="text-ink-2 leading-relaxed pretty">{c.d}</p>
                 </div>
               ))}
@@ -76,7 +76,7 @@ export default function AttendancePage() {
         </Container>
       </Section>
 
-      <Section>
+      <Section tinted>
         <Container>
           <SectionHead
             eyebrow="Rules"

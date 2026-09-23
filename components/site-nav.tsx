@@ -14,7 +14,7 @@ function Wordmark() {
       >
         ल
       </span>
-      <span className="font-display text-xl font-semibold tracking-[-0.01em]">
+      <span className="text-xl font-bold tracking-tight">
         {SITE.name}
       </span>
     </Link>
@@ -72,8 +72,8 @@ export default function SiteNav() {
   return (
     <>
     <div
-      className={`sticky top-0 z-50 bg-paper/95 backdrop-blur-sm ${
-        scrolled ? "border-b border-line" : "border-b border-transparent"
+      className={`sticky top-0 z-50 backdrop-blur-md transition-base ${
+        scrolled ? "border-b border-line bg-surface/85" : "border-b border-transparent bg-surface/60"
       }`}
     >
       <div className="mx-auto w-full max-w-[76rem] px-5 sm:px-8">
@@ -88,8 +88,8 @@ export default function SiteNav() {
                 onClick={() => setProductOpen(!productOpen)}
                 aria-expanded={productOpen}
                 aria-haspopup="true"
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${
-                  productActive || productOpen ? "text-ink font-medium" : "text-ink-2 hover:text-ink"
+                className={`relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  productActive || productOpen ? "text-ink bg-surface-2" : "text-ink-2 hover:text-ink hover:bg-surface-2"
                 }`}
               >
                 Product
@@ -100,7 +100,7 @@ export default function SiteNav() {
                   ▾
                 </span>
                 {productActive && (
-                  <span aria-hidden className="absolute inset-x-3 -bottom-px h-[2px] bg-brass" />
+                  <span aria-hidden className="absolute inset-x-3 -bottom-px h-[2px] rounded-full bg-indigo" />
                 )}
               </button>
 
@@ -111,11 +111,11 @@ export default function SiteNav() {
                       <li key={item.href}>
                         <Link
                           href={item.href}
-                          className="block px-4 py-3 hover:bg-surface-2 transition-colors"
+                          className="block rounded-xl px-4 py-3 hover:bg-indigo-soft/50 transition-colors"
                         >
                           <span
                             className={`block text-sm font-medium ${
-                              pathname === item.href ? "text-brass" : ""
+                              pathname === item.href ? "text-indigo" : ""
                             }`}
                           >
                             {item.label}
@@ -138,13 +138,13 @@ export default function SiteNav() {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={`relative px-3 py-2 text-sm transition-colors ${
-                    active ? "text-ink font-medium" : "text-ink-2 hover:text-ink"
+                  className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    active ? "text-ink bg-surface-2" : "text-ink-2 hover:text-ink hover:bg-surface-2"
                   }`}
                 >
                   {item.label}
                   {active && (
-                    <span aria-hidden className="absolute inset-x-3 -bottom-px h-[2px] bg-brass" />
+                    <span aria-hidden className="absolute inset-x-3 -bottom-px h-[2px] rounded-full bg-indigo" />
                   )}
                 </Link>
               );
@@ -154,13 +154,13 @@ export default function SiteNav() {
           <div className="hidden lg:flex items-center gap-2 shrink-0">
             <Link
               href="/login"
-              className="px-3 py-2 text-sm text-ink-2 hover:text-ink transition-colors"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-ink-2 hover:text-ink hover:bg-surface-2 transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/pricing"
-              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-indigo text-on-indigo border border-indigo shadow-sm hover:bg-indigo-2 transition-colors"
+              className="inline-flex items-center rounded-xl bg-indigo px-4 py-2 text-sm font-semibold text-on-indigo shadow-[0_8px_20px_-8px_var(--indigo)] transition-base hover:bg-indigo-2"
             >
               Book a demo
             </Link>
@@ -181,7 +181,7 @@ export default function SiteNav() {
             aria-controls="mobile-menu"
             className="lg:hidden inline-flex items-center gap-2 px-3 py-2 -mr-3 text-sm text-ink"
           >
-            <span className="label">{open ? "Close" : "Menu"}</span>
+            <span className="text-sm font-medium">{open ? "Close" : "Menu"}</span>
             <span aria-hidden className="relative block h-3 w-4">
               <span
                 className={`absolute left-0 block h-[1.5px] w-4 bg-ink transition-transform duration-200 ${
@@ -223,7 +223,7 @@ export default function SiteNav() {
                   className="block px-5 sm:px-8 py-4 hover:bg-surface-2 transition-colors"
                 >
                   <span
-                    className={`block font-display text-lg font-semibold ${active ? "text-brass" : ""}`}
+                    className={`block text-lg font-bold tracking-tight ${active ? "text-indigo" : ""}`}
                   >
                     {item.label}
                   </span>

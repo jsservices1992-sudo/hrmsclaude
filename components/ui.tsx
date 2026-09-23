@@ -17,18 +17,26 @@ export function Container({
   );
 }
 
+/**
+ * A band of the page. Sections alternate on their own by being plain;
+ * `tinted` lifts one onto the paper ground when two white bands meet.
+ */
 export function Section({
   children,
   className = "",
   bordered = true,
+  tinted = false,
 }: {
   children: ReactNode;
   className?: string;
   bordered?: boolean;
+  tinted?: boolean;
 }) {
   return (
     <section
-      className={`${bordered ? "border-t border-line" : ""} py-16 sm:py-24 ${className}`}
+      className={`${bordered ? "border-t border-line/70" : ""} ${
+        tinted ? "bg-paper" : "bg-surface"
+      } py-20 sm:py-28 ${className}`}
     >
       {children}
     </section>
@@ -39,18 +47,24 @@ export function Section({
 
 export function Eyebrow({
   children,
-  tone = "brass",
+  tone = "indigo",
 }: {
   children: ReactNode;
   tone?: "brass" | "indigo" | "teal" | "muted";
 }) {
   const tones = {
-    brass: "text-brass",
-    indigo: "text-indigo",
-    teal: "text-teal",
-    muted: "text-ink-3",
+    brass: "bg-brass-soft text-brass border-brass/20",
+    indigo: "bg-indigo-soft text-indigo border-indigo/15",
+    teal: "bg-teal-soft text-teal border-teal/20",
+    muted: "bg-surface-2 text-ink-2 border-line",
   };
-  return <p className={`label ${tones[tone]}`}>{children}</p>;
+  return (
+    <p
+      className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${tones[tone]}`}
+    >
+      {children}
+    </p>
+  );
 }
 
 export function SectionHead({
@@ -71,11 +85,11 @@ export function SectionHead({
       }`}
     >
       {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <h2 className="font-display text-3xl sm:text-4xl font-semibold leading-[1.12] tracking-[-0.02em] balance">
+      <h2 className="text-3xl sm:text-[2.6rem] font-extrabold leading-[1.1] tracking-[-0.03em] text-ink balance">
         {title}
       </h2>
       {lede ? (
-        <p className="text-lg text-ink-2 leading-relaxed pretty max-w-[62ch]">{lede}</p>
+        <p className="text-lg text-ink-2 leading-relaxed pretty max-w-[60ch]">{lede}</p>
       ) : null}
     </div>
   );
@@ -95,13 +109,12 @@ export function Button({
   className?: string;
 }) {
   const base =
-    "inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium transition-colors duration-150";
+    "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-base focus-visible:shadow-ring";
   const variants = {
     primary:
-      "bg-indigo text-on-indigo hover:bg-indigo-2 border border-indigo hover:border-indigo-2",
-    secondary:
-      "border border-line bg-surface text-ink hover:border-ink-3 hover:bg-surface-2",
-    ghost: "text-ink-2 hover:text-ink underline underline-offset-4 decoration-line px-0",
+      "bg-indigo text-on-indigo shadow-[0_8px_20px_-8px_var(--indigo)] hover:bg-indigo-2 hover:-translate-y-px",
+    secondary: "border border-line bg-surface text-ink hover:border-ink-3/40 hover:bg-surface-2",
+    ghost: "px-2 text-ink-2 hover:text-ink",
   };
   return (
     <Link href={href} className={`${base} ${variants[variant]} ${className}`}>
@@ -118,30 +131,21 @@ export function StatStrip({
   items: { value: string; unit?: string; label: string }[];
 }) {
   return (
-    <dl className="grid grid-cols-2 md:grid-cols-4 border-t border-line">
-      {items.map((s, i) => (
-        <div
-          key={s.label}
-          className={`flex flex-col gap-1 py-5 pr-5 border-b border-line ${
-            i < items.length - 1 ? "md:border-r" : ""
-          } ${i % 2 === 0 ? "border-r md:border-r" : ""}`}
-        >
-          <dt className="label text-ink-3">{s.label}</dt>
-          <dd className="font-display text-2xl sm:text-[1.75rem] font-semibold tnum tracking-[-0.01em] pl-0">
+    <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {items.map((s) => (
+        <div key={s.label} className="rounded-2xl border border-line bg-surface px-5 py-5">
+          <dd className="text-3xl font-extrabold tracking-[-0.03em] text-ink tnum">
             {s.value}
-            {s.unit ? (
-              <span className="font-sans text-sm font-normal text-ink-2 ml-1.5">
-                {s.unit}
-              </span>
-            ) : null}
+            {s.unit ? <span className="ml-1.5 text-sm font-medium text-ink-3">{s.unit}</span> : null}
           </dd>
+          <dt className="mt-1 text-sm text-ink-2">{s.label}</dt>
         </div>
       ))}
     </dl>
   );
 }
 
-/* A numbered requirement-style row — the doc voice carried into the site */
+/* A requirement-style row: what the product guarantees, one claim a row. */
 export function SpecRow({
   code,
   title,
@@ -152,11 +156,15 @@ export function SpecRow({
   children: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-[7rem_1fr] gap-x-6 gap-y-2 py-5 border-t border-line-2">
-      <div className="label text-brass pt-1">{code}</div>
+    <div className="grid grid-cols-1 gap-x-6 gap-y-2 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-[8rem_1fr]">
+      <div>
+        <span className="inline-flex rounded-full bg-indigo-soft px-2.5 py-1 text-xs font-semibold text-indigo">
+          {code}
+        </span>
+      </div>
       <div className="min-w-0">
-        <h3 className="font-display text-lg font-semibold mb-1.5">{title}</h3>
-        <div className="text-ink-2 leading-relaxed pretty max-w-[64ch]">{children}</div>
+        <h3 className="mb-1.5 text-lg font-bold tracking-tight text-ink">{title}</h3>
+        <div className="max-w-[64ch] text-ink-2 leading-relaxed pretty">{children}</div>
       </div>
     </div>
   );
@@ -172,9 +180,14 @@ export function FeatureCard({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 p-6 bg-surface border border-line rounded-lg">
-      {code ? <span className="label text-ink-3">{code}</span> : null}
-      <h3 className="font-display text-lg font-semibold leading-snug balance">{title}</h3>
+    <div className="group flex flex-col gap-3 rounded-2xl border border-line bg-surface p-6 transition-base hover:-translate-y-0.5 hover:border-indigo/30 hover:shadow-md">
+      <span
+        aria-hidden
+        className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-soft text-sm font-bold text-indigo transition-base group-hover:bg-indigo group-hover:text-on-indigo"
+      >
+        {code ?? "✓"}
+      </span>
+      <h3 className="text-lg font-bold leading-snug tracking-tight text-ink balance">{title}</h3>
       <p className="text-sm text-ink-2 leading-relaxed pretty">{children}</p>
     </div>
   );
@@ -190,22 +203,14 @@ export function Callout({
   tone?: "indigo" | "brass" | "teal" | "rust";
 }) {
   const tones = {
-    indigo: "border-l-indigo",
-    brass: "border-l-brass",
-    teal: "border-l-teal",
-    rust: "border-l-rust",
-  };
-  const labelTones = {
-    indigo: "text-indigo",
-    brass: "text-brass",
-    teal: "text-teal",
-    rust: "text-rust",
+    indigo: "bg-indigo-soft border-indigo/15 text-indigo",
+    brass: "bg-brass-soft border-brass/20 text-brass",
+    teal: "bg-teal-soft border-teal/20 text-teal",
+    rust: "bg-rust-soft border-rust/20 text-rust",
   };
   return (
-    <div
-      className={`bg-surface border border-line border-l-[3px] ${tones[tone]} p-5 sm:p-6 max-w-[64ch] rounded-lg`}
-    >
-      <p className={`label mb-2 ${labelTones[tone]}`}>{label}</p>
+    <div className={`max-w-[64ch] rounded-2xl border p-5 sm:p-6 ${tones[tone]}`}>
+      <p className="mb-1.5 text-sm font-bold">{label}</p>
       <div className="text-ink-2 leading-relaxed pretty">{children}</div>
     </div>
   );
@@ -213,13 +218,15 @@ export function Callout({
 
 export function CheckList({ items }: { items: string[] }) {
   return (
-    <ul className="flex flex-col gap-2.5">
+    <ul className="flex flex-col gap-3">
       {items.map((item) => (
         <li key={item} className="flex gap-3 text-ink-2 leading-relaxed">
           <span
             aria-hidden
-            className="mt-[0.55em] h-[3px] w-3 shrink-0 bg-brass"
-          />
+            className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-teal-soft text-[11px] font-bold text-teal"
+          >
+            ✓
+          </span>
           <span className="pretty">{item}</span>
         </li>
       ))}
@@ -241,19 +248,25 @@ export function PageHero({
   stats?: { value: string; unit?: string; label: string }[];
 }) {
   return (
-    <header className="border-b border-line bg-surface">
-      <Container>
-        <div className="py-14 sm:py-20 flex flex-col gap-5">
-          <Eyebrow>{code}</Eyebrow>
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-semibold leading-[1.04] tracking-[-0.025em] balance max-w-[20ch]">
+    <header className="relative overflow-hidden border-b border-line/70 bg-surface">
+      <div aria-hidden className="absolute inset-0 bg-glow" />
+      <div aria-hidden className="absolute inset-0 bg-grid opacity-60" />
+      <Container className="relative">
+        <div className="flex flex-col items-center gap-6 py-20 text-center sm:py-24">
+          <Eyebrow>{code.replace(/^\d+\s*·\s*/, "")}</Eyebrow>
+          <h1 className="max-w-[18ch] text-4xl font-extrabold leading-[1.05] tracking-[-0.035em] text-ink balance sm:text-5xl lg:text-[3.6rem]">
             {title}
           </h1>
-          <p className="text-lg sm:text-xl text-ink-2 leading-relaxed pretty max-w-[58ch]">
-            {lede}
-          </p>
+          <p className="max-w-[58ch] text-lg text-ink-2 leading-relaxed pretty sm:text-xl">{lede}</p>
+          <div className="flex flex-wrap justify-center gap-3 pt-1">
+            <Button href="/pricing">Book a demo</Button>
+            <Button href="/login" variant="secondary">
+              Sign in
+            </Button>
+          </div>
         </div>
         {stats ? (
-          <div className="pb-2">
+          <div className="pb-16">
             <StatStrip items={stats} />
           </div>
         ) : null}
@@ -264,16 +277,24 @@ export function PageHero({
 
 export function NextPage({ href, label }: { href: string; label: string }) {
   return (
-    <Container>
-      <div className="border-t border-line py-10 flex items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="label text-ink-3">Next</span>
-          <span className="font-display text-xl font-semibold">{label}</span>
-        </div>
-        <Button href={href} variant="secondary">
-          Continue →
-        </Button>
-      </div>
-    </Container>
+    <section className="bg-surface py-16">
+      <Container>
+        <Link
+          href={href}
+          className="group flex items-center justify-between gap-4 rounded-2xl border border-line bg-paper px-6 py-6 transition-base hover:border-indigo/30 hover:bg-indigo-soft/40 sm:px-8"
+        >
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-ink-3">Next</span>
+            <span className="text-xl font-bold tracking-tight text-ink sm:text-2xl">{label}</span>
+          </div>
+          <span
+            aria-hidden
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-indigo text-lg text-on-indigo transition-base group-hover:translate-x-1"
+          >
+            →
+          </span>
+        </Link>
+      </Container>
+    </section>
   );
 }

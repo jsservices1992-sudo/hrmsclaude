@@ -72,7 +72,7 @@ export default function PlatformPage() {
         </Container>
       </Section>
 
-      <Section>
+      <Section tinted>
         <Container>
           <SectionHead
             eyebrow="Multi-company"
@@ -159,7 +159,7 @@ export default function PlatformPage() {
         </Container>
       </Section>
 
-      <Section>
+      <Section tinted>
         <Container>
           <SectionHead
             eyebrow="Self-service"

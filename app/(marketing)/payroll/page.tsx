@@ -90,7 +90,7 @@ export default function PayrollPage() {
       </Section>
 
       {/* COMPENSATION */}
-      <Section>
+      <Section tinted>
         <Container>
           <SectionHead
             eyebrow="Compensation"
@@ -210,7 +210,7 @@ export default function PayrollPage() {
       </Section>
 
       {/* RUN */}
-      <Section>
+      <Section tinted>
         <Container>
           <SectionHead
             eyebrow="The run"
@@ -221,10 +221,10 @@ export default function PayrollPage() {
           <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-line mt-10 border border-line rounded-lg">
             {STATES.map((s, i) => (
               <li key={s.s} className="bg-surface p-5 flex flex-col gap-1.5">
-                <span className="label text-brass tnum">
+                <span className="text-xs font-semibold text-indigo tnum">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className="font-display text-base font-semibold">{s.s}</span>
+                <span className="text-base font-bold tracking-tight">{s.s}</span>
                 <span className="text-sm text-ink-2 leading-relaxed pretty">
                   {s.d}
                 </span>

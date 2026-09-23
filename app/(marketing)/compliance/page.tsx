@@ -63,7 +63,7 @@ export default function CompliancePage() {
       </Section>
 
       {/* PT & LWF DETAIL */}
-      <Section>
+      <Section tinted>
         <Container>
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
             <div>
@@ -164,7 +164,7 @@ export default function CompliancePage() {
       </Section>
 
       {/* TAX */}
-      <Section>
+      <Section tinted>
         <Container>
           <div className="grid lg:grid-cols-[1fr_1fr] gap-10 lg:gap-16 items-start">
             <div className="flex flex-col gap-6">
@@ -234,7 +234,7 @@ export default function CompliancePage() {
                       i > 0 ? "border-t border-line-2" : ""
                     }`}
                   >
-                    <span className="label text-brass">{row.d}</span>
+                    <span className="text-xs font-semibold text-indigo">{row.d}</span>
                     <span className="text-sm text-ink-2 leading-relaxed">{row.t}</span>
                   </div>
                 ))}

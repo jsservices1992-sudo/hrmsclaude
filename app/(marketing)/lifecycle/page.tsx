@@ -83,14 +83,14 @@ export default function LifecyclePage() {
 
             <div className="flex flex-col gap-8">
               <div>
-                <p className="label text-brass mb-4">Document checklist — India default</p>
+                <p className="text-xs font-semibold text-indigo mb-4">Document checklist — India default</p>
                 <div className="border border-line bg-surface rounded-lg">
                   {DOCS.map((d, i) => (
                     <div
                       key={d.g}
                       className={`p-4 ${i > 0 ? "border-t border-line-2" : ""}`}
                     >
-                      <p className="font-display text-base font-semibold mb-0.5">
+                      <p className="text-base font-bold tracking-tight mb-0.5">
                         {d.g}
                       </p>
                       <p className="text-sm text-ink-2 leading-relaxed pretty">{d.d}</p>
@@ -104,7 +104,7 @@ export default function LifecyclePage() {
               </div>
 
               <div>
-                <p className="label text-brass mb-4">Statutory forms, pre-filled</p>
+                <p className="text-xs font-semibold text-indigo mb-4">Statutory forms, pre-filled</p>
                 <div className="border border-line bg-surface rounded-lg">
                   {FORMS.map((f, i) => (
                     <div
@@ -158,7 +158,7 @@ export default function LifecyclePage() {
       </Section>
 
       {/* EXIT */}
-      <Section>
+      <Section tinted>
         <Container>
           <SectionHead
             eyebrow="Exit"
@@ -213,7 +213,7 @@ export default function LifecyclePage() {
 
           <div className="mt-12 grid lg:grid-cols-[1fr_1fr] gap-10">
             <div className="flex flex-col gap-5">
-              <h3 className="font-display text-2xl font-semibold">
+              <h3 className="text-2xl font-bold tracking-tight">
                 What clearance actually covers
               </h3>
               <CheckList
@@ -227,7 +227,7 @@ export default function LifecyclePage() {
               />
             </div>
             <div className="flex flex-col gap-5">
-              <h3 className="font-display text-2xl font-semibold">
+              <h3 className="text-2xl font-bold tracking-tight">
                 Attrition analytics that mean something
               </h3>
               <CheckList

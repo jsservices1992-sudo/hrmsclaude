@@ -99,7 +99,7 @@ export default function PricingPage() {
               >
                 <div className="p-6 border-b border-line">
                   <div className="flex items-baseline justify-between gap-3 mb-3">
-                    <h2 className="font-display text-2xl font-semibold">
+                    <h2 className="text-2xl font-bold tracking-tight">
                       {plan.name}
                     </h2>
                     {plan.featured ? (
@@ -112,7 +112,7 @@ export default function PricingPage() {
                     {plan.blurb}
                   </p>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-display text-4xl font-semibold tnum tracking-[-0.02em]">
+                    <span className="text-4xl font-bold tracking-tight tnum tracking-[-0.02em]">
                       {plan.price}
                     </span>
                     <span className="text-sm text-ink-2">{plan.unit}</span>
@@ -146,7 +146,7 @@ export default function PricingPage() {
         </Container>
       </Section>
 
-      <Section>
+      <Section tinted>
         <Container>
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
             <div className="flex flex-col gap-6">
@@ -227,7 +227,7 @@ export default function PricingPage() {
               },
             ].map((item) => (
               <div key={item.q} className="py-5 border-t border-line">
-                <h3 className="font-display text-lg font-semibold mb-2 balance">
+                <h3 className="text-lg font-bold tracking-tight mb-2 balance">
                   {item.q}
                 </h3>
                 <p className="text-ink-2 leading-relaxed pretty">{item.a}</p>
@@ -237,11 +237,11 @@ export default function PricingPage() {
         </Container>
       </Section>
 
-      <Section>
+      <Section tinted>
         <Container>
           <div className="bg-indigo text-on-indigo p-8 sm:p-12 flex flex-col lg:flex-row lg:items-center gap-8 justify-between rounded-lg">
             <div className="max-w-xl flex flex-col gap-3">
-              <h2 className="font-display text-3xl sm:text-4xl font-semibold leading-[1.1] tracking-[-0.02em] balance">
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.1] tracking-[-0.02em] balance">
                 One month of real data.
               </h2>
               <p className="opacity-80 leading-relaxed pretty">

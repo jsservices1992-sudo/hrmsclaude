@@ -16,7 +16,7 @@ const FILTERS: { key: Filter; label: string }[] = [
 function Badge({ on, flagged }: { on: boolean; flagged?: boolean }) {
   if (flagged) {
     return (
-      <span className="label inline-block min-w-[5.5rem] text-center px-2 py-1 bg-brass-soft text-brass rounded-lg">
+      <span className="label inline-block min-w-[5.5rem] text-center px-2 py-1 bg-indigo-soft text-brass rounded-lg">
         Verify
       </span>
     );

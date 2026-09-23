@@ -72,7 +72,7 @@ export default function SecurityPage() {
         </Container>
       </Section>
 
-      <Section>
+      <Section tinted>
         <Container>
           <SectionHead
             eyebrow="Controls"
@@ -157,7 +157,7 @@ export default function SecurityPage() {
                       i > 0 ? "border-t border-line-2" : ""
                     }`}
                   >
-                    <span className="label text-brass pt-0.5">{row.k}</span>
+                    <span className="text-xs font-semibold text-indigo pt-0.5">{row.k}</span>
                     <span className="text-sm text-ink-2 leading-relaxed pretty">
                       {row.v}
                     </span>
