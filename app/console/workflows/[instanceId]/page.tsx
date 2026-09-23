@@ -34,7 +34,7 @@ export default async function WorkflowInstancePage(
   return (
     <div className="flex flex-col gap-6 max-w-[64rem]">
       <div>
-        <Link href="/console/workflows" className="label text-brass hover:underline">
+        <Link href="/console/workflows" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Workflows
         </Link>
         <p className="label text-ink-3 mt-3">{view.templateName}</p>
@@ -77,7 +77,7 @@ export default async function WorkflowInstancePage(
         {groups.map((g) => (
           <li key={g}>
           <Card padded={false}>
-            <div className="px-4 py-2 border-b border-line bg-surface-2">
+            <div className="px-5 py-3.5 border-b border-line-2">
               <span className="label text-ink-3">
                 Stage {g}
                 {view.steps.filter((s) => s.group === g).length > 1 && " · runs in parallel"}
@@ -124,8 +124,8 @@ export default async function WorkflowInstancePage(
       </ol>
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Execution log</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Execution log</span>
         </div>
         <ul className="divide-y divide-line-2">
           {view.events.map((e) => (

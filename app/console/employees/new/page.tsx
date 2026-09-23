@@ -42,7 +42,7 @@ export default async function NewEmployeePage(
       <SetupWizard companyId={companyId} stepId={setupStep} />
 
       <div>
-        <Link href="/console/employees" className="label text-brass hover:underline">
+        <Link href="/console/employees" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Employees
         </Link>
       </div>

@@ -68,7 +68,7 @@ export default async function LoanDetailPage(
   return (
     <div className="flex flex-col gap-6 max-w-[76rem]">
       <div>
-        <Link href="/console/loans" className="label text-brass hover:underline">
+        <Link href="/console/loans" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Loan register
         </Link>
         <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
@@ -142,8 +142,8 @@ export default async function LoanDetailPage(
       {/* actions */}
       {canAct && loan.status !== "closed" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Act on this loan</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Act on this loan</span>
           </div>
           <div className="flex flex-col divide-y divide-line-2">
             <div className="px-4 py-3">
@@ -176,8 +176,8 @@ export default async function LoanDetailPage(
       {/* foreclosure quote */}
       {loan.status !== "closed" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">To close today</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">To close today</span>
           </div>
           <div className="px-4 py-3 flex flex-wrap items-end justify-between gap-4">
             <div className="text-sm text-ink-2">
@@ -201,8 +201,8 @@ export default async function LoanDetailPage(
 
       {/* schedule */}
       <Card padded={false} className="overflow-x-auto">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-          <span className="label text-ink-2">Repayment schedule</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-ink">Repayment schedule</span>
           {nextDue && (
             <span className="label text-ink-3">
               next due {MONTHS[nextDue.dueMonth - 1]} {nextDue.dueYear}
@@ -264,8 +264,8 @@ export default async function LoanDetailPage(
 
       {/* ledger */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-          <span className="label text-ink-2">Ledger</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-ink">Ledger</span>
           <span
             className={`label ${detail.reconciles ? "text-teal" : "text-rust"}`}
           >

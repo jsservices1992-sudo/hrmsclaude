@@ -275,7 +275,7 @@ export default async function EmployeeDetailPage(
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/console/employees" className="label text-brass hover:underline">
+        <Link href="/console/employees" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Employees
         </Link>
         <div className="flex flex-wrap items-baseline gap-3 mt-2">
@@ -349,8 +349,8 @@ export default async function EmployeeDetailPage(
 
       {tab === "profile" && canAct && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Their sign-in</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Their sign-in</span>
           </div>
           <div className="p-4">
             <EmployeeSignInCard
@@ -372,8 +372,8 @@ export default async function EmployeeDetailPage(
       {tab === "profile" && (
         <div className="grid lg:grid-cols-2 gap-5">
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Employment</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Employment</span>
             </div>
             <Row k="Designation" v={e.designation} />
             <Row k="Department" v={department ? `${department.code} — ${department.name}` : e.department} />
@@ -398,8 +398,8 @@ export default async function EmployeeDetailPage(
           </Card>
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Personal &amp; contact</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Personal &amp; contact</span>
             </div>
             <Row k="Work email" v={e.email} />
             <Row k="Personal email" v={e.personalEmail} />
@@ -412,8 +412,8 @@ export default async function EmployeeDetailPage(
           </Card>
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Statutory &amp; payroll</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Statutory &amp; payroll</span>
             </div>
             <Row k="PAN" v={e.pan ? <span className="font-mono">{e.pan}</span> : <span className="text-rust">Missing — higher TDS applies</span>} />
             <Row k="UAN" v={e.uan ? <span className="font-mono">{e.uan}</span> : null} />
@@ -441,8 +441,8 @@ export default async function EmployeeDetailPage(
           </Card>
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Direct reports</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Direct reports</span>
             </div>
             {reports.length === 0 ? (
               <p className="px-4 py-4 text-sm text-ink-3">No direct reports.</p>
@@ -571,7 +571,7 @@ export default async function EmployeeDetailPage(
                           href={`/console/employees/${detail.employee.id}/document/${d.id}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="label text-brass hover:underline"
+                          className="text-sm font-semibold text-indigo hover:text-indigo-2"
                         >
                           Open →
                         </a>
@@ -640,9 +640,9 @@ export default async function EmployeeDetailPage(
 
       {tab === "assets" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-            <span className="label text-ink-2">Assets</span>
-            <Link href="/console/assets" className="label text-brass hover:underline">
+          <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+            <span className="text-[15px] font-semibold text-ink">Assets</span>
+            <Link href="/console/assets" className="text-sm font-semibold text-indigo hover:text-indigo-2">
               Full inventory →
             </Link>
           </div>
@@ -692,8 +692,8 @@ export default async function EmployeeDetailPage(
       {tab === "salary" && canSeeCompensation(user) && (
         <div className="flex flex-col gap-6">
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Salary history</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Salary history</span>
             </div>
             {salaryHistory.length === 0 ? (
               <p className="px-4 py-6 text-sm text-ink-3">
@@ -752,8 +752,8 @@ export default async function EmployeeDetailPage(
               showing nothing — it is the number somebody would quote. */}
           {currentSalary && currentCtc && isProfessional && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Fee, not salary</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">Fee, not salary</span>
               </div>
               <p className="px-4 py-3 text-sm text-ink-2 max-w-[78ch]">
                 The whole of the agreed amount is the fee. There is no Basic,
@@ -767,12 +767,12 @@ export default async function EmployeeDetailPage(
 
           {currentSalary && currentCtc && !isProfessional && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between gap-3">
-                <span className="label text-ink-2">Current breakup — gross to CTC</span>
+              <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between gap-3">
+                <span className="text-[15px] font-semibold text-ink">Current breakup — gross to CTC</span>
                 {currentBreakupStructureId && (
                   <Link
                     href={`/console/settings/payroll/structures/${currentBreakupStructureId}`}
-                    className="label text-brass hover:underline"
+                    className="text-sm font-semibold text-indigo hover:text-indigo-2"
                   >
                     Edit this structure →
                   </Link>
@@ -796,8 +796,8 @@ export default async function EmployeeDetailPage(
 
           {canMutate(user) && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">
                   {isProfessional ? "Revise the fee" : "Revise salary"}
                 </span>
               </div>
@@ -814,8 +814,8 @@ export default async function EmployeeDetailPage(
 
           {canMutate(user) && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">How this person is paid</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">How this person is paid</span>
               </div>
               <div className="px-4 py-4">
                 <PaymentBasisForm
@@ -831,8 +831,8 @@ export default async function EmployeeDetailPage(
 
           {canMutate(user) && detail.employee.paymentBasis === "salary" && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Payroll settings for this employee</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">Payroll settings for this employee</span>
               </div>
               <div className="px-4 py-4">
                 <PayrollOverridesForm

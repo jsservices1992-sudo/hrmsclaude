@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { importSalaries, importLeaveBalances, type ImportState } from "./actions";
-import { SubmitButton } from "@/components/console/ui";
+import { SubmitButton, FileDrop } from "@/components/console/ui";
 
 function Problems({ state }: { state: ImportState }) {
   return (
@@ -59,7 +59,7 @@ function Uploader({
   const [state, formAction] = useActionState<ImportState, FormData>(action, {});
   return (
     <div className="flex flex-col gap-3">
-      <a href={templateHref} className="label text-brass hover:underline w-fit">
+      <a href={templateHref} className="text-sm font-semibold text-indigo hover:text-indigo-2 w-fit">
         Download template →
       </a>
       {/* The file input keeps its selection across the action, so the
@@ -67,13 +67,7 @@ function Uploader({
       <form action={formAction} className="flex flex-col gap-3">
         <input type="hidden" name="companyId" value={companyId} />
         <div className="flex flex-wrap items-end gap-3">
-          <input
-            name="file"
-            type="file"
-            accept=".csv,text/csv"
-            required
-            className="text-sm border border-line px-2 py-1.5 bg-surface rounded-lg"
-          />
+          <div className="w-full"><FileDrop name="file" accept=".csv,text/csv" hint="CSV exported from your old system" /></div>
           <SubmitButton pendingText="Checking…">{label}</SubmitButton>
         </div>
 

@@ -126,8 +126,8 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
 
       {canMutate(user) && companies.length > 0 && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Record an exit</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Record an exit</span>
           </div>
           <div className="p-4">
             <StartExitForm
@@ -156,8 +156,8 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
 
       {/* The queue, most overdue first */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Settlement queue</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Settlement queue</span>
         </div>
         <Table>
           <THead>
@@ -204,7 +204,7 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
                 <TD className="text-right">
                   <Link
                     href={`/console/exits/${q.exitCase.id}/settlement`}
-                    className="label text-brass hover:underline whitespace-nowrap"
+                    className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
                   >
                     Settlement →
                   </Link>
@@ -288,7 +288,7 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
                   <TD className="text-right">
                     <Link
                       href={`/console/exits/${exit.id}`}
-                      className="label text-brass hover:underline whitespace-nowrap"
+                      className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
                     >
                       Settlement →
                     </Link>

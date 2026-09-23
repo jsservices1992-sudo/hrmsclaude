@@ -14,7 +14,7 @@ import {
   rehireJoiner,
   type OnboardState,
 } from "./actions";
-import { SubmitButton, FormFeedback, Input, Textarea, Select as UiSelect, Button } from "@/components/console/ui";
+import { SubmitButton, FormFeedback, Input, Textarea, Select as UiSelect, Button, FileDrop } from "@/components/console/ui";
 
 function Field({ label, name, defaultValue, error, type = "text", hint }: {
   label: string; name: string; defaultValue?: string | number | null;
@@ -60,8 +60,8 @@ export function NewJoinerForm({
     <form action={action} className="flex flex-col gap-5">
       <input type="hidden" name="companyId" value={companyId} />
       <div className="border border-line bg-surface rounded-lg">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Candidate</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Candidate</span>
         </div>
         <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field label="First name" name="firstName" error={err("firstName")} />
@@ -81,8 +81,8 @@ export function NewJoinerForm({
       </div>
 
       <div className="border border-line bg-surface rounded-lg">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Placement &amp; offer</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Placement &amp; offer</span>
         </div>
         <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Select label="Branch" name="branchId" options={[{ id: "", label: "—" }, ...branches]} error={err("branchId")} />
@@ -215,13 +215,7 @@ export function UploadJoinerDocumentForm({ docId }: { docId: string }) {
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="docId" value={docId} />
-      <input
-        name="file"
-        type="file"
-        accept="application/pdf,image/jpeg,image/png"
-        required
-        className="text-xs border border-line px-2 py-1 bg-surface rounded-lg"
-      />
+      <FileDrop compact name="file" accept="application/pdf,image/jpeg,image/png" />
       <Button type="submit" size="sm" className="text-xs hover:border-indigo hover:text-indigo">
         Upload
       </Button>

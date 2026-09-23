@@ -34,7 +34,7 @@ export default async function NewJoinerPage(
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/console/onboarding" className="label text-brass hover:underline">
+        <Link href="/console/onboarding" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Onboarding
         </Link>
       </div>

@@ -119,10 +119,10 @@ export default async function SetupPage() {
             after that are versioned revisions and arrears, never edits.
           </p>
           <div className="flex flex-wrap gap-3 mt-3">
-            <Link href="/console/payroll/run" className="label text-brass hover:underline">
+            <Link href="/console/payroll/run" className="text-sm font-semibold text-indigo hover:text-indigo-2">
               Run payroll →
             </Link>
-            <Link href="/console/employees" className="label text-brass hover:underline">
+            <Link href="/console/employees" className="text-sm font-semibold text-indigo hover:text-indigo-2">
               Employees →
             </Link>
           </div>

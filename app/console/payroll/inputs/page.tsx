@@ -204,13 +204,13 @@ export default async function VariablePayPage(
 
       {canAct && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="label text-ink-2">Add for {MONTHS[month - 1]} {year}</span>
+          <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[15px] font-semibold text-ink">Add for {MONTHS[month - 1]} {year}</span>
             <div className="flex items-center gap-3">
-              <Link href="/console/settings/master-data?tab=variable" className="label text-brass hover:underline">
+              <Link href="/console/settings/master-data?tab=variable" className="text-sm font-semibold text-indigo hover:text-indigo-2">
                 Pay types →
               </Link>
-              <Link href={`/console/settings/companies/${companyId}`} className="label text-brass hover:underline">
+              <Link href={`/console/settings/companies/${companyId}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
                 Overtime rate →
               </Link>
             </div>
@@ -292,9 +292,9 @@ export default async function VariablePayPage(
       )}
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
-          <span className="label text-ink-2">Entered this period</span>
-          <Link href={`/console/payroll?${q}`} className="label text-brass hover:underline">
+        <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
+          <span className="text-[15px] font-semibold text-ink">Entered this period</span>
+          <Link href={`/console/payroll?${q}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
             Register →
           </Link>
         </div>

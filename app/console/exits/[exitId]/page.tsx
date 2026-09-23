@@ -60,7 +60,7 @@ export default async function ExitDetailPage(
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
       <div>
-        <Link href="/console/exits" className="label text-brass hover:underline">
+        <Link href="/console/exits" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Exits
         </Link>
       </div>
@@ -93,8 +93,8 @@ export default async function ExitDetailPage(
 
       {canResolveClearance && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Acceptance</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Acceptance</span>
           </div>
           <div className="p-4">
             <AcceptExitForm
@@ -109,8 +109,8 @@ export default async function ExitDetailPage(
       )}
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Clearance checklist</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Clearance checklist</span>
         </div>
         <ul className="divide-y divide-line-2">
           {clearance.map((c) => (
@@ -156,8 +156,8 @@ export default async function ExitDetailPage(
 
       {/* Exit documents — resignation letter, exit interview, relieving letter, F&F acknowledgement */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Documents</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Documents</span>
         </div>
         <ul className="divide-y divide-line-2">
           {exitDocs.map(({ req, held }) => (
@@ -200,8 +200,8 @@ export default async function ExitDetailPage(
               know are here, and onboarding has nothing to check without
               an answer. */}
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="label text-ink-2">Rehire</span>
+            <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[15px] font-semibold text-ink">Rehire</span>
               {exit.rehireEligible && (
                 <Badge
                   tone={
@@ -234,8 +234,8 @@ export default async function ExitDetailPage(
 
           {/* Notice */}
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Notice period</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Notice period</span>
             </div>
             <dl className="grid grid-cols-2 sm:grid-cols-4">
               {[
@@ -263,8 +263,8 @@ export default async function ExitDetailPage(
 
           {/* Settlement statement */}
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Full &amp; final statement</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Full &amp; final statement</span>
             </div>
 
             {(["payable", "recovery"] as const).map((kind) => {
@@ -338,8 +338,8 @@ export default async function ExitDetailPage(
 
           {/* Tax summary */}
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Tax treatment</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Tax treatment</span>
             </div>
             <dl className="grid grid-cols-2 sm:grid-cols-3">
               {[

@@ -162,7 +162,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
           trailing={
             <a
               href={`/console/onboarding/export?${exportQuery.toString()}`}
-              className="label text-brass hover:underline whitespace-nowrap"
+              className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
             >
               Download CSV →
             </a>
@@ -265,7 +265,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
                       </Badge>
                     </TD>
                     <TD className="text-right">
-                      <Link href={`/console/onboarding/${j.id}`} className="label text-brass hover:underline whitespace-nowrap">
+                      <Link href={`/console/onboarding/${j.id}`} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
                         Open →
                       </Link>
                     </TD>

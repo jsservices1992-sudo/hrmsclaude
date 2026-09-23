@@ -287,7 +287,7 @@ export default async function PayrollSettingsPage(
       <SetupWizard companyId={companyId} stepId={setupStep} />
 
       <div>
-        <Link href="/console/settings" className="label text-brass hover:underline">
+        <Link href="/console/settings" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Settings
         </Link>
         <PageHeader
@@ -483,8 +483,8 @@ export default async function PayrollSettingsPage(
         <div className="flex flex-col gap-5">
           {componentCount === 0 && isAdmin && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Start here</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">Start here</span>
               </div>
               <div className="p-4">
                 <StarterStructureForm companyId={companyId} />
@@ -553,8 +553,8 @@ export default async function PayrollSettingsPage(
 
           {isAdmin && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Create a structure</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">Create a structure</span>
               </div>
               <div className="p-4">
                 <CreateStructureForm
@@ -566,8 +566,8 @@ export default async function PayrollSettingsPage(
           )}
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Department structure assignment</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Department structure assignment</span>
             </div>
             <Table>
               <THead>
@@ -681,8 +681,8 @@ export default async function PayrollSettingsPage(
           )}
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Upcoming periods</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Upcoming periods</span>
             </div>
             <Table>
               <THead>
@@ -733,8 +733,8 @@ export default async function PayrollSettingsPage(
             the version they used, so history stays reproducible.
           </div>
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-baseline justify-between gap-2">
-              <span className="label text-ink-2">State minimum wages</span>
+            <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-[15px] font-semibold text-ink">State minimum wages</span>
               <span className="label text-ink-3 tnum">{minWages.length}</span>
             </div>
             {minWages.length === 0 ? (
@@ -781,8 +781,8 @@ export default async function PayrollSettingsPage(
           </Card>
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-baseline justify-between gap-2">
-              <span className="label text-ink-2">Labour welfare fund by state</span>
+            <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-[15px] font-semibold text-ink">Labour welfare fund by state</span>
               <span className="label text-ink-3 tnum">{lwfRates.length}</span>
             </div>
             <ul className="divide-y divide-line-2">
@@ -823,8 +823,8 @@ export default async function PayrollSettingsPage(
           </Card>
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-baseline justify-between gap-2">
-              <span className="label text-ink-2">Professional tax slabs</span>
+            <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-[15px] font-semibold text-ink">Professional tax slabs</span>
               <span className="label text-ink-3 tnum">{ptSlabs.length}</span>
             </div>
             <p className="px-4 py-2.5 text-xs text-ink-2 border-b border-line-2 max-w-[72ch]">
@@ -895,8 +895,8 @@ export default async function PayrollSettingsPage(
           </Card>
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Central statutory parameters</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Central statutory parameters</span>
             </div>
             <ul className="divide-y divide-line-2">
               {params.map((p) => (
@@ -944,8 +944,8 @@ export default async function PayrollSettingsPage(
           )}
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Groups</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Groups</span>
             </div>
             <ul className="divide-y divide-line-2">
               {groups.map((g) => {
@@ -976,8 +976,8 @@ export default async function PayrollSettingsPage(
 
           {isAdmin && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Add a group</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">Add a group</span>
               </div>
               <div className="p-4">
                 <GroupForm
@@ -1018,8 +1018,8 @@ export default async function PayrollSettingsPage(
 
           {isAdmin && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Add an account</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">Add an account</span>
               </div>
               <div className="p-4">
                 <BankForm companyId={companyId} />

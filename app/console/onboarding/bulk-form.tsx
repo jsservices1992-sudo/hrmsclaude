@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { bulkUploadJoiners, type BulkJoinerState } from "./actions";
-import { SubmitButton } from "@/components/console/ui";
+import { SubmitButton, FileDrop } from "@/components/console/ui";
 
 /**
  * Bulk onboarding. The template comes first for the same reason it does
@@ -30,7 +30,7 @@ export function BulkJoinerForm({
       <div className="flex flex-wrap items-center gap-3">
         <a
           href={`/console/onboarding/template?company=${companyId}`}
-          className="label text-brass hover:underline whitespace-nowrap"
+          className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
         >
           Download template →
         </a>
@@ -79,16 +79,7 @@ export function BulkJoinerForm({
       <form action={action} className="flex flex-col gap-3">
         <input type="hidden" name="companyId" value={companyId} />
         <div className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="label text-ink-3">CSV file</span>
-            <input
-              name="file"
-              type="file"
-              accept=".csv,text/csv"
-              required
-              className="text-sm border border-line px-2 py-1.5 bg-surface rounded-lg"
-            />
-          </label>
+          <div className="w-full"><FileDrop name="file" accept=".csv,text/csv" hint="Your filled-in CSV" /></div>
           <SubmitButton pendingText="Checking…">Import joiners</SubmitButton>
         </div>
       </form>

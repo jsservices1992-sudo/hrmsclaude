@@ -54,7 +54,7 @@ export default async function SettingsPage() {
           const states = Array.from(new Set(own.map((b) => b.stateCode)));
           return (
             <Card key={c.id} padded={false}>
-              <div className="px-4 py-3 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
+              <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <Link
                     href={`/console/settings/companies/${c.id}`}
@@ -68,13 +68,13 @@ export default async function SettingsPage() {
                   {isAdmin && !c.isDefault && <SetDefaultForm companyId={c.id} />}
                   <Link
                     href={`/console/settings/payroll?company=${c.id}`}
-                    className="label text-brass hover:underline"
+                    className="text-sm font-semibold text-indigo hover:text-indigo-2"
                   >
                     Payroll settings
                   </Link>
                   <Link
                     href={`/console/settings/companies/${c.id}`}
-                    className="label text-brass hover:underline"
+                    className="text-sm font-semibold text-indigo hover:text-indigo-2"
                   >
                     Configure →
                   </Link>

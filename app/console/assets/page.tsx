@@ -111,7 +111,7 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
         trailing={
           <a
             href={`/console/assets/export?${exportQuery.toString()}`}
-            className="label text-brass hover:underline whitespace-nowrap"
+            className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
           >
             Download CSV →
           </a>
@@ -185,7 +185,7 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
                     {r.asset.purchaseValuePaise ? formatINR(r.asset.purchaseValuePaise) : "—"}
                   </TD>
                   <TD className="text-right">
-                    <Link href={`/console/assets/${r.asset.id}`} className="label text-brass hover:underline whitespace-nowrap">
+                    <Link href={`/console/assets/${r.asset.id}`} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
                       Open →
                     </Link>
                   </TD>
@@ -198,8 +198,8 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
 
       {canAct && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Add an asset</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Add an asset</span>
           </div>
           <div className="p-4">
             <CreateAssetForm companyId={companyId} />

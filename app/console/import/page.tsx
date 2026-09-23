@@ -119,10 +119,10 @@ export default async function ImportPage(props: PageProps<"/console/import">) {
         total={1}
       >
         <div className="flex flex-wrap gap-4 text-sm">
-          <Link href="/console/settings" className="label text-brass hover:underline">
+          <Link href="/console/settings" className="text-sm font-semibold text-indigo hover:text-indigo-2">
             {branches.length > 0 ? `${branches.length} branch(es) →` : "Add a branch →"}
           </Link>
-          <Link href="/console/settings/master-data?tab=org" className="label text-brass hover:underline">
+          <Link href="/console/settings/master-data?tab=org" className="text-sm font-semibold text-indigo hover:text-indigo-2">
             {departments.length > 0 ? `${departments.length} department(s) →` : "Add departments →"}
           </Link>
         </div>
@@ -140,7 +140,7 @@ export default async function ImportPage(props: PageProps<"/console/import">) {
             : undefined
         }
       >
-        <Link href="/console/employees" className="label text-brass hover:underline">
+        <Link href="/console/employees" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           {employees.length > 0 ? `${employees.length} imported — add more →` : "Import employees →"}
         </Link>
       </Step>

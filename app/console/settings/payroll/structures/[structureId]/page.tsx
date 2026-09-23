@@ -98,7 +98,7 @@ export default async function StructureDetailPage(
       <div>
         <Link
           href="/console/settings/payroll?tab=structures"
-          className="label text-brass hover:underline"
+          className="text-sm font-semibold text-indigo hover:text-indigo-2"
         >
           ← Salary structures
         </Link>
@@ -125,8 +125,8 @@ export default async function StructureDetailPage(
 
       {isAdmin && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">What the payslip shows</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">What the payslip shows</span>
           </div>
           <div className="p-4">
             <StructurePresentationForm
@@ -143,8 +143,8 @@ export default async function StructureDetailPage(
       )}
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Components</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Components</span>
         </div>
         <Table>
           <THead>
@@ -193,8 +193,8 @@ export default async function StructureDetailPage(
 
       {isAdmin && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Add a component</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Add a component</span>
           </div>
           <div className="p-4">
             {availableComponents.length > 0 ? (
@@ -210,8 +210,8 @@ export default async function StructureDetailPage(
 
       {isAdmin && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Create a new component</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Create a new component</span>
           </div>
           <div className="p-4">
             <p className="text-xs text-ink-2 max-w-[72ch] mb-3">
@@ -231,8 +231,8 @@ export default async function StructureDetailPage(
       )}
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Employees currently on this structure ({candidates.length})</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Employees currently on this structure ({candidates.length})</span>
         </div>
         <Table>
           <THead>

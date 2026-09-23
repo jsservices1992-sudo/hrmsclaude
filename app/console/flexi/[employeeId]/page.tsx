@@ -33,7 +33,7 @@ export default async function EmployeeFlexiPage(
   return (
     <div className="flex flex-col gap-6 max-w-4xl">
       <div>
-        <Link href="/console/flexi" className="label text-brass hover:underline">
+        <Link href="/console/flexi" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           &larr; Flexible benefits
         </Link>
         <h1 className="font-display text-2xl sm:text-3xl font-semibold mt-2">
@@ -78,8 +78,8 @@ export default async function EmployeeFlexiPage(
       </Card>
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Year-end position by head</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Year-end position by head</span>
         </div>
         <ul className="divide-y divide-line-2">
           {settlement.lines.map((l) => (
@@ -103,8 +103,8 @@ export default async function EmployeeFlexiPage(
       </Card>
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Claims ({claims.length})</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Claims ({claims.length})</span>
         </div>
         {claims.length === 0 ? (
           <p className="px-4 py-6 text-sm text-ink-3">No claims submitted yet.</p>

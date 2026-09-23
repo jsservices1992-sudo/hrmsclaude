@@ -110,8 +110,8 @@ export function RunOutputs(props: {
 
   return (
     <div className="border border-line bg-surface rounded-lg" data-print="hide">
-      <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-        <span className="label text-ink-2">What this run produces</span>
+      <div className="px-5 py-3.5 border-b border-line-2">
+        <span className="text-[15px] font-semibold text-ink">What this run produces</span>
       </div>
       <ul className="grid sm:grid-cols-2 divide-y sm:divide-y-0 divide-line-2">
         {outputs.map((o, i) => (

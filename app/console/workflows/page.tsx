@@ -78,8 +78,8 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
 
       {/* ---------- my tasks ---------- */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-          <span className="label text-ink-2">Waiting on you</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-ink">Waiting on you</span>
           <span className="label text-ink-3 tnum">{inbox.length}</span>
         </div>
         {inbox.length === 0 ? (
@@ -120,8 +120,8 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
 
       {/* ---------- running instances ---------- */}
       <Card padded={false} className="overflow-x-auto">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="label text-ink-2">All workflows</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[15px] font-semibold text-ink">All workflows</span>
           {(canActOnPeople(user)) && (
             <StartPendingForm companyId={companyId} />
           )}
@@ -174,7 +174,7 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
                     <TD className="text-right">
                       <Link
                         href={`/console/workflows/${i.instance.id}`}
-                        className="label text-brass hover:underline"
+                        className="text-sm font-semibold text-indigo hover:text-indigo-2"
                       >
                         Open →
                       </Link>
@@ -190,8 +190,8 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
       {/* ---------- the builder ---------- */}
       {templateRow && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="label text-ink-2">Template · {templateRow.name}</span>
+          <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[15px] font-semibold text-ink">Template · {templateRow.name}</span>
             <span className="label text-ink-3">
               version {templateRow.version} · starts on resignation accepted
             </span>
@@ -215,8 +215,8 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
       {/* ---------- department owners ---------- */}
       {user.role === "admin" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Department owners</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Department owners</span>
             <p className="text-xs text-ink-3 mt-0.5">
               A step assigned to &quot;a department&quot; above routes to whoever is named here for
               that department. None named routes to an administrator instead.

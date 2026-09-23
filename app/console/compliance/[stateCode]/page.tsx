@@ -40,7 +40,7 @@ export default async function JurisdictionDetailPage(
   return (
     <div className="flex flex-col gap-6 max-w-4xl">
       <div>
-        <Link href="/console/compliance" className="label text-brass hover:underline">
+        <Link href="/console/compliance" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Statutory configuration
         </Link>
         <h1 className="font-display text-3xl font-semibold mt-2">{jur.name}</h1>
@@ -77,8 +77,8 @@ export default async function JurisdictionDetailPage(
 
       {jur.ptApplicable && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Professional tax slabs</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Professional tax slabs</span>
           </div>
           {slabs.length === 0 ? (
             <p className="px-4 py-4 text-sm text-ink-3">No slabs configured — a run for this state raises a validation finding.</p>
@@ -129,8 +129,8 @@ export default async function JurisdictionDetailPage(
 
       {jur.lwfApplicable && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Labour welfare fund rates</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Labour welfare fund rates</span>
           </div>
           {lwf.length === 0 ? (
             <p className="px-4 py-4 text-sm text-ink-3">No rate configured — a run for this state raises a validation finding.</p>

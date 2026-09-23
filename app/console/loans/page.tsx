@@ -126,8 +126,8 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
 
       {canMutate(user) && schemes.length > 0 && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Disburse a loan</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Disburse a loan</span>
           </div>
           <DisburseForm
             employees={employees.map((e) => ({
@@ -150,8 +150,8 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
       )}
 
       <Card padded={false} className="overflow-x-auto">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-end justify-between gap-3">
-          <span className="label text-ink-2">Loans</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-end justify-between gap-3">
+          <span className="text-[15px] font-semibold text-ink">Loans</span>
           <div className="flex flex-wrap items-end gap-3">
             {list.length > 0 && (
               <FilterBar
@@ -171,7 +171,7 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
                       ...(schemeFilter && { scheme: schemeFilter }),
                       ...(q && { q }),
                     }).toString()}`}
-                    className="label text-brass hover:underline whitespace-nowrap"
+                    className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
                   >
                     Download CSV →
                   </a>
@@ -298,7 +298,7 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
                   <TD className="text-right">
                     <Link
                       href={`/console/loans/${r.loan.id}`}
-                      className="label text-brass hover:underline"
+                      className="text-sm font-semibold text-indigo hover:text-indigo-2"
                     >
                       Open →
                     </Link>
@@ -312,8 +312,8 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
 
       {/* schemes */}
       <Card padded={false} className="overflow-x-auto">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Schemes</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Schemes</span>
         </div>
         <Table>
           <THead>

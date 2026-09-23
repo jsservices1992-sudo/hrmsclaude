@@ -113,7 +113,7 @@ export default async function CompanySettingsPage(
       <SetupWizard companyId={companyId} stepId={setupStep} />
 
       <div>
-        <Link href="/console/settings" className="label text-brass hover:underline">
+        <Link href="/console/settings" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Settings
         </Link>
         <div className="flex flex-wrap items-baseline gap-3 mt-2">
@@ -160,8 +160,8 @@ export default async function CompanySettingsPage(
               </div>
             )}
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Logo</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">Logo</span>
               </div>
               <div className="p-4">
                 <CompanyLogoForm companyId={companyId} logoUrl={company.logoUrl} />
@@ -262,7 +262,7 @@ export default async function CompanySettingsPage(
                       {isAdmin && (
                         <Link
                           href={`/console/settings/companies/${companyId}?tab=branches&branch=${b.id}${keepSetup}`}
-                          className="label text-brass hover:underline"
+                          className="text-sm font-semibold text-indigo hover:text-indigo-2"
                         >
                           Edit
                         </Link>
@@ -276,14 +276,14 @@ export default async function CompanySettingsPage(
 
           {isAdmin && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-                <span className="label text-ink-2">
+              <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+                <span className="text-[15px] font-semibold text-ink">
                   {editBranch ? "Edit branch" : "Add a branch"}
                 </span>
                 {editBranch && (
                   <Link
                     href={`/console/settings/companies/${companyId}?tab=branches${keepSetup}`}
-                    className="label text-brass hover:underline"
+                    className="text-sm font-semibold text-indigo hover:text-indigo-2"
                   >
                     Cancel
                   </Link>
@@ -322,7 +322,7 @@ export default async function CompanySettingsPage(
             const j = jurisByCode[st];
             return (
               <Card key={st} padded={false}>
-                <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
+                <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
                   <span className="font-display text-base font-semibold">
                     {j?.name ?? st}{" "}
                     <span className="font-mono text-xs text-ink-3">{st}</span>

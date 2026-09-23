@@ -192,8 +192,8 @@ export default async function PayrollConsolePage(
       {/* ---------------- employees ---------------- */}
       {tab === "employees" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="label text-ink-2">Payroll register</span>
+          <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[15px] font-semibold text-ink">Payroll register</span>
             <span className="text-xs text-ink-3">
               <span className="font-mono">{company.prorationBasis.replace("_", " ")}</span>
               {" · "}
@@ -269,7 +269,7 @@ export default async function PayrollConsolePage(
                         <td className="px-3 py-1.5 text-right">
                           <Link
                             href={`/console/payslip/${r.employeeId}?year=${year}&month=${month}&company=${companyId}`}
-                            className="label text-brass hover:underline whitespace-nowrap"
+                            className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
                           >
                             Payslip →
                           </Link>
@@ -326,8 +326,8 @@ export default async function PayrollConsolePage(
       {/* ---------------- statutory ---------------- */}
       {tab === "statutory" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Statutory summary</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Statutory summary</span>
           </div>
           <dl className="grid grid-cols-2 sm:grid-cols-4">
             {statutoryCodes.map((code) => (
@@ -345,8 +345,8 @@ export default async function PayrollConsolePage(
       {/* ---------------- findings ---------------- */}
       {tab === "findings" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="label text-ink-2">Validation findings</span>
+          <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[15px] font-semibold text-ink">Validation findings</span>
             <span className="label text-ink-3 tnum">
               {criticalCount} blocking · {exceptions.length - criticalCount} advisory
             </span>

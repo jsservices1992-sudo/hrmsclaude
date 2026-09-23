@@ -13,15 +13,38 @@ export function FileDrop({
   accept = ".csv,text/csv",
   required = true,
   hint = "CSV up to a few thousand rows",
+  compact = false,
 }: {
   name?: string;
   accept?: string;
   required?: boolean;
   hint?: string;
+  /** One line, for a file picked inside a table row or a checklist. */
+  compact?: boolean;
 }) {
   const id = useId();
   const [file, setFile] = useState<string | null>(null);
   const [over, setOver] = useState(false);
+  if (compact) {
+    return (
+      <label
+        htmlFor={id}
+        className="relative inline-flex max-w-[14rem] cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink-2 transition-base hover:border-indigo/50 hover:text-indigo focus-within:shadow-ring"
+      >
+        <input
+          id={id}
+          name={name}
+          type="file"
+          accept={accept}
+          required={required}
+          onChange={(e) => setFile(e.currentTarget.files?.[0]?.name ?? null)}
+          className="absolute inset-0 cursor-pointer opacity-0"
+        />
+        {file ? <IconFile className="h-4 w-4 text-teal" /> : <IconUpload className="h-4 w-4" />}
+        <span className="truncate">{file ?? "Choose file"}</span>
+      </label>
+    );
+  }
   return (
     <label
       htmlFor={id}

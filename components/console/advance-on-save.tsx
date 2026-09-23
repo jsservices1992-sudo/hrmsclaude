@@ -90,7 +90,7 @@ export function AdvanceOnSave({
           savedSteps.delete(stepId);
           setStayed(true);
         }}
-        className="label text-brass hover:underline"
+        className="text-sm font-semibold text-indigo hover:text-indigo-2"
       >
         Stay here
       </button>

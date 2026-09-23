@@ -104,7 +104,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
       {tab === "org" && (
         <div className="flex flex-col gap-6">
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2"><span className="label text-ink-2">Departments</span></div>
+            <div className="px-5 py-3.5 border-b border-line-2"><span className="text-[15px] font-semibold text-ink">Departments</span></div>
             <Table>
               <THead><TH>Name</TH><TH>Code</TH><TH>Cost centre</TH><TH>{""}</TH></THead>
               <TBody>
@@ -129,7 +129,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           </Card>
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2"><span className="label text-ink-2">Grades</span></div>
+            <div className="px-5 py-3.5 border-b border-line-2"><span className="text-[15px] font-semibold text-ink">Grades</span></div>
             <Table>
               <THead><TH>Name</TH><TH>Level</TH><TH>Notice</TH><TH>Probation</TH><TH>{""}</TH></THead>
               <TBody>
@@ -159,7 +159,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
       {tab === "leave" && (
         <div className="flex flex-col gap-6">
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2"><span className="label text-ink-2">Leave types</span></div>
+            <div className="px-5 py-3.5 border-b border-line-2"><span className="text-[15px] font-semibold text-ink">Leave types</span></div>
             <Table>
               <THead><TH>Code</TH><TH>Name</TH><TH>Annual days</TH><TH>Accrual</TH><TH>Paid</TH><TH>{""}</TH></THead>
               <TBody>
@@ -186,7 +186,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           </Card>
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2"><span className="label text-ink-2">Holidays</span></div>
+            <div className="px-5 py-3.5 border-b border-line-2"><span className="text-[15px] font-semibold text-ink">Holidays</span></div>
             <Table>
               <THead><TH>Date</TH><TH>Name</TH><TH>Branch</TH><TH>Restricted</TH><TH>{""}</TH></THead>
               <TBody>
@@ -225,7 +225,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
 
       {tab === "shifts" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2"><span className="label text-ink-2">Shifts</span></div>
+          <div className="px-5 py-3.5 border-b border-line-2"><span className="text-[15px] font-semibold text-ink">Shifts</span></div>
           <Table>
             <THead><TH>Code</TH><TH>Name</TH><TH>Hours</TH><TH>Weekly off</TH><TH>Default</TH><TH>{""}</TH></THead>
             <TBody>
@@ -254,7 +254,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
 
       {tab === "pay" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2"><span className="label text-ink-2">Pay components</span></div>
+          <div className="px-5 py-3.5 border-b border-line-2"><span className="text-[15px] font-semibold text-ink">Pay components</span></div>
           <Table>
             <THead><TH>Code</TH><TH>Name</TH><TH>Kind</TH><TH>Calculation</TH><TH>Active</TH><TH>{""}</TH></THead>
             <TBody>
@@ -297,8 +297,8 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
 
       {tab === "variable" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Variable pay types</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Variable pay types</span>
           </div>
           {variablePayTypes.length === 0 ? (
             <EmptyState title="No types yet" description="Add the bonuses, incentives and deductions this company gives." />
@@ -324,7 +324,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
                       {t.systemManaged ? (
                         <span className="label text-ink-3">raised automatically</span>
                       ) : (
-                        <Link href={`/console/settings/master-data?${query("variable")}&edit=${t.id}`} className="label text-brass hover:underline">
+                        <Link href={`/console/settings/master-data?${query("variable")}&edit=${t.id}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
                           Edit
                         </Link>
                       )}
@@ -344,7 +344,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
 
       {tab === "loans" && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2"><span className="label text-ink-2">Loan schemes</span></div>
+          <div className="px-5 py-3.5 border-b border-line-2"><span className="text-[15px] font-semibold text-ink">Loan schemes</span></div>
           <Table>
             <THead><TH>Code</TH><TH>Label</TH><TH>Category</TH><TH>Interest</TH><TH>Max principal</TH><TH>Max tenure</TH><TH>Active</TH><TH>{""}</TH></THead>
             <TBody>
@@ -382,7 +382,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
       {tab === "gl" && (
         <div className="flex flex-col gap-6">
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2"><span className="label text-ink-2">Chart of accounts</span></div>
+            <div className="px-5 py-3.5 border-b border-line-2"><span className="text-[15px] font-semibold text-ink">Chart of accounts</span></div>
             <Table>
               <THead><TH>Code</TH><TH>Name</TH><TH>Type</TH><TH>Active</TH><TH>{""}</TH></THead>
               <TBody>
@@ -408,7 +408,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
           </Card>
 
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2"><span className="label text-ink-2">Component → account mapping</span></div>
+            <div className="px-5 py-3.5 border-b border-line-2"><span className="text-[15px] font-semibold text-ink">Component → account mapping</span></div>
             <Table>
               <THead><TH>Component</TH><TH>Debit account</TH><TH>Credit account</TH></THead>
               <TBody>

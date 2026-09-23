@@ -11,7 +11,7 @@ import {
   removeCompanyLogo,
   type SettingsState,
 } from "./actions";
-import { Input, Select, SubmitButton, FormFeedback, FormField, Card } from "@/components/console/ui";
+import { Input, Select, SubmitButton, FormFeedback, FormField, Card, FileDrop } from "@/components/console/ui";
 
 /** What the form calls each field, so a refusal can name them. */
 const COMPANY_LABELS: Record<string, string> = {
@@ -60,8 +60,8 @@ function RequiredNote() {
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card padded={false}>
-      <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-        <span className="label text-ink-2">{title}</span>
+      <div className="px-5 py-3.5 border-b border-line-2">
+        <span className="text-[15px] font-semibold text-ink">{title}</span>
       </div>
       <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{children}</div>
     </Card>
@@ -524,16 +524,7 @@ export function CompanyLogoForm({
 
         <form action={action} className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="companyId" value={companyId} />
-          <label className="flex flex-col gap-1">
-            <span className="label text-ink-3">Upload a logo</span>
-            <input
-              name="logo"
-              type="file"
-              accept="image/png,image/jpeg"
-              required
-              className="text-sm border border-line px-2 py-1.5 bg-surface rounded-lg"
-            />
-          </label>
+          <div className="w-full max-w-md"><FileDrop name="logo" accept="image/png,image/jpeg" hint="PNG or JPG, shown on payslips" /></div>
           <SubmitButton pendingText="Uploading…">Upload</SubmitButton>
         </form>
 

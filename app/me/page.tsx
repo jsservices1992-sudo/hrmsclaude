@@ -91,7 +91,7 @@ function Panel({
 }) {
   return (
     <section className="border border-line bg-surface rounded-lg">
-      <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
+      <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="label text-ink-2">{title}</h2>
         {right}
       </div>
@@ -442,7 +442,7 @@ export default async function MePage(props: PageProps<"/me">) {
         </Link>
         <div className="flex items-center gap-4">
           {canAccessConsole(user) && (
-            <Link href="/console" className="label text-brass hover:underline">
+            <Link href="/console" className="text-sm font-semibold text-indigo hover:text-indigo-2">
               Console →
             </Link>
           )}
@@ -467,8 +467,8 @@ export default async function MePage(props: PageProps<"/me">) {
           tab makes a daily action a three-tap one. */}
       {emp.status !== "exited" && (
         <section className="border border-line bg-surface rounded-lg">
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Attendance</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Attendance</span>
           </div>
           <div className="p-4">
             <PunchForm
@@ -592,7 +592,7 @@ export default async function MePage(props: PageProps<"/me">) {
                     <span className="text-sm">
                       {pendingTeam.length} leave request(s) from your team
                     </span>
-                    <Link href="/me?tab=team" className="label text-brass hover:underline">
+                    <Link href="/me?tab=team" className="text-sm font-semibold text-indigo hover:text-indigo-2">
                       Review →
                     </Link>
                   </li>
@@ -602,7 +602,7 @@ export default async function MePage(props: PageProps<"/me">) {
                     <span className="text-sm">
                       {teamCorrections.length} attendance correction(s) from your team
                     </span>
-                    <Link href="/me?tab=team" className="label text-brass hover:underline">
+                    <Link href="/me?tab=team" className="text-sm font-semibold text-indigo hover:text-indigo-2">
                       Review →
                     </Link>
                   </li>
@@ -610,7 +610,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 {inbox.length > 0 && (
                   <li className="px-4 py-3 flex items-center justify-between gap-3">
                     <span className="text-sm">{inbox.length} workflow step(s)</span>
-                    <Link href="/me?tab=tasks" className="label text-brass hover:underline">
+                    <Link href="/me?tab=tasks" className="text-sm font-semibold text-indigo hover:text-indigo-2">
                       Open →
                     </Link>
                   </li>
@@ -620,7 +620,7 @@ export default async function MePage(props: PageProps<"/me">) {
                     <span className="text-sm">
                       {pendingAssetConsent} asset(s) awaiting your confirmation
                     </span>
-                    <Link href="/me?tab=assets" className="label text-brass hover:underline">
+                    <Link href="/me?tab=assets" className="text-sm font-semibold text-indigo hover:text-indigo-2">
                       Confirm →
                     </Link>
                   </li>
@@ -630,7 +630,7 @@ export default async function MePage(props: PageProps<"/me">) {
                     <span className="text-sm">
                       {pendingCorrections} attendance correction(s) with your approver
                     </span>
-                    <Link href="/me?tab=attendance" className="label text-brass hover:underline">
+                    <Link href="/me?tab=attendance" className="text-sm font-semibold text-indigo hover:text-indigo-2">
                       View →
                     </Link>
                   </li>
@@ -638,7 +638,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 {pendingProfile > 0 && (
                   <li className="px-4 py-3 flex items-center justify-between gap-3">
                     <span className="text-sm">{pendingProfile} record change(s) with HR</span>
-                    <Link href="/me?tab=home" className="label text-brass hover:underline">
+                    <Link href="/me?tab=home" className="text-sm font-semibold text-indigo hover:text-indigo-2">
                       View →
                     </Link>
                   </li>
@@ -879,7 +879,7 @@ export default async function MePage(props: PageProps<"/me">) {
                       <span className="font-mono text-sm tnum">{formatINR(p.netPaise)}</span>
                       <Link
                         href={`/me?tab=payslip&year=${p.year}&month=${p.month}`}
-                        className="label text-brass hover:underline"
+                        className="text-sm font-semibold text-indigo hover:text-indigo-2"
                       >
                         Open →
                       </Link>
@@ -1432,7 +1432,7 @@ export default async function MePage(props: PageProps<"/me">) {
                             href={`/console/employees/${emp.id}/document/${doc.id}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="label text-brass hover:underline"
+                            className="text-sm font-semibold text-indigo hover:text-indigo-2"
                           >
                             Open
                           </a>

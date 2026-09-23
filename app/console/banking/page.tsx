@@ -68,8 +68,8 @@ function Panel({
 }) {
   return (
     <Card padded={false}>
-      <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="label text-ink-2">{title}</span>
+      <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[15px] font-semibold text-ink">{title}</span>
         {right}
       </div>
       {children}
@@ -337,7 +337,7 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
                         <>
                           <a
                             href={`/console/banking/download/bank-file?${query}&valueDate=${f.valueDate}`}
-                            className="label text-brass hover:underline"
+                            className="text-sm font-semibold text-indigo hover:text-indigo-2"
                           >
                             Download ↓
                           </a>

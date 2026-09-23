@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 import { reviseSalary, setPayrollOverrides, setPaymentBasis, type SalaryState } from "../salary";
 import { TDS_NATURES } from "@/lib/tax/tds-nonsalary";
-import { Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
+import { Input, Select, SubmitButton, FormFeedback, FileDrop } from "@/components/console/ui";
 import { SalaryBreakupTable } from "@/components/console/salary-breakup-table";
 import { inviteEmployee, type InviteAdminState } from "../actions";
 
@@ -51,16 +51,7 @@ export function UploadDocumentForm({
           </Select>
         </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">File</span>
-          <input
-            name="file"
-            type="file"
-            accept="application/pdf,image/jpeg,image/png"
-            required
-            className="text-sm file:mr-3 file:px-3 file:py-1.5 file:text-sm file:border file:border-line file:bg-surface-2 file:text-ink-2 border border-line px-2.5 py-1 rounded-lg"
-          />
-        </label>
+        <div className="w-full"><FileDrop name="file" accept="application/pdf,image/jpeg,image/png" hint="PDF, JPG or PNG" /></div>
 
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Issued on</span>
@@ -282,7 +273,7 @@ export function ReviseSalaryForm({
             {state.structureId && (
               <Link
                 href={`/console/settings/payroll/structures/${state.structureId}`}
-                className="label text-brass hover:underline"
+                className="text-sm font-semibold text-indigo hover:text-indigo-2"
               >
                 Edit this structure →
               </Link>

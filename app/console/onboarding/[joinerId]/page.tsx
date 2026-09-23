@@ -86,7 +86,7 @@ export default async function JoinerDetailPage(
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
       <div>
-        <Link href="/console/onboarding" className="label text-brass hover:underline">← Onboarding</Link>
+        <Link href="/console/onboarding" className="text-sm font-semibold text-indigo hover:text-indigo-2">← Onboarding</Link>
       </div>
       <PageHeader
         title={
@@ -175,8 +175,8 @@ export default async function JoinerDetailPage(
       {/* Offer & portal */}
       <div className="grid lg:grid-cols-2 gap-5">
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Offer &amp; portal</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Offer &amp; portal</span>
           </div>
           <div className="p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between text-sm">
@@ -192,7 +192,7 @@ export default async function JoinerDetailPage(
                 No login. The token is the credential and expires once the joiner
                 converts.
               </p>
-              <Link href={portalUrl} className="label text-brass hover:underline mt-2 inline-block">
+              <Link href={portalUrl} className="text-sm font-semibold text-indigo hover:text-indigo-2 mt-2 inline-block">
                 Open portal →
               </Link>
             </div>
@@ -201,8 +201,8 @@ export default async function JoinerDetailPage(
         </Card>
 
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Background verification</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Background verification</span>
           </div>
           <div className="p-4 flex flex-col gap-3">
             <p className="text-sm text-ink-2">
@@ -217,8 +217,8 @@ export default async function JoinerDetailPage(
 
       {/* Statutory enrolment */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Statutory enrolment at joining</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Statutory enrolment at joining</span>
         </div>
         <ul className="divide-y divide-line-2">
           {enrolment.map((e) => (
@@ -239,8 +239,8 @@ export default async function JoinerDetailPage(
 
       {/* Documents */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-          <span className="label text-ink-2">Document checklist</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-ink">Document checklist</span>
           <span className="label text-ink-3 tnum">
             {documents.filter((d) => d.status === "verified").length}/{documents.length} verified
           </span>
@@ -291,8 +291,8 @@ export default async function JoinerDetailPage(
 
       {/* Declarations */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Statutory declarations</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Statutory declarations</span>
         </div>
         <ul className="divide-y divide-line-2">
           {declarations.map((d) => (
@@ -308,8 +308,8 @@ export default async function JoinerDetailPage(
 
       {/* Provisioning */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-          <span className="label text-ink-2">Day-one provisioning</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-ink">Day-one provisioning</span>
           <span className="label text-ink-3 tnum">
             {tasks.filter((t) => t.status === "done" || t.status === "waived").length}/{tasks.length} closed
           </span>
@@ -343,12 +343,12 @@ export default async function JoinerDetailPage(
       {/* Offered pay — what conversion will actually write */}
       {seesPay && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="label text-ink-2">Offered pay</span>
+          <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[15px] font-semibold text-ink">Offered pay</span>
             {offeredPay?.structureId && (
               <Link
                 href={`/console/settings/payroll/structures/${offeredPay.structureId}`}
-                className="label text-brass hover:underline"
+                className="text-sm font-semibold text-indigo hover:text-indigo-2"
               >
                 Edit this structure →
               </Link>

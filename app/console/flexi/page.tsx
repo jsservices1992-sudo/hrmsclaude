@@ -102,8 +102,8 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
 
       {/* pending claims */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-          <span className="label text-ink-2">Claims awaiting verification</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-ink">Claims awaiting verification</span>
           <span className="label text-ink-3 tnum">{pending.length}</span>
         </div>
         {pending.length === 0 ? (
@@ -138,8 +138,8 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
 
       {/* declarations */}
       <Card padded={false} className="overflow-x-auto">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Declarations</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Declarations</span>
         </div>
         <Table>
           <THead>
@@ -166,7 +166,7 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
                   {formatINR(e.taxablePaise)}
                 </TD>
                 <TD className="text-right">
-                  <Link href={`/console/flexi/${e.employeeId}`} className="label text-brass hover:underline">
+                  <Link href={`/console/flexi/${e.employeeId}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
                     Open →
                   </Link>
                 </TD>
@@ -178,8 +178,8 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
 
       {/* plan heads */}
       <Card padded={false} className="overflow-x-auto">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Heads in this plan</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Heads in this plan</span>
         </div>
         <Table>
           <THead>

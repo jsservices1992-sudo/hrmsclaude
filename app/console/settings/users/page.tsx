@@ -96,7 +96,7 @@ export default async function UsersPage(
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/console/settings" className="label text-brass hover:underline">
+        <Link href="/console/settings" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Settings
         </Link>
         <PageHeader
@@ -160,8 +160,8 @@ export default async function UsersPage(
       )}
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Existing accounts</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Existing accounts</span>
         </div>
         {rows.length === 0 ? (
           <EmptyState

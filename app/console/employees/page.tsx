@@ -179,8 +179,8 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
 
       {pendingChanges.length > 0 && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between gap-3">
-            <span className="label text-ink-2">
+          <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between gap-3">
+            <span className="text-[15px] font-semibold text-ink">
               Record changes employees have asked for
             </span>
             <Badge tone="brass">{pendingChanges.length} pending</Badge>
@@ -245,7 +245,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
           trailing={
             <a
               href={`/console/employees/export?${exportQuery.toString()}`}
-              className="label text-brass hover:underline whitespace-nowrap"
+              className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
             >
               Download CSV →
             </a>

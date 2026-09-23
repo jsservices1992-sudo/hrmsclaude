@@ -144,8 +144,8 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
 
       {/* verification queue */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-          <span className="label text-ink-2">Proofs awaiting verification</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-ink">Proofs awaiting verification</span>
           <span className="label text-ink-3 tnum">{pending.length}</span>
         </div>
         {pending.length === 0 ? (
@@ -190,8 +190,8 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
 
       {/* register */}
       <Card padded={false} className="overflow-x-auto">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Employee positions</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Employee positions</span>
         </div>
         <Table>
           <THead>
@@ -256,7 +256,7 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
                 <TD className="text-right">
                   <Link
                     href={`/console/tax/${r.employeeId}`}
-                    className="label text-brass hover:underline"
+                    className="text-sm font-semibold text-indigo hover:text-indigo-2"
                   >
                     Worksheet →
                   </Link>

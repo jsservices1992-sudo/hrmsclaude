@@ -25,8 +25,8 @@ const BANK_LABELS: Record<string, string> = {
 function Group({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
     <Card padded={false}>
-      <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-        <span className="label text-ink-2">{title}</span>
+      <div className="px-5 py-3.5 border-b border-line-2">
+        <span className="text-[15px] font-semibold text-ink">{title}</span>
         {hint && <p className="text-xs text-ink-3 mt-1 normal-case tracking-normal">{hint}</p>}
       </div>
       <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{children}</div>

@@ -25,7 +25,7 @@ const RUN_LINES = [
 function RunSummary() {
   return (
     <div className="bg-surface border border-line shadow-[0_1px_0_0_var(--line-2)] rounded-lg">
-      <div className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-line bg-surface-2">
+      <div className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-line-2">
         <div className="flex flex-col">
           <span className="label text-ink-3">Payroll run</span>
           <span className="font-display text-base font-semibold">

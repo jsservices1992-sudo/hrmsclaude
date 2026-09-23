@@ -30,7 +30,7 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/console/runs" className="label text-brass hover:underline">
+        <Link href="/console/runs" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Runs
         </Link>
       </div>
@@ -71,8 +71,8 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
 
       {versionChain.length > 1 && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Version history</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Version history</span>
           </div>
           <div className="flex flex-wrap gap-2 p-4">
             {versionChain.map((v) => (
@@ -135,7 +135,7 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
               <TD className="text-right">
                 <Link
                   href={`/console/payslip/${e.employeeId}?company=${company.id}&year=${run.periodYear}&month=${run.periodMonth}`}
-                  className="label text-brass hover:underline whitespace-nowrap"
+                  className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
                 >
                   Payslip →
                 </Link>

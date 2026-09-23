@@ -213,7 +213,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
 
       {calcCompany && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
+          <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
             <FilterBar action="/console/runs" mode="switch" hidden={carried}>
               <FilterField label="Run period" showLabel={false}>
                 <Select
@@ -230,7 +230,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                 </Select>
               </FilterField>
             </FilterBar>
-            <Link href={attendanceLink} className="label text-brass hover:underline whitespace-nowrap">
+            <Link href={attendanceLink} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
               Attendance →
             </Link>
           </div>
@@ -266,7 +266,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
           trailing={
             <a
               href={`/console/runs/export?${exportQuery.toString()}`}
-              className="label text-brass hover:underline whitespace-nowrap"
+              className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
             >
               Download CSV →
             </a>
@@ -315,8 +315,8 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
         /* A plain table rather than the Table primitive: its overflow-x-auto
            wrapper would clip the row popovers. */
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-            <span className="label text-ink-2">Saved runs</span>
+          <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+            <span className="text-[15px] font-semibold text-ink">Saved runs</span>
             <span className="label text-ink-3 tnum">{runs.length}</span>
           </div>
           {/* Scrolls sideways inside its own box rather than pushing the
@@ -430,7 +430,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                             ["calculated", "in_review", "draft"].includes(run.status) && (
                               <Link
                                 href={`/console/attendance?company=${run.companyId}&year=${run.periodYear}&month=${run.periodMonth}`}
-                                className="label text-brass hover:underline"
+                                className="text-sm font-semibold text-indigo hover:text-indigo-2"
                               >
                                 Edit attendance →
                               </Link>
@@ -452,7 +452,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                       </RowPopover>
                       <Link
                         href={`/console/runs/${run.id}`}
-                        className="label text-brass hover:underline whitespace-nowrap"
+                        className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
                       >
                         View →
                       </Link>
@@ -525,7 +525,7 @@ function FinalCheckPanel({
           <span>
             <Badge tone="brass">{pendingLeaveCount}</Badge> leave request(s) pending approval
           </span>
-          <Link href={attendanceLink} className="label text-brass hover:underline whitespace-nowrap">
+          <Link href={attendanceLink} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
             Review →
           </Link>
         </FinalCheckRow>
@@ -535,7 +535,7 @@ function FinalCheckPanel({
           <span>
             <Badge tone="brass">{pendingRegularisationCount}</Badge> attendance regularisation(s) pending
           </span>
-          <Link href={attendanceLink} className="label text-brass hover:underline whitespace-nowrap">
+          <Link href={attendanceLink} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
             Review →
           </Link>
         </FinalCheckRow>
@@ -545,7 +545,7 @@ function FinalCheckPanel({
           <span>
             <Badge tone="brass">{employeesWithLop}</Badge> employee(s) carrying loss of pay
           </span>
-          <Link href={attendanceLink} className="label text-brass hover:underline whitespace-nowrap">
+          <Link href={attendanceLink} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
             Review →
           </Link>
         </FinalCheckRow>
@@ -684,7 +684,7 @@ function FinalCheckPanel({
           <span>
             <Badge tone="neutral">{openAdjustments}</Badge> incentive/deduction adjustment(s) will apply
           </span>
-          <Link href={attendanceLink} className="label text-brass hover:underline whitespace-nowrap">
+          <Link href={attendanceLink} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
             Review →
           </Link>
         </FinalCheckRow>

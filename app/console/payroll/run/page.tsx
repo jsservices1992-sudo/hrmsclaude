@@ -104,7 +104,7 @@ function StepRow({ step, index, isNext }: { step: RunStep; index: number; isNext
       </div>
 
       {step.href && !muted && (
-        <Link href={step.href} className="label text-brass hover:underline whitespace-nowrap">
+        <Link href={step.href} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
           {step.actionLabel} →
         </Link>
       )}
@@ -291,10 +291,10 @@ export default async function RunPayrollPage(
       </div>
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="label text-ink-2">Steps</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[15px] font-semibold text-ink">Steps</span>
           {next && (
-            <Link href={next.href ?? "#"} className="label text-brass hover:underline">
+            <Link href={next.href ?? "#"} className="text-sm font-semibold text-indigo hover:text-indigo-2">
               Go to {next.title} →
             </Link>
           )}

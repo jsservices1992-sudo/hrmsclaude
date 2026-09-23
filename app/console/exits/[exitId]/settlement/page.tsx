@@ -99,7 +99,7 @@ export default async function SettlementPage(
   return (
     <div className="flex flex-col gap-6 max-w-[76rem]">
       <div data-print="hide">
-        <Link href={`/console/exits/${exitId}`} className="label text-brass hover:underline">
+        <Link href={`/console/exits/${exitId}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Exit case
         </Link>
       </div>
@@ -183,8 +183,8 @@ export default async function SettlementPage(
 
       {/* ---------- the statement ---------- */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Statement</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Statement</span>
         </div>
 
         <p className="px-4 py-2 label text-ink-3 border-b border-line-2">Payable to the employee</p>
@@ -228,8 +228,8 @@ export default async function SettlementPage(
 
       {/* ---------- tax on separation ---------- */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="label text-ink-2">Tax on separation</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[15px] font-semibold text-ink">Tax on separation</span>
           <span className="label text-ink-3">{tax.basis}</span>
         </div>
 
@@ -297,8 +297,8 @@ export default async function SettlementPage(
 
       {/* ---------- clearance gate ---------- */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="label text-ink-2">Clearance</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[15px] font-semibold text-ink">Clearance</span>
           <span className={`label ${clearance.closed ? "text-teal" : "text-rust"}`}>
             {clearance.closed ? "closed" : `${clearance.pending} open`}
           </span>
@@ -389,8 +389,8 @@ export default async function SettlementPage(
           nothing in the application could make. */}
       {canAct && (
         <div className="border border-line bg-surface rounded-lg" data-print="hide">
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Notice period and gratuity</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Notice period and gratuity</span>
           </div>
           <div className="px-4 py-4">
             <NoticeTreatmentForm
@@ -425,8 +425,8 @@ export default async function SettlementPage(
       {/* ---------- actions ---------- */}
       {canAct && (
         <div className="border border-line bg-surface rounded-lg" data-print="hide">
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="label text-ink-2">Settlement</span>
+          <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[15px] font-semibold text-ink">Settlement</span>
             {stored && (
               <span className="label text-ink-3">
                 {stored.status} · prepared by {stored.preparedBy}

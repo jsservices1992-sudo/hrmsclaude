@@ -149,7 +149,7 @@ export default async function PayslipsPage(
         <div data-print="hide">
           <Link
             href={`/console/payroll/payslips?${filterQuery.toString()}`}
-            className="label text-brass hover:underline"
+            className="text-sm font-semibold text-indigo hover:text-indigo-2"
           >
             ← Back to list
           </Link>
@@ -182,7 +182,7 @@ export default async function PayslipsPage(
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href={`/console/payroll?${period}`} className="label text-brass hover:underline">
+        <Link href={`/console/payroll?${period}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Register
         </Link>
         <PageHeader
@@ -196,7 +196,7 @@ export default async function PayslipsPage(
             <div className="flex flex-wrap items-center gap-2">
               <a
                 href={`/console/payroll/payslips/export?${filterQuery.toString()}`}
-                className="label text-brass hover:underline whitespace-nowrap"
+                className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
               >
                 Download CSV →
               </a>
@@ -299,7 +299,7 @@ export default async function PayslipsPage(
                     )}
                     <Link
                       href={`/console/payslip/${r.employeeId}?${period}`}
-                      className="label text-brass hover:underline"
+                      className="text-sm font-semibold text-indigo hover:text-indigo-2"
                     >
                       Slip →
                     </Link>

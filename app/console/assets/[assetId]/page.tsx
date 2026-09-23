@@ -66,7 +66,7 @@ export default async function AssetDetailPage(
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
       <div>
-        <Link href="/console/assets" className="label text-brass hover:underline">
+        <Link href="/console/assets" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Assets
         </Link>
         <div className="flex flex-wrap items-baseline gap-3 mt-2">
@@ -81,8 +81,8 @@ export default async function AssetDetailPage(
       </div>
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Details</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Details</span>
         </div>
         <dl className="grid grid-cols-2 sm:grid-cols-3">
           {[
@@ -131,8 +131,8 @@ export default async function AssetDetailPage(
       )}
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Allocation history</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Allocation history</span>
         </div>
         {view.history.length === 0 ? (
           <p className="px-4 py-4 text-sm text-ink-3">Never issued.</p>

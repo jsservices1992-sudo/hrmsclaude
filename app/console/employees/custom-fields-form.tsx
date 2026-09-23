@@ -47,8 +47,8 @@ export default function CustomFieldsForm({
 
       {sections.map((section) => (
         <Card key={section} padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">{section}</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">{section}</span>
           </div>
           <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {fields

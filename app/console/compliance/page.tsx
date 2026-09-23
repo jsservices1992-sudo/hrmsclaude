@@ -98,8 +98,8 @@ export default async function ComplianceConfigPage() {
 
       {contested.length > 0 && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Contested applicability</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Contested applicability</span>
           </div>
           <ul className="divide-y divide-line-2">
             {contested.map((j) => (
@@ -128,8 +128,8 @@ export default async function ComplianceConfigPage() {
       )}
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Central parameters</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Central parameters</span>
         </div>
         <table className="w-full text-sm">
           <tbody>
@@ -175,8 +175,8 @@ export default async function ComplianceConfigPage() {
       </Card>
 
       <Card padded={false} className="overflow-x-auto">
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex items-center justify-between">
-          <span className="label text-ink-2">Jurisdiction coverage</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-ink">Jurisdiction coverage</span>
           <span className="label text-ink-3 tnum">{juris.length} states &amp; UTs</span>
         </div>
         <Table>
@@ -219,7 +219,7 @@ export default async function ComplianceConfigPage() {
                     {l ? l.frequency.replace("_", "-") : "—"}
                   </TD>
                   <TD>
-                    <Link href={`/console/compliance/${j.stateCode}`} className="label text-brass hover:underline">
+                    <Link href={`/console/compliance/${j.stateCode}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
                       {isAdmin ? "Manage →" : "View →"}
                     </Link>
                   </TD>

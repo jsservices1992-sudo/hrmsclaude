@@ -90,7 +90,7 @@ export default async function TaxWorksheetPage(
   return (
     <div className="flex flex-col gap-6 max-w-[72rem]">
       <div>
-        <Link href="/console/tax" className="label text-brass hover:underline">
+        <Link href="/console/tax" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           ← Tax register
         </Link>
         <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
@@ -153,8 +153,8 @@ export default async function TaxWorksheetPage(
       {/* regime comparison */}
       {comparison && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Regime comparison</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Regime comparison</span>
           </div>
           <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-line-2">
             {(["old", "new"] as const).map((r) => {
@@ -189,8 +189,8 @@ export default async function TaxWorksheetPage(
 
       {/* computation */}
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-          <span className="label text-ink-2">Computation</span>
+        <div className="px-5 py-3.5 border-b border-line-2">
+          <span className="text-[15px] font-semibold text-ink">Computation</span>
         </div>
         <Row label="Salary from this employer" value={formatINR(a.grossSalaryPaise)} />
         {a.previousEmployerSalaryPaise > 0 && (
@@ -294,8 +294,8 @@ export default async function TaxWorksheetPage(
       {/* HRA */}
       {w.hra && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">House rent allowance</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">House rent allowance</span>
           </div>
           {w.hra.workings.length === 0 ? (
             <p className="px-4 py-4 text-sm text-ink-2">{w.hra.reason}</p>
@@ -330,8 +330,8 @@ export default async function TaxWorksheetPage(
       {/* deductions */}
       {w.deductions.lines.length > 0 && (
         <Card padded={false} className="overflow-x-auto">
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Declared deductions</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Declared deductions</span>
           </div>
           <Table>
             <THead>
@@ -364,8 +364,8 @@ export default async function TaxWorksheetPage(
       {/* proofs */}
       {w.proofs.length > 0 && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Proof verification</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Proof verification</span>
           </div>
           <ul className="divide-y divide-line-2">
             {w.proofs.map((p) => (
@@ -424,8 +424,8 @@ export default async function TaxWorksheetPage(
       {/* perquisites */}
       {w.perquisites.lines.length > 0 && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Perquisites</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Perquisites</span>
           </div>
           {w.perquisites.lines.map((p) => (
             <Row
@@ -445,8 +445,8 @@ export default async function TaxWorksheetPage(
 
       {canActOnPeople(user) && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Add a perquisite</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Add a perquisite</span>
           </div>
           <PerquisiteForm employeeId={emp.id} />
         </Card>
@@ -455,8 +455,8 @@ export default async function TaxWorksheetPage(
       {/* special-rate income — capital gains, VDA, lottery, gaming */}
       {w.specialRate && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="label text-ink-2">Special-rate income</span>
+          <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[15px] font-semibold text-ink">Special-rate income</span>
             <span className="label text-ink-3">not part of salary TDS above — computed and shown separately</span>
           </div>
           {w.specialRate.special.stcgSpecifiedTaxPaise > 0 && (
@@ -507,8 +507,8 @@ export default async function TaxWorksheetPage(
 
       {advancedTaxEnabled && canActOnPeople(user) && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Special-rate income — capital gains, VDA, lottery, gaming</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Special-rate income — capital gains, VDA, lottery, gaming</span>
           </div>
           <SpecialRateForm employeeId={emp.id} declaration={w.specialRateDeclaration} />
         </Card>

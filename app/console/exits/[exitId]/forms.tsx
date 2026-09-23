@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { uploadExitDocument, type DocumentState } from "@/app/console/employees/documents";
-import { Button, FormFeedback } from "@/components/console/ui";
+import { Button, FormFeedback, FileDrop } from "@/components/console/ui";
 
 export function UploadExitDocumentForm({
   employeeId,
@@ -19,13 +19,7 @@ export function UploadExitDocumentForm({
       <input type="hidden" name="employeeId" value={employeeId} />
       <input type="hidden" name="exitId" value={exitId} />
       <input type="hidden" name="docType" value={docType} />
-      <input
-        name="file"
-        type="file"
-        accept="application/pdf,image/jpeg,image/png"
-        required
-        className="text-xs border border-line px-2 py-1 bg-surface w-40 rounded-lg"
-      />
+      <FileDrop compact name="file" accept="application/pdf,image/jpeg,image/png" />
       <Button type="submit" size="sm" className="text-xs hover:border-indigo hover:text-indigo">
         Upload
       </Button>

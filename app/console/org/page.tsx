@@ -152,8 +152,8 @@ function HiringView({
       </div>
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="label text-ink-2">Open positions by department</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[15px] font-semibold text-ink">Open positions by department</span>
           <span className="text-xs text-ink-3">
             Open = approved − (on roll − leaving + joining)
           </span>
@@ -298,8 +298,8 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
           breaks an org chart the day somebody's notice runs out. */}
       {org.orphans.length > 0 && (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Teams losing their manager</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Teams losing their manager</span>
           </div>
           <ul className="divide-y divide-line-2">
             {org.orphans.map((o) => (
@@ -363,8 +363,8 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
         <HiringView hiring={hiring} canAct={canAct} />
       ) : view === "tree" ? (
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="label text-ink-2">Reporting tree</span>
+          <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[15px] font-semibold text-ink">Reporting tree</span>
             <FilterBar
               action="/console/org"
               mode="filter"
@@ -396,8 +396,8 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
       ) : (
         <div className="flex flex-col gap-5">
           <Card padded={false}>
-            <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-              <span className="label text-ink-2">Span of control — who has whom</span>
+            <div className="px-5 py-3.5 border-b border-line-2">
+              <span className="text-[15px] font-semibold text-ink">Span of control — who has whom</span>
             </div>
             {org.spans.length === 0 ? (
               <p className="px-4 py-4 text-sm text-ink-3">Nobody has reports yet.</p>
@@ -447,8 +447,8 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
 
           <div className="grid lg:grid-cols-2 gap-5 items-start">
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Headcount by department</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">Headcount by department</span>
               </div>
               <Table>
                 <THead>
@@ -471,8 +471,8 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
             </Card>
 
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">Leavers &amp; replacements</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">Leavers &amp; replacements</span>
               </div>
               {org.leavers.length === 0 ? (
                 <p className="px-4 py-4 text-sm text-ink-3">Nobody is leaving.</p>
@@ -518,8 +518,8 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
 
           {org.unassigned.length > 0 && (
             <Card padded={false}>
-              <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-                <span className="label text-ink-2">No manager set</span>
+              <div className="px-5 py-3.5 border-b border-line-2">
+                <span className="text-[15px] font-semibold text-ink">No manager set</span>
               </div>
               <ul className="divide-y divide-line-2">
                 {org.unassigned.map((p) => (

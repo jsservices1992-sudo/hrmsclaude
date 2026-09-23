@@ -60,8 +60,8 @@ export default async function AccountPage() {
 
       <div className="grid lg:grid-cols-2 gap-5">
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">What this account may do</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">What this account may do</span>
           </div>
           <div className="p-4 flex flex-col gap-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
@@ -82,8 +82,8 @@ export default async function AccountPage() {
 
         <div id="password" className="scroll-mt-20">
         <Card padded={false}>
-          <div className="px-4 py-2.5 border-b border-line bg-surface-2">
-            <span className="label text-ink-2">Password</span>
+          <div className="px-5 py-3.5 border-b border-line-2">
+            <span className="text-[15px] font-semibold text-ink">Password</span>
           </div>
           <div className="p-4">
             <ChangePasswordForm />
@@ -93,8 +93,8 @@ export default async function AccountPage() {
       </div>
 
       <Card padded={false}>
-        <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="label text-ink-2">Where you are signed in</span>
+        <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[15px] font-semibold text-ink">Where you are signed in</span>
           <span className="label text-ink-3">
             {row?.lastLoginAt ? `last sign-in ${formatDateTime(row.lastLoginAt)}` : ""}
           </span>

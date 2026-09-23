@@ -19,7 +19,7 @@ import {
 import { PROFILE_FIELDS } from "@/lib/ess/profile";
 import { DECLARATION_SECTIONS } from "@/lib/ess/declaration";
 import { paiseToRupees } from "@/lib/payroll/money";
-import { SubmitButton, Input, FormFeedback } from "@/components/console/ui";
+import { SubmitButton, Input, FormFeedback, FileDrop } from "@/components/console/ui";
 
 const field =
   "px-2.5 py-1.5 text-sm bg-surface border border-line outline-none focus:border-ink-3";
@@ -151,16 +151,7 @@ export function UploadOwnDocumentForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">File</span>
-          <input
-            name="file"
-            type="file"
-            accept="application/pdf,image/jpeg,image/png"
-            required
-            className="text-sm border border-line px-2 py-1 rounded-lg"
-          />
-        </label>
+        <div className="w-full"><FileDrop name="file" accept="application/pdf,image/jpeg,image/png" hint="PDF, JPG or PNG" /></div>
         <label className="flex flex-col gap-1">
           <span className="label text-ink-3">Expires on (if it does)</span>
           <input name="expiresOn" type="date" className={`${field} font-mono`} />

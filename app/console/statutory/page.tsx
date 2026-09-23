@@ -50,8 +50,8 @@ function Panel({
 }) {
   return (
     <Card padded={false}>
-      <div className="px-4 py-2.5 border-b border-line bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="label text-ink-2">{title}</span>
+      <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[15px] font-semibold text-ink">{title}</span>
         {right}
       </div>
       {children}
@@ -284,7 +284,7 @@ export default async function StatutoryPage(
               epf.blocking.length === 0 ? (
                 <a
                   href={`/console/statutory/download/ecr?${query}`}
-                  className="label text-brass hover:underline"
+                  className="text-sm font-semibold text-indigo hover:text-indigo-2"
                 >
                   Download ECR ↓
                 </a>
@@ -357,7 +357,7 @@ export default async function StatutoryPage(
             right={
               <a
                 href={`/console/statutory/download/esic?${query}`}
-                className="label text-brass hover:underline"
+                className="text-sm font-semibold text-indigo hover:text-indigo-2"
               >
                 Download CSV ↓
               </a>
