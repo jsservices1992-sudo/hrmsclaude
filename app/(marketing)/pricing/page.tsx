@@ -129,7 +129,7 @@ export default function PricingPage() {
                     href="/pricing"
                     className={`w-full inline-flex items-center justify-center px-5 py-3 text-sm font-medium transition-colors ${
                       plan.featured
-                        ? "bg-indigo text-on-indigo border border-indigo hover:bg-indigo-2"
+                        ? "rounded-lg bg-indigo text-on-indigo border border-indigo shadow-sm hover:bg-indigo-2"
                         : "border border-line bg-surface text-ink hover:border-ink-3 hover:bg-surface-2"
                     }`}
                   >
@@ -181,7 +181,7 @@ export default function PricingPage() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/payroll"
-                  className="inline-flex items-center px-5 py-3 text-sm font-medium bg-indigo text-on-indigo border border-indigo hover:bg-indigo-2 transition-colors"
+                  className="inline-flex items-center px-5 py-3 text-sm font-medium rounded-lg bg-indigo text-on-indigo border border-indigo shadow-sm hover:bg-indigo-2 transition-colors"
                 >
                   How the engine works
                 </Link>

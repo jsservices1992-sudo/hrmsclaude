@@ -10,7 +10,7 @@ function Wordmark() {
     <Link href="/" className="flex items-center gap-2.5 shrink-0">
       <span
         aria-hidden
-        className="grid h-8 w-8 place-items-center bg-indigo text-on-indigo font-display text-lg font-semibold leading-none"
+        className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo to-brass text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
       >
         ल
       </span>
@@ -160,7 +160,7 @@ export default function SiteNav() {
             </Link>
             <Link
               href="/pricing"
-              className="inline-flex items-center px-4 py-2 text-sm font-medium bg-indigo text-on-indigo border border-indigo hover:bg-indigo-2 transition-colors"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-indigo text-on-indigo border border-indigo shadow-sm hover:bg-indigo-2 transition-colors"
             >
               Book a demo
             </Link>
@@ -170,7 +170,7 @@ export default function SiteNav() {
           <div className="lg:hidden flex items-center gap-1">
           <Link
             href="/login"
-            className="px-3 py-1.5 text-sm font-medium bg-indigo text-on-indigo border border-indigo"
+            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo text-on-indigo border border-indigo shadow-sm"
           >
             Sign in
           </Link>
@@ -238,13 +238,13 @@ export default function SiteNav() {
         <div className="p-5 sm:p-8 flex flex-col gap-3">
           <Link
             href="/pricing"
-            className="inline-flex items-center justify-center px-5 py-3 text-sm font-medium bg-indigo text-on-indigo border border-indigo"
+            className="inline-flex items-center justify-center px-5 py-3 text-sm font-medium rounded-lg bg-indigo text-on-indigo border border-indigo shadow-sm"
           >
             Book a demo
           </Link>
           <Link
             href="/login"
-            className="inline-flex items-center justify-center px-5 py-3 text-sm font-medium border border-line bg-surface text-ink"
+            className="inline-flex items-center justify-center px-5 py-3 text-sm font-medium rounded-lg border border-line bg-surface text-ink"
           >
             Sign in
           </Link>

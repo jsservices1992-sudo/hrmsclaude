@@ -29,12 +29,12 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     <Link href="/console" className="flex items-center gap-2.5 min-w-0">
       <span
         aria-hidden
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-sm bg-indigo text-on-indigo font-display text-lg font-semibold leading-none"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-indigo to-brass text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
       >
         ल
       </span>
       {!collapsed && (
-        <span className="font-display text-lg font-semibold truncate">
+        <span className="font-display text-lg font-bold tracking-tight truncate">
           {SITE.name}
         </span>
       )}
@@ -99,14 +99,14 @@ function NavSection({
                 title={collapsed ? item.label : undefined}
                 className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-base ${
                   active
-                    ? "bg-indigo-soft text-indigo font-medium"
+                    ? "bg-indigo-soft text-indigo font-semibold"
                     : "text-ink-2 hover:text-ink hover:bg-surface-2"
                 } ${collapsed ? "justify-center" : ""}`}
               >
                 {active && (
                   <span
                     aria-hidden
-                    className="absolute left-0 inset-y-1 w-[2px] rounded-full bg-brass"
+                    className="absolute left-0 inset-y-1.5 w-[3px] rounded-full bg-indigo"
                   />
                 )}
                 <Icon />
@@ -136,7 +136,7 @@ function NavSection({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex items-center gap-1.5 px-3 py-1 rounded-md text-brass hover:bg-surface-2 transition-base"
+        className="flex items-center gap-1.5 px-3 py-1 rounded-md text-ink-3 hover:text-ink hover:bg-surface-2 transition-base"
       >
         <IconChevron
           className={`h-3 w-3 shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
@@ -272,7 +272,7 @@ function UserMenu({
         >
           <span
             aria-hidden
-            className="grid h-7 w-7 place-items-center rounded-full bg-surface-3 text-ink-2 text-xs font-medium shrink-0"
+            className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-indigo to-brass text-on-indigo text-xs font-semibold shrink-0"
           >
             {initials}
           </span>
@@ -471,7 +471,7 @@ export default function ConsoleShell({
         <div className="flex-1 flex flex-col min-w-0">
           <header
             data-print="hide"
-            className="sticky top-0 z-30 h-14 shrink-0 border-b border-line bg-paper/95 backdrop-blur-sm"
+            className="sticky top-0 z-30 h-14 shrink-0 border-b border-line bg-surface/80 backdrop-blur-md"
           >
             <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">

@@ -5,14 +5,14 @@ export type ButtonSize = "sm" | "md";
 
 export function buttonClasses(variant: ButtonVariant = "default", size: ButtonSize = "md") {
   const base =
-    "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-base disabled:opacity-50 disabled:pointer-events-none";
+    "inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition-base disabled:opacity-50 disabled:pointer-events-none focus-visible:shadow-ring";
   const sizes: Record<ButtonSize, string> = {
     sm: "px-2.5 py-1.5 text-xs",
     md: "px-3.5 py-2 text-sm",
   };
   const variants: Record<ButtonVariant, string> = {
-    primary: "bg-indigo text-on-indigo hover:bg-indigo-2",
-    default: "border border-line bg-surface text-ink hover:bg-surface-2",
+    primary: "bg-indigo text-on-indigo shadow-sm shadow-indigo/20 hover:bg-indigo-2 hover:shadow-md",
+    default: "border border-line bg-surface text-ink shadow-sm hover:bg-surface-2 hover:border-ink-3/30",
     ghost: "text-ink-2 hover:text-ink hover:bg-surface-2",
     danger: "border border-rust text-rust hover:bg-rust-soft",
   };
