@@ -13,7 +13,7 @@ export default async function NewCompanyPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/console/settings" className="text-sm font-semibold text-indigo hover:text-indigo-2">
+        <Link href="/console/settings" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
           ← Settings
         </Link>
         <PageHeader

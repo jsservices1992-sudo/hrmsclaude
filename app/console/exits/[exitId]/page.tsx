@@ -60,8 +60,8 @@ export default async function ExitDetailPage(
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
       <div>
-        <Link href="/console/exits" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-          ← Exits
+        <Link href="/console/exits" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
+          ← Leavers
         </Link>
       </div>
       <PageHeader

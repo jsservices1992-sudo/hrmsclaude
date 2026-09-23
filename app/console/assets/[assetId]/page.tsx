@@ -66,7 +66,7 @@ export default async function AssetDetailPage(
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
       <div>
-        <Link href="/console/assets" className="text-sm font-semibold text-indigo hover:text-indigo-2">
+        <Link href="/console/assets" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
           ← Assets
         </Link>
         <div className="flex flex-wrap items-baseline gap-3 mt-2">

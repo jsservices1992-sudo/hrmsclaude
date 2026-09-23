@@ -99,7 +99,7 @@ export default async function SettlementPage(
   return (
     <div className="flex flex-col gap-6 max-w-[76rem]">
       <div data-print="hide">
-        <Link href={`/console/exits/${exitId}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
+        <Link href={`/console/exits/${exitId}`} className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
           ← Exit case
         </Link>
       </div>

@@ -12,7 +12,7 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { CreateAssetForm } from "./forms";
-import { PageHeader, Card, Input, Select, FilterBar, FilterField, Badge, EmptyState, Table, THead, TH, TBody, TR, TD, type BadgeTone, MetricStrip } from "@/components/console/ui";
+import { PageHeader, Card, Input, Select, FilterBar, FilterField, Badge, EmptyState, Table, THead, TH, TBody, TR, TD, type BadgeTone, MetricStrip, DrawerButton } from "@/components/console/ui";
 
 export const metadata = { title: "Assets" };
 
@@ -76,14 +76,15 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
   return (
     <div className="flex flex-col gap-5 max-w-[84rem]">
       <PageHeader
-        eyebrow="Assets"
-        title={
-          <>
-            {allRows.length} asset{allRows.length === 1 ? "" : "s"}
-            {hasFilters && <span className="text-ink-3 font-normal text-xl"> · {rows.length} shown</span>}
-          </>
+        title="Assets"
+        description={`${company.name} · ${allRows.length} asset${allRows.length === 1 ? "" : "s"}${hasFilters ? ` · ${rows.length} shown` : ""}`}
+        actions={
+          canAct && (
+            <DrawerButton label="+ Add asset" variant="primary" title="Add an asset" description="A laptop, phone, access card — anything issued to a person.">
+              <CreateAssetForm companyId={companyId} />
+            </DrawerButton>
+          )
         }
-        description={company.name}
       />
 
       <MetricStrip
@@ -192,16 +193,6 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
         </div>
       )}
 
-      {canAct && (
-        <Card padded={false}>
-          <div className="px-5 py-3.5 border-b border-line-2">
-            <span className="text-[15px] font-semibold text-ink">Add an asset</span>
-          </div>
-          <div className="p-4">
-            <CreateAssetForm companyId={companyId} />
-          </div>
-        </Card>
-      )}
     </div>
   );
 }

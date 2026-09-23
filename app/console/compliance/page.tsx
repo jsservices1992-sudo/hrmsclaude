@@ -8,7 +8,7 @@ import { AddStatutoryParamForm } from "./forms";
 import { PageHeader, Card, Badge, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
-export const metadata = { title: "Statutory configuration" };
+export const metadata = { title: "Statutory rules" };
 
 export default async function ComplianceConfigPage() {
   const user = (await getSessionUser())!;
@@ -38,7 +38,7 @@ export default async function ComplianceConfigPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         eyebrow="Statutory configuration"
-        title="Rules as data, with their provenance"
+        title="Statutory rules"
         description="Every row below is effective-dated. A payroll run records which versions it used, so recomputing a historic period reproduces what was actually paid."
       />
 

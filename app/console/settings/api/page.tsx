@@ -8,7 +8,7 @@ import {
   CreateWebhookForm,
   ToggleWebhookForm,
 } from "./forms";
-import { PageHeader, Card, Badge, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { PageHeader, Card, Badge, Table, THead, TH, TBody, TR, TD, DrawerButton } from "@/components/console/ui";
 import { formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "API & webhooks" };
@@ -52,7 +52,6 @@ export default async function ApiAdminPage() {
   return (
     <div className="flex flex-col gap-8 max-w-5xl">
       <PageHeader
-        eyebrow="Administration"
         title="API & webhooks"
         description={
           <>
@@ -80,7 +79,7 @@ export default async function ApiAdminPage() {
           <div className="p-4 flex flex-col gap-6">
             {/* -------- API keys -------- */}
             <div className="flex flex-col gap-3">
-              <p className="label text-ink-3">API keys</p>
+              <p className="text-sm font-semibold text-ink">API keys</p>
               {keys.filter((k) => k.companyId === company.id).length === 0 ? (
                 <p className="text-sm text-ink-3">No keys yet.</p>
               ) : (
@@ -117,12 +116,18 @@ export default async function ApiAdminPage() {
                   </TBody>
                 </Table>
               )}
-              {isAdmin && <CreateApiKeyForm companyId={company.id} />}
+              {isAdmin && (
+                <div>
+                  <DrawerButton label="+ Create API key" title={`New API key · ${company.name}`} description="Read-only. The key is shown once.">
+                    <CreateApiKeyForm companyId={company.id} />
+                  </DrawerButton>
+                </div>
+              )}
             </div>
 
             {/* -------- webhook subscriptions -------- */}
             <div className="flex flex-col gap-3 pt-2 border-t border-line-2">
-              <p className="label text-ink-3">Webhook subscriptions</p>
+              <p className="text-sm font-semibold text-ink">Webhooks</p>
               {subs.filter((sub) => sub.companyId === company.id).length === 0 ? (
                 <p className="text-sm text-ink-3">No subscriptions yet.</p>
               ) : (
@@ -157,7 +162,13 @@ export default async function ApiAdminPage() {
                     ))}
                 </div>
               )}
-              {isAdmin && <CreateWebhookForm companyId={company.id} />}
+              {isAdmin && (
+                <div>
+                  <DrawerButton label="+ Add webhook" title={`New webhook · ${company.name}`} description="We POST the chosen events to your HTTPS endpoint.">
+                    <CreateWebhookForm companyId={company.id} />
+                  </DrawerButton>
+                </div>
+              )}
             </div>
           </div>
         </Card>

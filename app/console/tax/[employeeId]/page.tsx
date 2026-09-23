@@ -90,8 +90,8 @@ export default async function TaxWorksheetPage(
   return (
     <div className="flex flex-col gap-6 max-w-[72rem]">
       <div>
-        <Link href="/console/tax" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-          ← Tax register
+        <Link href="/console/tax" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
+          ← Income tax
         </Link>
         <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
           <div>

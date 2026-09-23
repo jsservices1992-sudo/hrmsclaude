@@ -37,7 +37,7 @@ import {
 } from "@/components/console/ui";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 
-export const metadata = { title: "Audit & controls" };
+export const metadata = { title: "Audit log" };
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -170,7 +170,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
         eyebrow="Audit & controls"
-        title="Payroll audit"
+        title="Audit log"
         description="For any rupee paid in any period: what it was, how it was computed, who authorised it, and what it was before the last change."
         actions={
           <MonthNav year={year} month={month} href={(y, m) => `/console/audit?company=${companyId}&year=${y}&month=${m}`} />

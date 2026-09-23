@@ -14,7 +14,7 @@ import {
   canMutate,
 } from "@/lib/auth/session";
 import { DisburseForm } from "./forms";
-import { PageHeader, Card, Select, Input, FilterBar, FilterField, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
+import { PageHeader, Card, Select, Input, FilterBar, FilterField, Badge, type BadgeTone, Table, THead, TH, TBody, TR, TD, DrawerButton, MetricStrip, Alert } from "@/components/console/ui";
 
 export const metadata = { title: "Loans & recoveries" };
 
@@ -72,63 +72,17 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
   return (
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
-        eyebrow="Loans & recoveries"
-        title="Loan register"
+        title="Loans & recoveries"
         description={
           <>
             {company.name} · {live.length} live of {list.length} · recovered
             through payroll, never below the scheme&rsquo;s net-pay floor
           </>
         }
-      />
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { l: "Lent to date", v: <>{formatINR(totals.lent)}</> },
-          { l: "Outstanding", v: <>{formatINR(totals.outstanding)}</> },
-          { l: "Recovering a month", v: <>{formatINR(totals.monthly)}</> },
-          {
-            l: "In arrears",
-            v: (
-              <span className={totals.arrears > 0 ? "text-rust" : undefined}>
-                {formatINR(totals.arrears)}
-              </span>
-            ),
-          },
-        ].map((x) => (
-          <StatCard key={x.l} label={x.l} value={x.v} />
-        ))}
-      </div>
-
-      {inArrears.length > 0 && (
-        <div className="border border-rust/25 bg-rust-soft px-5 py-4 rounded-xl">
-          <p className="text-sm font-semibold text-rust mb-1">Recovery fell short</p>
-          <p className="text-sm text-ink-2 max-w-[74ch]">
-            {inArrears.length} loan(s) carry arrears, because taking the full
-            instalment would have pushed net pay below the scheme floor. The
-            balance is still owed and is collected on top of the next
-            instalment — it has not been written off:{" "}
-            {inArrears.map((r) => r.empCode).join(", ")}.
-          </p>
-        </div>
-      )}
-
-      {onHold.length > 0 && (
-        <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
-          <p className="text-sm font-semibold text-amber mb-1">Recovery on hold</p>
-          <p className="text-sm text-ink-2 max-w-[74ch]">
-            {onHold.length} loan(s) are paused and will not be recovered in the
-            next run. On an interest-bearing scheme the balance keeps growing
-            while a hold runs unless the interest was waived.
-          </p>
-        </div>
-      )}
-
-      {canMutate(user) && schemes.length > 0 && (
-        <Card padded={false}>
-          <div className="px-5 py-3.5 border-b border-line-2">
-            <span className="text-[15px] font-semibold text-ink">Disburse a loan</span>
-          </div>
+        actions={
+          canMutate(user) &&
+          schemes.length > 0 && (
+            <DrawerButton label="+ Disburse loan" variant="primary" title="Disburse a loan" description="Recovered in instalments through payroll.">
           <DisburseForm
             employees={employees.map((e) => ({
               id: e.id,
@@ -146,8 +100,38 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
               requiresGuarantor: x.requiresGuarantor,
             }))}
           />
-        </Card>
+            </DrawerButton>
+          )
+        }
+      />
+
+      <MetricStrip
+        items={[
+          { label: "Lent to date", value: formatINR(totals.lent) },
+          { label: "Outstanding", value: formatINR(totals.outstanding) },
+          { label: "Recovering a month", value: formatINR(totals.monthly) },
+          { label: "In arrears", value: formatINR(totals.arrears), tone: totals.arrears > 0 ? "danger" : "default" },
+        ]}
+      />
+
+      {inArrears.length > 0 && (
+        <Alert tone="danger" title="Recovery fell short">
+            {inArrears.length} loan(s) carry arrears, because taking the full
+            instalment would have pushed net pay below the scheme floor. The
+            balance is still owed and is collected on top of the next
+            instalment — it has not been written off:{" "}
+            {inArrears.map((r) => r.empCode).join(", ")}.
+        </Alert>
       )}
+
+      {onHold.length > 0 && (
+        <Alert tone="warning" title="Recovery on hold">
+            {onHold.length} loan(s) are paused and will not be recovered in the
+            next run. On an interest-bearing scheme the balance keeps growing
+            while a hold runs unless the interest was waived.
+        </Alert>
+      )}
+
 
       <Card padded={false} className="overflow-x-auto">
         <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-end justify-between gap-3">

@@ -68,8 +68,8 @@ export default async function LoanDetailPage(
   return (
     <div className="flex flex-col gap-6 max-w-[76rem]">
       <div>
-        <Link href="/console/loans" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-          ← Loan register
+        <Link href="/console/loans" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
+          ← Loans
         </Link>
         <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
           <div>

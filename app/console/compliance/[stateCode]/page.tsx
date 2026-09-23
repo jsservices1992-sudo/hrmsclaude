@@ -40,8 +40,8 @@ export default async function JurisdictionDetailPage(
   return (
     <div className="flex flex-col gap-6 max-w-4xl">
       <div>
-        <Link href="/console/compliance" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-          ← Statutory configuration
+        <Link href="/console/compliance" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
+          ← Statutory rules
         </Link>
         <h1 className="text-2xl font-bold tracking-tight text-ink mt-2">{jur.name}</h1>
         <p className="text-sm text-ink-2 mt-1">

@@ -30,8 +30,8 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/console/runs" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-          ← Runs
+        <Link href="/console/runs" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
+          ← Runs & approvals
         </Link>
       </div>
 

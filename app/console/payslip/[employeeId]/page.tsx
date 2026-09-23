@@ -61,7 +61,7 @@ export default async function PayslipPage(
   return (
     <div className="flex flex-col gap-4 max-w-5xl">
       <div data-print="hide" className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={`/console/payroll/payslips?${periodQuery}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
+        <Link href={`/console/payroll/payslips?${periodQuery}`} className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
           ← Payslips
         </Link>
         <PrintButton label="Print / save as PDF" />

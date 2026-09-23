@@ -34,8 +34,8 @@ export default async function WorkflowInstancePage(
   return (
     <div className="flex flex-col gap-6 max-w-[64rem]">
       <div>
-        <Link href="/console/workflows" className="text-sm font-semibold text-indigo hover:text-indigo-2">
-          ← Workflows
+        <Link href="/console/workflows" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
+          ← Approval workflows
         </Link>
         <p className="label text-ink-3 mt-3">{view.templateName}</p>
         <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">
