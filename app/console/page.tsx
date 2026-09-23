@@ -425,9 +425,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
       )}
 
       {/* ---------------- hero ---------------- */}
-      <section className="relative overflow-hidden rounded-2xl border border-line bg-surface">
-        <div aria-hidden className="absolute inset-0 bg-glow" />
-        <div aria-hidden className="absolute inset-0 bg-grid opacity-70" />
+      <section className="rounded-xl border border-line bg-surface">
         <div className="relative grid lg:grid-cols-[1.2fr_1fr] gap-6 p-6 sm:p-8">
           <div className="flex flex-col justify-center">
             <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-brass/25 bg-brass-soft px-3 py-1 text-xs font-semibold text-brass">

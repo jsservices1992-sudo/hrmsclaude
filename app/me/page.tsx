@@ -434,7 +434,7 @@ export default async function MePage(props: PageProps<"/me">) {
         <Link href="/me" className="flex items-center gap-2.5">
           <span
             aria-hidden
-            className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo to-brass text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
+            className="grid h-8 w-8 place-items-center rounded-lg bg-indigo text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
           >
             ल
           </span>

@@ -21,7 +21,7 @@ export default async function SignupPage() {
         <Link href="/" className="flex items-center gap-2.5">
           <span
             aria-hidden
-            className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-indigo to-brass text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
+            className="grid h-9 w-9 place-items-center rounded-lg bg-indigo text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
           >
             ल
           </span>

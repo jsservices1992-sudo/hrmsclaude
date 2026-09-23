@@ -216,10 +216,8 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
   if (!selected) {
     return (
       <div className="flex flex-col gap-6 max-w-[84rem]">
-        <section className="relative overflow-hidden rounded-2xl border border-line bg-surface">
-          <div aria-hidden className="absolute inset-0 bg-glow" />
-          <div aria-hidden className="absolute inset-0 bg-grid opacity-70" />
-          <div className="relative flex flex-wrap items-end justify-between gap-5 p-6 sm:p-8">
+        <section className="rounded-xl border border-line bg-surface">
+              <div className="relative flex flex-wrap items-end justify-between gap-5 p-6 sm:p-8">
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-brass/25 bg-brass-soft px-3 py-1 text-xs font-semibold text-brass">
                 {MONTHS[month - 1]} {year} · {company.name}

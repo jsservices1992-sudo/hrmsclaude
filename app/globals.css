@@ -1,12 +1,6 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------
-   Lekha design tokens
-   Ledger-grounded: indigo ink, brass accent, warm paper ground.
-   Light is the base; dark redefines tokens only.
-   --------------------------------------------------------------- */
-
-/* ---------------------------------------------------------------
    Lekha design tokens — brand palette
    Primary #1239F4 · accent #5146FF · cool slate ground.
    Token names are unchanged so every screen picks this up at once.
@@ -47,16 +41,20 @@
   --success: #16C98D;
   --rust: #E0364B;
   --rust-soft: #FDEDEF;
+  --amber: #B45309;
+  --amber-soft: #FEF6E7;
 
   --rule: rgba(8, 13, 24, 0.06);
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  /* 8 for controls (rounded-lg), 12 for panels (rounded-xl). */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --radius-full: 999px;
 
   /* Soft, blue-tinted elevation */
-  --shadow-sm: 0 1px 2px rgba(16, 38, 94, 0.06), 0 1px 1px rgba(16, 38, 94, 0.03);
+  /* Flat by default: a border separates, a shadow is for what floats. */
+  --shadow-sm: 0 0 #0000;
   --shadow-md: 0 6px 20px -6px rgba(16, 38, 94, 0.14), 0 2px 6px -2px rgba(16, 38, 94, 0.06);
   --shadow-lg: 0 24px 48px -16px rgba(16, 38, 94, 0.24);
   --shadow-ring: 0 0 0 4px rgba(18, 57, 244, 0.14);
@@ -91,8 +89,10 @@
     --success: #16C98D;
     --rust: #FF7A8A;
     --rust-soft: #3A1520;
+    --amber: #F5B454;
+    --amber-soft: #33240E;
     --rule: rgba(238, 242, 248, 0.06);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 0 #0000;
     --shadow-md: 0 6px 20px -6px rgba(0, 0, 0, 0.55);
     --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.65);
     --shadow-ring: 0 0 0 4px rgba(77, 107, 255, 0.25);
@@ -123,8 +123,10 @@
   --success: #16C98D;
   --rust: #FF7A8A;
   --rust-soft: #3A1520;
+  --amber: #F5B454;
+  --amber-soft: #33240E;
   --rule: rgba(238, 242, 248, 0.06);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 0 #0000;
   --shadow-md: 0 6px 20px -6px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.65);
   --shadow-ring: 0 0 0 4px rgba(77, 107, 255, 0.25);
@@ -157,6 +159,8 @@
 
   --color-rust: var(--rust);
   --color-rust-soft: var(--rust-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
   --color-grid: var(--grid);
   --color-success: var(--success);
 

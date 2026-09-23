@@ -29,7 +29,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     <Link href="/console" className="flex items-center gap-2.5 min-w-0">
       <span
         aria-hidden
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-indigo to-brass text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo text-on-indigo font-display text-lg font-bold leading-none shadow-sm"
       >
         ल
       </span>
@@ -272,7 +272,7 @@ function UserMenu({
         >
           <span
             aria-hidden
-            className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-indigo to-brass text-on-indigo text-xs font-semibold shrink-0"
+            className="grid h-7 w-7 place-items-center rounded-full bg-indigo text-on-indigo text-xs font-semibold shrink-0"
           >
             {initials}
           </span>

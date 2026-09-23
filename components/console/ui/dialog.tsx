@@ -56,7 +56,7 @@ export function Dialog({
        * cells, which are `whitespace-nowrap`. The first one to carry a
        * sentence had it run off the side instead of wrapping.
        */
-      className={`m-auto w-[calc(100vw-2rem)] ${sizeClasses[size]} max-h-[85vh] overflow-y-auto rounded-md border border-line bg-surface p-0 shadow-lg whitespace-normal text-left align-baseline text-ink`}
+      className={`m-auto w-[calc(100vw-2rem)] ${sizeClasses[size]} max-h-[85vh] overflow-y-auto rounded-xl border border-line bg-surface p-0 shadow-lg whitespace-normal text-left align-baseline text-ink`}
     >
       {children}
     </dialog>
