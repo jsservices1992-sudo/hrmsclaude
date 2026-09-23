@@ -312,3 +312,103 @@ export function ColumnChart({
     </div>
   );
 }
+
+/* ------------------------------ category pie ------------------------------ */
+
+/** A generous categorical palette — distinct at a glance, on either theme. */
+const PIE_PALETTE = [
+  "var(--indigo)",
+  "var(--brass)",
+  "var(--teal)",
+  "var(--amber)",
+  "var(--rust)",
+  "color-mix(in srgb, var(--indigo) 55%, var(--teal) 45%)",
+  "color-mix(in srgb, var(--brass) 55%, var(--rust) 45%)",
+  "var(--ink-3)",
+];
+
+export type PieSlice = { key: string; label: string; value: number; formattedValue?: string };
+
+/**
+ * A pie chart for an open-ended set of categories (departments, cost
+ * centres) — as opposed to `Donut`, which draws a fixed small set of
+ * named statuses. Slices past the palette collapse into "Others" rather
+ * than repeating a colour, which would read as the same category twice.
+ */
+export function CategoryPie({
+  slices,
+  size = 168,
+  centerLabel,
+  format,
+}: {
+  slices: PieSlice[];
+  size?: number;
+  /** What the centre number means, e.g. "departments". */
+  centerLabel?: string;
+  /** Formats a value for the legend; defaults to the raw number. */
+  format?: (v: number) => string;
+}) {
+  const sorted = [...slices].sort((a, b) => b.value - a.value);
+  const maxSlices = PIE_PALETTE.length - 1;
+  const shown = sorted.slice(0, maxSlices);
+  const rest = sorted.slice(maxSlices);
+  const restTotal = rest.reduce((a, s) => a + s.value, 0);
+  const drawn: PieSlice[] = restTotal > 0 ? [...shown, { key: "__others", label: "Others", value: restTotal }] : shown;
+
+  const total = drawn.reduce((a, s) => a + s.value, 0);
+  const segs = donutSegments(drawn.map((s) => s.value));
+  const cx = size / 2;
+  const cy = size / 2;
+  const rOuter = size / 2 - 2;
+  const rInner = rOuter * 0.6;
+  const fmt = format ?? ((v: number) => String(v));
+
+  return (
+    <div className="flex flex-wrap items-center gap-6">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        width={size}
+        height={size}
+        role="img"
+        aria-label={`${centerLabel ?? "Breakdown"}: ${drawn.map((s) => `${s.label} ${fmt(s.value)}`).join(", ")}`}
+        className="shrink-0"
+      >
+        {total === 0 ? (
+          <circle cx={cx} cy={cy} r={(rOuter + rInner) / 2} fill="none" stroke="var(--line)" strokeWidth={rOuter - rInner} />
+        ) : (
+          drawn.map((s, i) => (
+            <path
+              key={s.key}
+              d={donutArcPath(cx, cy, rOuter, rInner, segs[i])}
+              fill={PIE_PALETTE[i % PIE_PALETTE.length]}
+              stroke="var(--surface)"
+              strokeWidth={1.5}
+            />
+          ))
+        )}
+        <text x={cx} y={cy - (centerLabel ? 8 : 0)} textAnchor="middle" dominantBaseline="central" className="tnum" style={{ fontSize: size * 0.17, fontWeight: 800, fill: "var(--ink)" }}>
+          {total === 0 ? "—" : fmt(total)}
+        </text>
+        {centerLabel && (
+          <text x={cx} y={cy + size * 0.14} textAnchor="middle" dominantBaseline="central" style={{ fontSize: size * 0.07, fill: "var(--ink-3)" }}>
+            {centerLabel}
+          </text>
+        )}
+      </svg>
+      <ul className="flex min-w-[9rem] flex-1 flex-col gap-2 text-sm">
+        {drawn.map((s, i) => (
+          <li key={s.key} className="flex items-center gap-2.5">
+            <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: PIE_PALETTE[i % PIE_PALETTE.length] }} />
+            <span className="min-w-0 flex-1 truncate text-ink-2">{s.label}</span>
+            <span className="shrink-0 font-semibold tnum text-ink">
+              {s.formattedValue ?? fmt(s.value)}
+            </span>
+            {total > 0 && (
+              <span className="w-9 shrink-0 text-right text-xs text-ink-3">{Math.round((s.value / total) * 100)}%</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

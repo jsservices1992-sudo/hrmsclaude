@@ -16,7 +16,7 @@ import {
   scopeCompanies,
 } from "@/lib/auth/session";
 import { loadOnboardingFunnelReport } from "@/lib/reports/load";
-import { BarList, Donut, ColumnChart, type ColumnPoint } from "@/components/console/charts";
+import { Donut, ColumnChart, CategoryPie, type ColumnPoint } from "@/components/console/charts";
 import {
   IconUsers,
   IconUserPlus,
@@ -484,10 +484,21 @@ export default async function DashboardPage(props: PageProps<"/console">) {
               <p className="text-3xl font-bold tracking-tight text-ink tnum mt-1">
                 {formatINR(previewNet)}
               </p>
-              <div className="flex flex-col gap-2 mt-4">
-                <FigureRow label="Gross earnings" value={formatINR(previewGross)} />
-                <FigureRow label="Deductions" value={formatINR(previewGross - previewNet)} />
-                <FigureRow label="Employer contributions" value={formatINR(previewEmployer)} />
+              <div className="mt-4 flex flex-wrap items-center gap-5">
+                <CategoryPie
+                  size={104}
+                  slices={[
+                    { key: "net", label: "Net pay", value: previewNet },
+                    { key: "ded", label: "Deductions", value: previewGross - previewNet },
+                    { key: "emp", label: "Employer cost", value: previewEmployer },
+                  ].filter((s) => s.value > 0)}
+                  format={compact}
+                />
+                <div className="flex flex-1 flex-col gap-2 min-w-[10rem]">
+                  <FigureRow label="Gross earnings" value={formatINR(previewGross)} />
+                  <FigureRow label="Deductions" value={formatINR(previewGross - previewNet)} />
+                  <FigureRow label="Employer contributions" value={formatINR(previewEmployer)} />
+                </div>
               </div>
               <p
                 className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
@@ -605,14 +616,21 @@ export default async function DashboardPage(props: PageProps<"/console">) {
             action={{ href: "/console/reports", label: "Breakdown" }}
           >
             <div className="px-5 pb-5">
-              <BarList rows={costBars} />
+              <CategoryPie
+                slices={costBars.map((b) => ({ key: b.key, label: b.label, value: b.value, formattedValue: b.formattedValue }))}
+                centerLabel="cost"
+                format={compact}
+              />
             </div>
           </SectionCard>
         )}
         {departmentBars.length > 0 && (
           <SectionCard title="Headcount by department" action={{ href: "/console/org", label: "Org chart" }}>
             <div className="px-5 pb-5">
-              <BarList rows={departmentBars} />
+              <CategoryPie
+                slices={departmentBars.map((b) => ({ key: b.key, label: b.label, value: b.value }))}
+                centerLabel="people"
+              />
             </div>
           </SectionCard>
         )}
