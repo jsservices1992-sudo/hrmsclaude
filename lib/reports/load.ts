@@ -326,3 +326,77 @@ export async function loadFnfAgeingReport(
     settledCount,
   };
 }
+
+/* ------------------------- payroll trend ------------------------- */
+
+export type PayrollTrendMonth = {
+  year: number;
+  month: number;
+  /** Null when nothing was run for the month. */
+  version: number | null;
+  status: string | null;
+  headcount: number;
+  grossPaise: number;
+  deductionsPaise: number;
+  netPaise: number;
+  employerCostPaise: number;
+};
+
+/**
+ * Twelve months of payroll, as actually run: the newest version of each
+ * month, totalled. A month with no run is carried as a row of zeros
+ * with no version, so the table says "not run" instead of skipping it
+ * and closing the gap nobody noticed.
+ */
+export async function loadPayrollTrendReport(
+  companyId: string,
+  year: number,
+  month: number,
+): Promise<PayrollTrendMonth[]> {
+  const periods: { year: number; month: number }[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(Date.UTC(year, month - 1 - i, 1));
+    periods.push({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 });
+  }
+
+  const runs = await db
+    .select()
+    .from(s.payrollRuns)
+    .where(eq(s.payrollRuns.companyId, companyId));
+  const latest = new Map<string, (typeof runs)[number]>();
+  for (const r of runs) {
+    const k = `${r.periodYear}-${r.periodMonth}`;
+    const held = latest.get(k);
+    if (!held || r.version > held.version) latest.set(k, r);
+  }
+
+  const ids = [...latest.values()].map((r) => r.id);
+  const summaries = ids.length
+    ? await db
+        .select()
+        .from(s.payrollEmployeeSummaries)
+        .where(inArray(s.payrollEmployeeSummaries.runId, ids))
+    : [];
+  const byRun = new Map<string, typeof summaries>();
+  for (const x of summaries) {
+    const list = byRun.get(x.runId) ?? [];
+    list.push(x);
+    byRun.set(x.runId, list);
+  }
+
+  return periods.map(({ year: y, month: m }) => {
+    const run = latest.get(`${y}-${m}`);
+    const rows = run ? (byRun.get(run.id) ?? []) : [];
+    return {
+      year: y,
+      month: m,
+      version: run?.version ?? null,
+      status: run?.status ?? null,
+      headcount: rows.length,
+      grossPaise: rows.reduce((a, r) => a + r.grossPaise, 0),
+      deductionsPaise: rows.reduce((a, r) => a + r.deductionsPaise, 0),
+      netPaise: rows.reduce((a, r) => a + r.netPaise, 0),
+      employerCostPaise: rows.reduce((a, r) => a + r.employerCostPaise, 0),
+    };
+  });
+}

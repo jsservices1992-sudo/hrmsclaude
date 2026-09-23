@@ -8,6 +8,7 @@ import {
   loadCostReport,
   loadVarianceReport,
   loadFnfAgeingReport,
+  loadPayrollTrendReport,
 } from "@/lib/reports/load";
 import { formatINR } from "@/lib/payroll/money";
 
@@ -20,8 +21,8 @@ import { formatINR } from "@/lib/payroll/money";
  * the HR-relevant ones (headcount, onboarding, attrition) need only
  * console access.
  */
-const COMPENSATION_REPORTS = new Set(["cost", "variance", "fnf-ageing"]);
-const KINDS = new Set(["headcount", "onboarding-funnel", "attrition", "cost", "variance", "fnf-ageing"]);
+const COMPENSATION_REPORTS = new Set(["cost", "variance", "fnf-ageing", "payroll-trend"]);
+const KINDS = new Set(["headcount", "onboarding-funnel", "attrition", "cost", "variance", "fnf-ageing", "payroll-trend"]);
 
 function fileResponse(body: string, filename: string) {
   return new Response(body, {
@@ -66,6 +67,26 @@ export async function GET(
   });
 
   const period = `${year}-${String(month).padStart(2, "0")}`;
+
+  if (reportId === "payroll-trend") {
+    const months = await loadPayrollTrendReport(companyId, year, month);
+    const rupees = (p: number) => (p / 100).toFixed(2);
+    const body = toCsv(
+      ["Month", "Run", "Status", "Employees", "Gross", "Deductions", "Net pay", "Employer contributions", "Cost to company"],
+      months.map((m) => [
+        `${String(m.month).padStart(2, "0")}/${m.year}`,
+        m.version === null ? "not run" : `v${m.version}`,
+        m.status ?? "",
+        String(m.headcount),
+        rupees(m.grossPaise),
+        rupees(m.deductionsPaise),
+        rupees(m.netPaise),
+        rupees(m.employerCostPaise),
+        rupees(m.grossPaise + m.employerCostPaise),
+      ]),
+    );
+    return fileResponse(body, `payroll-trend-${year}-${String(month).padStart(2, "0")}.csv`);
+  }
 
   if (reportId === "headcount") {
     const r = await loadHeadcountReport(companyId, year, month);
