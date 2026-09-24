@@ -12,7 +12,6 @@ import {
   clearAttendanceOverride,
   decideLeave,
   decideRegularisation,
-  addAdjustment,
   removeAdjustment,
   type AttendanceState,
   type BulkAttendanceState,
@@ -24,6 +23,7 @@ import {
   Select,
   SubmitButton,
   FileDrop,
+  EmployeeChecklist,
   FormFeedback,
   FormDialog,
 } from "@/components/console/ui";
@@ -177,6 +177,7 @@ export function DepartmentBulkMarkForm({
 }) {
   const [state, action] = useActionState<AttendanceState, FormData>(bulkMarkDepartment, {});
   const [scope, setScope] = useState<"company" | "department" | "people">("company");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const iso = (d: number) =>
     `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -238,17 +239,16 @@ export function DepartmentBulkMarkForm({
       </div>
 
       {scope === "people" && (
-        <div className="border border-line bg-surface-2 p-3 max-h-56 overflow-y-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-1 rounded-lg">
-          {employees.map((e) => (
-            <label key={e.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="employeeIds" value={e.id} className="h-4 w-4" />
-              <span className="truncate">{e.label}</span>
-            </label>
-          ))}
-          {employees.length === 0 && (
-            <span className="text-xs text-ink-3">Nobody active to choose from.</span>
-          )}
-        </div>
+        <EmployeeChecklist
+          candidates={employees.map((e) => {
+            const [code, ...rest] = e.label.split(" — ");
+            return { id: e.id, empCode: code, name: rest.join(" — ") || e.label };
+          })}
+          selected={picked}
+          onChange={setPicked}
+          name="employeeIds"
+          maxHeight="16rem"
+        />
       )}
 
       <details className="text-xs text-ink-3">
@@ -406,40 +406,6 @@ export function LeaveDecisionForm({ requestId }: { requestId: string }) {
       </SubmitButton>
       {state.error && <span className="text-xs text-rust">{state.error}</span>}
       {state.ok && <span className="text-xs text-teal">{state.ok}</span>}
-    </form>
-  );
-}
-
-/**
- * A one-off incentive or deduction for one employee in one period, folded
- * into payroll calculation the next time this period is run.
- */
-export function AddAdjustmentForm({
-  companyId, year, month, employees,
-}: {
-  companyId: string; year: number; month: number; employees: { id: string; name: string; empCode: string }[];
-}) {
-  const [state, action] = useActionState<AttendanceState, FormData>(addAdjustment, {});
-  return (
-    <form action={action} className="flex flex-col gap-2">
-      <input type="hidden" name="companyId" value={companyId} />
-      <input type="hidden" name="year" value={year} />
-      <input type="hidden" name="month" value={month} />
-      <div className="flex flex-wrap items-center gap-2">
-        <Select name="employeeId" className="w-52" required defaultValue="">
-          <option value="" disabled>Employee</option>
-          {employees.map((e) => <option key={e.id} value={e.id}>{e.name} ({e.empCode})</option>)}
-        </Select>
-        <Select name="kind" className="w-32" defaultValue="earning">
-          <option value="earning">Incentive</option>
-          <option value="deduction">Deduction</option>
-        </Select>
-        <Input name="label" placeholder="Label" className="w-36" required />
-        <Input name="amount" type="number" min="0" step="0.01" placeholder="Amount (₹)" className="w-32" required />
-        <Textarea name="reason" placeholder="Reason (optional)" rows={1} className="w-44" />
-        <SubmitButton pendingText="Working…">Add</SubmitButton>
-      </div>
-      <FormFeedback state={state} />
     </form>
   );
 }

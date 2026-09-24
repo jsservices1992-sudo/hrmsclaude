@@ -27,3 +27,4 @@ export { FileDrop } from "./file-drop";
 export { MetricStrip } from "./metric-strip";
 export { MonthNav } from "./month-nav";
 export { ChoiceCards, type Choice } from "./choice-cards";
+export { EmployeeChecklist, type Candidate } from "./employee-checklist";

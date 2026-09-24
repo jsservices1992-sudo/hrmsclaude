@@ -9,7 +9,7 @@ import {
   updateAdjustment,
   type AttendanceState,
 } from "@/app/console/attendance/actions";
-import { Input, Select, Button, Dialog, SubmitButton, FormFeedback } from "@/components/console/ui";
+import { Input, Select, Dialog, SubmitButton, FormFeedback, EmployeeChecklist } from "@/components/console/ui";
 
 export type EmployeeOption = { id: string; name: string; empCode: string };
 
@@ -212,12 +212,12 @@ export function RemoveVariablePayForm({ id }: { id: string }) {
     </form>
   );
 }
-
 /**
- * One type, an amount box per employee, one submit.
- *
- * Rows left blank are skipped, so the same grid serves "bonus for three
- * people" and "bonus for everyone" without a selection step.
+ * One type, many people. Pick who from the list — search, select all,
+ * or tick a few — then give one amount for everybody ticked, or adjust a
+ * single person's own figure in their row. Only ticked people are
+ * submitted; unticked rows send nothing, so the list can be as long as
+ * the company without a hundred blank fields going with it.
  */
 export function BulkVariablePayForm({
   companyId,
@@ -236,24 +236,39 @@ export function BulkVariablePayForm({
 }) {
   const [state, action] = useActionState<AttendanceState, FormData>(addVariablePayBulk, {});
   const [typeId, setTypeId] = useState(types[0]?.id ?? "");
-  const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [common, setCommon] = useState("");
+  const [own, setOwn] = useState<Record<string, string>>({});
 
   const type = types.find((t) => t.id === typeId);
   const isOt = type?.category === "ot";
 
-  const filled = Object.values(amounts).filter((v) => v.trim() !== "" && Number(v) > 0);
-  const total = filled.reduce((a, v) => a + Number(v), 0);
-  const totalRupees = isOt && otRatePaisePerHour ? (total * otRatePaisePerHour) / 100 : total;
+  /* React resets the form's own fields after a successful submit; the
+     selection lives in state, so it is cleared with them — otherwise the
+     list reads "1 selected" over an unticked box. Done while rendering
+     rather than in an effect, on the one render where the result changes. */
+  const [seenOk, setSeenOk] = useState<string | undefined>(undefined);
+  if (state.ok !== seenOk) {
+    setSeenOk(state.ok);
+    if (state.ok) {
+      setSelected(new Set());
+      setCommon("");
+      setOwn({});
+    }
+  }
 
-  const applyToAll = (value: string) => {
-    setAmounts(Object.fromEntries(employees.map((e) => [e.id, value])));
-  };
+  /* A person's own figure wins; otherwise the common one. */
+  const valueFor = (id: string) => (own[id] !== undefined && own[id] !== "" ? own[id] : common);
+
+  const chosen = [...selected].filter((id) => Number(valueFor(id)) > 0);
+  const total = chosen.reduce((a, id) => a + Number(valueFor(id)), 0);
+  const totalRupees = isOt && otRatePaisePerHour ? (total * otRatePaisePerHour) / 100 : total;
 
   if (types.length === 0) {
     return (
       <p className="text-sm text-ink-2">
         No pay types configured yet. Add them in{" "}
-        <a href="/console/settings/master-data" className="text-indigo font-semibold hover:text-indigo-2">
+        <a href="/console/settings/master-data?tab=variable" className="text-indigo font-semibold hover:text-indigo-2">
           Settings → Master data
         </a>
         .
@@ -262,45 +277,39 @@ export function BulkVariablePayForm({
   }
 
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
+      <input type="hidden" name="typeId" value={typeId} />
 
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)]">
+        <label className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-ink-2">Type</span>
-          <Select name="typeId" value={typeId} onChange={(e) => setTypeId(e.target.value)} className="w-56">
+          <Select value={typeId} onChange={(e) => setTypeId(e.target.value)}>
             {types.map((t) => (
               <option key={t.id} value={t.id}>{t.label}</option>
             ))}
           </Select>
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-ink-2">{isOt ? "Same hours for all" : "Same amount for all"}</span>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              min="0"
-              step={isOt ? "0.5" : "0.01"}
-              className="w-28 tnum"
-              onChange={(e) => applyToAll(e.target.value)}
-              placeholder="optional"
-            />
-            <Button type="button" onClick={() => setAmounts({})} variant="ghost" size="sm">
-              Clear all
-            </Button>
-          </div>
-        </label>
-        <div className="ml-auto flex items-end gap-3">
-          <span className="text-xs text-ink-2">
-            {filled.length} employee(s) ·{" "}
-            <span className="font-mono text-ink">
-              ₹{totalRupees.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-            </span>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-ink-2">
+            {isOt ? "Hours for everyone ticked" : "Amount for everyone ticked (₹)"}
           </span>
-          <SubmitButton variant="primary" pendingText="Adding…">Add for all filled</SubmitButton>
-        </div>
+          <Input
+            type="number"
+            min="0"
+            step={isOt ? "0.5" : "0.01"}
+            value={common}
+            onChange={(e) => setCommon(e.target.value)}
+            placeholder={type?.defaultAmountPaise ? String(type.defaultAmountPaise / 100) : "0"}
+            className="tnum"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-ink-2">Reason (optional)</span>
+          <Input name="reason" placeholder="e.g. Diwali bonus" />
+        </label>
       </div>
 
       {isOt && !otRatePaisePerHour && (
@@ -309,38 +318,47 @@ export function BulkVariablePayForm({
         </p>
       )}
 
-      <div className="border border-line rounded-lg max-h-[26rem] overflow-y-auto">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-surface-2">
-            <tr className="border-b border-line">
-              <th className="text-xs font-medium text-ink-2 text-left px-3 py-2">Employee</th>
-              <th className="text-xs font-medium text-ink-2 text-right px-3 py-2 w-40">
-                {isOt ? "Hours" : "Amount (₹)"}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {employees.map((e) => (
-              <tr key={e.id} className="border-b border-line-2 last:border-0">
-                <td className="px-3 py-1">
-                  {e.name}
-                  <span className="font-mono text-xs text-ink-3 ml-2">{e.empCode}</span>
-                </td>
-                <td className="px-3 py-1 text-right">
-                  <Input
-                    name={`amount:${e.id}`}
-                    type="number"
-                    min="0"
-                    step={isOt ? "0.5" : "0.01"}
-                    value={amounts[e.id] ?? ""}
-                    onChange={(ev) => setAmounts((a) => ({ ...a, [e.id]: ev.target.value }))}
-                    className="w-32 tnum text-right"
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <EmployeeChecklist
+        candidates={employees}
+        selected={selected}
+        onChange={setSelected}
+        maxHeight="24rem"
+        renderRight={(c, checked) =>
+          checked ? (
+            <span className="flex items-center gap-2">
+              <span className="text-xs text-ink-3">{isOt ? "hrs" : "₹"}</span>
+              <Input
+                name={`amount:${c.id}`}
+                type="number"
+                min="0"
+                step={isOt ? "0.5" : "0.01"}
+                value={valueFor(c.id)}
+                onChange={(ev) => setOwn((o) => ({ ...o, [c.id]: ev.target.value }))}
+                aria-label={`${isOt ? "Hours" : "Amount"} for ${c.name}`}
+                className="h-9 w-28 tnum text-right"
+              />
+            </span>
+          ) : null
+        }
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface-2/60 px-4 py-3">
+        <p className="text-sm text-ink-2">
+          {chosen.length === 0 ? (
+            "Tick the people this applies to, and give an amount."
+          ) : (
+            <>
+              <span className="font-semibold text-ink">{chosen.length}</span> {chosen.length === 1 ? "person" : "people"} ·{" "}
+              <span className="font-semibold text-ink tnum">
+                ₹{totalRupees.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+              </span>{" "}
+              in total
+            </>
+          )}
+        </p>
+        <SubmitButton variant="primary" pendingText="Adding…">
+          {chosen.length > 0 ? `Add for ${chosen.length} selected` : "Add"}
+        </SubmitButton>
       </div>
 
       <FormFeedback state={state} />

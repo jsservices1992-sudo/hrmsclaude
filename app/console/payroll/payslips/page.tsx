@@ -15,6 +15,7 @@ import {
 } from "@/lib/auth/session";
 import { recordAccess } from "@/lib/audit/log";
 import { PrintButton } from "@/components/console/print-button";
+import { SelectAllBox, SelectionBar } from "@/components/console/row-selection";
 import {
   PageHeader,
   Card,
@@ -72,6 +73,11 @@ export default async function PayslipsPage(
   const q = (typeof sp.q === "string" ? sp.q : "").trim().toLowerCase();
   const departmentFilter = typeof sp.department === "string" ? sp.department : "";
   const onlyFlag = typeof sp.flag === "string" ? sp.flag : "";
+  /* People ticked in the list, for "Print selected". A checkbox group
+     arrives as one string or an array. */
+  const pickedIds = new Set(
+    (Array.isArray(sp.ids) ? sp.ids : typeof sp.ids === "string" ? [sp.ids] : []).filter(Boolean),
+  );
 
   /* Department per employee — the run stores pay, not org placement, so
      this is read alongside rather than threaded through the engine. */
@@ -93,6 +99,7 @@ export default async function PayslipsPage(
     .orderBy(s.departments.name);
 
   const rows = preview.results.filter((r) => {
+    if (pickedIds.size > 0 && !pickedIds.has(r.employeeId)) return false;
     if (q) {
       const hay = `${r.name} ${r.empCode}`.toLowerCase();
       if (!hay.includes(q)) return false;
@@ -116,6 +123,7 @@ export default async function PayslipsPage(
     filterApplied: [
       `${year}-${String(month).padStart(2, "0")}`,
       q && `q=${q}`,
+      pickedIds.size > 0 && `selected=${pickedIds.size}`,
       departmentFilter && `department=${departmentFilter}`,
       onlyFlag && `flag=${onlyFlag}`,
     ]
@@ -262,8 +270,20 @@ export default async function PayslipsPage(
           description="Widen the search, or clear the filters to see everyone paid this period."
         />
       ) : (
+        <>
+        {/* The row checkboxes point at this form by id, so the ticked
+            people travel in the query string of "Print selected". */}
+        <form id="pick-payslips" method="get" action="/console/payroll/payslips">
+          <input type="hidden" name="company" value={companyId} />
+          <input type="hidden" name="year" value={year} />
+          <input type="hidden" name="month" value={month} />
+          <input type="hidden" name="view" value="print" />
+        </form>
         <Table className="min-w-[56rem]">
           <THead>
+            <TH className="w-10">
+              <SelectAllBox formId="pick-payslips" />
+            </TH>
             {["Employee", "Department", "Days", "Gross", "Deductions", "Net pay", ""].map((h) => (
               <TH key={h} className={["Gross", "Deductions", "Net pay"].includes(h) ? "text-right" : ""}>
                 {h}
@@ -275,6 +295,16 @@ export default async function PayslipsPage(
               const dept = deptByEmployee.get(r.employeeId);
               return (
                 <TR key={r.employeeId}>
+                  <TD className="w-10">
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={r.employeeId}
+                      form="pick-payslips"
+                      aria-label={`Select ${r.name}`}
+                      className="h-4 w-4 accent-[var(--indigo)]"
+                    />
+                  </TD>
                   <TD className="max-w-[16rem]">
                     <Link
                       href={`/console/payslip/${r.employeeId}?${period}`}
@@ -312,6 +342,8 @@ export default async function PayslipsPage(
             })}
           </TBody>
         </Table>
+        <SelectionBar formId="pick-payslips" label="Print" />
+        </>
       )}
     </div>
   );

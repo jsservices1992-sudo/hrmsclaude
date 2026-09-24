@@ -23,10 +23,10 @@ import {
   ClearOverrideForm,
   LeaveDecisionForm,
   RegularisationDecisionForm,
-  AddAdjustmentForm,
   RemoveAdjustmentForm,
 } from "./forms";
 import { AttendanceDayRow } from "./day-editor";
+import { BulkVariablePayForm } from "@/app/console/payroll/inputs/forms";
 import {
   Badge,
   Table,
@@ -229,6 +229,21 @@ export default async function AttendancePage(
         .limit(1)
     : [{ name: "" }];
 
+  const payTypes =
+    tab === "adjustments" && canMutateMoney
+      ? await db
+          .select()
+          .from(s.variablePayTypes)
+          .where(
+            and(
+              eq(s.variablePayTypes.companyId, companyId),
+              eq(s.variablePayTypes.active, true),
+              // Arrears are raised by a salary revision, never picked here.
+              eq(s.variablePayTypes.systemManaged, false),
+            ),
+          )
+          .orderBy(asc(s.variablePayTypes.category), asc(s.variablePayTypes.label))
+      : [];
   const activeEmployees = await db
     .select({
       id: s.employees.id,
@@ -654,10 +669,18 @@ export default async function AttendancePage(
           )}
           {canMutateMoney && (
             <div className="px-5 py-4 border-t border-line-2 bg-surface-2/40 rounded-b-xl">
-              <AddAdjustmentForm
+              <BulkVariablePayForm
                 companyId={companyId}
                 year={year}
                 month={month}
+                types={payTypes.map((t) => ({
+                  id: t.id,
+                  code: t.code,
+                  label: t.label,
+                  category: t.category,
+                  defaultAmountPaise: t.defaultAmountPaise,
+                }))}
+                otRatePaisePerHour={company.otRatePaisePerHour ?? null}
                 employees={months.map((m) => ({ id: m.employeeId, name: m.name, empCode: m.empCode }))}
               />
             </div>

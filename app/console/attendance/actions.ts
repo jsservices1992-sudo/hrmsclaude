@@ -1192,6 +1192,9 @@ export async function addVariablePayBulk(
   const year = Number(fd.get("year"));
   const month = Number(fd.get("month"));
   const typeId = String(fd.get("typeId") ?? "");
+  /* One reason for the whole batch — the reason a person would give for a
+     Diwali bonus is the same for everybody who got it. */
+  const batchReason = String(fd.get("reason") ?? "").trim() || null;
 
   if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
   if (!year || !month) return { error: "Invalid period." };
@@ -1279,7 +1282,7 @@ export async function addVariablePayBulk(
           amountPaise: r.amountPaise,
           hours: r.hours,
           ratePaisePerHour: rate,
-          reason: null,
+          reason: batchReason,
           createdBy: user.email,
           createdAt: now,
         });
