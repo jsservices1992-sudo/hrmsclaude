@@ -10,9 +10,9 @@ function Problems({ state }: { state: ImportState }) {
       {state.ok && <p className="text-sm text-teal max-w-[70ch]">{state.ok}</p>}
       {state.error && <p className="text-sm text-rust max-w-[70ch]">{state.error}</p>}
       {state.problems && state.problems.length > 0 && (
-        <div className="border border-rust/40 bg-rust-soft rounded-lg">
+        <div className="border border-rust/25 bg-rust-soft rounded-lg">
           <div className="px-3 py-2 border-b border-rust/20">
-            <span className="label text-rust">
+            <span className="text-xs font-semibold text-rust">
               Fix these and upload again — nothing was imported
             </span>
           </div>
@@ -72,9 +72,9 @@ function Uploader({
         </div>
 
         {state.confirm && (
-          <div className="border border-amber/40 bg-amber-soft rounded-lg">
+          <div className="border border-amber/25 bg-amber-soft rounded-lg">
             <div className="px-3 py-2 border-b border-amber/20">
-              <span className="label text-amber">
+              <span className="text-xs font-semibold text-amber">
                 These leave types are not set up yet — create them?
               </span>
             </div>

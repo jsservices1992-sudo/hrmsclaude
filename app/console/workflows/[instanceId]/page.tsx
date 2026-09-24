@@ -37,7 +37,7 @@ export default async function WorkflowInstancePage(
         <Link href="/console/workflows" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
           ← Approval workflows
         </Link>
-        <p className="label text-ink-3 mt-3">{view.templateName}</p>
+        <p className="text-xs font-medium text-ink-2 mt-3">{view.templateName}</p>
         <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">
           {view.subject.firstName} {view.subject.lastName}
         </h1>
@@ -78,7 +78,7 @@ export default async function WorkflowInstancePage(
           <li key={g}>
           <Card padded={false}>
             <div className="px-5 py-3.5 border-b border-line-2">
-              <span className="label text-ink-3">
+              <span className="text-xs font-medium text-ink-2">
                 Stage {g}
                 {view.steps.filter((s) => s.group === g).length > 1 && " · runs in parallel"}
               </span>

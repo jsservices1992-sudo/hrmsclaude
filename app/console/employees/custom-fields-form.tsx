@@ -58,7 +58,7 @@ export default function CustomFieldsForm({
                 if (hidden) {
                   return (
                     <div key={f.id} className="flex flex-col gap-1.5">
-                      <span className="label text-ink-3">
+                      <span className="text-xs font-medium text-ink-2">
                         {f.label}
                         <span className="text-rust ml-2">restricted</span>
                       </span>
@@ -74,7 +74,7 @@ export default function CustomFieldsForm({
 
                 return (
                   <label key={f.id} className="flex flex-col gap-1.5">
-                    <span className="label text-ink-3">
+                    <span className="text-xs font-medium text-ink-2">
                       {f.label}
                       {f.required && <span className="text-rust ml-1">*</span>}
                     </span>

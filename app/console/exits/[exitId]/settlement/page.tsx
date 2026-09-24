@@ -173,7 +173,7 @@ export default async function SettlementPage(
           },
         ].map((x) => (
           <div key={x.l} className="px-4 py-4 border-r border-b border-line-2 last:border-r-0">
-            <p className="label text-ink-3">{x.l}</p>
+            <p className="text-xs font-medium text-ink-2">{x.l}</p>
             <p className={`font-display text-xl font-semibold tnum mt-1 ${x.warn ? "text-rust" : ""}`}>
               {x.v}
             </p>
@@ -230,7 +230,7 @@ export default async function SettlementPage(
       <Card padded={false}>
         <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-[15px] font-semibold text-ink">Tax on separation</span>
-          <span className="label text-ink-3">{tax.basis}</span>
+          <span className="text-xs font-medium text-ink-2">{tax.basis}</span>
         </div>
 
         {tax.components.length === 0 ? (
@@ -336,10 +336,10 @@ export default async function SettlementPage(
 
       {/* ---------- demand & recovery ---------- */}
       {receivable && (
-        <div className="border border-rust/40 bg-surface rounded-xl">
+        <div className="border border-rust/25 bg-surface rounded-xl">
           <div className="px-4 py-2.5 border-b border-line bg-rust-soft flex flex-wrap items-center justify-between gap-2 rounded-lg">
-            <span className="label text-rust">Demand outstanding</span>
-            <span className="label text-rust">{receivable.status.replace(/_/g, " ")}</span>
+            <span className="text-xs font-semibold text-rust">Demand outstanding</span>
+            <span className="text-xs font-semibold text-rust">{receivable.status.replace(/_/g, " ")}</span>
           </div>
           <Row label="Original demand" value={formatINR(receivable.originalPaise)} />
           <Row label="Recovered" value={formatINR(receivable.recoveredPaise)} />
@@ -368,7 +368,7 @@ export default async function SettlementPage(
 
           {canAct && receivable.outstandingPaise > 0 && (
             <div className="px-4 py-3 border-t border-line" data-print="hide">
-              <p className="label text-ink-3 mb-2">Record a receipt</p>
+              <p className="text-xs font-medium text-ink-2 mb-2">Record a receipt</p>
               <RecordRecoveryForm
                 exitCaseId={exitId}
                 outstandingPaise={receivable.outstandingPaise}
@@ -377,7 +377,7 @@ export default async function SettlementPage(
           )}
           {user.role === "admin" && receivable.outstandingPaise > 0 && (
             <div className="px-4 py-3 border-t border-line-2" data-print="hide">
-              <p className="label text-rust mb-2">Write off</p>
+              <p className="text-xs font-semibold text-rust mb-2">Write off</p>
               <WriteOffForm exitCaseId={exitId} />
             </div>
           )}
@@ -428,7 +428,7 @@ export default async function SettlementPage(
           <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[15px] font-semibold text-ink">Settlement</span>
             {stored && (
-              <span className="label text-ink-3">
+              <span className="text-xs font-medium text-ink-2">
                 {stored.status} · prepared by {stored.preparedBy}
                 {stored.approvedBy && ` · approved by ${stored.approvedBy}`}
               </span>

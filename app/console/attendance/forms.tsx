@@ -342,7 +342,7 @@ export function OverrideAttendanceForm({
       <input type="hidden" name="lopDays" value={lop} />
 
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Paid days</span>
+        <span className="text-xs font-medium text-ink-2">Paid days</span>
         <div className="flex items-baseline gap-2">
           <Input
             type="number"
@@ -363,7 +363,7 @@ export function OverrideAttendanceForm({
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Reason</span>
+        <span className="text-xs font-medium text-ink-2">Reason</span>
         <Textarea name="reason" placeholder="Required — this replaces what attendance derived" rows={2} className="w-full" />
       </label>
       <SubmitButton variant="primary" pendingText="Saving…">Save override</SubmitButton>

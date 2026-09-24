@@ -149,7 +149,7 @@ export function TemplateBuilder({
       <input type="hidden" name="stepsJson" value={JSON.stringify(steps)} />
 
       <label className="flex flex-col gap-1 max-w-md">
-        <span className="label text-ink-3">Template name</span>
+        <span className="text-xs font-medium text-ink-2">Template name</span>
         <Input
           name="name"
           value={name}
@@ -164,7 +164,7 @@ export function TemplateBuilder({
             <div className="flex flex-wrap items-end gap-2">
               <span className="font-mono text-xs text-ink-3 w-6 pb-2">{i + 1}.</span>
               <label className="flex flex-col gap-1 flex-1 min-w-[16rem]">
-                <span className="label text-ink-3">Step</span>
+                <span className="text-xs font-medium text-ink-2">Step</span>
                 <Input
                   value={step.label}
                   onChange={(e) => update(i, { label: e.target.value })}
@@ -172,7 +172,7 @@ export function TemplateBuilder({
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="label text-ink-3">Kind</span>
+                <span className="text-xs font-medium text-ink-2">Kind</span>
                 <Select
                   value={step.type}
                   onChange={(e) => update(i, { type: e.target.value as WorkflowStep["type"] })}
@@ -183,7 +183,7 @@ export function TemplateBuilder({
                 </Select>
               </label>
               <label className="flex flex-col gap-1">
-                <span className="label text-ink-3">Owner</span>
+                <span className="text-xs font-medium text-ink-2">Owner</span>
                 <Select
                   value={step.assignee.kind}
                   onChange={(e) => setAssignee(i, e.target.value as AssigneeRule["kind"])}
@@ -198,7 +198,7 @@ export function TemplateBuilder({
               </label>
               {step.assignee.kind === "role" && (
                 <label className="flex flex-col gap-1">
-                  <span className="label text-ink-3">Role</span>
+                  <span className="text-xs font-medium text-ink-2">Role</span>
                   <Select
                     value={step.assignee.role}
                     onChange={(e) => update(i, { assignee: { kind: "role", role: e.target.value } })}
@@ -212,7 +212,7 @@ export function TemplateBuilder({
               )}
               {step.assignee.kind === "department" && (
                 <label className="flex flex-col gap-1">
-                  <span className="label text-ink-3">Department</span>
+                  <span className="text-xs font-medium text-ink-2">Department</span>
                   <Input
                     value={step.assignee.department}
                     onChange={(e) =>
@@ -225,7 +225,7 @@ export function TemplateBuilder({
               )}
               {step.assignee.kind === "user" && (
                 <label className="flex flex-col gap-1">
-                  <span className="label text-ink-3">Email</span>
+                  <span className="text-xs font-medium text-ink-2">Email</span>
                   <Input
                     value={step.assignee.email}
                     onChange={(e) => update(i, { assignee: { kind: "user", email: e.target.value } })}
@@ -235,7 +235,7 @@ export function TemplateBuilder({
                 </label>
               )}
               <label className="flex flex-col gap-1">
-                <span className="label text-ink-3">SLA days</span>
+                <span className="text-xs font-medium text-ink-2">SLA days</span>
                 <Input
                   type="number"
                   min={0}
@@ -246,7 +246,7 @@ export function TemplateBuilder({
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="label text-ink-3">Group</span>
+                <span className="text-xs font-medium text-ink-2">Group</span>
                 <Input
                   type="number"
                   min={1}
@@ -343,7 +343,7 @@ export function DepartmentOwnersPanel({
         <ul className="flex flex-col gap-1.5">
           {[...byDept.entries()].map(([dept, rows]) => (
             <li key={dept} className="text-sm flex flex-wrap items-center gap-2">
-              <span className="label text-ink-3">{dept}</span>
+              <span className="text-xs font-medium text-ink-2">{dept}</span>
               {rows.map((r) => (
                 <RemoveDepartmentOwnerForm key={r.id} id={r.id} email={r.ownerEmail} />
               ))}

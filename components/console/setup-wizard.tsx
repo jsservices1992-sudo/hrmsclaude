@@ -39,10 +39,10 @@ export async function SetupWizard({
       />
 
       <div className="px-4 py-2.5 border-b border-indigo/20 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
-        <span className="label text-indigo">
+        <span className="text-xs font-semibold text-indigo">
           Setting up · step {at.index + 1} of {at.total}
         </span>
-        <span className="label text-ink-3">
+        <span className="text-xs font-medium text-ink-2">
           {at.done} of {at.total} done
         </span>
       </div>
@@ -68,9 +68,9 @@ export async function SetupWizard({
           <p className="font-display text-lg font-semibold">
             {at.step.title}
             {at.step.required ? (
-              <span className="label text-rust ml-2 align-middle">required</span>
+              <span className="text-xs font-semibold text-rust ml-2 align-middle">required</span>
             ) : (
-              <span className="label text-ink-3 ml-2 align-middle">optional</span>
+              <span className="text-xs font-medium text-ink-2 ml-2 align-middle">optional</span>
             )}
           </p>
           <p className="text-sm text-ink-2 mt-0.5 max-w-[78ch]">{at.step.why}</p>
@@ -80,17 +80,17 @@ export async function SetupWizard({
           {at.previous && (
             <Link
               href={withWizard(at.previous.href, at.previous.id)}
-              className="label text-ink-3 hover:text-ink"
+              className="text-xs font-medium text-ink-2 hover:text-ink"
             >
               ← Back
             </Link>
           )}
-          <Link href="/console/setup" className="label text-ink-3 hover:text-ink">
+          <Link href="/console/setup" className="text-xs font-medium text-ink-2 hover:text-ink">
             Leave
           </Link>
           <Link
             href={nextHref}
-            className="rounded-md bg-indigo text-on-indigo px-4 py-2 text-sm font-medium"
+            className="rounded-lg bg-indigo text-on-indigo px-4 py-2 text-sm font-medium"
           >
             {next ? (at.step.done ? "Next" : "Skip for now") : "Finish"} →
           </Link>

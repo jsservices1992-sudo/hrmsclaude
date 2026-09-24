@@ -72,7 +72,7 @@ export function AttendanceDayRow({
         <Dialog open={openDate !== null} onClose={() => setOpenDate(null)} size="sm" labelledBy={headingId}>
           <div className="flex items-start justify-between gap-4 mb-3">
             <div>
-              <h2 id={headingId} className="label text-ink-2">{name}</h2>
+              <h2 id={headingId} className="text-xs font-semibold text-ink">{name}</h2>
               <p className="font-mono text-xs text-ink-3 mt-0.5">
                 {formatDate(openDate)} · currently {MARK[current?.status ?? "present"]?.title.toLowerCase()}
               </p>
@@ -80,7 +80,7 @@ export function AttendanceDayRow({
             <button
               type="button"
               onClick={() => setOpenDate(null)}
-              className="label text-ink-3 hover:text-rust"
+              className="text-xs font-medium text-ink-2 hover:text-rust"
             >
               Close
             </button>
@@ -91,7 +91,7 @@ export function AttendanceDayRow({
             <input type="hidden" name="employeeId" value={employeeId} />
             {/* Editable, so a row opened on one day can be pointed at another. */}
             <label className="flex flex-col gap-1">
-              <span className="label text-ink-3">Date</span>
+              <span className="text-xs font-medium text-ink-2">Date</span>
               <Select name="date" defaultValue={openDate ?? ""} key={openDate ?? "none"}>
                 {days.map((d) => (
                   <option key={d.date} value={d.date}>
@@ -101,7 +101,7 @@ export function AttendanceDayRow({
               </Select>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="label text-ink-3">Mark as</span>
+              <span className="text-xs font-medium text-ink-2">Mark as</span>
               <Select name="status" defaultValue="present">
                 <option value="present">Present</option>
                 <option value="half_day">Half day</option>
@@ -110,7 +110,7 @@ export function AttendanceDayRow({
               </Select>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="label text-ink-3">Reason</span>
+              <span className="text-xs font-medium text-ink-2">Reason</span>
               <Input name="reason" required placeholder="Required — overrides the punches" />
             </label>
             <SubmitButton variant="primary" pendingText="Saving…">Save day</SubmitButton>

@@ -577,9 +577,9 @@ export default async function EmployeeDetailPage(
                     </TD>
                     <TD>
                       {d.restricted ? (
-                        <span className="label text-rust">Restricted</span>
+                        <span className="text-xs font-semibold text-rust">Restricted</span>
                       ) : (
-                        <span className="label text-ink-3">Standard</span>
+                        <span className="text-xs font-medium text-ink-2">Standard</span>
                       )}
                     </TD>
                     <TD>
@@ -593,7 +593,7 @@ export default async function EmployeeDetailPage(
                           Open →
                         </a>
                       ) : (
-                        <span className="label text-ink-3">No file</span>
+                        <span className="text-xs font-medium text-ink-2">No file</span>
                       )}
                     </TD>
                     <TD className="whitespace-normal">
@@ -626,7 +626,7 @@ export default async function EmployeeDetailPage(
 
           {canAct && (
             <div className="px-4 py-4 border-t border-line bg-surface-2">
-              <p className="label text-ink-2 mb-3">Add a document</p>
+              <p className="text-xs font-semibold text-ink mb-3">Add a document</p>
               <UploadDocumentForm
                 employeeId={detail.employee.id}
                 types={DOCUMENT_REQUIREMENTS.map((r) => ({
@@ -641,7 +641,7 @@ export default async function EmployeeDetailPage(
 
           {checklist.warnings.length > 0 && (
             <div className="px-4 py-3 border-t border-line bg-amber-soft rounded-lg">
-              <p className="label text-amber mb-1.5">
+              <p className="text-xs font-semibold text-amber mb-1.5">
                 Checklist · {(checklist.completionBps / 100).toFixed(0)}% of
                 mandatory documents complete
               </p>
@@ -684,7 +684,7 @@ export default async function EmployeeDetailPage(
                     canActOnPeople(user) ? (
                       <RevokeAssetForm allocationId={h.alloc.id} />
                     ) : (
-                      <span className="label text-indigo">Currently held</span>
+                      <span className="text-xs font-semibold text-indigo">Currently held</span>
                     )
                   ) : (
                     <Badge

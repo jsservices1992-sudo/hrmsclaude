@@ -52,7 +52,7 @@ export function FileDrop({
       onDragLeave={() => setOver(false)}
       onDrop={() => setOver(false)}
       className={`relative flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-base focus-within:shadow-ring ${
-        over ? "border-indigo bg-indigo-soft" : file ? "border-teal/40 bg-teal-soft/50" : "border-line bg-surface-2/60 hover:border-indigo/40 hover:bg-indigo-soft/40"
+        over ? "border-indigo bg-indigo-soft" : file ? "border-teal/25 bg-teal-soft/50" : "border-line bg-surface-2/60 hover:border-indigo/40 hover:bg-indigo-soft/40"
       }`}
     >
       <input

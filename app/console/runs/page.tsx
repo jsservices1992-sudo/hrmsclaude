@@ -260,48 +260,50 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
       )}
 
       {allRuns.length > 0 && (
-        <FilterBar
-          action="/console/runs"
-          mode="filter"
-          hidden={{ period: `${calcYear}-${calcMonth}` }}
-          clearHref={hasFilters ? "/console/runs" : null}
-          trailing={
-            <a
-              href={`/console/runs/export?${exportQuery.toString()}`}
-              className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
-            >
-              Download CSV →
-            </a>
-          }
-        >
-          {companies.length > 1 && (
-            <input type="hidden" name="company" value={companyFilter} />
-          )}
-          <FilterField label="Year">
-            <Select name="year" defaultValue={yearFilter} className="w-28">
-              <option value="">All years</option>
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </Select>
-          </FilterField>
-          <FilterField label="Month">
-            <Select name="month" defaultValue={monthFilter} className="w-36">
-              <option value="">All months</option>
-              {MONTHS.map((m, i) => (
-                <option key={m} value={i + 1}>{m}</option>
-              ))}
-            </Select>
-          </FilterField>
-          <FilterField label="Status">
-            <Select name="status" defaultValue={statusFilter} className="w-36">
-              <option value="">All statuses</option>
-              {Object.keys(STATUS_TONE).map((st) => (
-                <option key={st} value={st}>{st.replace("_", " ")}</option>
-              ))}
-            </Select>
-          </FilterField>
-        </FilterBar>
+        <Card>
+          <FilterBar
+            action="/console/runs"
+            mode="filter"
+            hidden={{ period: `${calcYear}-${calcMonth}` }}
+            clearHref={hasFilters ? "/console/runs" : null}
+            trailing={
+              <a
+                href={`/console/runs/export?${exportQuery.toString()}`}
+                className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
+              >
+                Download CSV →
+              </a>
+            }
+          >
+            {companies.length > 1 && (
+              <input type="hidden" name="company" value={companyFilter} />
+            )}
+            <FilterField label="Year">
+              <Select name="year" defaultValue={yearFilter} className="w-28">
+                <option value="">All years</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </Select>
+            </FilterField>
+            <FilterField label="Month">
+              <Select name="month" defaultValue={monthFilter} className="w-36">
+                <option value="">All months</option>
+                {MONTHS.map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </Select>
+            </FilterField>
+            <FilterField label="Status">
+              <Select name="status" defaultValue={statusFilter} className="w-36">
+                <option value="">All statuses</option>
+                {Object.keys(STATUS_TONE).map((st) => (
+                  <option key={st} value={st}>{st.replace("_", " ")}</option>
+                ))}
+              </Select>
+            </FilterField>
+          </FilterBar>
+        </Card>
       )}
 
       {runs.length === 0 ? (
@@ -319,7 +321,7 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
         <Card padded={false}>
           <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
             <span className="text-[15px] font-semibold text-ink">Saved runs</span>
-            <span className="label text-ink-3 tnum">{runs.length}</span>
+            <span className="text-xs font-medium text-ink-2 tnum">{runs.length}</span>
           </div>
           {/* Scrolls sideways inside its own box rather than pushing the
               page: at tablet width these columns need ~890px. */}
@@ -327,13 +329,13 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
           <table className="w-full text-sm min-w-[52rem]">
             <thead>
               <tr className="border-b border-line">
-                <th className="label text-ink-3 text-left px-3 py-2">Period</th>
-                <th className="label text-ink-3 text-left px-3 py-2">Status</th>
-                <th className="label text-ink-3 text-right px-3 py-2">Emp.</th>
-                <th className="label text-ink-3 text-right px-3 py-2">Gross</th>
-                <th className="label text-ink-3 text-right px-3 py-2">Net</th>
-                <th className="label text-ink-3 text-left px-3 py-2">Config as at</th>
-                <th className="label text-ink-3 text-right px-3 py-2">&nbsp;</th>
+                <th className="text-xs font-medium text-ink-2 text-left px-3 py-2">Period</th>
+                <th className="text-xs font-medium text-ink-2 text-left px-3 py-2">Status</th>
+                <th className="text-xs font-medium text-ink-2 text-right px-3 py-2">Emp.</th>
+                <th className="text-xs font-medium text-ink-2 text-right px-3 py-2">Gross</th>
+                <th className="text-xs font-medium text-ink-2 text-right px-3 py-2">Net</th>
+                <th className="text-xs font-medium text-ink-2 text-left px-3 py-2">Config as at</th>
+                <th className="text-xs font-medium text-ink-2 text-right px-3 py-2">&nbsp;</th>
               </tr>
             </thead>
             <tbody>

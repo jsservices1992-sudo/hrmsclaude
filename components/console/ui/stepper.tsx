@@ -14,7 +14,7 @@ export type Step = {
 const dot: Record<StepStatus, string> = {
   done: "bg-teal text-on-indigo border-teal",
   current: "bg-indigo text-on-indigo border-indigo",
-  blocked: "bg-rust-soft text-rust border-rust/40",
+  blocked: "bg-rust-soft text-rust border-rust/25",
   todo: "bg-surface text-ink-3 border-line",
 };
 

@@ -29,7 +29,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div
             key={t.id}
             role="status"
-            className={`rounded-md border px-4 py-3 text-sm shadow-lg ${
+            className={`rounded-lg border px-4 py-3 text-sm shadow-lg ${
               t.tone === "error" ? "border-rust bg-rust-soft text-rust" : "border-teal bg-teal-soft text-teal"
             }`}
           >

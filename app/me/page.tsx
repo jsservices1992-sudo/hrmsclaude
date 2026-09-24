@@ -30,7 +30,7 @@ import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
 import { CURRENT_FY, fyLabel } from "@/lib/tax/fy";
 import { PrintButton } from "@/components/console/print-button";
 import { StepActionForm } from "@/app/console/workflows/forms";
-import { Badge } from "@/components/console/ui";
+import { Badge, fieldClass } from "@/components/console/ui";
 import {
   ApplyLeaveForm,
   CancelLeaveForm,
@@ -114,7 +114,7 @@ export default async function MePage(props: PageProps<"/me">) {
       <div className="mx-auto max-w-md px-5 py-20 text-center flex flex-col gap-4">
         <p className="text-ink-2">Your account is not linked to an employee record.</p>
         {canAccessConsole(user) && (
-          <Link href="/console" className="label text-amber underline">
+          <Link href="/console" className="text-xs font-semibold text-amber underline">
             Go to the console →
           </Link>
         )}
@@ -564,7 +564,7 @@ export default async function MePage(props: PageProps<"/me">) {
               className="border border-indigo/40 bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-surface-2 rounded-xl"
             >
               <div>
-                <p className="label text-indigo">Full &amp; final settlement</p>
+                <p className="text-xs font-semibold text-indigo">Full &amp; final settlement</p>
                 <p className="text-sm text-ink-2 mt-1">
                   Status:{" "}
                   <span className="font-medium text-ink">
@@ -576,7 +576,7 @@ export default async function MePage(props: PageProps<"/me">) {
                   </span>
                 </p>
               </div>
-              <span className="label text-indigo">View statement →</span>
+              <span className="text-xs font-semibold text-indigo">View statement →</span>
             </Link>
           )}
 
@@ -589,7 +589,7 @@ export default async function MePage(props: PageProps<"/me">) {
               }
               className="rounded-xl border border-line bg-surface px-5 py-4 transition-base hover:border-indigo/40 hover:shadow-md"
             >
-              <p className="label text-ink-3">
+              <p className="text-xs font-medium text-ink-2">
                 Net pay{latestPublished ? ` · ${MONTHS[latestPublished.month - 1]}` : ""}
               </p>
               <p className="text-2xl font-bold tracking-tight tnum mt-1">
@@ -602,7 +602,7 @@ export default async function MePage(props: PageProps<"/me">) {
               </p>
             </Link>
             <Link href="/me?tab=leave" className="rounded-xl border border-line bg-surface px-5 py-4 transition-base hover:border-indigo/40 hover:shadow-md">
-              <p className="label text-ink-3">Leave balance</p>
+              <p className="text-xs font-medium text-ink-2">Leave balance</p>
               <p className="text-2xl font-bold tracking-tight tnum mt-1">
                 {balances.reduce((a, b) => a + b.balanceDays, 0)} days
               </p>
@@ -611,7 +611,7 @@ export default async function MePage(props: PageProps<"/me">) {
               )}
             </Link>
             <Link href="/me?tab=documents" className="rounded-xl border border-line bg-surface px-5 py-4 transition-base hover:border-indigo/40 hover:shadow-md">
-              <p className="label text-ink-3">Documents</p>
+              <p className="text-xs font-medium text-ink-2">Documents</p>
               <p className="text-2xl font-bold tracking-tight tnum mt-1">
                 {(checklist.completionBps / 100).toFixed(0)}% complete
               </p>
@@ -712,7 +712,7 @@ export default async function MePage(props: PageProps<"/me">) {
                       </div>
                       <div className="text-right">
                         <p className="font-mono text-sm tnum">{formatINR(loan.outstandingPaise)}</p>
-                        <p className="label text-ink-3">still owed</p>
+                        <p className="text-xs font-medium text-ink-2">still owed</p>
                       </div>
                     </li>
                   );
@@ -788,7 +788,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 },
               ].map((group) => (
                 <div key={group.heading} className="border-b border-line-2 last:border-0">
-                  <p className="label text-ink-3 px-4 pt-3.5 pb-1">{group.heading}</p>
+                  <p className="text-xs font-medium text-ink-2 px-4 pt-3.5 pb-1">{group.heading}</p>
                   <dl className="grid sm:grid-cols-2 gap-x-6 px-4 pb-3 text-sm">
                     {group.rows.map(([k, v]) => (
                       <div key={k} className="flex justify-between gap-3 py-1.5 border-b border-line-2 last:border-0 sm:border-b">
@@ -815,7 +815,7 @@ export default async function MePage(props: PageProps<"/me">) {
               title="My change requests"
               right={
                 pendingProfile > 0 ? (
-                  <span className="label text-amber">{pendingProfile} pending</span>
+                  <span className="text-xs font-semibold text-amber">{pendingProfile} pending</span>
                 ) : undefined
               }
             >
@@ -869,7 +869,7 @@ export default async function MePage(props: PageProps<"/me">) {
           <div className="flex flex-wrap items-center justify-between gap-3" data-print="hide">
             <form action="/me" className="flex items-end gap-2">
               <input type="hidden" name="tab" value="payslip" />
-              <select name="month" defaultValue={month} className="px-3 py-2 text-sm bg-surface border border-line rounded-lg">
+              <select name="month" defaultValue={month} className={fieldClass}>
                 {MONTHS.map((m, i) => (
                   <option key={m} value={i + 1}>
                     {m}
@@ -880,7 +880,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 name="year"
                 type="number"
                 defaultValue={year}
-                className="px-3 py-2 text-sm bg-surface border border-line font-mono tnum w-24 rounded-lg"
+                className={`${fieldClass} tnum w-24`}
               />
               <button className="px-3 py-2 text-sm border border-line bg-surface hover:border-ink-3 rounded-lg">
                 Show
@@ -900,7 +900,7 @@ export default async function MePage(props: PageProps<"/me">) {
           )}
 
           {publishedPeriods.length > 0 && (
-            <Panel title="Earlier payslips" right={<span className="label text-ink-3">{publishedPeriods.length}</span>}>
+            <Panel title="Earlier payslips" right={<span className="text-xs font-medium text-ink-2">{publishedPeriods.length}</span>}>
               <ul className="divide-y divide-line-2" data-print="hide">
                 {publishedPeriods.map((p) => (
                   <li
@@ -911,7 +911,7 @@ export default async function MePage(props: PageProps<"/me">) {
                       <p className="text-sm font-medium">
                         {MONTHS[p.month - 1]} {p.year}
                         {p.version > 1 && (
-                          <span className="label text-ink-3 ml-2">revised · v{p.version}</span>
+                          <span className="text-xs font-medium text-ink-2 ml-2">revised · v{p.version}</span>
                         )}
                       </p>
                       <p className="text-xs text-ink-3 font-mono mt-0.5 tnum">
@@ -941,7 +941,7 @@ export default async function MePage(props: PageProps<"/me">) {
         <div className="flex flex-col gap-4">
           <form action="/me" className="flex items-end gap-2">
             <input type="hidden" name="tab" value="attendance" />
-            <select name="month" defaultValue={month} className="px-3 py-2 text-sm bg-surface border border-line rounded-lg">
+            <select name="month" defaultValue={month} className={fieldClass}>
               {MONTHS.map((m, i) => (
                 <option key={m} value={i + 1}>
                   {m}
@@ -952,7 +952,7 @@ export default async function MePage(props: PageProps<"/me">) {
               name="year"
               type="number"
               defaultValue={year}
-              className="px-3 py-2 text-sm bg-surface border border-line font-mono tnum w-24 rounded-lg"
+              className={`${fieldClass} tnum w-24`}
             />
             <button className="px-3 py-2 text-sm border border-line bg-surface hover:border-ink-3 rounded-lg">
               Show
@@ -968,7 +968,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 ["Hours worked", attendanceMonth.summary.workedHours],
               ].map(([label, value]) => (
                 <div key={String(label)} className="border border-line bg-surface px-4 py-3 rounded-lg">
-                  <p className="label text-ink-3">{label}</p>
+                  <p className="text-xs font-medium text-ink-2">{label}</p>
                   <p className="text-2xl font-bold tracking-tight tnum mt-1">{value}</p>
                 </div>
               ))}
@@ -984,7 +984,7 @@ export default async function MePage(props: PageProps<"/me">) {
                   <thead>
                     <tr className="border-b border-line">
                       {["Date", "Status", "Worked", "Late", "Unpaid", "Basis"].map((h) => (
-                        <th key={h} className="label text-ink-3 text-left px-4 py-2 whitespace-nowrap">
+                        <th key={h} className="text-xs font-medium text-ink-2 text-left px-4 py-2 whitespace-nowrap">
                           {h}
                         </th>
                       ))}
@@ -1039,7 +1039,7 @@ export default async function MePage(props: PageProps<"/me">) {
             title="My corrections"
             right={
               pendingCorrections > 0 ? (
-                <span className="label text-amber">{pendingCorrections} pending</span>
+                <span className="text-xs font-semibold text-amber">{pendingCorrections} pending</span>
               ) : undefined
             }
           >
@@ -1105,7 +1105,7 @@ export default async function MePage(props: PageProps<"/me">) {
               ) : (
                 balances.map((b) => (
                   <li key={b.id} className="px-4 py-3">
-                    <p className="label text-ink-3">{b.leaveType}</p>
+                    <p className="text-xs font-medium text-ink-2">{b.leaveType}</p>
                     <p className="text-2xl font-bold tracking-tight tnum mt-1">{b.balanceDays}</p>
                   </li>
                 ))
@@ -1184,7 +1184,7 @@ export default async function MePage(props: PageProps<"/me">) {
             <Panel
               title={`Optional holidays · ${year}`}
               right={
-                <span className="label text-ink-3">
+                <span className="text-xs font-medium text-ink-2">
                   {Math.max(0, rhType.annualDays - rhClaimed.length)} of {rhType.annualDays} left
                 </span>
               }
@@ -1201,9 +1201,9 @@ export default async function MePage(props: PageProps<"/me">) {
                     {o.taken ? (
                       <Badge tone="teal">Claimed</Badge>
                     ) : o.past ? (
-                      <span className="label text-ink-3">passed</span>
+                      <span className="text-xs font-medium text-ink-2">passed</span>
                     ) : rhClaimed.length >= rhType.annualDays ? (
-                      <span className="label text-ink-3">allowance used</span>
+                      <span className="text-xs font-medium text-ink-2">allowance used</span>
                     ) : (
                       <RestrictedHolidayForm
                         leaveTypeId={rhType.id}
@@ -1231,23 +1231,23 @@ export default async function MePage(props: PageProps<"/me">) {
           {worksheet && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="border border-line bg-surface px-4 py-3 rounded-lg">
-                <p className="label text-ink-3">Regime</p>
+                <p className="text-xs font-medium text-ink-2">Regime</p>
                 <p className="font-display text-xl font-semibold mt-1 capitalize">{worksheet.regime}</p>
               </div>
               <div className="border border-line bg-surface px-4 py-3 rounded-lg">
-                <p className="label text-ink-3">Taxable income</p>
+                <p className="text-xs font-medium text-ink-2">Taxable income</p>
                 <p className="text-2xl font-bold tracking-tight tnum mt-1">
                   {formatINR(worksheet.annual.taxableIncomePaise)}
                 </p>
               </div>
               <div className="border border-line bg-surface px-4 py-3 rounded-lg">
-                <p className="label text-ink-3">Tax for the year</p>
+                <p className="text-xs font-medium text-ink-2">Tax for the year</p>
                 <p className="text-2xl font-bold tracking-tight tnum mt-1">
                   {formatINR(worksheet.annual.tax.totalTaxPaise)}
                 </p>
               </div>
               <div className="border border-line bg-surface px-4 py-3 rounded-lg">
-                <p className="label text-ink-3">Deducted so far</p>
+                <p className="text-xs font-medium text-ink-2">Deducted so far</p>
                 <p className="text-2xl font-bold tracking-tight tnum mt-1">
                   {formatINR(worksheet.tdsToDatePaise)}
                 </p>
@@ -1257,7 +1257,7 @@ export default async function MePage(props: PageProps<"/me">) {
 
           {regimeComparison && (
             <div className="border border-line bg-surface px-5 py-4 rounded-lg">
-              <p className="label text-ink-3">Which regime costs you less</p>
+              <p className="text-xs font-medium text-ink-2">Which regime costs you less</p>
               <p className="text-sm text-ink-2 mt-1.5 max-w-[70ch]">
                 On what you have declared, the{" "}
                 <span className="font-medium text-ink">
@@ -1286,7 +1286,7 @@ export default async function MePage(props: PageProps<"/me">) {
           <Panel
             title={`Declaration · ${fyLabel(CURRENT_FY)}`}
             right={
-              <span className="label text-ink-3">
+              <span className="text-xs font-medium text-ink-2">
                 {worksheet?.declaration?.status.replace(/_/g, " ") ?? "not started"}
               </span>
             }
@@ -1353,11 +1353,11 @@ export default async function MePage(props: PageProps<"/me">) {
             <form action="/me" className="flex items-end gap-2">
               <input type="hidden" name="tab" value="form16" />
               <label className="flex flex-col gap-1">
-                <span className="label text-ink-3">Financial year</span>
+                <span className="text-xs font-medium text-ink-2">Financial year</span>
                 <select
                   name="fy"
                   defaultValue={financialYear}
-                  className="px-3 py-2 text-sm bg-surface border border-line rounded-lg"
+                  className={fieldClass}
                 >
                   {[CURRENT_FY, CURRENT_FY - 1, CURRENT_FY - 2].map((y) => (
                     <option key={y} value={y}>
@@ -1384,7 +1384,7 @@ export default async function MePage(props: PageProps<"/me">) {
             <>
               {!form16.form.complete && (
                 <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl" data-print="hide">
-                  <p className="label text-amber mb-1">Provisional</p>
+                  <p className="text-xs font-semibold text-amber mb-1">Provisional</p>
                   <p className="text-sm text-ink-2 max-w-[70ch]">
                     {fyLabel(financialYear)} is not over. This is your position
                     to date and it will move with the payrolls still to run —
@@ -1454,7 +1454,7 @@ export default async function MePage(props: PageProps<"/me">) {
                       <div>
                         <p className="text-sm">
                           {i.requirement.label}
-                          {i.mandatory && <span className="label text-ink-3 ml-2">required</span>}
+                          {i.mandatory && <span className="text-xs font-medium text-ink-2 ml-2">required</span>}
                         </p>
                         {i.expiry.status !== "none" && (
                           <p
@@ -1514,7 +1514,7 @@ export default async function MePage(props: PageProps<"/me">) {
                     <div>
                       <p className="text-sm font-medium">
                         {asset.assetTag}
-                        <span className="label text-ink-3 ml-2">{ASSET_CATEGORY_LABEL[asset.category]}</span>
+                        <span className="text-xs font-medium text-ink-2 ml-2">{ASSET_CATEGORY_LABEL[asset.category]}</span>
                       </p>
                       <p className="text-xs text-ink-3 font-mono mt-0.5">
                         issued {formatDate(alloc.issuedAt)}
@@ -1538,7 +1538,7 @@ export default async function MePage(props: PageProps<"/me">) {
         <div className="flex flex-col gap-4">
           <Panel
             title="Leave requests"
-            right={<span className="label text-ink-3">{pendingTeam.length} pending</span>}
+            right={<span className="text-xs font-medium text-ink-2">{pendingTeam.length} pending</span>}
           >
             {pendingTeam.length === 0 ? (
               <p className="px-4 py-5 text-sm text-ink-3">Nothing is waiting for your approval.</p>
@@ -1571,7 +1571,7 @@ export default async function MePage(props: PageProps<"/me">) {
             title="Attendance corrections"
             right={
               teamCorrections.length > 0 ? (
-                <span className="label text-amber">{teamCorrections.length} pending</span>
+                <span className="text-xs font-semibold text-amber">{teamCorrections.length} pending</span>
               ) : undefined
             }
           >
@@ -1625,7 +1625,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 <thead>
                   <tr className="border-b border-line">
                     {["Name", "Loss of pay", "Status"].map((h) => (
-                      <th key={h} className="label text-ink-3 text-left px-4 py-2 whitespace-nowrap">
+                      <th key={h} className="text-xs font-medium text-ink-2 text-left px-4 py-2 whitespace-nowrap">
                         {h}
                       </th>
                     ))}
@@ -1738,7 +1738,7 @@ export default async function MePage(props: PageProps<"/me">) {
               <form action={logout}>
                 <button
                   type="submit"
-                  className="rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium"
+                  className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium"
                 >
                   Sign out
                 </button>
@@ -1751,7 +1751,7 @@ export default async function MePage(props: PageProps<"/me">) {
       {tab === "settlement" && settlementVisible && settlement && (
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3" data-print="hide">
-            <p className="label text-ink-3">Full &amp; final settlement</p>
+            <p className="text-xs font-medium text-ink-2">Full &amp; final settlement</p>
             <PrintButton label="Download / print statement" />
           </div>
           <Panel title="Statement">

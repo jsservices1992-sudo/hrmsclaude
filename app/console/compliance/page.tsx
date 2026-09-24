@@ -118,8 +118,8 @@ export default async function ComplianceConfigPage() {
       )}
 
       {missingSlabs.length > 0 && (
-        <div className="border border-amber/40 bg-amber-soft px-4 py-3 text-sm rounded-lg">
-          <span className="label text-amber">Gap</span>{" "}
+        <div className="border border-amber/25 bg-amber-soft px-4 py-3 text-sm rounded-lg">
+          <span className="text-xs font-semibold text-amber">Gap</span>{" "}
           <span className="text-ink-2">
             {missingSlabs.map((j) => j.name).join(", ")} levy PT but have no slab
             configured — a run for these states raises a validation finding.
@@ -177,7 +177,7 @@ export default async function ComplianceConfigPage() {
       <Card padded={false} className="overflow-x-auto">
         <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
           <span className="text-[15px] font-semibold text-ink">Jurisdiction coverage</span>
-          <span className="label text-ink-3 tnum">{juris.length} states &amp; UTs</span>
+          <span className="text-xs font-medium text-ink-2 tnum">{juris.length} states &amp; UTs</span>
         </div>
         <Table>
           <THead>
@@ -193,7 +193,7 @@ export default async function ComplianceConfigPage() {
                   <TD>
                     {j.name}
                     {j.verificationNote && (
-                      <span className="label text-amber ml-2">verify</span>
+                      <span className="text-xs font-semibold text-amber ml-2">verify</span>
                     )}
                   </TD>
                   <TD className="font-mono text-xs text-ink-3">

@@ -51,7 +51,7 @@ export function GenerateFileForm({
       <Period companyId={companyId} year={year} month={month} />
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Value date</span>
+          <span className="text-xs font-medium text-ink-2">Value date</span>
           <Input name="valueDate" type="date" defaultValue={defaultValueDate} className="font-mono" />
         </label>
         <SubmitButton variant="default" className="hover:border-indigo hover:text-indigo" pendingText="Working…">

@@ -11,11 +11,11 @@ export function CreateAssetForm({ companyId }: { companyId: string }) {
       <input type="hidden" name="companyId" value={companyId} />
       <div className="grid sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Asset tag</span>
+          <span className="text-xs font-medium text-ink-2">Asset tag</span>
           <Input name="assetTag" required placeholder="LAP-0042" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Category</span>
+          <span className="text-xs font-medium text-ink-2">Category</span>
           <Select name="category">
             <option value="laptop">Laptop</option>
             <option value="desktop">Desktop</option>
@@ -27,27 +27,27 @@ export function CreateAssetForm({ companyId }: { companyId: string }) {
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Make</span>
+          <span className="text-xs font-medium text-ink-2">Make</span>
           <Input name="make" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Model</span>
+          <span className="text-xs font-medium text-ink-2">Model</span>
           <Input name="model" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Serial number</span>
+          <span className="text-xs font-medium text-ink-2">Serial number</span>
           <Input name="serialNumber" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Purchase date</span>
+          <span className="text-xs font-medium text-ink-2">Purchase date</span>
           <Input name="purchaseDate" type="date" className="font-mono" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Purchase value (₹)</span>
+          <span className="text-xs font-medium text-ink-2">Purchase value (₹)</span>
           <Input name="purchaseValue" type="number" step="0.01" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Notes</span>
+          <span className="text-xs font-medium text-ink-2">Notes</span>
           <Input name="notes" />
         </label>
       </div>
@@ -71,7 +71,7 @@ export function IssueAssetForm({
     <form action={action} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="assetId" value={assetId} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Issue to</span>
+        <span className="text-xs font-medium text-ink-2">Issue to</span>
         <Select name="employeeId" required className="min-w-56">
           <option value="">Choose an employee…</option>
           {employees.map((e) => (
@@ -80,7 +80,7 @@ export function IssueAssetForm({
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Condition on issue</span>
+        <span className="text-xs font-medium text-ink-2">Condition on issue</span>
         <Input name="issueCondition" placeholder="e.g. new, minor scratch" />
       </label>
       <SubmitButton size="sm" pendingText="Working…">Issue</SubmitButton>
@@ -95,7 +95,7 @@ export function RevokeAssetForm({ allocationId }: { allocationId: string }) {
     <form action={action} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="allocationId" value={allocationId} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Return condition</span>
+        <span className="text-xs font-medium text-ink-2">Return condition</span>
         <Select name="returnCondition">
           <option value="good">Good</option>
           <option value="damaged">Damaged</option>
@@ -103,7 +103,7 @@ export function RevokeAssetForm({ allocationId }: { allocationId: string }) {
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Notes</span>
+        <span className="text-xs font-medium text-ink-2">Notes</span>
         <Input name="notes" />
       </label>
       <SubmitButton size="sm" pendingText="Working…">Revoke</SubmitButton>

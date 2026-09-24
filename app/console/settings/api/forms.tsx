@@ -70,7 +70,7 @@ export function CreateApiKeyForm({ companyId }: { companyId: string }) {
       <input type="hidden" name="companyId" value={companyId} />
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Label</span>
+          <span className="text-xs font-medium text-ink-2">Label</span>
           <Input name="label" placeholder="e.g. Payroll integration" required />
         </label>
         <label className="flex items-center gap-2 text-sm pb-1.5">
@@ -106,7 +106,7 @@ export function CreateWebhookForm({ companyId }: { companyId: string }) {
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="companyId" value={companyId} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Endpoint URL (HTTPS)</span>
+        <span className="text-xs font-medium text-ink-2">Endpoint URL (HTTPS)</span>
         <Input
           name="url"
           type="url"
@@ -116,7 +116,7 @@ export function CreateWebhookForm({ companyId }: { companyId: string }) {
         />
       </label>
       <div className="flex flex-col gap-1">
-        <span className="label text-ink-3">Events</span>
+        <span className="text-xs font-medium text-ink-2">Events</span>
         <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5">
           {WEBHOOK_EVENTS.map((e) => (
             <label key={e} className="flex items-center gap-2 text-sm">

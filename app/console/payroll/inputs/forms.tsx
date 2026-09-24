@@ -84,7 +84,7 @@ export function AddVariablePayForm({
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <label className="flex flex-col gap-1 lg:col-span-2">
-          <span className="label text-ink-3">Employee</span>
+          <span className="text-xs font-medium text-ink-2">Employee</span>
           <Select name="employeeId" required defaultValue="">
             <option value="" disabled>Choose</option>
             {employees.map((e) => (
@@ -94,7 +94,7 @@ export function AddVariablePayForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Type</span>
+          <span className="text-xs font-medium text-ink-2">Type</span>
           <Select name="typeId" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
             {adds.length > 0 && (
               <optgroup label="Adds to pay">
@@ -128,7 +128,7 @@ export function AddVariablePayForm({
 
         {isOt ? (
           <label className="flex flex-col gap-1">
-            <span className="label text-ink-3">Hours</span>
+            <span className="text-xs font-medium text-ink-2">Hours</span>
             <Input
               name="hours"
               type="number"
@@ -142,7 +142,7 @@ export function AddVariablePayForm({
           </label>
         ) : (
           <label className="flex flex-col gap-1">
-            <span className="label text-ink-3">
+            <span className="text-xs font-medium text-ink-2">
               {isDeduction ? "Amount to deduct (₹)" : "Amount (₹)"}
             </span>
             <Input
@@ -167,7 +167,7 @@ export function AddVariablePayForm({
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 flex-1 min-w-[14rem]">
-          <span className="label text-ink-3">Reason</span>
+          <span className="text-xs font-medium text-ink-2">Reason</span>
           <Input name="reason" placeholder="Optional — recorded against the line" />
         </label>
         <SubmitButton variant="primary" pendingText="Adding…">Add</SubmitButton>
@@ -269,7 +269,7 @@ export function BulkVariablePayForm({
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Type</span>
+          <span className="text-xs font-medium text-ink-2">Type</span>
           <Select name="typeId" value={typeId} onChange={(e) => setTypeId(e.target.value)} className="w-56">
             {types.map((t) => (
               <option key={t.id} value={t.id}>{t.label}</option>
@@ -277,7 +277,7 @@ export function BulkVariablePayForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">{isOt ? "Same hours for all" : "Same amount for all"}</span>
+          <span className="text-xs font-medium text-ink-2">{isOt ? "Same hours for all" : "Same amount for all"}</span>
           <div className="flex items-center gap-2">
             <Input
               type="number"
@@ -309,12 +309,12 @@ export function BulkVariablePayForm({
         </p>
       )}
 
-      <div className="border border-line rounded-md max-h-[26rem] overflow-y-auto">
+      <div className="border border-line rounded-lg max-h-[26rem] overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface-2">
             <tr className="border-b border-line">
-              <th className="label text-ink-3 text-left px-3 py-2">Employee</th>
-              <th className="label text-ink-3 text-right px-3 py-2 w-40">
+              <th className="text-xs font-medium text-ink-2 text-left px-3 py-2">Employee</th>
+              <th className="text-xs font-medium text-ink-2 text-right px-3 py-2 w-40">
                 {isOt ? "Hours" : "Amount (₹)"}
               </th>
             </tr>
@@ -376,7 +376,7 @@ export function EditVariablePayForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="label text-ink-3 hover:text-indigo px-1"
+        className="text-xs font-medium text-ink-2 hover:text-indigo px-1"
         aria-label={`Edit ${entry.label} for ${entry.employeeName}`}
       >
         Edit
@@ -385,10 +385,10 @@ export function EditVariablePayForm({
       <Dialog open={open} onClose={() => setOpen(false)} size="sm" labelledBy={headingId}>
         <div className="flex items-start justify-between gap-4 mb-3">
           <div>
-            <h2 id={headingId} className="label text-ink-2">{entry.label}</h2>
+            <h2 id={headingId} className="text-xs font-semibold text-ink">{entry.label}</h2>
             <p className="text-xs text-ink-3 mt-0.5">{entry.employeeName}</p>
           </div>
-          <button type="button" onClick={() => setOpen(false)} className="label text-ink-3 hover:text-rust">
+          <button type="button" onClick={() => setOpen(false)} className="text-xs font-medium text-ink-2 hover:text-rust">
             Close
           </button>
         </div>
@@ -397,7 +397,7 @@ export function EditVariablePayForm({
           <input type="hidden" name="id" value={entry.id} />
           {isOt ? (
             <label className="flex flex-col gap-1">
-              <span className="label text-ink-3">Hours</span>
+              <span className="text-xs font-medium text-ink-2">Hours</span>
               <Input
                 name="hours"
                 type="number"
@@ -415,7 +415,7 @@ export function EditVariablePayForm({
             </label>
           ) : (
             <label className="flex flex-col gap-1">
-              <span className="label text-ink-3">Amount (₹)</span>
+              <span className="text-xs font-medium text-ink-2">Amount (₹)</span>
               <Input
                 name="amount"
                 type="number"
@@ -428,7 +428,7 @@ export function EditVariablePayForm({
             </label>
           )}
           <label className="flex flex-col gap-1">
-            <span className="label text-ink-3">Reason</span>
+            <span className="text-xs font-medium text-ink-2">Reason</span>
             <Input name="reason" defaultValue={entry.reason ?? ""} placeholder="Optional" />
           </label>
           <SubmitButton variant="primary" pendingText="Saving…">Save</SubmitButton>

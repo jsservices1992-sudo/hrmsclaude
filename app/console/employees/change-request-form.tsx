@@ -1,5 +1,7 @@
 "use client";
 
+import { fieldClass } from "@/components/console/ui";
+
 import { useActionState } from "react";
 import { decideProfileChange, type EmployeeFormState } from "./actions";
 
@@ -19,7 +21,7 @@ export function ProfileChangeDecisionForm({ requestId }: { requestId: string }) 
       <input
         name="decisionNote"
         placeholder="Note (required to reject)"
-        className="px-2.5 py-1 text-xs bg-surface border border-line w-52 outline-none focus:border-ink-3 rounded-lg"
+        className={`${fieldClass} w-52`}
       />
       <button
         name="decision"

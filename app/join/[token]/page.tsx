@@ -51,7 +51,7 @@ export default async function JoinerPortalPage(
             </span>
             <span className="font-display text-xl font-semibold">{SITE.name}</span>
           </div>
-          <p className="label text-amber">Welcome</p>
+          <p className="text-xs font-semibold text-amber">Welcome</p>
           <h1 className="font-display text-3xl sm:text-4xl font-semibold mt-2 tracking-[-0.02em]">
             Hello {j.firstName}
           </h1>
@@ -72,7 +72,7 @@ export default async function JoinerPortalPage(
             { l: "Annual CTC", v: j.offeredCtcPaise ? formatINR(j.offeredCtcPaise) : "—" },
           ].map((x) => (
             <div key={x.l} className="px-4 py-3 border-r border-line last:border-r-0 flex-1 min-w-[9rem]">
-              <div className="label text-ink-3">{x.l}</div>
+              <div className="text-xs font-medium text-ink-2">{x.l}</div>
               <div className="font-mono text-sm tnum mt-1">{x.v}</div>
             </div>
           ))}
@@ -90,14 +90,14 @@ export default async function JoinerPortalPage(
         )}
 
         {j.offerStatus === "accepted" && (
-          <div className="border border-teal/40 bg-teal-soft px-4 py-3 text-sm text-teal rounded-lg">
+          <div className="border border-teal/25 bg-teal-soft px-4 py-3 text-sm text-teal rounded-lg">
             Offer accepted{j.offerRespondedAt ? ` on ${formatDate(j.offerRespondedAt)}` : ""}. Thank you.
           </div>
         )}
 
         {j.profileSubmittedAt && (
           <div className="border border-line bg-surface px-4 py-3 text-sm text-ink-2 rounded-lg">
-            <span className="label text-ink-3">Saved</span> — you submitted these
+            <span className="text-xs font-medium text-ink-2">Saved</span> — you submitted these
             details on {formatDate(j.profileSubmittedAt)}. You can update them
             until your first day.
           </div>

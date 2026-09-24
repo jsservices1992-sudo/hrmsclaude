@@ -100,44 +100,46 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
         ]}
       />
 
-      <FilterBar
-        action="/console/assets"
-        mode="filter"
-        hidden={{ company: companyId }}
-        clearHref={hasFilters ? `/console/assets?company=${companyId}` : null}
-        trailing={
-          <a
-            href={`/console/assets/export?${exportQuery.toString()}`}
-            className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
-          >
-            Download CSV →
-          </a>
-        }
-      >
-        <FilterField label="Search" className="flex-1 min-w-[12rem]">
-          <Input
-            name="q"
-            defaultValue={q}
-            placeholder="Tag, make, model, serial or holder"
-          />
-        </FilterField>
-        <FilterField label="Category">
-          <Select name="category" defaultValue={categoryFilter} className="w-40">
-            <option value="">All categories</option>
-            {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </Select>
-        </FilterField>
-        <FilterField label="Status">
-          <Select name="status" defaultValue={statusFilter} className="w-40">
-            <option value="">All statuses</option>
-            {Object.keys(STATUS_TONE).map((st) => (
-              <option key={st} value={st}>{st.replace(/_/g, " ")}</option>
-            ))}
-          </Select>
-        </FilterField>
-      </FilterBar>
+      <Card>
+        <FilterBar
+          action="/console/assets"
+          mode="filter"
+          hidden={{ company: companyId }}
+          clearHref={hasFilters ? `/console/assets?company=${companyId}` : null}
+          trailing={
+            <a
+              href={`/console/assets/export?${exportQuery.toString()}`}
+              className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap"
+            >
+              Download CSV →
+            </a>
+          }
+        >
+          <FilterField label="Search" className="flex-1 min-w-[12rem]">
+            <Input
+              name="q"
+              defaultValue={q}
+              placeholder="Tag, make, model, serial or holder"
+            />
+          </FilterField>
+          <FilterField label="Category">
+            <Select name="category" defaultValue={categoryFilter} className="w-40">
+              <option value="">All categories</option>
+              {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </Select>
+          </FilterField>
+          <FilterField label="Status">
+            <Select name="status" defaultValue={statusFilter} className="w-40">
+              <option value="">All statuses</option>
+              {Object.keys(STATUS_TONE).map((st) => (
+                <option key={st} value={st}>{st.replace(/_/g, " ")}</option>
+              ))}
+            </Select>
+          </FilterField>
+        </FilterBar>
+      </Card>
 
       {rows.length === 0 ? (
         <Card padded={false}>

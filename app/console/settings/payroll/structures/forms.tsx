@@ -87,7 +87,7 @@ export function AddLineForm({
       <input type="hidden" name="structureId" value={structureId} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Component</span>
+          <span className="text-xs font-medium text-ink-2">Component</span>
           <Select name="componentId" defaultValue="">
             <option value="" disabled>Choose a component…</option>
             {availableComponents.map((c) => (
@@ -96,7 +96,7 @@ export function AddLineForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Calc method override</span>
+          <span className="text-xs font-medium text-ink-2">Calc method override</span>
           <Select name="calcMethodOverride" defaultValue="">
             <option value="">Inherit from component</option>
             <option value="fixed">Fixed</option>
@@ -107,15 +107,15 @@ export function AddLineForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Percent value override</span>
+          <span className="text-xs font-medium text-ink-2">Percent value override</span>
           <Input name="percentValueOverride" type="number" step="any" className="tnum" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Fixed amount (₹), if overriding</span>
+          <span className="text-xs font-medium text-ink-2">Fixed amount (₹), if overriding</span>
           <Input name="fixedPaiseOverride" type="number" step="any" className="tnum" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Sequence</span>
+          <span className="text-xs font-medium text-ink-2">Sequence</span>
           <Input name="sequence" type="number" placeholder="auto" className="tnum" />
         </label>
       </div>
@@ -170,7 +170,7 @@ export function DepartmentStructureOverrideForm({
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="departmentId" value={departmentId} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Structure</span>
+        <span className="text-xs font-medium text-ink-2">Structure</span>
         <Select name="structureId" defaultValue={current ?? ""} className="text-xs py-1">
           <option value="">Choose a structure…</option>
           {structures.map((st) => (

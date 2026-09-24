@@ -12,6 +12,9 @@ import * as React from "react";
 const fieldBase =
   "rounded-lg border bg-surface-3/60 px-3 py-2 text-sm text-ink placeholder:text-ink-3 transition-base hover:bg-surface-3 focus-visible:outline-none focus-visible:bg-surface focus-visible:border-indigo focus-visible:shadow-ring read-only:bg-surface-2 read-only:text-ink-2 read-only:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 disabled:cursor-not-allowed";
 
+/** The same control look, for the few raw <select>/<input> that cannot use the components. */
+export const fieldClass = `${fieldBase} border-line`;
+
 function borderClass(invalid?: boolean) {
   return invalid ? "border-rust" : "border-line";
 }

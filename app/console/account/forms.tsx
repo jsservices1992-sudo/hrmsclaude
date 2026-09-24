@@ -9,18 +9,18 @@ export function ChangePasswordForm() {
   return (
     <form action={action} className="flex flex-col gap-3 max-w-sm">
       <label className="flex flex-col gap-1.5">
-        <span className="label text-ink-3">Current password</span>
+        <span className="text-xs font-medium text-ink-2">Current password</span>
         <Input name="currentPassword" type="password" required autoComplete="current-password" />
       </label>
       <label className="flex flex-col gap-1.5">
-        <span className="label text-ink-3">New password</span>
+        <span className="text-xs font-medium text-ink-2">New password</span>
         <Input name="newPassword" type="password" required minLength={12} autoComplete="new-password" />
         <span className="text-xs text-ink-3">
           At least 12 characters, and not your name, email or the company&apos;s.
         </span>
       </label>
       <label className="flex flex-col gap-1.5">
-        <span className="label text-ink-3">Type it again</span>
+        <span className="text-xs font-medium text-ink-2">Type it again</span>
         <Input name="confirmPassword" type="password" required autoComplete="new-password" />
       </label>
       <div>

@@ -199,7 +199,7 @@ export default async function UsersPage(
                     <div className="absolute right-0 z-20 mt-1 flex w-56 flex-col items-start gap-1 rounded-xl border border-line bg-surface p-2 shadow-lg">
                       <Link
                         href={`/console/settings/users?edit=${r.id}`}
-                        className="w-full rounded-md px-2 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
+                        className="w-full rounded-lg px-2 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
                       >
                         Edit access
                       </Link>

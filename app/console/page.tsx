@@ -413,7 +413,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
       )}
 
       {denied && (
-        <div className="rounded-xl border border-amber/40 bg-amber-soft px-4 py-3">
+        <div className="rounded-xl border border-amber/25 bg-amber-soft px-4 py-3">
           <p className="text-sm font-semibold text-amber mb-1">Access denied</p>
           <p className="text-sm text-ink-2">
             Your role cannot view{" "}

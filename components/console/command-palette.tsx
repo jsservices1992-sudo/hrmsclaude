@@ -117,7 +117,7 @@ export function CommandPalette() {
             placeholder="Search employees, assets, runs, workflows…"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-ink-3"
           />
-          <kbd className="label text-ink-3 border border-line rounded-sm px-1.5 py-0.5">Esc</kbd>
+          <kbd className="text-xs font-medium text-ink-2 border border-line rounded px-1.5 py-0.5">Esc</kbd>
         </div>
       </DialogHeader>
       <DialogBody className="max-h-[60vh] overflow-y-auto p-0">
@@ -126,7 +126,7 @@ export function CommandPalette() {
         ) : (
           [...grouped.entries()].map(([groupLabel, items]) => (
             <div key={groupLabel} className="py-2">
-              <p className="label text-ink-3 px-5 pb-1">{groupLabel}</p>
+              <p className="text-xs font-medium text-ink-2 px-5 pb-1">{groupLabel}</p>
               {items.map((item) => {
                 const globalIndex = flatItems.indexOf(item);
                 return (

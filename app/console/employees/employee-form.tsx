@@ -108,7 +108,7 @@ function Field({
 } & Omit<React.ComponentProps<"input">, "name" | "type" | "defaultValue">) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="label text-ink-3">
+      <span className="text-xs font-medium text-ink-2">
         {label}
         {required && <span className="text-rust ml-1">*</span>}
       </span>
@@ -148,7 +148,7 @@ function Select({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="label text-ink-3">
+      <span className="text-xs font-medium text-ink-2">
         {label}
         {required && <span className="text-rust ml-1">*</span>}
       </span>
@@ -395,7 +395,7 @@ export default function EmployeeForm({
 
       {mode === "edit" && (
         <label className="flex flex-col gap-1.5 max-w-md">
-          <span className="label text-ink-3">Reason for change</span>
+          <span className="text-xs font-medium text-ink-2">Reason for change</span>
           <Input
             name="changeReason"
             placeholder="Recorded in the audit log alongside the diff"

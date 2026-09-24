@@ -360,7 +360,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
                     <TD>{t.active ? <Badge tone="teal">yes</Badge> : <Badge tone="neutral">no</Badge>}</TD>
                     <TD className="text-right">
                       {t.systemManaged ? (
-                        <span className="label text-ink-3">raised automatically</span>
+                        <span className="text-xs font-medium text-ink-2">raised automatically</span>
                       ) : (
                         <Link href={`/console/settings/master-data?${query("variable")}&edit=${t.id}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
                           Edit

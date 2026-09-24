@@ -50,7 +50,7 @@ export default async function SetupPage() {
 
       <Card>
         <div className="flex items-baseline justify-between gap-3 mb-2">
-          <span className="label text-ink-3">
+          <span className="text-xs font-medium text-ink-2">
             {progress.done} of {progress.total} done
           </span>
           <span className="font-mono text-sm tnum">{progress.percent}%</span>

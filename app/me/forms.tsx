@@ -19,10 +19,9 @@ import {
 import { PROFILE_FIELDS } from "@/lib/ess/profile";
 import { DECLARATION_SECTIONS } from "@/lib/ess/declaration";
 import { paiseToRupees } from "@/lib/payroll/money";
-import { SubmitButton, Input, FormFeedback, FileDrop } from "@/components/console/ui";
+import { SubmitButton, Input, FormFeedback, FileDrop, fieldClass } from "@/components/console/ui";
 
-const field =
-  "px-2.5 py-1.5 text-sm bg-surface border border-line outline-none focus:border-ink-3";
+const field = fieldClass;
 
 function Note({ state }: { state: SelfState }) {
   if (state.error) return <p className="text-xs text-rust max-w-[70ch]">{state.error}</p>;
@@ -40,7 +39,7 @@ export function ApplyLeaveForm({
     <form action={action} className="flex flex-col gap-3">
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Leave type</span>
+          <span className="text-xs font-medium text-ink-2">Leave type</span>
           <select name="leaveTypeId" className={field}>
             {types.map((t) => (
               <option key={t.id} value={t.id}>
@@ -51,11 +50,11 @@ export function ApplyLeaveForm({
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">From</span>
+          <span className="text-xs font-medium text-ink-2">From</span>
           <input name="fromDate" type="date" required className={`${field} font-mono`} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">To</span>
+          <span className="text-xs font-medium text-ink-2">To</span>
           <input name="toDate" type="date" required className={`${field} font-mono`} />
         </label>
         <label className="flex items-center gap-2 text-sm pt-5">
@@ -64,7 +63,7 @@ export function ApplyLeaveForm({
         </label>
       </div>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Reason</span>
+        <span className="text-xs font-medium text-ink-2">Reason</span>
         <input name="reason" className={field} placeholder="Optional" />
       </label>
       <div className="flex flex-wrap items-center gap-3">
@@ -100,7 +99,7 @@ export function TeamLeaveForm({ requestId }: { requestId: string }) {
       <input
         name="note"
         placeholder="Reason (required to reject)"
-        className="px-2.5 py-1 text-xs bg-surface border border-line w-48 outline-none focus:border-ink-3 rounded-lg"
+        className={`${fieldClass} w-48`}
       />
       <button
         name="decision"
@@ -142,7 +141,7 @@ export function UploadOwnDocumentForm({
     <form action={action} className="flex flex-col gap-3">
       <div className="grid sm:grid-cols-3 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Document</span>
+          <span className="text-xs font-medium text-ink-2">Document</span>
           <select name="docType" className={field}>
             {types.map((t) => (
               <option key={t.docType} value={t.docType}>
@@ -153,7 +152,7 @@ export function UploadOwnDocumentForm({
         </label>
         <div className="w-full"><FileDrop name="file" accept="application/pdf,image/jpeg,image/png" hint="PDF, JPG or PNG" /></div>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Expires on (if it does)</span>
+          <span className="text-xs font-medium text-ink-2">Expires on (if it does)</span>
           <input name="expiresOn" type="date" className={`${field} font-mono`} />
         </label>
       </div>
@@ -187,7 +186,7 @@ export function RequestRegularisationForm({
     <form action={action} className="flex flex-col gap-3">
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Day</span>
+          <span className="text-xs font-medium text-ink-2">Day</span>
           <input
             name="date"
             type="date"
@@ -197,7 +196,7 @@ export function RequestRegularisationForm({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">In</span>
+          <span className="text-xs font-medium text-ink-2">In</span>
           <input
             name="inTime"
             type="time"
@@ -207,7 +206,7 @@ export function RequestRegularisationForm({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Out</span>
+          <span className="text-xs font-medium text-ink-2">Out</span>
           <input
             name="outTime"
             type="time"
@@ -217,7 +216,7 @@ export function RequestRegularisationForm({
           />
         </label>
         <label className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1">
-          <span className="label text-ink-3">Why</span>
+          <span className="text-xs font-medium text-ink-2">Why</span>
           <input
             name="reason"
             required
@@ -276,7 +275,7 @@ export function TaxDeclarationForm({
     <form action={action} className="flex flex-col gap-5">
       <fieldset disabled={readOnly} className="flex flex-col gap-5 disabled:opacity-60">
         <div>
-          <p className="label text-ink-3 mb-2">Tax regime</p>
+          <p className="text-xs font-medium text-ink-2 mb-2">Tax regime</p>
           <div className="flex flex-wrap gap-4">
             {(["new", "old"] as const).map((r) => (
               <label key={r} className="flex items-center gap-2 text-sm">
@@ -299,7 +298,7 @@ export function TaxDeclarationForm({
         </div>
 
         <div>
-          <p className="label text-ink-3 mb-2">Deductions you are claiming</p>
+          <p className="text-xs font-medium text-ink-2 mb-2">Deductions you are claiming</p>
           <div className="grid sm:grid-cols-2 gap-3">
             {DECLARATION_SECTIONS.map((sec) => (
               <label key={sec.field} className="flex flex-col gap-1">
@@ -362,7 +361,7 @@ export function TaxDeclarationForm({
         </div>
 
         <div>
-          <p className="label text-ink-3 mb-2">House rent</p>
+          <p className="text-xs font-medium text-ink-2 mb-2">House rent</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs text-ink-2">Rent paid in the year</span>
@@ -398,7 +397,7 @@ export function TaxDeclarationForm({
         </div>
 
         <div>
-          <p className="label text-ink-3 mb-2">If you worked somewhere else this year</p>
+          <p className="text-xs font-medium text-ink-2 mb-2">If you worked somewhere else this year</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-xs text-ink-2">Previous employer</span>
@@ -444,7 +443,7 @@ export function TaxDeclarationForm({
         </div>
 
         <div>
-          <p className="label text-ink-3 mb-2">Extra tax each month</p>
+          <p className="text-xs font-medium text-ink-2 mb-2">Extra tax each month</p>
           <label className="flex flex-col gap-1 max-w-xs">
             <span className="text-xs text-ink-2">
               Deduct this much more per month (optional)
@@ -500,7 +499,7 @@ export function ProfileChangeForm({ hasBankProof, hasPanProof }: {
     <form action={action} className="flex flex-col gap-3">
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">What needs changing</span>
+          <span className="text-xs font-medium text-ink-2">What needs changing</span>
           <select name="field" className={field} defaultValue="mobile">
             {PROFILE_FIELDS.map((f) => (
               <option key={f.field} value={f.field}>
@@ -511,11 +510,11 @@ export function ProfileChangeForm({ hasBankProof, hasPanProof }: {
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">New value</span>
+          <span className="text-xs font-medium text-ink-2">New value</span>
           <input name="requestedValue" required className={field} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Why (optional)</span>
+          <span className="text-xs font-medium text-ink-2">Why (optional)</span>
           <input name="reason" className={field} placeholder="Moved house" />
         </label>
       </div>
@@ -563,7 +562,7 @@ export function TeamRegularisationForm({ requestId }: { requestId: string }) {
       <input
         name="decisionNote"
         placeholder="Note (required to reject)"
-        className="px-2.5 py-1 text-xs bg-surface border border-line w-48 outline-none focus:border-ink-3 rounded-lg"
+        className={`${fieldClass} w-48`}
       />
       <button
         name="decision"
@@ -622,18 +621,18 @@ export function ChangePasswordForm() {
   return (
     <form action={action} className="flex flex-col gap-3 px-4 py-4 max-w-sm">
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Current password</span>
+        <span className="text-xs font-medium text-ink-2">Current password</span>
         <Input name="currentPassword" type="password" autoComplete="current-password" required />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">New password</span>
+        <span className="text-xs font-medium text-ink-2">New password</span>
         <Input name="newPassword" type="password" autoComplete="new-password" required />
         <span className="text-xs text-ink-3">
           At least 12 characters. A few ordinary words beat one clever one.
         </span>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Confirm new password</span>
+        <span className="text-xs font-medium text-ink-2">Confirm new password</span>
         <Input name="confirmPassword" type="password" autoComplete="new-password" required />
       </label>
       <SubmitButton pendingText="Changing…">Change password</SubmitButton>

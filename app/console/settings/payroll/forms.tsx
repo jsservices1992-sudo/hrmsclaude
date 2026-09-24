@@ -41,7 +41,7 @@ function Select({ label, name, defaultValue, options, hint, disabled, onChange }
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="label text-ink-3">{label}</span>
+      <span className="text-xs font-medium text-ink-2">{label}</span>
       <UiSelect
         name={name}
         defaultValue={defaultValue ?? ""}
@@ -60,7 +60,7 @@ function Num({ label, name, defaultValue, hint, disabled }: {
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="label text-ink-3">{label}</span>
+      <span className="text-xs font-medium text-ink-2">{label}</span>
       <Input name={name} type="number" defaultValue={defaultValue} disabled={disabled} className="tnum" />
       {hint && <span className="text-xs text-ink-3">{hint}</span>}
     </label>
@@ -265,7 +265,7 @@ export function PayrollSettingsForm({
       {!readOnly && (
         <>
           <label className="flex flex-col gap-1.5 max-w-lg">
-            <span className="label text-ink-3">Reason for change</span>
+            <span className="text-xs font-medium text-ink-2">Reason for change</span>
             <Input
               name="changeReason"
               placeholder="Required once payroll runs exist"
@@ -299,11 +299,11 @@ export function StatutoryParamForm({
       <input type="hidden" name="unit" value={unit} />
       <input type="hidden" name="companyId" value={companyId} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">New value {unit === "paise" ? "(₹)" : unit === "bps" ? "(bps)" : ""}</span>
+        <span className="text-xs font-medium text-ink-2">New value {unit === "paise" ? "(₹)" : unit === "bps" ? "(bps)" : ""}</span>
         <Input name="value" defaultValue={display} type="number" step="any" className="w-32 tnum" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Effective from</span>
+        <span className="text-xs font-medium text-ink-2">Effective from</span>
         <Input name="effectiveFrom" type="date" />
       </label>
       <SubmitButton variant="default" size="sm" pendingText="Saving…">Version</SubmitButton>
@@ -330,7 +330,7 @@ export function GroupForm({
       <input type="hidden" name="companyId" value={companyId} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="label text-ink-3">Group name</span>
+          <span className="text-xs font-medium text-ink-2">Group name</span>
           <Input name="name" />
         </label>
         <Select
@@ -344,7 +344,7 @@ export function GroupForm({
           ]}
         />
         <label className="flex flex-col gap-1.5">
-          <span className="label text-ink-3">Values</span>
+          <span className="text-xs font-medium text-ink-2">Values</span>
           <Input name="ruleValue" placeholder="Comma separated ids" />
           <span className="text-xs text-ink-3">
             Branches: {branches.map((b) => b.id).join(", ") || "—"}
@@ -355,15 +355,15 @@ export function GroupForm({
         <summary className="cursor-pointer label text-ink-3">Available ids</summary>
         <div className="mt-2 grid sm:grid-cols-3 gap-3">
           <div>
-            <p className="label text-ink-3">Branches</p>
+            <p className="text-xs font-medium text-ink-2">Branches</p>
             {branches.map((b) => <p key={b.id} className="font-mono text-[11px]">{b.id} — {b.label}</p>)}
           </div>
           <div>
-            <p className="label text-ink-3">Departments</p>
+            <p className="text-xs font-medium text-ink-2">Departments</p>
             {departments.map((x) => <p key={x.id} className="font-mono text-[11px]">{x.id}</p>)}
           </div>
           <div>
-            <p className="label text-ink-3">Grades</p>
+            <p className="text-xs font-medium text-ink-2">Grades</p>
             {grades.map((x) => <p key={x.id} className="font-mono text-[11px]">{x.id}</p>)}
           </div>
         </div>
@@ -753,7 +753,7 @@ export function LwfRateForm({ states }: { states: { id: string; label: string }[
               defaultValue={val("excludeAboveWage")} invalid={!!err("excludeAboveWage")} />
           </FormField>
           <fieldset className="flex flex-col gap-1.5 self-end pb-2">
-            <legend className="label text-ink-3 mb-1">Jobs excluded</legend>
+            <legend className="text-xs font-medium text-ink-2 mb-1">Jobs excluded</legend>
             {[
               { name: "exclude_managerial", label: "Managerial" },
               { name: "exclude_supervisory", label: "Supervisory" },

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { verifyProof, setRegime, closeWindow, addPerquisite, saveSpecialRateDeclaration, type TaxState } from "./actions";
-import { Input, SubmitButton, FormFeedback } from "@/components/console/ui";
+import { Input, SubmitButton, FormFeedback, fieldClass } from "@/components/console/ui";
 
 export function ProofDecisionForm({
   proofId,
@@ -97,7 +97,7 @@ const PERQUISITE_TYPES = [
 
 type PerquisiteCode = (typeof PERQUISITE_TYPES)[number]["code"];
 
-const rupeeField = "px-2.5 py-1.5 text-sm border border-line bg-surface w-full font-mono tnum";
+const rupeeField = `${fieldClass} w-full tnum`;
 const checkField = "flex items-center gap-2 text-sm";
 
 /** One field set per perquisite type — only the chosen type's fields are sent, but all render so nothing is hidden behind a second round trip. */
@@ -268,7 +268,7 @@ export function SpecialRateForm({
       <input type="hidden" name="employeeId" value={employeeId} />
 
       <div>
-        <p className="label text-ink-3 mb-2">Capital gains</p>
+        <p className="text-xs font-medium text-ink-2 mb-2">Capital gains</p>
         <div className="grid sm:grid-cols-2 gap-3">
           <Field name="stcgSpecifiedPaise" label="STCG — listed equity/fund, STT paid (20%)" defaultValue={rupees(d?.stcgSpecifiedPaise)} />
           <Field name="stcgOtherPaise" label="STCG — everything else (taxed at your slab rate)" defaultValue={rupees(d?.stcgOtherPaise)} />
@@ -278,7 +278,7 @@ export function SpecialRateForm({
       </div>
 
       <div>
-        <p className="label text-ink-3 mb-2">Capital losses</p>
+        <p className="text-xs font-medium text-ink-2 mb-2">Capital losses</p>
         <div className="grid sm:grid-cols-2 gap-3">
           <Field name="currentYearStclPaise" label="Short-term loss, this year" defaultValue={rupees(d?.currentYearStclPaise)} />
           <Field name="currentYearLtclPaise" label="Long-term loss, this year" defaultValue={rupees(d?.currentYearLtclPaise)} />
@@ -291,7 +291,7 @@ export function SpecialRateForm({
       </div>
 
       <div>
-        <p className="label text-ink-3 mb-2">VDA and gaming (all flat 30%, no loss set-off allowed against these)</p>
+        <p className="text-xs font-medium text-ink-2 mb-2">VDA and gaming (all flat 30%, no loss set-off allowed against these)</p>
         <div className="grid sm:grid-cols-2 gap-3">
           <Field name="vdaPaise" label="Virtual digital assets / crypto" defaultValue={rupees(d?.vdaPaise)} />
           <Field name="lotteryPaise" label="Lottery, crossword or card game winnings" defaultValue={rupees(d?.lotteryPaise)} />
@@ -301,7 +301,7 @@ export function SpecialRateForm({
       </div>
 
       <div>
-        <p className="label text-ink-3 mb-2">DTAA special-rate income</p>
+        <p className="text-xs font-medium text-ink-2 mb-2">DTAA special-rate income</p>
         <Field name="dtaaSpecialRatePaise" label="Declared only — not computed here; handle separately" defaultValue={rupees(d?.dtaaSpecialRatePaise)} />
       </div>
 

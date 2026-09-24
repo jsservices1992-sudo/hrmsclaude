@@ -70,8 +70,8 @@ export default async function PayslipPage(
       {/* Which figures these are. A payslip taken off a calculated run is
           what was paid; one taken off a preview will still move. */}
       {period.source === "preview" ? (
-        <p data-print="hide" className="border border-amber/40 bg-amber-soft px-3 py-2 text-sm text-ink-2 rounded-lg">
-          <span className="label text-amber">Not yet calculated</span> — this is a
+        <p data-print="hide" className="border border-amber/25 bg-amber-soft px-3 py-2 text-sm text-ink-2 rounded-lg">
+          <span className="text-xs font-semibold text-amber">Not yet calculated</span> — this is a
           projection from today&apos;s attendance and salary, not a payslip of
           record. Calculate the period to fix these figures.
         </p>

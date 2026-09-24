@@ -366,9 +366,9 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
               title="Payment status"
               right={
                 failed.length > 0 ? (
-                  <span className="label text-rust">{failed.length} failed</span>
+                  <span className="text-xs font-semibold text-rust">{failed.length} failed</span>
                 ) : (
-                  <span className="label text-ink-3">
+                  <span className="text-xs font-medium text-ink-2">
                     {pending.length} awaiting the bank
                   </span>
                 )
@@ -576,7 +576,7 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
           <Panel
             title="Provisions & accruals"
             right={
-              <span className="label text-ink-3 tnum">
+              <span className="text-xs font-medium text-ink-2 tnum">
                 charge {formatINR(provisions.totalChargePaise)}
               </span>
             }

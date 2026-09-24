@@ -20,7 +20,7 @@ function Feedback({ state }: { state: UserAdminState }) {
       {state.ok && <p className="text-xs text-teal max-w-[70ch]">{state.ok}</p>}
       {state.password && (
         <div className="border border-amber/30 bg-amber-soft px-3 py-2.5 max-w-[46ch] rounded-lg">
-          <p className="label text-amber">Password — shown once</p>
+          <p className="text-xs font-semibold text-amber">Password — shown once</p>
           <p className="font-mono text-base mt-1 select-all break-all">{state.password}</p>
           <p className="text-xs text-ink-2 mt-1.5">
             Give this to them over a channel you trust. It is not stored in
@@ -54,11 +54,11 @@ function Fields({
     <>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Name</span>
+          <span className="text-xs font-medium text-ink-2">Name</span>
           <Input name="name" required defaultValue={editing?.name} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Role</span>
+          <span className="text-xs font-medium text-ink-2">Role</span>
           <Select
             name="role"
             value={role}
@@ -80,7 +80,7 @@ function Fields({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Pay data they may see</span>
+          <span className="text-xs font-medium text-ink-2">Pay data they may see</span>
           <Select
             name="compensationScope"
             value={scope}
@@ -99,7 +99,7 @@ function Fields({
           </span>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Company</span>
+          <span className="text-xs font-medium text-ink-2">Company</span>
           <Select name="companyId" defaultValue={editing?.companyId ?? ""}>
             <option value="">Every company</option>
             {companies.map((c) => (
@@ -108,7 +108,7 @@ function Fields({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Linked employee</span>
+          <span className="text-xs font-medium text-ink-2">Linked employee</span>
           <Select name="employeeId" defaultValue={editing?.employeeId ?? ""}>
             <option value="">Not linked</option>
             {employees.map((e) => (
@@ -141,7 +141,7 @@ export function CreateUserForm({
   return (
     <form action={action} className="flex flex-col gap-3">
       <label className="flex flex-col gap-1 max-w-sm">
-        <span className="label text-ink-3">Work email</span>
+        <span className="text-xs font-medium text-ink-2">Work email</span>
         <Input name="email" type="email" required placeholder="name@company.com" />
       </label>
       <Fields companies={companies} employees={employees} />

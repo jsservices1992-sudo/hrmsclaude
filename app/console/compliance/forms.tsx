@@ -90,7 +90,7 @@ export function AddPtSlabForm({ stateCode }: { stateCode: string }) {
     <form action={action} className="flex flex-wrap items-end gap-2 border-t border-line-2 pt-2 mt-2">
       <input type="hidden" name="stateCode" value={stateCode} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Gender</span>
+        <span className="text-xs font-medium text-ink-2">Gender</span>
         <Select name="gender" defaultValue="all">
           <option value="all">All</option>
           <option value="female">Female</option>
@@ -98,27 +98,27 @@ export function AddPtSlabForm({ stateCode }: { stateCode: string }) {
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Min (₹)</span>
+        <span className="text-xs font-medium text-ink-2">Min (₹)</span>
         <Input name="minRupees" type="number" step="0.01" required className="w-24" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Max (₹, blank = unbounded)</span>
+        <span className="text-xs font-medium text-ink-2">Max (₹, blank = unbounded)</span>
         <Input name="maxRupees" type="number" step="0.01" className="w-28" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Amount (₹)</span>
+        <span className="text-xs font-medium text-ink-2">Amount (₹)</span>
         <Input name="amountRupees" type="number" step="0.01" required className="w-24" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Annual cap (₹)</span>
+        <span className="text-xs font-medium text-ink-2">Annual cap (₹)</span>
         <Input name="annualCapRupees" type="number" step="0.01" defaultValue={2500} className="w-24" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Effective from</span>
+        <span className="text-xs font-medium text-ink-2">Effective from</span>
         <Input name="effectiveFrom" type="date" required className="font-mono" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Source</span>
+        <span className="text-xs font-medium text-ink-2">Source</span>
         <Input name="source" className="w-40" />
       </label>
       <SubmitButton size="sm" pendingText="Saving…">Add slab</SubmitButton>
@@ -135,15 +135,15 @@ export function AddLwfRateForm({ stateCode }: { stateCode: string }) {
     <form action={action} className="flex flex-wrap items-end gap-2 border-t border-line-2 pt-2 mt-2">
       <input type="hidden" name="stateCode" value={stateCode} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Employee (₹)</span>
+        <span className="text-xs font-medium text-ink-2">Employee (₹)</span>
         <Input name="employeeRupees" type="number" step="0.01" required className="w-20" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Employer (₹)</span>
+        <span className="text-xs font-medium text-ink-2">Employer (₹)</span>
         <Input name="employerRupees" type="number" step="0.01" required className="w-20" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Frequency</span>
+        <span className="text-xs font-medium text-ink-2">Frequency</span>
         <Select name="frequency" defaultValue="half_yearly">
           <option value="monthly">Monthly</option>
           <option value="half_yearly">Half-yearly</option>
@@ -151,7 +151,7 @@ export function AddLwfRateForm({ stateCode }: { stateCode: string }) {
         </Select>
       </label>
       <div className="flex flex-col gap-1">
-        <span className="label text-ink-3">Deduction months</span>
+        <span className="text-xs font-medium text-ink-2">Deduction months</span>
         <div className="flex flex-wrap gap-1.5">
           {MONTHS_SHORT.map((m, i) => (
             <label key={m} className="flex items-center gap-1 text-xs">
@@ -162,11 +162,11 @@ export function AddLwfRateForm({ stateCode }: { stateCode: string }) {
         </div>
       </div>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Effective from</span>
+        <span className="text-xs font-medium text-ink-2">Effective from</span>
         <Input name="effectiveFrom" type="date" required className="font-mono" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Source</span>
+        <span className="text-xs font-medium text-ink-2">Source</span>
         <Input name="source" className="w-32" />
       </label>
       <SubmitButton size="sm" pendingText="Saving…">Add rate</SubmitButton>
@@ -180,7 +180,7 @@ export function AddStatutoryParamForm({ paramKeys }: { paramKeys: string[] }) {
   return (
     <form action={action} className="flex flex-wrap items-end gap-2">
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Parameter</span>
+        <span className="text-xs font-medium text-ink-2">Parameter</span>
         <Input name="key" list="param-keys" required className="w-44" />
         <datalist id="param-keys">
           {paramKeys.map((k) => (
@@ -189,7 +189,7 @@ export function AddStatutoryParamForm({ paramKeys }: { paramKeys: string[] }) {
         </datalist>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Unit</span>
+        <span className="text-xs font-medium text-ink-2">Unit</span>
         <Select name="unit" defaultValue="paise">
           <option value="paise">₹ amount</option>
           <option value="bps">Percent</option>
@@ -197,19 +197,19 @@ export function AddStatutoryParamForm({ paramKeys }: { paramKeys: string[] }) {
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Value</span>
+        <span className="text-xs font-medium text-ink-2">Value</span>
         <Input name="value" type="number" step="0.01" required className="w-28" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Effective from</span>
+        <span className="text-xs font-medium text-ink-2">Effective from</span>
         <Input name="effectiveFrom" type="date" required className="font-mono" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Note</span>
+        <span className="text-xs font-medium text-ink-2">Note</span>
         <Input name="note" className="w-48" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Source</span>
+        <span className="text-xs font-medium text-ink-2">Source</span>
         <Input
           name="source"
           required

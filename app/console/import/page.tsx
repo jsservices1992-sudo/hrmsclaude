@@ -55,7 +55,7 @@ function Step({
         )}
       </div>
       {blocked ? (
-        <p className="text-sm text-ink-2 border border-amber/40 bg-amber-soft px-3 py-2 rounded-lg">
+        <p className="text-sm text-ink-2 border border-amber/25 bg-amber-soft px-3 py-2 rounded-lg">
           {blocked.message}{" "}
           <Link href={blocked.href} className="text-indigo font-semibold hover:text-indigo-2 whitespace-nowrap">
             {blocked.label} \u2192

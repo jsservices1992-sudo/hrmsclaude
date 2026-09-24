@@ -79,8 +79,8 @@ export default async function ExitDetailPage(
       <div
         className={`border px-4 py-3 flex items-start gap-3 text-sm ${
           clearanceComplete
-            ? "border-teal/40 bg-teal-soft text-teal"
-            : "border-amber/40 bg-amber-soft text-amber"
+            ? "border-teal/25 bg-teal-soft text-teal"
+            : "border-amber/25 bg-amber-soft text-amber"
         }`}
       >
         <span aria-hidden className="mt-1.5 h-1.5 w-1.5 bg-current shrink-0" />
@@ -117,7 +117,7 @@ export default async function ExitDetailPage(
             <li key={c.id} className="px-4 py-2.5">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="label text-ink-3 w-16 shrink-0">
+                  <span className="text-xs font-medium text-ink-2 w-16 shrink-0">
                     {DEPT_LABEL[c.department]}
                   </span>
                   <span className="text-sm truncate">{c.label}</span>
@@ -174,7 +174,7 @@ export default async function ExitDetailPage(
                     Open →
                   </a>
                 ) : (
-                  <span className="label text-ink-3">Missing</span>
+                  <span className="text-xs font-medium text-ink-2">Missing</span>
                 )}
                 {canUploadDocs && (
                   <UploadExitDocumentForm employeeId={employee.id} exitId={exitId} docType={req.docType} />
@@ -251,7 +251,7 @@ export default async function ExitDetailPage(
                 },
               ].map((x) => (
                 <div key={x.k} className="px-4 py-3 border-r border-b border-line-2">
-                  <dt className="label text-ink-3">{x.k}</dt>
+                  <dt className="text-xs font-medium text-ink-2">{x.k}</dt>
                   <dd className="font-mono text-sm tnum mt-0.5">{x.v}</dd>
                 </div>
               ))}
@@ -274,7 +274,7 @@ export default async function ExitDetailPage(
               return (
                 <div key={kind}>
                   <div className="px-4 py-2 bg-surface-2/60 border-b border-line-2 flex justify-between">
-                    <span className="label text-ink-3">
+                    <span className="text-xs font-medium text-ink-2">
                       {kind === "payable" ? "Payable to employee" : "Recoveries"}
                     </span>
                     <span className="font-mono text-xs tnum">
@@ -291,7 +291,7 @@ export default async function ExitDetailPage(
                           <p className="font-medium">
                             {l.label}
                             {l.exemptPaise ? (
-                              <span className="label text-teal ml-2">
+                              <span className="text-xs font-semibold text-teal ml-2">
                                 {formatINR(l.exemptPaise)} exempt
                               </span>
                             ) : null}
@@ -356,7 +356,7 @@ export default async function ExitDetailPage(
                 },
               ].map((x) => (
                 <div key={x.k} className="px-4 py-3 border-r border-b border-line-2">
-                  <dt className="label text-ink-3">{x.k}</dt>
+                  <dt className="text-xs font-medium text-ink-2">{x.k}</dt>
                   <dd className="font-mono text-sm tnum mt-0.5">{x.v}</dd>
                 </div>
               ))}
@@ -369,8 +369,8 @@ export default async function ExitDetailPage(
           </Card>
 
           {settlement.warnings.length > 0 && (
-            <div className="border border-amber/40 bg-amber-soft px-4 py-3 rounded-lg">
-              <p className="label text-amber mb-1.5">Findings</p>
+            <div className="border border-amber/25 bg-amber-soft px-4 py-3 rounded-lg">
+              <p className="text-xs font-semibold text-amber mb-1.5">Findings</p>
               <ul className="text-sm text-ink-2 flex flex-col gap-1">
                 {settlement.warnings.map((w, i) => (
                   <li key={i}>{w}</li>

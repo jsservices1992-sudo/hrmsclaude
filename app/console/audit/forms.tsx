@@ -75,7 +75,7 @@ export function PlaceHoldForm({
       <input type="hidden" name="companyId" value={companyId} />
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Employee</span>
+          <span className="text-xs font-medium text-ink-2">Employee</span>
           <Select name="employeeId" defaultValue="">
             <option value="">All employees</option>
             {employees.map((e) => (
@@ -86,11 +86,11 @@ export function PlaceHoldForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Financial year</span>
+          <span className="text-xs font-medium text-ink-2">Financial year</span>
           <Input name="periodYear" type="number" placeholder="All" className="font-mono tnum w-28" />
         </label>
         <label className="flex flex-col gap-1 flex-1 min-w-[18rem]">
-          <span className="label text-ink-3">Reason</span>
+          <span className="text-xs font-medium text-ink-2">Reason</span>
           <Input name="reason" placeholder="Name the dispute this hold relates to" />
         </label>
         <SubmitButton variant="danger" pendingText="Working…">Place hold</SubmitButton>
@@ -128,7 +128,7 @@ export function ErasureTestForm({
       <input type="hidden" name="companyId" value={companyId} />
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Record class</span>
+          <span className="text-xs font-medium text-ink-2">Record class</span>
           <Select name="recordClass">
             {recordClasses.map((c) => (
               <option key={c.value} value={c.value}>
@@ -138,11 +138,11 @@ export function ErasureTestForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Financial year</span>
+          <span className="text-xs font-medium text-ink-2">Financial year</span>
           <Input name="recordYear" type="number" defaultValue={2020} className="font-mono tnum w-28" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Employee id (optional)</span>
+          <span className="text-xs font-medium text-ink-2">Employee id (optional)</span>
           <Input name="employeeId" placeholder="All" />
         </label>
         <SubmitButton variant="default" pendingText="Working…">Test a deletion request</SubmitButton>

@@ -162,11 +162,11 @@ export default async function StatutoryPage(
         title="Compliance calendar"
         right={
           calendar && calendar.overdue.length > 0 ? (
-            <span className="label text-rust">
+            <span className="text-xs font-semibold text-rust">
               {calendar.overdue.length} overdue
             </span>
           ) : (
-            <span className="label text-ink-3">
+            <span className="text-xs font-medium text-ink-2">
               {calendar?.items.length ?? 0} obligations
             </span>
           )
@@ -269,7 +269,7 @@ export default async function StatutoryPage(
                   Download ECR ↓
                 </a>
               ) : (
-                <span className="label text-rust">Blocked</span>
+                <span className="text-xs font-semibold text-rust">Blocked</span>
               )
             }
           >
@@ -281,7 +281,7 @@ export default async function StatutoryPage(
                 { l: "Total remittance", v: formatINR(epf.challan.totalPaise) },
               ].map((x) => (
                 <div key={x.l} className="px-4 py-3">
-                  <p className="label text-ink-3">{x.l}</p>
+                  <p className="text-xs font-medium text-ink-2">{x.l}</p>
                   <p className="font-display text-lg font-semibold tnum mt-0.5">
                     {x.v}
                   </p>
@@ -316,7 +316,7 @@ export default async function StatutoryPage(
             </Table>
 
             <div className="px-4 py-2.5 border-t border-line-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="label text-ink-3">
+              <span className="text-xs font-medium text-ink-2">
                 Reconciliation against the register
               </span>
               <span
@@ -354,7 +354,7 @@ export default async function StatutoryPage(
                 { l: "Total payable", v: formatINR(esic.summary.totalPayablePaise) },
               ].map((x) => (
                 <div key={x.l} className="px-4 py-3">
-                  <p className="label text-ink-3">{x.l}</p>
+                  <p className="text-xs font-medium text-ink-2">{x.l}</p>
                   <p className="font-display text-lg font-semibold tnum mt-0.5">
                     {x.v}
                   </p>
@@ -386,7 +386,7 @@ export default async function StatutoryPage(
         <Panel
           title={`26Q — non-salary TDS · ${form26q.quarter} ${month >= 4 ? year : year - 1}-${String((month >= 4 ? year + 1 : year) % 100).padStart(2, "0")}`}
           right={
-            <span className="label text-ink-3">
+            <span className="text-xs font-medium text-ink-2">
               return due {formatDate(form26q.returnDueOn)}
             </span>
           }
@@ -431,7 +431,7 @@ export default async function StatutoryPage(
           </Table>
 
           <div className="border-t border-line-2 px-4 py-3">
-            <p className="label text-ink-3 mb-2">
+            <p className="text-xs font-medium text-ink-2 mb-2">
               Deposit by challan, before the return
             </p>
             <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
@@ -479,7 +479,7 @@ export default async function StatutoryPage(
                 <TD>
                   {MONTHS[m.month - 1]}
                   {!m.filed && (
-                    <span className="label text-rust ml-2">no run</span>
+                    <span className="text-xs font-semibold text-rust ml-2">no run</span>
                   )}
                 </TD>
                 <TD className="font-mono tnum text-ink-2">
@@ -520,7 +520,7 @@ export default async function StatutoryPage(
           <Panel
             title="Professional tax by state and branch"
             right={
-              <span className="label text-ink-3 tnum">
+              <span className="text-xs font-medium text-ink-2 tnum">
                 {formatINR(summaries.pt.totalPaise)}
               </span>
             }
@@ -561,7 +561,7 @@ export default async function StatutoryPage(
           <Panel
             title="Labour welfare fund by state"
             right={
-              <span className="label text-ink-3 tnum">
+              <span className="text-xs font-medium text-ink-2 tnum">
                 {formatINR(summaries.lwf.totalPaise)}
               </span>
             }
@@ -586,7 +586,7 @@ export default async function StatutoryPage(
                       <TD className="text-ink-2">
                         {st.frequency}
                         {!st.dueThisPeriod && (
-                          <span className="label text-rust ml-2">
+                          <span className="text-xs font-semibold text-rust ml-2">
                             not a collection month
                           </span>
                         )}
@@ -614,7 +614,7 @@ export default async function StatutoryPage(
           <Panel title="Monthly statutory summary">
             <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-line-2">
               <div className="px-4 py-4">
-                <p className="label text-ink-3">Provident fund</p>
+                <p className="text-xs font-medium text-ink-2">Provident fund</p>
                 <p className="font-display text-xl font-semibold tnum mt-1">
                   {formatINR(summaries.pf.totalPaise)}
                 </p>
@@ -625,7 +625,7 @@ export default async function StatutoryPage(
                 </p>
               </div>
               <div className="px-4 py-4">
-                <p className="label text-ink-3">ESIC</p>
+                <p className="text-xs font-medium text-ink-2">ESIC</p>
                 <p className="font-display text-xl font-semibold tnum mt-1">
                   {formatINR(summaries.esic.totalPaise)}
                 </p>
@@ -636,7 +636,7 @@ export default async function StatutoryPage(
                 </p>
               </div>
               <div className="px-4 py-4">
-                <p className="label text-ink-3">TDS</p>
+                <p className="text-xs font-medium text-ink-2">TDS</p>
                 <p className="font-display text-xl font-semibold tnum mt-1">
                   {formatINR(summaries.tds.totalTdsPaise)}
                 </p>

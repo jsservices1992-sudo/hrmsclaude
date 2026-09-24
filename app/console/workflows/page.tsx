@@ -80,7 +80,7 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
       <Card padded={false}>
         <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
           <span className="text-[15px] font-semibold text-ink">Waiting on you</span>
-          <span className="label text-ink-3 tnum">{inbox.length}</span>
+          <span className="text-xs font-medium text-ink-2 tnum">{inbox.length}</span>
         </div>
         {inbox.length === 0 ? (
           <p className="px-4 py-6 text-sm text-ink-3">Nothing is waiting on you.</p>
@@ -192,7 +192,7 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
         <Card padded={false}>
           <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[15px] font-semibold text-ink">Template · {templateRow.name}</span>
-            <span className="label text-ink-3">
+            <span className="text-xs font-medium text-ink-2">
               version {templateRow.version} · starts on resignation accepted
             </span>
           </div>

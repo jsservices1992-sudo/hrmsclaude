@@ -30,7 +30,7 @@ import {
   TBody,
   TR,
   TD,
-  type BadgeTone, DrawerButton
+  type BadgeTone, DrawerButton, EmptyState
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
@@ -152,7 +152,17 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
         </div>
       )}
 
+      {allCases.length === 0 && (
+        <Card padded={false}>
+          <EmptyState
+            title="No exits recorded"
+            description="When somebody resigns or is let go, record the exit here — it starts their clearance checklist and full & final settlement."
+          />
+        </Card>
+      )}
+
       {/* The queue, most overdue first */}
+      {queue.length > 0 && (
       <Card padded={false}>
         <div className="px-5 py-3.5 border-b border-line-2">
           <span className="text-[15px] font-semibold text-ink">Settlement queue</span>
@@ -195,7 +205,7 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
                   )}
                 </TD>
                 <TD>
-                  <span className="label text-ink-2">
+                  <span className="text-xs font-semibold text-ink">
                     {q.stored ? q.stored.status.replace(/_/g, " ") : "not started"}
                   </span>
                 </TD>
@@ -212,34 +222,39 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
           </TBody>
         </Table>
       </Card>
+      )}
 
-      <FilterBar
-        action="/console/exits"
-        mode="filter"
-        clearHref={hasFilters ? "/console/exits" : null}
-      >
-        <FilterField label="Type">
-          <Select name="type" defaultValue={typeFilter}>
-            <option value="">All</option>
-            {Object.entries(TYPE_LABEL).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </Select>
-        </FilterField>
-        <FilterField label="Status">
-          <Select name="status" defaultValue={statusFilter}>
-            <option value="">All</option>
-            {Object.keys(STATUS_TONE).map((st) => (
-              <option key={st} value={st}>{st.replace(/_/g, " ")}</option>
-            ))}
-          </Select>
-        </FilterField>
-      </FilterBar>
+      {allCases.length > 0 && (
+      <Card>
+        <FilterBar
+          action="/console/exits"
+          mode="filter"
+          clearHref={hasFilters ? "/console/exits" : null}
+        >
+          <FilterField label="Type">
+            <Select name="type" defaultValue={typeFilter}>
+              <option value="">All</option>
+              {Object.entries(TYPE_LABEL).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </Select>
+          </FilterField>
+          <FilterField label="Status">
+            <Select name="status" defaultValue={statusFilter}>
+              <option value="">All</option>
+              {Object.keys(STATUS_TONE).map((st) => (
+                <option key={st} value={st}>{st.replace(/_/g, " ")}</option>
+              ))}
+            </Select>
+          </FilterField>
+        </FilterBar>
+      </Card>
+      )}
 
-      {cases.length === 0 ? (
-        <p className="text-ink-2">
-          {allCases.length === 0 ? "No exit cases yet." : "No exit cases match these filters."}
-        </p>
+      {allCases.length === 0 ? null : cases.length === 0 ? (
+        <Card padded={false}>
+          <EmptyState title="No exit cases match these filters" description="Widen the type or status, or clear the filters." />
+        </Card>
       ) : (
         <Table>
           <THead>
@@ -275,7 +290,7 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
                         {ageing}d
                       </Badge>
                     ) : (
-                      <span className="label text-ink-3">—</span>
+                      <span className="text-xs font-medium text-ink-2">—</span>
                     )}
                   </TD>
                   <TD>

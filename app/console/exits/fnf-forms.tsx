@@ -80,7 +80,7 @@ export function RecordRecoveryForm({
       <input type="hidden" name="exitCaseId" value={exitCaseId} />
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Amount (₹)</span>
+          <span className="text-xs font-medium text-ink-2">Amount (₹)</span>
           <Input
             name="amount"
             type="number"
@@ -91,7 +91,7 @@ export function RecordRecoveryForm({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">How</span>
+          <span className="text-xs font-medium text-ink-2">How</span>
           <Select name="method" defaultValue="bank_transfer">
             <option value="bank_transfer">Bank transfer</option>
             <option value="cheque">Cheque</option>
@@ -100,7 +100,7 @@ export function RecordRecoveryForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Received on</span>
+          <span className="text-xs font-medium text-ink-2">Received on</span>
           <Input
             name="receivedAt"
             type="date"
@@ -108,7 +108,7 @@ export function RecordRecoveryForm({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Reference</span>
+          <span className="text-xs font-medium text-ink-2">Reference</span>
           <Input name="reference" placeholder="UTR or cheque no." />
         </label>
         <Button type="submit" className="hover:border-teal hover:text-teal">

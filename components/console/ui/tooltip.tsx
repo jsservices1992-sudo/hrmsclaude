@@ -16,7 +16,7 @@ export function Tooltip({ label, children }: { label: string; children: React.Re
       {show && (
         <span
           role="tooltip"
-          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-sm bg-ink text-paper text-xs px-2 py-1 shadow-md"
+          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-ink text-paper text-xs px-2 py-1 shadow-md"
         >
           {label}
         </span>

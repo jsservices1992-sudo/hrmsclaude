@@ -145,7 +145,7 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
       <Card padded={false}>
         <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
           <span className="text-[15px] font-semibold text-ink">Proofs awaiting verification</span>
-          <span className="label text-ink-3 tnum">{pending.length}</span>
+          <span className="text-xs font-medium text-ink-2 tnum">{pending.length}</span>
         </div>
         {pending.length === 0 ? (
           <p className="px-4 py-6 text-sm text-ink-3">Nothing waiting.</p>

@@ -46,7 +46,7 @@ export function StartExitForm({
       <input type="hidden" name="companyId" value={companyId} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className="label text-ink-3">Employee</span>
+          <span className="text-xs font-medium text-ink-2">Employee</span>
           <Select name="employeeId" defaultValue={defaultEmployeeId ?? ""} required>
             <option value="">Choose…</option>
             {employees.map((e) => (
@@ -57,7 +57,7 @@ export function StartExitForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="label text-ink-3">Kind of exit</span>
+          <span className="text-xs font-medium text-ink-2">Kind of exit</span>
           <Select name="exitType" defaultValue="resignation" required>
             {EXIT_TYPES.map((t) => (
               <option key={t.id} value={t.id}>{t.label}</option>
@@ -65,18 +65,18 @@ export function StartExitForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="label text-ink-3">Notice given on</span>
+          <span className="text-xs font-medium text-ink-2">Notice given on</span>
           <Input name="resignationDate" type="date" required className="font-mono" />
           <span className="text-xs text-ink-3">The day they told you.</span>
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="label text-ink-3">Last working day</span>
+          <span className="text-xs font-medium text-ink-2">Last working day</span>
           <Input name="lastWorkingDay" type="date" required className="font-mono" />
           <span className="text-xs text-ink-3">Paid up to and including this day.</span>
         </label>
       </div>
       <label className="flex flex-col gap-1.5">
-        <span className="label text-ink-3">Reason</span>
+        <span className="text-xs font-medium text-ink-2">Reason</span>
         <Input name="reason" placeholder="Optional — recorded on the exit" />
       </label>
       <div>
@@ -100,7 +100,7 @@ export function WithdrawExitForm({ exitId }: { exitId: string }) {
     <form action={action} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="exitId" value={exitId} />
       <label className="flex flex-col gap-1.5 flex-1 min-w-[18rem]">
-        <span className="label text-ink-3">Withdraw this exit</span>
+        <span className="text-xs font-medium text-ink-2">Withdraw this exit</span>
         <Input name="reason" placeholder="Why — recorded on the exit" required />
       </label>
       <SubmitButton variant="ghost" className="text-rust" pendingText="Working…">
@@ -144,7 +144,7 @@ export function ClearanceItemForm({
     <form action={action} className="flex flex-wrap items-end gap-2 mt-2">
       <input type="hidden" name="itemId" value={item.id} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Outcome</span>
+        <span className="text-xs font-medium text-ink-2">Outcome</span>
         <Select name="status" defaultValue={item.status} className="w-52">
           {CLEARANCE_OUTCOMES.map((o) => (
             <option key={o.id} value={o.id}>{o.label}</option>
@@ -152,7 +152,7 @@ export function ClearanceItemForm({
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Recovery (₹)</span>
+        <span className="text-xs font-medium text-ink-2">Recovery (₹)</span>
         <Input
           name="recoveryRupees"
           type="number"
@@ -163,7 +163,7 @@ export function ClearanceItemForm({
         />
       </label>
       <label className="flex flex-col gap-1 flex-1 min-w-[16rem]">
-        <span className="label text-ink-3">Note</span>
+        <span className="text-xs font-medium text-ink-2">Note</span>
         <Input name="note" defaultValue={item.note ?? ""} placeholder="Required when waiving" />
       </label>
       <SubmitButton variant="ghost" size="sm" pendingText="Saving…">Save</SubmitButton>
@@ -240,7 +240,7 @@ export function NoticeTreatmentForm({
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="label text-ink-3">Reason</span>
+            <span className="text-xs font-medium text-ink-2">Reason</span>
             <Input
               name="reason"
               defaultValue={current.noticeWaiverReason ?? ""}
@@ -327,7 +327,7 @@ export function AcceptExitForm({
     <form action={action} className="flex flex-wrap items-end gap-3">
       <input type="hidden" name="exitId" value={exitId} />
       <label className="flex flex-col gap-1.5">
-        <span className="label text-ink-3">Agreed last working day</span>
+        <span className="text-xs font-medium text-ink-2">Agreed last working day</span>
         <Input
           name="lastWorkingDay"
           type="date"
@@ -382,7 +382,7 @@ export function RehireEligibilityForm({
         </p>
       )}
       <label className="flex flex-col gap-1 max-w-sm">
-        <span className="label text-ink-3">Would this person be taken back?</span>
+        <span className="text-xs font-medium text-ink-2">Would this person be taken back?</span>
         <Select
           name="rehireEligible"
           value={verdict}
@@ -395,7 +395,7 @@ export function RehireEligibilityForm({
         </Select>
       </label>
       <label className="flex flex-col gap-1 max-w-xl">
-        <span className="label text-ink-3">
+        <span className="text-xs font-medium text-ink-2">
           Note {verdict === "not_eligible" ? "(required)" : "(optional)"}
         </span>
         <Input

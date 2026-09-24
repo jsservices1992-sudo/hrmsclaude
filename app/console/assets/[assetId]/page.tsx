@@ -91,7 +91,7 @@ export default async function AssetDetailPage(
             { k: "Notes", v: view.asset.notes ?? "—" },
           ].map((x) => (
             <div key={x.k} className="px-4 py-3 border-r border-b border-line-2">
-              <dt className="label text-ink-3">{x.k}</dt>
+              <dt className="text-xs font-medium text-ink-2">{x.k}</dt>
               <dd className="text-sm mt-0.5">{x.v}</dd>
             </div>
           ))}
@@ -99,7 +99,7 @@ export default async function AssetDetailPage(
       </Card>
 
       {view.open ? (
-        <div className="rounded-md border border-indigo/40 bg-indigo-soft px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="rounded-lg border border-indigo/40 bg-indigo-soft px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm">
             Currently with{" "}
             <Link href={`/console/employees/${view.open.emp.id}`} className="font-medium hover:underline">
@@ -121,7 +121,7 @@ export default async function AssetDetailPage(
         canAct &&
         view.asset.status === "in_stock" && (
           <Card>
-            <p className="label text-ink-3 mb-3">Issue this asset</p>
+            <p className="text-xs font-medium text-ink-2 mb-3">Issue this asset</p>
             <IssueAssetForm
               assetId={view.asset.id}
               employees={employees.map((e) => ({ id: e.id, label: `${e.firstName} ${e.lastName} — ${e.empCode}` }))}
@@ -158,7 +158,7 @@ export default async function AssetDetailPage(
       </Card>
 
       {isAdmin && view.asset.status !== "issued" && view.asset.status !== "retired" && (
-        <div className="rounded-md border border-rust/40 bg-rust-soft px-4 py-3 flex items-center justify-between gap-3">
+        <div className="rounded-lg border border-rust/25 bg-rust-soft px-4 py-3 flex items-center justify-between gap-3">
           <p className="text-sm text-ink-2">Retiring removes this asset from anything that can be issued.</p>
           <RetireAssetForm assetId={view.asset.id} />
         </div>

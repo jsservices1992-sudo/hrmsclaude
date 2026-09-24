@@ -105,7 +105,7 @@ function NavList({
                         href={child.href}
                         onClick={onNavigate}
                         aria-current={on ? "page" : undefined}
-                        className={`block px-2.5 py-1.5 rounded-md text-[13px] transition-base focus-visible:shadow-ring ${
+                        className={`block px-2.5 py-1.5 rounded-lg text-[13px] transition-base focus-visible:shadow-ring ${
                           on ? "bg-indigo-soft text-indigo font-semibold" : "text-ink-2 hover:text-ink hover:bg-surface-2"
                         }`}
                       >
@@ -182,7 +182,7 @@ function CompanySwitcher({
             aria-label={`Company: ${currentName}. Change company`}
             className="flex w-full items-center gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-2 text-left hover:bg-surface-2 transition-base focus-visible:shadow-ring"
           >
-            <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-indigo-soft text-xs font-bold text-indigo">
+            <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-soft text-xs font-bold text-indigo">
               {currentName.slice(0, 2).toUpperCase()}
             </span>
             <span className="min-w-0 flex-1">
@@ -282,11 +282,11 @@ function SearchTrigger() {
     <button
       type="button"
       onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
-      className="hidden sm:flex items-center gap-2 pl-2.5 pr-1.5 py-1.5 rounded-md border border-line text-ink-3 hover:text-ink hover:bg-surface-2 transition-base text-sm min-w-[12rem]"
+      className="hidden sm:flex items-center gap-2 pl-2.5 pr-1.5 py-1.5 rounded-lg border border-line text-ink-3 hover:text-ink hover:bg-surface-2 transition-base text-sm min-w-[12rem]"
     >
       <IconSearch className="h-4 w-4" />
       <span className="flex-1 text-left">Search…</span>
-      <kbd className="label border border-line rounded-sm px-1.5 py-0.5">{hint}</kbd>
+      <kbd className="label border border-line rounded px-1.5 py-0.5">{hint}</kbd>
     </button>
   );
 }
@@ -313,7 +313,7 @@ function UserMenu({
           onClick={onClick}
           aria-expanded={open}
           aria-haspopup="true"
-          className="flex items-center gap-2.5 pl-2 pr-1 py-1.5 rounded-md hover:bg-surface-2 transition-base"
+          className="flex items-center gap-2.5 pl-2 pr-1 py-1.5 rounded-lg hover:bg-surface-2 transition-base"
         >
           <span
             aria-hidden
@@ -323,7 +323,7 @@ function UserMenu({
           </span>
           <span className="hidden sm:flex flex-col items-start leading-tight min-w-0">
             <span className="text-sm truncate max-w-[10rem]">{user.name}</span>
-            <span className="label text-ink-3 capitalize">{user.role.replace(/_/g, " ")}</span>
+            <span className="text-xs font-medium text-ink-2 capitalize">{user.role.replace(/_/g, " ")}</span>
           </span>
           <IconChevron className="h-3 w-3 text-ink-3 rotate-90" />
         </button>
@@ -339,7 +339,7 @@ function UserMenu({
                 {user.role.replace(/_/g, " ")}
               </span>
               {user.compensationScope === "none" && (
-                <span className="label px-1.5 py-0.5 rounded-sm bg-amber-soft text-amber">
+                <span className="label px-1.5 py-0.5 rounded bg-amber-soft text-amber">
                   Salary masked
                 </span>
               )}
@@ -461,7 +461,7 @@ export default function ConsoleShell({
                 type="button"
                 onClick={toggleCollapsed}
                 aria-label="Collapse sidebar"
-                className="p-1.5 rounded-md text-ink-3 hover:text-ink hover:bg-surface-2 transition-base"
+                className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-surface-2 transition-base"
               >
                 <IconPanel />
               </button>
@@ -484,7 +484,7 @@ export default function ConsoleShell({
               type="button"
               onClick={toggleCollapsed}
               aria-label="Expand sidebar"
-              className="m-2 p-2 rounded-md text-ink-3 hover:text-ink hover:bg-surface-2 transition-base grid place-items-center"
+              className="m-2 p-2 rounded-lg text-ink-3 hover:text-ink hover:bg-surface-2 transition-base grid place-items-center"
             >
               <IconPanel />
             </button>

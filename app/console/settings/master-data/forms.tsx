@@ -38,16 +38,16 @@ export function DepartmentForm({
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Name</span>
+        <span className="text-xs font-medium text-ink-2">Name</span>
         <Input name="name" required defaultValue={state.values?.name ?? editing?.name ?? ""} />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Code</span>
+        <span className="text-xs font-medium text-ink-2">Code</span>
         <Input name="code" required defaultValue={state.values?.code ?? editing?.code ?? ""} className="w-28" />
         <span className="text-xs text-ink-3">Your own short label for the department — ENG, HR, SALES. It is what the employee import file refers to.</span>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Cost centre</span>
+        <span className="text-xs font-medium text-ink-2">Cost centre</span>
         <Input name="costCentre" defaultValue={state.values?.costCentre ?? editing?.costCentre ?? ""} className="w-32" />
         <span className="text-xs text-ink-3">Your accounting system&apos;s code — CC-ENG, 4200. Payroll cost is grouped by it in the journal. Blank is fine.</span>
       </label>
@@ -72,17 +72,17 @@ export function GradeForm({
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Name</span>
+        <span className="text-xs font-medium text-ink-2">Name</span>
         <Input name="name" required defaultValue={state.values?.name ?? editing?.name ?? ""} />
         <span className="text-xs text-ink-3">Whatever you call it — L1, M2, Senior Engineer.</span>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Level</span>
+        <span className="text-xs font-medium text-ink-2">Level</span>
         <Input name="level" type="number" required defaultValue={state.values?.level ?? editing?.level ?? ""} className="w-20" />
         <span className="text-xs text-ink-3">Seniority, low to high. Only the order matters.</span>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Notice (days)</span>
+        <span className="text-xs font-medium text-ink-2">Notice (days)</span>
         <Input name="noticeDays" type="number" defaultValue={state.values?.noticeDays ?? editing?.noticeDays ?? ""} className="w-24" />
         <span className="text-xs text-ink-3">
           What a settlement recovers short notice against. Blank falls back to
@@ -90,7 +90,7 @@ export function GradeForm({
         </span>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Probation (months)</span>
+        <span className="text-xs font-medium text-ink-2">Probation (months)</span>
         <Input name="probationMonths" type="number" defaultValue={state.values?.probationMonths ?? editing?.probationMonths ?? ""} className="w-24" />
         <span className="text-xs text-ink-3">
           Recorded for reference. Nothing computes from it yet — set the
@@ -98,7 +98,7 @@ export function GradeForm({
         </span>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Skill category</span>
+        <span className="text-xs font-medium text-ink-2">Skill category</span>
         <Select name="skillCategory" defaultValue={state.values?.skillCategory ?? editing?.skillCategory ?? ""}>
           <option value="">Not set</option>
           <option value="unskilled">Unskilled</option>
@@ -112,7 +112,7 @@ export function GradeForm({
         </span>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Labour welfare fund category</span>
+        <span className="text-xs font-medium text-ink-2">Labour welfare fund category</span>
         <Select name="lwfCategory" defaultValue={state.values?.lwfCategory ?? editing?.lwfCategory ?? ""}>
           <option value="">Not set</option>
           <option value="managerial">Managerial</option>
@@ -153,20 +153,20 @@ export function LeaveTypeForm({
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Code</span>
+          <span className="text-xs font-medium text-ink-2">Code</span>
           <Input name="code" required defaultValue={state.values?.code ?? editing?.code ?? ""} className="w-24" readOnly={!!editing} />
           <span className="text-xs text-ink-3">Your own short label for this leave type — EL, CL, SL. Used on payslips and in the balance import.</span>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Name</span>
+          <span className="text-xs font-medium text-ink-2">Name</span>
           <Input name="name" required defaultValue={state.values?.name ?? editing?.name ?? ""} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Annual days</span>
+          <span className="text-xs font-medium text-ink-2">Annual days</span>
           <Input name="annualDays" type="number" step="0.5" defaultValue={state.values?.annualDays ?? editing?.annualDays ?? 0} className="w-20" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Accrual</span>
+          <span className="text-xs font-medium text-ink-2">Accrual</span>
           <Select name="frequency" defaultValue={state.values?.frequency ?? editing?.frequency ?? "monthly"}>
             <option value="monthly">Monthly</option>
             <option value="quarterly">Quarterly</option>
@@ -174,11 +174,11 @@ export function LeaveTypeForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Carry-forward cap</span>
+          <span className="text-xs font-medium text-ink-2">Carry-forward cap</span>
           <Input name="carryForwardCap" type="number" step="0.5" defaultValue={state.values?.carryForwardCap ?? editing?.carryForwardCap ?? 0} className="w-20" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Negative rounds</span>
+          <span className="text-xs font-medium text-ink-2">Negative rounds</span>
           <Select name="rounding" defaultValue={state.values?.rounding ?? editing?.rounding ?? "none"}>
             <option value="none">None</option>
             <option value="half_up">Half up</option>
@@ -224,15 +224,15 @@ export function HolidayForm({
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Date</span>
+        <span className="text-xs font-medium text-ink-2">Date</span>
         <Input name="date" type="date" required defaultValue={state.values?.date ?? editing?.date ?? ""} className="font-mono" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Name</span>
+        <span className="text-xs font-medium text-ink-2">Name</span>
         <Input name="name" required defaultValue={state.values?.name ?? editing?.name ?? ""} />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Branch</span>
+        <span className="text-xs font-medium text-ink-2">Branch</span>
         <Select name="branchId" defaultValue={state.values?.branchId ?? editing?.branchId ?? ""}>
           <option value="">All branches</option>
           {branches.map((b) => (
@@ -301,37 +301,37 @@ export function ShiftForm({
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Code</span>
+          <span className="text-xs font-medium text-ink-2">Code</span>
           <Input name="code" required defaultValue={state.values?.code ?? editing?.code ?? ""} className="w-24" readOnly={!!editing} />
           <span className="text-xs text-ink-3">Your own short label for this shift — GEN, NIGHT, SHIFT-A.</span>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Name</span>
+          <span className="text-xs font-medium text-ink-2">Name</span>
           <Input name="name" required defaultValue={state.values?.name ?? editing?.name ?? ""} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Start</span>
+          <span className="text-xs font-medium text-ink-2">Start</span>
           <Input name="start" type="time" defaultValue={editing ? minutesToHHMM(editing.startMinute) : "09:00"} className="font-mono" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">End</span>
+          <span className="text-xs font-medium text-ink-2">End</span>
           <Input name="end" type="time" defaultValue={editing ? minutesToHHMM(editing.endMinute) : "18:00"} className="font-mono" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Grace (min)</span>
+          <span className="text-xs font-medium text-ink-2">Grace (min)</span>
           <Input name="graceMinutes" type="number" defaultValue={state.values?.graceMinutes ?? editing?.graceMinutes ?? 15} className="w-20" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Full day (min)</span>
+          <span className="text-xs font-medium text-ink-2">Full day (min)</span>
           <Input name="fullDayMinutes" type="number" defaultValue={state.values?.fullDayMinutes ?? editing?.fullDayMinutes ?? 480} className="w-24" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Half day (min)</span>
+          <span className="text-xs font-medium text-ink-2">Half day (min)</span>
           <Input name="halfDayMinutes" type="number" defaultValue={state.values?.halfDayMinutes ?? editing?.halfDayMinutes ?? 240} className="w-24" />
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="label text-ink-3">Weekly off</span>
+        <span className="text-xs font-medium text-ink-2">Weekly off</span>
         {DAYS.map((d, i) => (
           <label key={d} className={check}>
             <input type="checkbox" name="weeklyOffDays" value={i} defaultChecked={offDays.has(String(i))} />
@@ -383,16 +383,16 @@ export function PayComponentForm({
       {structureId && <input type="hidden" name="structureId" value={structureId} />}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Code</span>
+          <span className="text-xs font-medium text-ink-2">Code</span>
           <Input name="code" required defaultValue={state.values?.code ?? editing?.code ?? ""} className="w-28" readOnly={!!editing} />
           <span className="text-xs text-ink-3">Your own short label for this component — BASIC, HRA, SPL. It appears on the payslip and cannot be changed later.</span>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Name</span>
+          <span className="text-xs font-medium text-ink-2">Name</span>
           <Input name="name" required defaultValue={state.values?.name ?? editing?.name ?? ""} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Kind</span>
+          <span className="text-xs font-medium text-ink-2">Kind</span>
           <Select name="kind" defaultValue={state.values?.kind ?? editing?.kind ?? "earning"}>
             <option value="earning">Earning</option>
             <option value="deduction">Deduction</option>
@@ -400,7 +400,7 @@ export function PayComponentForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Calculation</span>
+          <span className="text-xs font-medium text-ink-2">Calculation</span>
           <Select name="calcMethod" defaultValue={state.values?.calcMethod ?? editing?.calcMethod ?? "fixed"}>
             <option value="fixed">Fixed amount</option>
             <option value="percent_of_basic">% of basic</option>
@@ -411,15 +411,15 @@ export function PayComponentForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Fixed (₹)</span>
+          <span className="text-xs font-medium text-ink-2">Fixed (₹)</span>
           <Input name="fixedRupees" type="number" step="0.01" defaultValue={editing ? editing.fixedPaise / 100 : 0} className="w-24" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Percent</span>
+          <span className="text-xs font-medium text-ink-2">Percent</span>
           <Input name="percentValue" type="number" step="0.01" defaultValue={state.values?.percentValue ?? editing?.percentValue ?? 0} className="w-20" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">% of component</span>
+          <span className="text-xs font-medium text-ink-2">% of component</span>
           <Select name="percentOfCode" defaultValue={state.values?.percentOfCode ?? editing?.percentOfCode ?? ""}>
             <option value="">—</option>
             {otherComponents.map((c) => (
@@ -428,7 +428,7 @@ export function PayComponentForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Sequence</span>
+          <span className="text-xs font-medium text-ink-2">Sequence</span>
           <Input name="sequence" type="number" defaultValue={state.values?.sequence ?? editing?.sequence ?? 0} className="w-16" />
         </label>
       </div>
@@ -445,7 +445,7 @@ export function PayComponentForm({
           which is how the Code treats HRA and conveyance — so ESIC gets a
           treatment rather than a checkbox. */}
       <label className="flex flex-col gap-1 max-w-md">
-        <span className="label text-ink-3">ESIC wages</span>
+        <span className="text-xs font-medium text-ink-2">ESIC wages</span>
         <Select
           name="esicTreatment"
           defaultValue={
@@ -467,7 +467,7 @@ export function PayComponentForm({
         </span>
       </label>
       <label className="flex flex-col gap-1 max-w-md">
-        <span className="label text-ink-3">Pays the bonus?</span>
+        <span className="text-xs font-medium text-ink-2">Pays the bonus?</span>
         <Select name="bonusRole" defaultValue={editing?.bonusRole ?? ""}>
           <option value="">Not a bonus payment</option>
           <option value="statutory_bonus">This is the statutory bonus</option>
@@ -508,23 +508,23 @@ export function LoanSchemeForm({
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Code</span>
+          <span className="text-xs font-medium text-ink-2">Code</span>
           <Input name="code" required defaultValue={state.values?.code ?? editing?.code ?? ""} className="w-24" readOnly={!!editing} />
           <span className="text-xs text-ink-3">Your own short label for this scheme — ADVANCE, VEHICLE, EMERGENCY.</span>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Label</span>
+          <span className="text-xs font-medium text-ink-2">Label</span>
           <Input name="label" required defaultValue={state.values?.label ?? editing?.label ?? ""} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Category</span>
+          <span className="text-xs font-medium text-ink-2">Category</span>
           <Select name="category" defaultValue={state.values?.category ?? editing?.category ?? "loan"}>
             <option value="loan">Loan</option>
             <option value="advance">Salary advance</option>
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Interest</span>
+          <span className="text-xs font-medium text-ink-2">Interest</span>
           <Select name="interestMethod" defaultValue={state.values?.interestMethod ?? editing?.interestMethod ?? "interest_free"}>
             <option value="interest_free">Interest-free</option>
             <option value="flat">Flat rate</option>
@@ -532,35 +532,35 @@ export function LoanSchemeForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Rate % p.a.</span>
+          <span className="text-xs font-medium text-ink-2">Rate % p.a.</span>
           <Input name="annualRatePercent" type="number" step="0.01" defaultValue={editing ? editing.annualRateBps / 100 : 0} className="w-20" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Max principal (₹)</span>
+          <span className="text-xs font-medium text-ink-2">Max principal (₹)</span>
           <Input name="maxPrincipalRupees" type="number" required defaultValue={editing ? editing.maxPrincipalPaise / 100 : ""} className="w-28" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Max tenure (months)</span>
+          <span className="text-xs font-medium text-ink-2">Max tenure (months)</span>
           <Input name="maxTenureMonths" type="number" required defaultValue={state.values?.maxTenureMonths ?? editing?.maxTenureMonths ?? ""} className="w-24" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Min service (months)</span>
+          <span className="text-xs font-medium text-ink-2">Min service (months)</span>
           <Input name="minServiceMonths" type="number" defaultValue={state.values?.minServiceMonths ?? editing?.minServiceMonths ?? 0} className="w-24" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Max instalment (% of gross)</span>
+          <span className="text-xs font-medium text-ink-2">Max instalment (% of gross)</span>
           <Input name="maxInstalmentOfGrossPercent" type="number" step="0.1" defaultValue={editing ? editing.maxInstalmentOfGrossBps / 100 : 30} className="w-20" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Min net pay (₹)</span>
+          <span className="text-xs font-medium text-ink-2">Min net pay (₹)</span>
           <Input name="minNetPayRupees" type="number" defaultValue={editing ? editing.minNetPayPaise / 100 : 0} className="w-24" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Foreclosure charge %</span>
+          <span className="text-xs font-medium text-ink-2">Foreclosure charge %</span>
           <Input name="foreclosureChargePercent" type="number" step="0.01" defaultValue={editing ? editing.foreclosureChargeBps / 100 : 0} className="w-20" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Effective from</span>
+          <span className="text-xs font-medium text-ink-2">Effective from</span>
           <Input name="effectiveFrom" type="date" required defaultValue={state.values?.effectiveFrom ?? editing?.effectiveFrom ?? ""} className="font-mono" />
         </label>
       </div>
@@ -592,16 +592,16 @@ export function GlAccountForm({
       <input type="hidden" name="companyId" value={companyId} />
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Code</span>
+        <span className="text-xs font-medium text-ink-2">Code</span>
         <Input name="code" required defaultValue={state.values?.code ?? editing?.code ?? ""} className="w-28" />
         <span className="text-xs text-ink-3">The account code from your accounting software — 5001, 60200. It must match, or the journal will not post.</span>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Name</span>
+        <span className="text-xs font-medium text-ink-2">Name</span>
         <Input name="name" required defaultValue={state.values?.name ?? editing?.name ?? ""} />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Type</span>
+        <span className="text-xs font-medium text-ink-2">Type</span>
         <Select name="accountType" defaultValue={state.values?.accountType ?? editing?.accountType ?? "expense"}>
           <option value="expense">Expense</option>
           <option value="liability">Liability</option>
@@ -639,7 +639,7 @@ export function GlMappingForm({
         ))}
       </datalist>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Component</span>
+        <span className="text-xs font-medium text-ink-2">Component</span>
         <Select name="componentCode" defaultValue={state.values?.componentCode ?? editing?.componentCode ?? ""}>
           <option value="">Choose…</option>
           {components.map((c) => (
@@ -648,11 +648,11 @@ export function GlMappingForm({
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Debit account</span>
+        <span className="text-xs font-medium text-ink-2">Debit account</span>
         <Input name="debitAccount" list="gl-account-codes" defaultValue={state.values?.debitAccount ?? editing?.debitAccount ?? ""} placeholder="account code" className="w-36" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Credit account</span>
+        <span className="text-xs font-medium text-ink-2">Credit account</span>
         <Input name="creditAccount" list="gl-account-codes" defaultValue={state.values?.creditAccount ?? editing?.creditAccount ?? ""} placeholder="account code" className="w-36" />
       </label>
       <SubmitButton size="sm" pendingText="Saving…">Save mapping</SubmitButton>
@@ -684,11 +684,11 @@ export function VariablePayTypeForm({
       {editing && <input type="hidden" name="id" value={editing.id} />}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Name</span>
+          <span className="text-xs font-medium text-ink-2">Name</span>
           <Input name="label" required defaultValue={state.values?.label ?? editing?.label ?? ""} placeholder="Festival bonus" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Kind</span>
+          <span className="text-xs font-medium text-ink-2">Kind</span>
           <Select name="category" defaultValue={state.values?.category ?? editing?.category ?? "bonus"} className="w-40">
             <option value="bonus">Bonus</option>
             <option value="incentive">Incentive</option>
@@ -698,7 +698,7 @@ export function VariablePayTypeForm({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Code</span>
+          <span className="text-xs font-medium text-ink-2">Code</span>
           <Input
             name="code"
             defaultValue={state.values?.code ?? editing?.code ?? ""}
@@ -708,7 +708,7 @@ export function VariablePayTypeForm({
             <span className="text-xs text-ink-3">Your own short label for this pay type — INCENTIVE, OT, DAMAGE.</span>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Default ₹</span>
+          <span className="text-xs font-medium text-ink-2">Default ₹</span>
           <Input
             name="defaultAmount"
             type="number"
@@ -720,7 +720,7 @@ export function VariablePayTypeForm({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">ESIC wages</span>
+          <span className="text-xs font-medium text-ink-2">ESIC wages</span>
           <Select
             name="esicTreatment"
             defaultValue={state.values?.esicTreatment ?? editing?.esicTreatment ?? ""}
@@ -758,7 +758,7 @@ export function IndiaHolidaysForm({ companyId }: { companyId: string }) {
       <form action={action} className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="companyId" value={companyId} />
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Year</span>
+          <span className="text-xs font-medium text-ink-2">Year</span>
           <Select name="year" defaultValue={String(thisYear)} className="w-28">
             {[thisYear, thisYear + 1].map((y) => (
               <option key={y} value={y}>{y}</option>
@@ -775,7 +775,7 @@ export function IndiaHolidaysForm({ companyId }: { companyId: string }) {
       </p>
 
       <div className="border border-line bg-surface-2 px-3 py-2.5 rounded-lg">
-        <span className="label text-ink-3">Still to add, with this year&apos;s dates</span>
+        <span className="text-xs font-medium text-ink-2">Still to add, with this year&apos;s dates</span>
         <p className="text-xs text-ink-3 mt-1 max-w-[80ch]">
           These move with the lunar calendar or a state notification, so their
           dates have to come from this year&apos;s gazette rather than from here.

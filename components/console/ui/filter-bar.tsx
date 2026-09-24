@@ -37,7 +37,7 @@ export function FilterBar({
   return (
     <form
       action={action}
-      className="flex flex-wrap items-end gap-x-3 gap-y-2"
+      className="flex flex-wrap items-end gap-x-3 gap-y-3"
     >
       {Object.entries(hidden ?? {}).map(([k, v]) =>
         v === undefined ? null : <input key={k} type="hidden" name={k} value={String(v)} />,
@@ -45,11 +45,16 @@ export function FilterBar({
 
       {children}
 
-      <div className="flex items-center gap-3">
-        <Button type="submit">{mode === "switch" ? "Go" : "Filter"}</Button>
+      <div className="flex items-center gap-2">
+        <Button type="submit" variant="primary">
+          {mode === "switch" ? "Go" : "Apply"}
+        </Button>
         {clearHref && (
-          <Link href={clearHref} className="text-xs text-ink-3 hover:text-rust whitespace-nowrap">
-            Clear
+          <Link
+            href={clearHref}
+            className="inline-flex items-center rounded-lg px-2.5 py-2 text-sm font-semibold text-ink-2 transition-base hover:bg-surface-2 hover:text-ink whitespace-nowrap"
+          >
+            Clear filters
           </Link>
         )}
       </div>
@@ -77,8 +82,8 @@ export function FilterField({
   children: React.ReactNode;
 }) {
   return (
-    <label className={`flex flex-col gap-1 ${className}`}>
-      <span className={showLabel ? "label text-ink-3" : "sr-only"}>{label}</span>
+    <label className={`flex flex-col gap-1.5 ${className}`}>
+      <span className={showLabel ? "text-xs font-medium text-ink-2" : "sr-only"}>{label}</span>
       {children}
     </label>
   );

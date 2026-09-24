@@ -159,8 +159,8 @@ export default async function CompanySettingsPage(
         (isAdmin ? (
           <>
             {hasRuns && (
-              <div className="border border-amber/40 bg-amber-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
-                <span className="label text-amber">Saved runs exist</span> —
+              <div className="border border-amber/25 bg-amber-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
+                <span className="text-xs font-semibold text-amber">Saved runs exist</span> —
                 changing a payroll convention will require a reason, because it
                 changes what every future part-month is worth.
               </div>
@@ -213,7 +213,7 @@ export default async function CompanySettingsPage(
               { k: "Rounding", v: company.roundingMode },
             ].map((r) => (
               <div key={r.k} className="px-4 py-2.5 border-b border-line-2 grid grid-cols-[12rem_1fr] gap-4">
-                <span className="label text-ink-3">{r.k}</span>
+                <span className="text-xs font-medium text-ink-2">{r.k}</span>
                 <span className="text-sm font-mono">{r.v ?? "—"}</span>
               </div>
             ))}
@@ -333,7 +333,7 @@ export default async function CompanySettingsPage(
                     {j?.name ?? st}{" "}
                     <span className="font-mono text-xs text-ink-3">{st}</span>
                   </span>
-                  <span className="label text-ink-3">
+                  <span className="text-xs font-medium text-ink-2">
                     PT {j?.ptApplicable ? "levied" : "none"} · LWF{" "}
                     {j?.lwfApplicable ? "levied" : "none"}
                   </span>
@@ -350,7 +350,7 @@ export default async function CompanySettingsPage(
                     if (!applicable && !reg) {
                       return (
                         <div key={kind} className="px-4 py-2.5 flex items-center gap-3">
-                          <span className="label text-ink-3 w-44">{KIND_LABEL[kind]}</span>
+                          <span className="text-xs font-medium text-ink-2 w-44">{KIND_LABEL[kind]}</span>
                           <span className="text-xs text-ink-3">
                             Not levied in {st} — no registration required
                           </span>
@@ -359,7 +359,7 @@ export default async function CompanySettingsPage(
                     }
                     return (
                       <div key={kind} className="px-4 py-3 flex flex-wrap items-center gap-3">
-                        <span className="label text-ink-3 w-44 shrink-0">{KIND_LABEL[kind]}</span>
+                        <span className="text-xs font-medium text-ink-2 w-44 shrink-0">{KIND_LABEL[kind]}</span>
                         {isAdmin ? (
                           <RegistrationForm
                             companyId={companyId}

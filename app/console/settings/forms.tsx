@@ -374,7 +374,7 @@ export function BranchForm({
       </div>
 
       <div className="border border-line-2 bg-surface-2/50 p-4 rounded-lg">
-        <p className="label text-ink-3 mb-3">
+        <p className="text-xs font-medium text-ink-2 mb-3">
           Statutory overrides — leave blank to inherit from the company
         </p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -648,7 +648,7 @@ function UseMyLocation() {
       <button
         type="button"
         onClick={fill}
-        className="rounded-md border border-line bg-surface px-3 py-2 text-sm hover:border-amber"
+        className="rounded-lg border border-line bg-surface px-3 py-2 text-sm hover:border-amber"
       >
         {state.tone === "busy" ? "Finding you…" : "Use my current location"}
       </button>

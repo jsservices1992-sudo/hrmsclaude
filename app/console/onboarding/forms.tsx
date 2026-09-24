@@ -22,7 +22,7 @@ function Field({ label, name, defaultValue, error, type = "text", hint }: {
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="label text-ink-3">{label}</span>
+      <span className="text-xs font-medium text-ink-2">{label}</span>
       <Input name={name} type={type} defaultValue={defaultValue ?? ""} invalid={Boolean(error)} />
       {error ? <span className="text-xs text-rust">{error}</span> : hint ? <span className="text-xs text-ink-3">{hint}</span> : null}
     </label>
@@ -35,7 +35,7 @@ function Select({ label, name, defaultValue, options, error }: {
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="label text-ink-3">{label}</span>
+      <span className="text-xs font-medium text-ink-2">{label}</span>
       <UiSelect name={name} defaultValue={defaultValue ?? ""} invalid={Boolean(error)}>
         {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
       </UiSelect>
@@ -129,7 +129,7 @@ export function JoinerPayForm({
       <input type="hidden" name="joinerId" value={joinerId} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Enter as</span>
+          <span className="text-xs font-medium text-ink-2">Enter as</span>
           <UiSelect name="mode" value={mode} onChange={(e) => setMode(e.target.value)}>
             <option value="gross">Monthly gross</option>
             <option value="annual_gross">Annual gross</option>
@@ -138,11 +138,11 @@ export function JoinerPayForm({
           </UiSelect>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Amount (₹)</span>
+          <span className="text-xs font-medium text-ink-2">Amount (₹)</span>
           <Input name="amount" type="number" min="0" step="0.01" required />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Salary structure</span>
+          <span className="text-xs font-medium text-ink-2">Salary structure</span>
           <UiSelect name="structureId" defaultValue={currentStructureId ?? ""}>
             <option value="">Default for their department</option>
             {structures.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
@@ -260,7 +260,7 @@ export function ConvertForm({
         </label>
       )}
       {!canConvert && (
-        <p className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg">
+        <p className="text-sm text-rust border border-rust/25 bg-rust-soft px-3 py-2 rounded-lg">
           Blocked: {blockers.join("; ")}.
         </p>
       )}
@@ -319,10 +319,10 @@ export function RehireForm({
       <div
         className={`border px-3 py-2 text-sm ${
           blocked
-            ? "border-rust/40 bg-rust-soft text-rust"
+            ? "border-rust/25 bg-rust-soft text-rust"
             : candidate.rehireEligible === "eligible"
-              ? "border-teal/40 bg-teal-soft text-ink-2"
-              : "border-amber/40 bg-amber-soft text-ink-2"
+              ? "border-teal/25 bg-teal-soft text-ink-2"
+              : "border-amber/25 bg-amber-soft text-ink-2"
         }`}
       >
         {candidate.rehireEligible === null
@@ -339,12 +339,12 @@ export function RehireForm({
       )}
 
       <label className="flex flex-col gap-1 max-w-xl">
-        <span className="label text-ink-3">Why they are coming back (optional)</span>
+        <span className="text-xs font-medium text-ink-2">Why they are coming back (optional)</span>
         <Input name="reason" placeholder="Kept on the record with the rehire" />
       </label>
 
       {!canConvert && (
-        <p className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg">
+        <p className="text-sm text-rust border border-rust/25 bg-rust-soft px-3 py-2 rounded-lg">
           Blocked: {blockers.join("; ")}.
         </p>
       )}

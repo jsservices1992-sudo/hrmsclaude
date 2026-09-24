@@ -250,16 +250,16 @@ export function ColumnChart({
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-4 text-xs text-ink-2">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--indigo)" }} />
+          <span className="h-2.5 w-2.5 rounded" style={{ background: "var(--indigo)" }} />
           {aLabel}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--brass)" }} />
+          <span className="h-2.5 w-2.5 rounded" style={{ background: "var(--brass)" }} />
           {bLabel}
         </span>
         {points.some((p) => p.provisional) && (
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm border border-dashed border-ink-3" />
+            <span className="h-2.5 w-2.5 rounded border border-dashed border-ink-3" />
             Not yet run
           </span>
         )}

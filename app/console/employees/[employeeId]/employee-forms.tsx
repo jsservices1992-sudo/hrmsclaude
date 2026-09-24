@@ -37,7 +37,7 @@ export function UploadDocumentForm({
       <input type="hidden" name="employeeId" value={employeeId} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Document</span>
+          <span className="text-xs font-medium text-ink-2">Document</span>
           <Select
             name="docType"
             value={docType}
@@ -54,12 +54,12 @@ export function UploadDocumentForm({
         <div className="w-full"><FileDrop name="file" accept="application/pdf,image/jpeg,image/png" hint="PDF, JPG or PNG" /></div>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Issued on</span>
+          <span className="text-xs font-medium text-ink-2">Issued on</span>
           <Input name="issuedOn" type="date" className="font-mono" />
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">
+          <span className="text-xs font-medium text-ink-2">
             Expires on {chosen?.expires && <span className="text-amber">· tracked</span>}
           </span>
           <Input name="expiresOn" type="date" className="font-mono" />
@@ -185,7 +185,7 @@ export function ReviseSalaryForm({
       <input type="hidden" name="employeeId" value={employeeId} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Enter as</span>
+          <span className="text-xs font-medium text-ink-2">Enter as</span>
           <Select
             name="mode"
             value={mode}
@@ -199,7 +199,7 @@ export function ReviseSalaryForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Amount (₹)</span>
+          <span className="text-xs font-medium text-ink-2">Amount (₹)</span>
           <Input
             name="amount"
             type="number"
@@ -214,7 +214,7 @@ export function ReviseSalaryForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Effective from</span>
+          <span className="text-xs font-medium text-ink-2">Effective from</span>
           <Input
             name="effectiveFrom"
             type="date"
@@ -224,7 +224,7 @@ export function ReviseSalaryForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Type</span>
+          <span className="text-xs font-medium text-ink-2">Type</span>
           <Select name="revisionType" defaultValue="annual">
             <option value="annual">Annual increment</option>
             <option value="promotion">Promotion</option>
@@ -235,7 +235,7 @@ export function ReviseSalaryForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Salary structure</span>
+          <span className="text-xs font-medium text-ink-2">Salary structure</span>
           <Select name="structureId" defaultValue={currentStructureId ?? ""}>
             <option value="">Company default</option>
             {structures.map((st) => (
@@ -252,7 +252,7 @@ export function ReviseSalaryForm({
       </div>
 
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Reason</span>
+        <span className="text-xs font-medium text-ink-2">Reason</span>
         <Input
           name="reason"
           placeholder="Recorded against the revision"
@@ -269,7 +269,7 @@ export function ReviseSalaryForm({
       {!state.error && state.ctc && state.ctc.components.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <span className="label text-ink-3">New breakup — gross to CTC</span>
+            <span className="text-xs font-medium text-ink-2">New breakup — gross to CTC</span>
             {state.structureId && (
               <Link
                 href={`/console/settings/payroll/structures/${state.structureId}`}
@@ -321,7 +321,7 @@ export function PayrollOverridesForm({
       <input type="hidden" name="employeeId" value={employeeId} />
       <div className="grid sm:grid-cols-3 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Provident fund</span>
+          <span className="text-xs font-medium text-ink-2">Provident fund</span>
           <span className="flex items-center gap-2 text-sm py-1.5">
             <input
               type="checkbox"
@@ -339,7 +339,7 @@ export function PayrollOverridesForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Voluntary PF (%)</span>
+          <span className="text-xs font-medium text-ink-2">Voluntary PF (%)</span>
           <Input
             name="vpfPercent"
             type="number"
@@ -352,7 +352,7 @@ export function PayrollOverridesForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Tax regime</span>
+          <span className="text-xs font-medium text-ink-2">Tax regime</span>
           <Select name="taxRegime" defaultValue={taxRegime}>
             <option value="new">New</option>
             <option value="old">Old</option>
@@ -367,7 +367,7 @@ export function PayrollOverridesForm({
           { name: "tdsApplicability", label: "Income tax applies", value: applicability.tds },
         ].map((f) => (
           <label key={f.name} className="flex flex-col gap-1">
-            <span className="label text-ink-3">{f.label}</span>
+            <span className="text-xs font-medium text-ink-2">{f.label}</span>
             <Select name={f.name} defaultValue={f.value}>
               {APPLICABILITY.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -425,7 +425,7 @@ export function PaymentBasisForm({
 
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Paid as</span>
+          <span className="text-xs font-medium text-ink-2">Paid as</span>
           <Select
             name="paymentBasis"
             value={basis}
@@ -440,7 +440,7 @@ export function PaymentBasisForm({
 
         {basis === "professional_fee" && (
           <label className="flex flex-col gap-1">
-            <span className="label text-ink-3">TDS section</span>
+            <span className="text-xs font-medium text-ink-2">TDS section</span>
             <Select name="tdsNature" defaultValue={tdsNature ?? ""}>
               <option value="">Choose the nature of the payment…</option>
               {TDS_NATURES.map((n) => (
@@ -472,7 +472,7 @@ export function PaymentBasisForm({
             </span>
           </label>
 
-          <div className="rounded-md border border-line bg-surface-2 px-3 py-2.5 text-xs text-ink-2 max-w-[70ch] flex flex-col gap-1">
+          <div className="rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-xs text-ink-2 max-w-[70ch] flex flex-col gap-1">
             <p className="font-medium text-ink">What changes for them</p>
             <p>
               No provident fund, no ESI, no professional tax, no gratuity

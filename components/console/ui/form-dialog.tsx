@@ -55,7 +55,7 @@ export function FormDialog({
           <button
             type="button"
             onClick={close}
-            className="label text-ink-3 hover:text-rust shrink-0"
+            className="text-xs font-medium text-ink-2 hover:text-rust shrink-0"
             aria-label="Close"
           >
             Close

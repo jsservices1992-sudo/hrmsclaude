@@ -95,7 +95,7 @@ export default async function TaxWorksheetPage(
         </Link>
         <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
           <div>
-            <p className="label text-ink-3">FY {fyLabel(CURRENT_FY)}</p>
+            <p className="text-xs font-medium text-ink-2">FY {fyLabel(CURRENT_FY)}</p>
             <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">
               {emp.firstName} {emp.lastName}
             </h1>
@@ -163,7 +163,7 @@ export default async function TaxWorksheetPage(
               return (
                 <div key={r} className="px-4 py-4">
                   <div className="flex items-center justify-between">
-                    <p className="label text-ink-3">{r} regime</p>
+                    <p className="text-xs font-medium text-ink-2">{r} regime</p>
                     {better && <Badge tone="teal">lower</Badge>}
                   </div>
                   <p className="font-display text-2xl font-semibold tnum mt-1.5">
@@ -396,7 +396,7 @@ export default async function TaxWorksheetPage(
                     declaredPaise={p.declaredPaise}
                   />
                 ) : (
-                  <span className="label text-ink-3">{p.status}</span>
+                  <span className="text-xs font-medium text-ink-2">{p.status}</span>
                 )}
               </li>
             ))}
@@ -457,7 +457,7 @@ export default async function TaxWorksheetPage(
         <Card padded={false}>
           <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[15px] font-semibold text-ink">Special-rate income</span>
-            <span className="label text-ink-3">not part of salary TDS above — computed and shown separately</span>
+            <span className="text-xs font-medium text-ink-2">not part of salary TDS above — computed and shown separately</span>
           </div>
           {w.specialRate.special.stcgSpecifiedTaxPaise > 0 && (
             <Row label="STCG — specified (20%)" value={formatINR(w.specialRate.special.stcgSpecifiedTaxPaise)} />

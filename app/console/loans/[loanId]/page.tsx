@@ -73,7 +73,7 @@ export default async function LoanDetailPage(
         </Link>
         <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
           <div>
-            <p className="label text-ink-3">{loan.scheme}</p>
+            <p className="text-xs font-medium text-ink-2">{loan.scheme}</p>
             <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">
               {employee.firstName} {employee.lastName}
             </h1>
@@ -147,14 +147,14 @@ export default async function LoanDetailPage(
           </div>
           <div className="flex flex-col divide-y divide-line-2">
             <div className="px-4 py-3">
-              <p className="label text-ink-3 mb-2">Early repayment</p>
+              <p className="text-xs font-medium text-ink-2 mb-2">Early repayment</p>
               <PrepaymentForm
                 loanId={loan.id}
                 outstandingPaise={loan.outstandingPaise}
               />
             </div>
             <div className="px-4 py-3">
-              <p className="label text-ink-3 mb-2">
+              <p className="text-xs font-medium text-ink-2 mb-2">
                 {loan.status === "on_hold" ? "Resume" : "Hold recovery"}
               </p>
               {loan.status === "on_hold" ? (
@@ -165,7 +165,7 @@ export default async function LoanDetailPage(
             </div>
             {user.role === "admin" && (
               <div className="px-4 py-3">
-                <p className="label text-rust mb-2">Write off</p>
+                <p className="text-xs font-semibold text-rust mb-2">Write off</p>
                 <WriteOffForm loanId={loan.id} />
               </div>
             )}
@@ -204,7 +204,7 @@ export default async function LoanDetailPage(
         <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
           <span className="text-[15px] font-semibold text-ink">Repayment schedule</span>
           {nextDue && (
-            <span className="label text-ink-3">
+            <span className="text-xs font-medium text-ink-2">
               next due {MONTHS[nextDue.dueMonth - 1]} {nextDue.dueYear}
             </span>
           )}

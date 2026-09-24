@@ -88,7 +88,7 @@ function Node({ node, ctx }: { node: OrgNode; ctx: Ctx }) {
         </Link>
         <span className="font-mono text-xs text-ink-3">{node.empCode}</span>
         {node.designation && <span className="text-xs text-ink-2">{node.designation}</span>}
-        {node.department && <span className="label text-ink-3">{node.department}</span>}
+        {node.department && <span className="text-xs font-medium text-ink-2">{node.department}</span>}
 
         {node.directCount > 0 && (
           <Badge tone="neutral">
@@ -366,7 +366,7 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
                   name="q"
                   defaultValue={q}
                   placeholder="Find a person, role or team"
-                  className="rounded-md border border-line bg-surface px-3 py-1.5 text-sm w-64 max-w-full"
+                  className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm w-64 max-w-full"
                 />
               </FilterField>
             </FilterBar>

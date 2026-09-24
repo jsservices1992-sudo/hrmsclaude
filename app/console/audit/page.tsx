@@ -180,7 +180,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
       {/* ---------- audit pack ---------- */}
       <div className="border border-indigo/40 bg-surface px-5 py-4 flex flex-wrap items-center justify-between gap-4 rounded-xl">
         <div>
-          <p className="label text-indigo mb-1">Audit pack</p>
+          <p className="text-xs font-semibold text-indigo mb-1">Audit pack</p>
           <p className="text-sm text-ink-2 max-w-[64ch]">
             The register, statutory summaries and their remittance references,
             the approval trail, exceptions and overrides, the variance report
@@ -201,9 +201,9 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
         title="Control alerts"
         right={
           alerts.length > 0 ? (
-            <span className="label text-rust">{alerts.length} outstanding</span>
+            <span className="text-xs font-semibold text-rust">{alerts.length} outstanding</span>
           ) : (
-            <span className="label text-teal">nothing outstanding</span>
+            <span className="text-xs font-semibold text-teal">nothing outstanding</span>
           )
         }
       >
@@ -240,7 +240,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
       <Panel
         title={`Run versions · ${MONTHS[month - 1]} ${year}`}
         right={
-          <span className="label text-ink-3">
+          <span className="text-xs font-medium text-ink-2">
             {versions.length} version{versions.length === 1 ? "" : "s"}
           </span>
         }
@@ -287,7 +287,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
             {diff ? (
               <div className="border-t border-line">
                 <div className="px-4 py-2.5 bg-surface-2 flex flex-wrap items-center justify-between gap-2">
-                  <span className="label text-ink-2">
+                  <span className="text-xs font-semibold text-ink">
                     v{diff.from.version} → v{diff.to.version}
                   </span>
                   <span
@@ -395,9 +395,9 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
         title="Compensation & bank data access"
         right={
           bulkReads.length > 0 ? (
-            <span className="label text-amber">{bulkReads.length} bulk reads</span>
+            <span className="text-xs font-semibold text-amber">{bulkReads.length} bulk reads</span>
           ) : (
-            <span className="label text-ink-3">{access.length} recent reads</span>
+            <span className="text-xs font-medium text-ink-2">{access.length} recent reads</span>
           )
         }
       >
@@ -413,7 +413,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
                   {["When", "Who", "Role", "Data", "Surface", "Subject", "Rows"].map((h) => (
                     <th
                       key={h}
-                      className="label text-ink-3 text-left px-4 py-2 whitespace-nowrap sticky top-0 bg-surface-2"
+                      className="text-xs font-medium text-ink-2 text-left px-4 py-2 whitespace-nowrap sticky top-0 bg-surface-2"
                     >
                       {h}
                     </th>
@@ -467,7 +467,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
         title="Retention & legal hold"
         right={
           holds.filter((h) => !h.releasedAt).length > 0 ? (
-            <span className="label text-rust">
+            <span className="text-xs font-semibold text-rust">
               {holds.filter((h) => !h.releasedAt).length} in force
             </span>
           ) : undefined
@@ -505,7 +505,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
         </p>
 
         <div className="px-4 py-3 border-t border-line-2">
-          <p className="label text-ink-3 mb-2">Test a deletion request</p>
+          <p className="text-xs font-medium text-ink-2 mb-2">Test a deletion request</p>
           <ErasureTestForm
             companyId={companyId}
             recordClasses={RETENTION_RULES.map((r) => ({
@@ -552,7 +552,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
 
         {user.role === "admin" && (
           <div className="px-4 py-3 border-t border-line-2">
-            <p className="label text-ink-3 mb-2">Place a legal hold</p>
+            <p className="text-xs font-medium text-ink-2 mb-2">Place a legal hold</p>
             <PlaceHoldForm
               companyId={companyId}
               employees={employees.map((e) => ({
@@ -567,7 +567,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
       {/* ---------- the log itself ---------- */}
       <Panel
         title="Audit log"
-        right={<span className="label text-ink-3">append-only · last 120</span>}
+        right={<span className="text-xs font-medium text-ink-2">append-only · last 120</span>}
       >
         <div className="overflow-x-auto max-h-[36rem] overflow-y-auto">
           <table className="w-full text-sm">
@@ -576,7 +576,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
                 {["When", "Actor", "Role", "Source", "Action", "Entity", "Reason"].map((h) => (
                   <th
                     key={h}
-                    className="label text-ink-3 text-left px-4 py-2 whitespace-nowrap sticky top-0 bg-surface-2"
+                    className="text-xs font-medium text-ink-2 text-left px-4 py-2 whitespace-nowrap sticky top-0 bg-surface-2"
                   >
                     {h}
                   </th>

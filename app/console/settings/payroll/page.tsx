@@ -427,7 +427,7 @@ export default async function PayrollSettingsPage(
             return (
               <Card>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                  <p className="label text-ink-3">Set an override — {editingDept.name}</p>
+                  <p className="text-xs font-medium text-ink-2">Set an override — {editingDept.name}</p>
                   <FilterBar
                     action="/console/settings/payroll"
                     mode="switch"
@@ -506,7 +506,7 @@ export default async function PayrollSettingsPage(
             component list apply.
           </p>
           {structures.filter((st) => st.isDefault).length > 1 && (
-            <p className="text-sm text-rust max-w-[70ch] border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg">
+            <p className="text-sm text-rust max-w-[70ch] border border-rust/25 bg-rust-soft px-3 py-2 rounded-lg">
               More than one structure is marked default. Which one an employee
               resolves to is then not decided by anything you chose — open the
               one that should win and make it default, which clears the others.
@@ -534,7 +534,7 @@ export default async function PayrollSettingsPage(
                     {grades.find((g) => g.id === st.gradeId)?.name ?? <span className="text-ink-3">—</span>}
                   </TD>
                   <TD className="font-mono tnum text-ink-2">{structureLineCounts[i]}</TD>
-                  <TD>{st.active ? <span className="label text-teal">Active</span> : <span className="label text-ink-3">Inactive</span>}</TD>
+                  <TD>{st.active ? <span className="text-xs font-semibold text-teal">Active</span> : <span className="text-xs font-medium text-ink-2">Inactive</span>}</TD>
                   <TD className="text-right">
                     <div className="flex items-center gap-3 justify-end">
                       <Link
@@ -663,15 +663,15 @@ export default async function PayrollSettingsPage(
           />
 
           {tail.tailDays > 0 && (
-            <div className="border border-amber/40 bg-amber-soft px-4 py-3 text-sm rounded-lg">
-              <span className="label text-amber">Untracked tail</span>{" "}
+            <div className="border border-amber/25 bg-amber-soft px-4 py-3 text-sm rounded-lg">
+              <span className="text-xs font-semibold text-amber">Untracked tail</span>{" "}
               <span className="text-ink-2">{tail.note}</span>
             </div>
           )}
 
           {periods.some((p) => !p.stored && p.derived.conflict) && (
-            <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm rounded-lg">
-              <p className="label text-rust mb-1.5">Impossible calendar</p>
+            <div className="border border-rust/25 bg-rust-soft px-4 py-3 text-sm rounded-lg">
+              <p className="text-xs font-semibold text-rust mb-1.5">Impossible calendar</p>
               <ul className="text-ink-2 flex flex-col gap-1">
                 {periods
                   .filter((p) => !p.stored && p.derived.conflict)
@@ -717,7 +717,7 @@ export default async function PayrollSettingsPage(
                             <Badge tone="rust">Conflict</Badge>
                           </Tooltip>
                         ) : (
-                          <span className="label text-ink-3">Derived</span>
+                          <span className="text-xs font-medium text-ink-2">Derived</span>
                         )}
                       </TD>
                     </TR>
@@ -734,15 +734,15 @@ export default async function PayrollSettingsPage(
 
       {tab === "statutory" && (
         <div className="flex flex-col gap-4">
-          <div className="border border-amber/40 bg-amber-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
-            <span className="label text-amber">Effective dated</span> — editing
+          <div className="border border-amber/25 bg-amber-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
+            <span className="text-xs font-semibold text-amber">Effective dated</span> — editing
             writes a new version from the date you give. Runs already saved keep
             the version they used, so history stays reproducible.
           </div>
           <Card padded={false}>
             <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-[15px] font-semibold text-ink">State minimum wages</span>
-              <span className="label text-ink-3 tnum">{minWages.length}</span>
+              <span className="text-xs font-medium text-ink-2 tnum">{minWages.length}</span>
             </div>
             {minWages.length === 0 ? (
               <p className="px-4 py-3 text-sm text-rust max-w-[70ch]">
@@ -790,7 +790,7 @@ export default async function PayrollSettingsPage(
           <Card padded={false}>
             <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-[15px] font-semibold text-ink">Labour welfare fund by state</span>
-              <span className="label text-ink-3 tnum">{lwfRates.length}</span>
+              <span className="text-xs font-medium text-ink-2 tnum">{lwfRates.length}</span>
             </div>
             <ul className="divide-y divide-line-2">
               {lwfRates.map((r) => (
@@ -832,7 +832,7 @@ export default async function PayrollSettingsPage(
           <Card padded={false}>
             <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-[15px] font-semibold text-ink">Professional tax slabs</span>
-              <span className="label text-ink-3 tnum">{ptSlabs.length}</span>
+              <span className="text-xs font-medium text-ink-2 tnum">{ptSlabs.length}</span>
             </div>
             <p className="px-4 py-2.5 text-xs text-ink-2 border-b border-line-2 max-w-[72ch]">
               Seeded figures, none of them checked against a state Act. The
@@ -940,8 +940,8 @@ export default async function PayrollSettingsPage(
           </p>
 
           {orphans.length > 0 && (
-            <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm rounded-lg">
-              <span className="label text-rust">In no group</span>{" "}
+            <div className="border border-rust/25 bg-rust-soft px-4 py-3 text-sm rounded-lg">
+              <span className="text-xs font-semibold text-rust">In no group</span>{" "}
               <span className="text-ink-2">
                 {orphans.length} employee(s) match no group and would drop out of
                 every tranche: {orphans.slice(0, 5).map((e) => e.empCode).join(", ")}
@@ -969,7 +969,7 @@ export default async function PayrollSettingsPage(
                         {g.ruleValue && ` · ${g.ruleValue}`}
                       </span>
                     </div>
-                    <span className="label text-ink-3 tnum">{members.length} employees</span>
+                    <span className="text-xs font-medium text-ink-2 tnum">{members.length} employees</span>
                   </li>
                 );
               })}
@@ -1017,7 +1017,7 @@ export default async function PayrollSettingsPage(
                   <TD className="font-mono text-xs">{b.accountNumber}</TD>
                   <TD className="font-mono text-xs">{b.ifsc}</TD>
                   <TD className="font-mono text-xs text-ink-2">{b.fileFormat}</TD>
-                  <TD>{b.isDefault && <span className="label text-teal">Default</span>}</TD>
+                  <TD>{b.isDefault && <span className="text-xs font-semibold text-teal">Default</span>}</TD>
                 </TR>
               ))}
             </TBody>

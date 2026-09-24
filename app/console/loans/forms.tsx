@@ -42,7 +42,7 @@ export function DisburseForm({
     <form action={action} className="flex flex-col gap-3 px-4 py-4">
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Employee</span>
+          <span className="text-xs font-medium text-ink-2">Employee</span>
           <Select name="employeeId" required>
             {employees.map((e) => (
               <option key={e.id} value={e.id}>
@@ -53,7 +53,7 @@ export function DisburseForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Scheme</span>
+          <span className="text-xs font-medium text-ink-2">Scheme</span>
           <Select
             name="schemeId"
             value={schemeId}
@@ -81,7 +81,7 @@ export function DisburseForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Amount (₹)</span>
+          <span className="text-xs font-medium text-ink-2">Amount (₹)</span>
           <Input
             name="principalRupees"
             type="number"
@@ -94,7 +94,7 @@ export function DisburseForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Tenure (months)</span>
+          <span className="text-xs font-medium text-ink-2">Tenure (months)</span>
           <Input
             name="tenureMonths"
             type="number"
@@ -108,7 +108,7 @@ export function DisburseForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Recovery starts</span>
+          <span className="text-xs font-medium text-ink-2">Recovery starts</span>
           <div className="flex gap-2">
             <Select
               name="startMonth"
@@ -133,12 +133,12 @@ export function DisburseForm({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">Purpose</span>
+          <span className="text-xs font-medium text-ink-2">Purpose</span>
           <Input name="purpose" placeholder="On the record" />
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="label text-ink-3">
+          <span className="text-xs font-medium text-ink-2">
             Guarantor {scheme?.requiresGuarantor && "(required)"}
           </span>
           <Input

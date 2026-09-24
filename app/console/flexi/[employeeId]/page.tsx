@@ -54,7 +54,7 @@ export default async function EmployeeFlexiPage(
       )}
 
       {validation.warnings.length > 0 && (
-        <div className="border border-amber/40 bg-amber-soft px-4 py-3 rounded-lg">
+        <div className="border border-amber/25 bg-amber-soft px-4 py-3 rounded-lg">
           <p className="text-sm font-semibold text-amber mb-1">Notes</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {validation.warnings.map((w, i) => <li key={i}>{w}</li>)}
@@ -71,7 +71,7 @@ export default async function EmployeeFlexiPage(
           { l: "Taxable", v: formatINR(settlement.totalTaxablePaise) },
         ].map((x) => (
           <div key={x.l} className="px-4 py-3 border-r border-line last:border-r-0 flex-1 min-w-[9rem]">
-            <div className="label text-ink-3">{x.l}</div>
+            <div className="text-xs font-medium text-ink-2">{x.l}</div>
             <div className="font-mono text-sm tnum mt-1">{x.v}</div>
           </div>
         ))}

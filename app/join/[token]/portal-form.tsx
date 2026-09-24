@@ -1,5 +1,7 @@
 "use client";
 
+import { fieldClass } from "@/components/console/ui";
+
 import { useActionState } from "react";
 import { IDENTIFIER_INPUT } from "@/lib/hris/identifiers";
 import { useFormStatus } from "react-dom";
@@ -24,9 +26,9 @@ function Submit({ label }: { label: string }) {
 
 function Feedback({ state }: { state: OnboardState }) {
   if (state.error)
-    return <p role="alert" className="text-sm text-rust border border-rust/40 bg-rust-soft px-3 py-2 rounded-lg">{state.error}</p>;
+    return <p role="alert" className="text-sm text-rust border border-rust/25 bg-rust-soft px-3 py-2 rounded-lg">{state.error}</p>;
   if (state.ok)
-    return <p role="status" className="text-sm text-teal border border-teal/40 bg-teal-soft px-3 py-2 rounded-lg">{state.ok}</p>;
+    return <p role="status" className="text-sm text-teal border border-teal/25 bg-teal-soft px-3 py-2 rounded-lg">{state.ok}</p>;
   return null;
 }
 
@@ -36,12 +38,12 @@ function Field({ label, name, defaultValue, error, type = "text", hint, required
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="label text-ink-3">
+      <span className="text-xs font-medium text-ink-2">
         {label}{required && <span className="text-rust ml-1">*</span>}
       </span>
       <input
         name={name} type={type} defaultValue={defaultValue ?? ""}
-        className={`px-3 py-2.5 text-sm bg-surface border outline-none focus:border-ink-3 ${error ? "border-rust" : "border-line"}`}
+        className={`${fieldClass} ${error ? "!border-rust" : ""}`}
       />
       {error ? <span className="text-xs text-rust">{error}</span> : hint ? <span className="text-xs text-ink-3">{hint}</span> : null}
     </label>
@@ -83,8 +85,8 @@ export function ProfileForm({
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Date of birth" name="dateOfBirth" type="date" defaultValue={values.dateOfBirth} error={err("dateOfBirth")} />
           <label className="flex flex-col gap-1.5">
-            <span className="label text-ink-3">Gender</span>
-            <select name="gender" defaultValue={values.gender ?? "other"} className="px-3 py-2.5 text-sm bg-surface border border-line rounded-lg">
+            <span className="text-xs font-medium text-ink-2">Gender</span>
+            <select name="gender" defaultValue={values.gender ?? "other"} className={fieldClass}>
               <option value="female">Female</option>
               <option value="male">Male</option>
               <option value="other">Prefer not to say</option>

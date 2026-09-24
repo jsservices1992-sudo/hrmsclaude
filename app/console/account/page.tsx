@@ -95,7 +95,7 @@ export default async function AccountPage() {
       <Card padded={false}>
         <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-[15px] font-semibold text-ink">Where you are signed in</span>
-          <span className="label text-ink-3">
+          <span className="text-xs font-medium text-ink-2">
             {row?.lastLoginAt ? `last sign-in ${formatDateTime(row.lastLoginAt)}` : ""}
           </span>
         </div>

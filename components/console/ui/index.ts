@@ -3,7 +3,7 @@ export { SubmitButton } from "./submit-button";
 export { Card, CardHeader } from "./card";
 export { Badge, type BadgeTone } from "./badge";
 export { Table, THead, TH, TBody, TR, TD } from "./table";
-export { Input, Select, Textarea } from "./input";
+export { Input, Select, Textarea, fieldClass } from "./input";
 export { FormField } from "./form-field";
 export { FormFeedback, type ActionState } from "./form-feedback";
 export { EmptyState } from "./empty-state";

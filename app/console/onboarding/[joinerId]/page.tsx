@@ -104,8 +104,8 @@ export default async function JoinerDetailPage(
       />
 
       {j.convertedEmployeeId && (
-        <div className="border border-teal/40 bg-teal-soft px-4 py-3 text-sm rounded-lg">
-          <span className="label text-teal">Converted</span>{" "}
+        <div className="border border-teal/25 bg-teal-soft px-4 py-3 text-sm rounded-lg">
+          <span className="text-xs font-semibold text-teal">Converted</span>{" "}
           <span className="text-ink-2">
             This joiner became an employee on {j.convertedAt?.slice(0, 10)} —{" "}
             <Link href={`/console/employees/${j.convertedEmployeeId}`} className="underline text-ink">
@@ -116,7 +116,7 @@ export default async function JoinerDetailPage(
       )}
 
       {duplicates.length > 0 && (
-        <div className={`border px-4 py-3 ${strongDup ? "border-rust/40 bg-rust-soft" : "border-amber/40 bg-amber-soft"}`}>
+        <div className={`border px-4 py-3 ${strongDup ? "border-rust/25 bg-rust-soft" : "border-amber/25 bg-amber-soft"}`}>
           <p className={`label mb-1.5 ${strongDup ? "text-rust" : "text-amber"}`}>
             {strongDup ? "Strong duplicate match" : "Possible duplicate"}
           </p>
@@ -149,14 +149,14 @@ export default async function JoinerDetailPage(
           { l: "Readiness", v: `${readiness.percent}%` },
         ].map((x) => (
           <div key={x.l} className="px-4 py-3 border-r border-line last:border-r-0 flex-1 min-w-[8rem]">
-            <div className="label text-ink-3">{x.l}</div>
+            <div className="text-xs font-medium text-ink-2">{x.l}</div>
             <div className="font-mono text-base tnum mt-1">{x.v}</div>
           </div>
         ))}
       </Card>
 
       {readiness.blockers.length > 0 && (
-        <div className="border border-rust/40 bg-rust-soft px-4 py-3 rounded-lg">
+        <div className="border border-rust/25 bg-rust-soft px-4 py-3 rounded-lg">
           <p className="text-sm font-semibold text-rust mb-1">Blockers</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {readiness.blockers.map((b, i) => <li key={i}>{b}</li>)}
@@ -164,7 +164,7 @@ export default async function JoinerDetailPage(
         </div>
       )}
       {readiness.warnings.length > 0 && (
-        <div className="border border-amber/40 bg-amber-soft px-4 py-3 rounded-lg">
+        <div className="border border-amber/25 bg-amber-soft px-4 py-3 rounded-lg">
           <p className="text-sm font-semibold text-amber mb-1">Outstanding</p>
           <ul className="text-sm text-ink-2 flex flex-col gap-1">
             {readiness.warnings.map((w, i) => <li key={i}>{w}</li>)}
@@ -184,7 +184,7 @@ export default async function JoinerDetailPage(
               <Badge>{j.offerStatus}</Badge>
             </div>
             <div>
-              <p className="label text-ink-3 mb-1">Candidate portal link</p>
+              <p className="text-xs font-medium text-ink-2 mb-1">Candidate portal link</p>
               <code className="block text-xs bg-surface-2 px-2 py-1.5 break-all border border-line-2 rounded-lg">
                 {portalUrl}
               </code>
@@ -241,7 +241,7 @@ export default async function JoinerDetailPage(
       <Card padded={false}>
         <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
           <span className="text-[15px] font-semibold text-ink">Document checklist</span>
-          <span className="label text-ink-3 tnum">
+          <span className="text-xs font-medium text-ink-2 tnum">
             {documents.filter((d) => d.status === "verified").length}/{documents.length} verified
           </span>
         </div>
@@ -310,7 +310,7 @@ export default async function JoinerDetailPage(
       <Card padded={false}>
         <div className="px-5 py-3.5 border-b border-line-2 flex items-center justify-between">
           <span className="text-[15px] font-semibold text-ink">Day-one provisioning</span>
-          <span className="label text-ink-3 tnum">
+          <span className="text-xs font-medium text-ink-2 tnum">
             {tasks.filter((t) => t.status === "done" || t.status === "waived").length}/{tasks.length} closed
           </span>
         </div>
@@ -318,9 +318,9 @@ export default async function JoinerDetailPage(
           {tasks.map((t) => (
             <li key={t.id} className="px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <span className="label text-ink-3 w-16 shrink-0">{t.owner}</span>
+                <span className="text-xs font-medium text-ink-2 w-16 shrink-0">{t.owner}</span>
                 <span className="text-sm truncate">{t.label}</span>
-                <span className="label text-ink-3 shrink-0">
+                <span className="text-xs font-medium text-ink-2 shrink-0">
                   {t.dueOffsetDays === 0 ? "day 1" : t.dueOffsetDays < 0 ? `${Math.abs(t.dueOffsetDays)}d before` : `+${t.dueOffsetDays}d`}
                 </span>
               </div>
@@ -365,7 +365,7 @@ export default async function JoinerDetailPage(
                   { l: "Annual CTC", v: formatINR(offeredPay.breakdown.annualCtcPaise) },
                 ].map((x) => (
                   <div key={x.l} className="px-4 py-3 border-r border-line-2 last:border-r-0 flex-1 min-w-[9rem]">
-                    <div className="label text-ink-3">{x.l}</div>
+                    <div className="text-xs font-medium text-ink-2">{x.l}</div>
                     <div className="font-mono text-base tnum mt-1">{x.v}</div>
                   </div>
                 ))}
@@ -403,8 +403,8 @@ export default async function JoinerDetailPage(
       {/* Rehire — offered ahead of a plain conversion, because for a
           former employee the plain conversion is the wrong one. */}
       {canAct && j.status !== "joined" && formerMatch && (
-        <div className="border border-amber/40 bg-surface p-5 rounded-xl">
-          <p className="label text-amber mb-2">They have worked here before</p>
+        <div className="border border-amber/25 bg-surface p-5 rounded-xl">
+          <p className="text-xs font-semibold text-amber mb-2">They have worked here before</p>
           <RehireForm
             joinerId={j.id}
             candidate={{
@@ -424,7 +424,7 @@ export default async function JoinerDetailPage(
       {/* Convert */}
       {canAct && j.status !== "joined" && (
         <div className="border border-indigo/40 bg-surface p-5 rounded-xl">
-          <p className="label text-indigo mb-2">Convert to employee</p>
+          <p className="text-xs font-semibold text-indigo mb-2">Convert to employee</p>
           <p className="text-sm text-ink-2 mb-4 max-w-[64ch]">
             Allocates a gapless employee code, copies the submitted profile,
             creates the salary record and records the enrolment decisions — in a

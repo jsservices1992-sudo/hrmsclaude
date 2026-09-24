@@ -27,7 +27,7 @@ export function FormField({
 }) {
   return (
     <label htmlFor={htmlFor} className={`flex flex-col gap-1.5 ${className}`}>
-      <span className="label text-ink-3 flex items-center gap-1.5">
+      <span className="text-xs font-medium text-ink-2 flex items-center gap-1.5">
         {label}
         {required && (
           <span className="text-rust" title="Required">
@@ -35,7 +35,7 @@ export function FormField({
           </span>
         )}
         {!required && needed && (
-          <span className="label text-amber font-normal normal-case tracking-normal">
+          <span className="text-xs font-semibold text-amber font-normal normal-case tracking-normal">
             · {needed}
           </span>
         )}

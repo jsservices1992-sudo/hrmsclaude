@@ -31,7 +31,7 @@ import {
   TBody,
   TR,
   TD,
-  type BadgeTone, MetricStrip
+  type BadgeTone, MetricStrip, EmptyState, Alert
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
@@ -129,13 +129,9 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
       />
 
       {blocked.length > 0 && (
-        <div className="border border-rust/40 bg-rust-soft px-4 py-3 text-sm rounded-lg">
-          <span className="label text-rust">Not ready to join</span>{" "}
-          <span className="text-ink-2">
-            {blocked.length} joiner(s) have blockers that would break their first
-            payroll.
-          </span>
-        </div>
+        <Alert tone="danger" title="Not ready to join">
+          {blocked.length} joiner(s) have blockers that would break their first payroll.
+        </Alert>
       )}
 
       <Card>
@@ -181,9 +177,16 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
       </Card>
 
       {allJoiners.length === 0 ? (
-        <p className="text-ink-2">No joiners yet.</p>
+        <Card padded={false}>
+          <EmptyState
+            title="No joiners yet"
+            description="Add a joiner, or import a batch of offers. They complete their own profile and documents before day one."
+          />
+        </Card>
       ) : joiners.length === 0 ? (
-        <p className="text-ink-2">No joiners match these filters.</p>
+        <Card padded={false}>
+          <EmptyState title="No joiners match these filters" description="Widen the search, or clear the filters." />
+        </Card>
       ) : (
         <>
           <Table className="min-w-[64rem]">
@@ -211,7 +214,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
                     <TD className="font-mono text-xs tnum whitespace-nowrap">{formatDate(j.proposedDoj)}</TD>
                     <TD className="whitespace-nowrap">
                       {j.status === "joined" ? (
-                        <span className="label text-teal">joined</span>
+                        <span className="text-xs font-semibold text-teal">joined</span>
                       ) : (
                         <span className={`label tnum ${daysToJoin < 0 ? "text-rust" : daysToJoin <= 7 ? "text-amber" : "text-ink-3"}`}>
                           {daysToJoin < 0 ? `${Math.abs(daysToJoin)}d late` : `${daysToJoin}d`}

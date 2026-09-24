@@ -50,11 +50,11 @@ export function ReassignForm({
     <form action={action} className="flex flex-col gap-2.5">
       <input type="hidden" name="employeeId" value={employeeId} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Role</span>
+        <span className="text-xs font-medium text-ink-2">Role</span>
         <Input name="designation" defaultValue={designation ?? ""} placeholder="Designation" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Department</span>
+        <span className="text-xs font-medium text-ink-2">Department</span>
         <Select name="departmentId" defaultValue={departmentId ?? ""}>
           <option value="">Unassigned</option>
           {departments.map((d) => (
@@ -63,7 +63,7 @@ export function ReassignForm({
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Reports to</span>
+        <span className="text-xs font-medium text-ink-2">Reports to</span>
         <Select name="managerId" defaultValue={managerId ?? ""}>
           <option value="">Nobody (top of the tree)</option>
           {managers
@@ -74,7 +74,7 @@ export function ReassignForm({
         </Select>
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Reason</span>
+        <span className="text-xs font-medium text-ink-2">Reason</span>
         <Input name="reason" placeholder="Recorded against the change" />
       </label>
       <SubmitButton variant="primary" pendingText="Saving…">Save</SubmitButton>
@@ -100,7 +100,7 @@ export function ReassignTeamForm({
     <form action={action} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="fromId" value={fromId} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Move {reportCount} report(s) to</span>
+        <span className="text-xs font-medium text-ink-2">Move {reportCount} report(s) to</span>
         <Select name="toId" defaultValue={suggestedId ?? ""} className="w-56">
           <option value="">Choose a manager</option>
           {managers
@@ -131,7 +131,7 @@ export function ReplacementForm({
     <form action={action} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="employeeId" value={employeeId} />
       <label className="flex flex-col gap-1">
-        <span className="label text-ink-3">Replacement</span>
+        <span className="text-xs font-medium text-ink-2">Replacement</span>
         <Select name="replacementId" defaultValue={replacementId ?? ""} className="w-56">
           <option value="">Not decided</option>
           {people
@@ -216,7 +216,7 @@ export function NodeEditButton({
         <button
           type="button"
           onClick={onClick}
-          className="label text-ink-3 hover:text-indigo px-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-base"
+          className="text-xs font-medium text-ink-2 hover:text-indigo px-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-base"
           aria-label={`Edit ${name}`}
         >
           Edit

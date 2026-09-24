@@ -150,8 +150,8 @@ export default async function PayrollConsolePage(
       <div
         className={`border px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs ${
           reconciles
-            ? "border-teal/40 bg-teal-soft text-teal"
-            : "border-rust/40 bg-rust-soft text-rust"
+            ? "border-teal/25 bg-teal-soft text-teal"
+            : "border-rust/25 bg-rust-soft text-rust"
         }`}
       >
         <span aria-hidden className="h-1.5 w-1.5 bg-current shrink-0" />
@@ -197,17 +197,17 @@ export default async function PayrollConsolePage(
               <table className="w-full text-sm min-w-[64rem]">
                 <thead>
                   <tr className="border-b border-line">
-                    <th className="label text-ink-3 px-3 py-2 text-left">Emp</th>
-                    <th className="label text-ink-3 px-3 py-2 text-left">Employee</th>
-                    <th className="label text-ink-3 px-3 py-2 text-right">Paid days</th>
-                    <th className="label text-ink-3 px-3 py-2 text-right">Gross</th>
-                    <th className="label text-ink-3 px-3 py-2 text-right">OT</th>
-                    <th className="label text-ink-3 px-3 py-2 text-right">Bonus</th>
-                    <th className="label text-ink-3 px-3 py-2 text-right">Earnings</th>
-                    <th className="label text-ink-3 px-3 py-2 text-right">Deduction</th>
-                    <th className="label text-ink-3 px-3 py-2 text-right">Employer cont.</th>
-                    <th className="label text-ink-3 px-3 py-2 text-right">Net pay</th>
-                    <th className="label text-ink-3 px-3 py-2 text-right">&nbsp;</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-left">Emp</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-left">Employee</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">Paid days</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">Gross</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">OT</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">Bonus</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">Earnings</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">Deduction</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">Employer cont.</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">Net pay</th>
+                    <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">&nbsp;</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -320,7 +320,7 @@ export default async function PayrollConsolePage(
           <dl className="grid grid-cols-2 sm:grid-cols-4">
             {statutoryCodes.map((code) => (
               <div key={code} className="px-4 py-3 border-r border-b border-line-2">
-                <dt className="label text-ink-3">{code.replace("_", " ")}</dt>
+                <dt className="text-xs font-medium text-ink-2">{code.replace("_", " ")}</dt>
                 <dd className="font-mono text-sm tnum mt-0.5">
                   {formatINR(totals.byCode[code] ?? 0)}
                 </dd>
@@ -335,7 +335,7 @@ export default async function PayrollConsolePage(
         <Card padded={false}>
           <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[15px] font-semibold text-ink">Validation findings</span>
-            <span className="label text-ink-3 tnum">
+            <span className="text-xs font-medium text-ink-2 tnum">
               {criticalCount} blocking · {exceptions.length - criticalCount} advisory
             </span>
           </div>
