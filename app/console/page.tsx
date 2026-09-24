@@ -16,14 +16,10 @@ import {
   scopeCompanies,
 } from "@/lib/auth/session";
 import { loadOnboardingFunnelReport } from "@/lib/reports/load";
-import { Donut, ColumnChart, CategoryPie, type ColumnPoint } from "@/components/console/charts";
-import {
-  IconUsers,
-  IconUserPlus,
-  IconUserMinus,
-  IconCheck,
-} from "@/components/console/icons";
+import { Donut, CategoryPie, type ColumnPoint } from "@/components/console/charts";
+import { IconCheck } from "@/components/console/icons";
 import { Card, Badge } from "@/components/console/ui";
+import { GradientStat, RangeBars, Ring, PeopleTable } from "./dashboard-widgets";
 import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Home" };
@@ -64,56 +60,6 @@ function SectionCard({
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="px-5 pb-5 pt-1 text-sm text-ink-3">{children}</p>;
-}
-
-/**
- * A headline number, with a tinted icon chip — read at a glance. Sized
- * to sit four-up inside the hero rather than as its own full-height
- * card, since that is the only place this renders now.
- */
-function MiniStat({
-  label,
-  value,
-  icon,
-  tone = "indigo",
-  href,
-}: {
-  label: string;
-  value: React.ReactNode;
-  icon: React.ReactNode;
-  tone?: "indigo" | "amber" | "teal" | "rust";
-  href: string;
-}) {
-  const chip: Record<string, string> = {
-    indigo: "bg-indigo-soft text-indigo",
-    amber: "bg-amber-soft text-amber",
-    teal: "bg-teal-soft text-teal",
-    rust: "bg-rust-soft text-rust",
-  };
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 rounded-lg border border-line-2 bg-surface-2/40 px-3.5 py-3 transition-base hover:bg-surface-2"
-    >
-      <span aria-hidden className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${chip[tone]}`}>
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-lg font-bold tracking-tight tnum text-ink">{value}</span>
-        <span className="block truncate text-xs text-ink-2">{label}</span>
-      </span>
-    </Link>
-  );
-}
-
-/** One line of the payroll preview card — label left, figure right. */
-function FigureRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3.5 py-2.5">
-      <span className="text-sm text-ink-2">{label}</span>
-      <span className={`text-sm tnum ${strong ? "font-bold text-ink" : "font-semibold text-ink"}`}>{value}</span>
-    </div>
-  );
 }
 
 export default async function DashboardPage(props: PageProps<"/console">) {
@@ -222,8 +168,9 @@ export default async function DashboardPage(props: PageProps<"/console">) {
      current month, if it has not been run yet, is drawn from the preview
      and marked as such rather than passed off as a result. */
   const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const rangeMonths = sp.range === "12" ? 12 : 6;
   const months: { year: number; month: number }[] = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = rangeMonths - 1; i >= 0; i--) {
     const d = new Date(Date.UTC(PERIOD.year, PERIOD.month - 1 - i, 1));
     months.push({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 });
   }
@@ -291,12 +238,13 @@ export default async function DashboardPage(props: PageProps<"/console">) {
   const previewEmployeeIds = previews.flatMap((p) => p?.results.map((r) => r.employeeId) ?? []);
   const deptOfEmployee = previewEmployeeIds.length
     ? await db
-        .select({ id: s.employees.id, dept: s.departments.name })
+        .select({ id: s.employees.id, dept: s.departments.name, designation: s.employees.designation })
         .from(s.employees)
         .leftJoin(s.departments, eq(s.employees.departmentId, s.departments.id))
         .where(inArray(s.employees.id, previewEmployeeIds))
     : [];
   const deptName = new Map(deptOfEmployee.map((d) => [d.id, d.dept ?? "No department"]));
+  const designationOf = new Map(deptOfEmployee.map((d) => [d.id, d.designation ?? ""]));
   const costByDept = new Map<string, number>();
   for (const p of previews) {
     for (const r of p?.results ?? []) {
@@ -310,10 +258,11 @@ export default async function DashboardPage(props: PageProps<"/console">) {
     .map(([k, v]) => ({ key: k, label: k, value: v, formattedValue: formatINR(v), tone: "indigo" as const }));
 
   const findingsCount = previews.reduce((a, p) => a + (p?.totals.warnings.length ?? 0), 0);
+  /* A non-breaking space, so "₹5.51 L" never wraps between figure and unit. */
   const compact = (paise: number) => {
     const r = paise / 100;
-    if (r >= 1e7) return `₹${(r / 1e7).toFixed(2)} Cr`;
-    if (r >= 1e5) return `₹${(r / 1e5).toFixed(2)} L`;
+    if (r >= 1e7) return `₹${(r / 1e7).toFixed(2)}\u00a0Cr`;
+    if (r >= 1e5) return `₹${(r / 1e5).toFixed(2)}\u00a0L`;
     if (r >= 1e3) return `₹${(r / 1e3).toFixed(1)}K`;
     return `₹${r.toFixed(0)}`;
   };
@@ -331,8 +280,10 @@ export default async function DashboardPage(props: PageProps<"/console">) {
   const departmentBars = deptRows.slice(0, 8).map((d) => ({
     key: d.name,
     label: d.name,
-    value: d.n,
-    formattedValue: String(d.n),
+    /* count(*) comes back as text from the driver — summed as text it
+       read "024" for twenty-four. */
+    value: Number(d.n),
+    formattedValue: String(Number(d.n)),
   }));
 
   const funnel = await loadOnboardingFunnelReport(companyIds, TODAY);
@@ -352,6 +303,48 @@ export default async function DashboardPage(props: PageProps<"/console">) {
   const setup = companyIds[0] ? setupProgress(await loadSetupFacts(companyIds[0])) : null;
 
   const run = runRows[0];
+
+  /* ---- the pay run, as four steps with honest states ---- */
+  const APPROVED = ["approved", "finalised", "disbursed", "closed"];
+  const runApproved = Boolean(run && APPROVED.includes(run.status));
+  const runPaid = Boolean(run && ["disbursed", "closed"].includes(run.status));
+  const runSteps = [
+    { label: "Payroll calculated", done: Boolean(run), note: run ? `Version ${run.version}` : "Not started" },
+    {
+      label: "Findings reviewed",
+      done: Boolean(run) && findingsCount === 0,
+      note: findingsCount === 0 ? (run ? "Nothing to review" : "After calculating") : `${findingsCount} to review`,
+      warn: findingsCount > 0,
+    },
+    { label: "Approved", done: runApproved, note: runApproved ? "Signed off" : "Waiting on approval" },
+    { label: "Paid out", done: runPaid, note: runPaid ? "Bank file released" : "Bank file & payslips" },
+  ];
+  const runPercent = Math.round((runSteps.filter((x) => x.done).length / runSteps.length) * 100);
+
+  /* ---- who is in this cycle, most pay first; review-needed on request ---- */
+  const peopleView = sp.people === "review" ? "review" : "all";
+  const cycleRows = previews.flatMap((p) => p?.results ?? []);
+  const shownPeople = cycleRows
+    .filter((r) => (peopleView === "review" ? r.warnings.length > 0 : true))
+    .sort((a, b) => b.grossPaise - a.grossPaise)
+    .slice(0, 6)
+    .map((r) => ({
+      id: r.employeeId,
+      name: r.name,
+      meta: [designationOf.get(r.employeeId), deptName.get(r.employeeId)].filter(Boolean).join(" · ") || r.empCode,
+      paidDays: r.paidDays,
+      totalDays: r.totalDays,
+      gross: formatINR(r.grossPaise),
+      status: (r.warnings.length > 0 ? "review" : runApproved ? "approved" : "ready") as "review" | "approved" | "ready",
+    }));
+  const reviewCount = cycleRows.filter((r) => r.warnings.length > 0).length;
+
+  /* ---- headline deltas for the gradient cards ---- */
+  const ranTrend = trend.filter((t) => t.a > 0);
+  const prevPoint = ranTrend.length >= 2 ? ranTrend[ranTrend.length - 2] : null;
+  const growth = prevPoint && prevPoint.a > 0 ? ((previewGross - prevPoint.a) / prevPoint.a) * 100 : null;
+  const hourIst = (new Date().getUTCHours() + 5 + (new Date().getUTCMinutes() + 30 >= 60 ? 1 : 0)) % 24;
+  const greeting = hourIst < 12 ? "Good morning" : hourIst < 17 ? "Good afternoon" : "Good evening";
   const runStatus = run ? run.status.replace(/_/g, " ") : "Not calculated";
   const firstName = user.name.split(" ")[0];
   const entityLine =
@@ -431,185 +424,216 @@ export default async function DashboardPage(props: PageProps<"/console">) {
         </div>
       )}
 
-      {/* ---------------- hero ---------------- */}
-      <section className="rounded-xl border border-line bg-surface">
-        <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6 p-5 sm:p-7">
-          <div className="flex flex-col">
-            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-indigo-soft px-2.5 py-1 text-xs font-semibold text-indigo">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-indigo" /> {PERIOD.label} payroll
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-ink mt-4 balance">
-              Welcome back, {firstName}
-            </h1>
-            <p className="text-ink-2 mt-2">
-              {entityLine} · {headcount[0]?.n ?? 0} active employees
-            </p>
-            <div className="flex flex-wrap gap-3 mt-6">
-              <Link
-                href="/console/payroll/run"
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo px-4 py-2.5 text-sm font-semibold text-on-indigo shadow-sm transition-base hover:bg-indigo-2 hover:shadow-md"
-              >
-                Run payroll <span aria-hidden>→</span>
-              </Link>
-              <Link
-                href="/console/attendance?tab=import"
-                className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink shadow-sm transition-base hover:bg-surface-2"
-              >
-                Upload attendance
-              </Link>
-              <Link
-                href="/console/reports"
-                className="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-ink-2 transition-base hover:text-ink"
-              >
-                Reports
-              </Link>
-            </div>
-
-            {/* The KPIs used to sit in their own row below the hero,
-                which left this column short and the row under it empty
-                of anything else. Moving them here fills the column at
-                the height it actually needs, and they are gone from
-                below rather than repeated. */}
-            <div className="mt-auto grid grid-cols-2 gap-3 pt-8">
-              <MiniStat
-                label="Active employees"
-                value={headcount[0]?.n ?? 0}
-                icon={<IconUsers className="h-4 w-4" />}
-                href="/console/employees"
-              />
-              {seesPay && (
-                <MiniStat
-                  label="Monthly cost to company"
-                  value={compact(previewGross + previewEmployer)}
-                  icon={<span className="text-sm font-bold">₹</span>}
-                  href="/console/payroll/run"
-                />
-              )}
-              <MiniStat
-                label="Pending approvals"
-                value={approvals}
-                icon={<IconCheck className="h-4 w-4" />}
-                tone={approvals ? "amber" : "teal"}
-                href="/console/attendance?tab=approvals"
-              />
-              <MiniStat
-                label={seesPay ? "Open exits" : "Joining soon"}
-                value={seesPay ? openExits.length : activeJoiners.length}
-                icon={seesPay ? <IconUserMinus className="h-4 w-4" /> : <IconUserPlus className="h-4 w-4" />}
-                tone={seesPay && openExits.length ? "rust" : "teal"}
-                href={seesPay ? "/console/exits" : "/console/onboarding"}
-              />
-            </div>
-          </div>
-
-          {seesPay ? (
-            <div className="rounded-xl border border-line bg-surface-2/50 p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-ink">This month&rsquo;s payroll</p>
-                  <p className="text-xs text-ink-3 mt-0.5">{PERIOD.label} · across {entityLine}</p>
-                </div>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${
-                    run?.status === "approved"
-                      ? "bg-teal-soft text-teal"
-                      : run
-                        ? "bg-amber-soft text-amber"
-                        : "bg-surface-3 text-ink-2"
-                  }`}
-                >
-                  {runStatus}
-                </span>
-              </div>
-              <p className="text-xs font-medium text-ink-2 mt-4">Net to pay</p>
-              <p className="text-3xl font-bold tracking-tight text-ink tnum mt-1">
-                {formatINR(previewNet)}
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-5">
-                <CategoryPie
-                  size={104}
-                  slices={[
-                    { key: "net", label: "Net pay", value: previewNet },
-                    { key: "ded", label: "Deductions", value: previewGross - previewNet },
-                    { key: "emp", label: "Employer cost", value: previewEmployer },
-                  ].filter((s) => s.value > 0)}
-                  format={compact}
-                />
-                <div className="flex flex-1 flex-col gap-2 min-w-[10rem]">
-                  <FigureRow label="Gross earnings" value={formatINR(previewGross)} />
-                  <FigureRow label="Deductions" value={formatINR(previewGross - previewNet)} />
-                  <FigureRow label="Employer contributions" value={formatINR(previewEmployer)} />
-                </div>
-              </div>
-              <p
-                className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-                  findingsCount === 0 ? "bg-teal-soft text-teal" : "bg-amber-soft text-amber"
-                }`}
-              >
-                <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${findingsCount === 0 ? "bg-teal" : "bg-amber"}`} />
-                {findingsCount === 0 ? "No findings to review" : `${findingsCount} finding(s) to review`}
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-line bg-surface p-5 text-sm text-ink-3">
-              Your role has no compensation visibility, so payroll figures are hidden.
-            </div>
-          )}
+      {/* ---------------- greeting ---------------- */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold tracking-[0.14em] text-[#6D4AFF]">DASHBOARD</p>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+            {greeting}, {firstName} <span aria-hidden>👋</span>
+          </h1>
+          <p className="mt-1 text-sm text-ink-2">
+            {entityLine} · {PERIOD.label} payroll
+            {seesPay && run ? <> · <span className="font-semibold text-[#6D4AFF] capitalize">{runStatus}</span></> : null}
+          </p>
         </div>
-      </section>
-
-      {/* ---------------- trend + to-do ---------------- */}
-      <div className="grid lg:grid-cols-[1.6fr_1fr] gap-5">
-        {seesPay ? (
-          <SectionCard
-            title="Payroll trend"
-            subtitle="Gross and net, last six months"
-            action={{ href: "/console/reports", label: "All reports" }}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/console/attendance?tab=import"
+            className="inline-flex items-center rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-base hover:bg-surface-2"
           >
-            <div className="px-5 pb-5">
+            Upload attendance
+          </Link>
+          <Link
+            href="/console/payroll/run"
+            className="grad-cta inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-[0_12px_26px_-12px_#7C4DFF] transition-base hover:-translate-y-0.5"
+          >
+            + Run payroll
+          </Link>
+        </div>
+      </div>
+
+      {/* ---------------- gradient KPIs ---------------- */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {seesPay && (
+          <GradientStat
+            tone="violet"
+            label="Monthly cost to company"
+            value={compact(previewGross + previewEmployer)}
+            pill={growth === null ? undefined : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`}
+            sub={growth === null ? "Gross plus employer contributions" : `vs ${prevPoint!.label}`}
+            spark={trend.map((t) => t.a)}
+            href="/console/reports?report=payroll-trend"
+          />
+        )}
+        {seesPay && (
+          <GradientStat
+            tone="pink"
+            label="Net to pay"
+            value={compact(previewNet)}
+            sub={`${cycleRows.length} employee${cycleRows.length === 1 ? "" : "s"} · ${run ? `v${run.version}` : "not calculated"}`}
+            spark={trend.map((t) => t.b)}
+            href="/console/payroll/run"
+          />
+        )}
+        <GradientStat
+          tone="teal"
+          label="Active employees"
+          value={headcount[0]?.n ?? 0}
+          sub={activeJoiners.length ? `${activeJoiners.length} joining soon` : "Nobody joining right now"}
+          href="/console/employees"
+        />
+        <GradientStat
+          tone="amber"
+          label="Pending approvals"
+          value={approvals}
+          pill={seesPay && openExits.length ? `${openExits.length} exit${openExits.length === 1 ? "" : "s"}` : undefined}
+          sub={approvals ? "Leave and attendance corrections" : "All caught up"}
+          href="/console/attendance?tab=approvals"
+        />
+      </div>
+
+      {/* ---------------- trend + pay run ---------------- */}
+      {seesPay && (
+        <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+          <Card padded={false} className="rounded-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 px-6 pt-5">
+              <div>
+                <h2 className="text-base font-bold text-ink">Payroll cost trend</h2>
+                <p className="mt-0.5 text-xs text-ink-3">Gross payroll, as actually run · {PERIOD.label} shown until it is</p>
+              </div>
+              <div className="inline-flex rounded-full bg-[#6D4AFF]/10 p-1 text-xs font-semibold">
+                {[
+                  { v: "6", l: "6M" },
+                  { v: "12", l: "1Y" },
+                ].map((t) => (
+                  <Link
+                    key={t.v}
+                    href={`/console?range=${t.v}`}
+                    scroll={false}
+                    className={`rounded-full px-3.5 py-1.5 transition-base ${
+                      String(rangeMonths) === t.v ? "bg-[#6D4AFF] text-white shadow-sm" : "text-[#5B3DF5] hover:bg-[#6D4AFF]/10"
+                    }`}
+                  >
+                    {t.l}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="px-6 pb-6 pt-8">
               {hasTrend ? (
-                <ColumnChart points={trend} aLabel="Gross" bLabel="Net" format={compact} />
+                <RangeBars points={trend.map((t) => ({ key: t.key, label: t.label, value: t.a, provisional: t.provisional }))} format={compact} />
               ) : (
-                <p className="text-sm text-ink-3 py-6">
+                <p className="py-10 text-center text-sm text-ink-3">
                   Nothing run yet. Once a month is calculated, it appears here beside the ones before it.
                 </p>
               )}
             </div>
-          </SectionCard>
-        ) : (
-          <div />
-        )}
+          </Card>
 
-        <SectionCard title="Needs your attention" subtitle={todo.length ? `${todo.length} item(s)` : "Nothing waiting"}>
-          {todo.length === 0 ? (
-            <div className="px-5 pb-5">
-              <p className="inline-flex items-center gap-2 rounded-full bg-teal-soft px-3 py-1.5 text-sm font-semibold text-teal">
-                <IconCheck className="h-4 w-4" /> You&rsquo;re all caught up
-              </p>
+          <Card padded={false} className="rounded-2xl">
+            <div className="px-6 pt-5">
+              <h2 className="text-base font-bold text-ink">Pay run · {PERIOD.label}</h2>
+              <p className="mt-0.5 text-xs text-ink-3">{run ? `Version ${run.version} · ${runStatus}` : "Calculate to begin"}</p>
             </div>
-          ) : (
-            <ul className="flex flex-col gap-2 px-5 pb-5">
-              {todo.map((t) => (
-                <li key={t.key}>
-                  <Link
-                    href={t.href}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3.5 py-3 transition-base hover:bg-surface-3"
+            <div className="flex flex-wrap items-center gap-5 px-6 py-5">
+              <Ring percent={runPercent} label="steps done" />
+              <div className="min-w-0">
+                <p className="text-2xl font-extrabold tracking-tight tnum text-ink">{formatINR(previewNet)}</p>
+                <p className="text-xs text-ink-3">net to pay · {cycleRows.length} employees</p>
+              </div>
+            </div>
+            <ul className="flex flex-col gap-3 border-t border-line-2 px-6 py-5">
+              {runSteps.map((st) => (
+                <li key={st.label} className="flex items-center gap-3">
+                  <span
+                    aria-hidden
+                    className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
+                      st.done ? "bg-[#00BFA5]/15 text-[#00806E]" : "warn" in st && st.warn ? "bg-[#F59E0B]/15 text-[#B45309]" : "bg-surface-3 text-ink-3"
+                    }`}
                   >
-                    <span className="flex items-center gap-2.5 text-sm text-ink">
-                      <span
-                        aria-hidden
-                        className={`h-2 w-2 rounded-full shrink-0 ${t.tone === "rust" ? "bg-rust" : "bg-amber"}`}
-                      />
-                      {t.label}
-                    </span>
-                    <span aria-hidden className="text-ink-3">→</span>
-                  </Link>
+                    {st.done ? "✓" : "warn" in st && st.warn ? "!" : "·"}
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm font-medium text-ink">{st.label}</span>
+                  <span className="shrink-0 text-xs text-ink-3">{st.note}</span>
                 </li>
               ))}
             </ul>
-          )}
-        </SectionCard>
-      </div>
+            <div className="border-t border-line-2 px-6 py-4">
+              <Link href="/console/payroll/run" className="text-sm font-semibold text-[#6D4AFF] hover:text-[#5B3DF5]">
+                Open the payroll hub →
+              </Link>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ---------------- people this cycle ---------------- */}
+      {seesPay && cycleRows.length > 0 && (
+        <Card padded={false} className="rounded-2xl">
+          <div className="flex flex-wrap items-start justify-between gap-3 px-6 pt-5">
+            <div>
+              <h2 className="text-base font-bold text-ink">People · this cycle</h2>
+              <p className="mt-0.5 text-xs text-ink-3">Highest pay first · {PERIOD.label}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="inline-flex rounded-full bg-[#6D4AFF]/10 p-1 text-xs font-semibold">
+                <Link
+                  href="/console?people=all"
+                  scroll={false}
+                  className={`rounded-full px-3.5 py-1.5 ${peopleView === "all" ? "bg-[#6D4AFF] text-white shadow-sm" : "text-[#5B3DF5]"}`}
+                >
+                  All
+                </Link>
+                <Link
+                  href="/console?people=review"
+                  scroll={false}
+                  className={`rounded-full px-3.5 py-1.5 ${peopleView === "review" ? "bg-[#6D4AFF] text-white shadow-sm" : "text-[#5B3DF5]"}`}
+                >
+                  Needs review{reviewCount > 0 ? ` (${reviewCount})` : ""}
+                </Link>
+              </div>
+              <Link href="/console/payroll" className="hidden text-xs font-semibold text-[#6D4AFF] sm:inline">
+                Full register →
+              </Link>
+            </div>
+          </div>
+          <div className="px-6 pb-5 pt-4">
+            {shownPeople.length === 0 ? (
+              <p className="py-8 text-center text-sm text-ink-3">Nobody needs review this cycle.</p>
+            ) : (
+              <PeopleTable rows={shownPeople} />
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ---------------- needs attention ---------------- */}
+      <SectionCard title="Needs your attention" subtitle={todo.length ? `${todo.length} item(s)` : "Nothing waiting"}>
+        {todo.length === 0 ? (
+          <div className="px-5 pb-5">
+            <p className="inline-flex items-center gap-2 rounded-full bg-teal-soft px-3 py-1.5 text-sm font-semibold text-teal">
+              <IconCheck className="h-4 w-4" /> You&rsquo;re all caught up
+            </p>
+          </div>
+        ) : (
+          <ul className="grid gap-2 px-5 pb-5 sm:grid-cols-2">
+            {todo.map((t) => (
+              <li key={t.key}>
+                <Link
+                  href={t.href}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-3.5 py-3 transition-base hover:bg-surface-3"
+                >
+                  <span className="flex items-center gap-2.5 text-sm text-ink">
+                    <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${t.tone === "rust" ? "bg-rust" : "bg-amber"}`} />
+                    {t.label}
+                  </span>
+                  <span aria-hidden className="text-ink-3">→</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
 
       {/* ---------------- where the money goes ---------------- */}
       <div className="grid lg:grid-cols-2 gap-5">
