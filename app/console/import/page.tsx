@@ -106,7 +106,7 @@ export default async function ImportPage(props: PageProps<"/console/import">) {
       <SetupWizard companyId={companyId} stepId={setupStep} />
 
       <PageHeader
-        eyebrow={companies[0].name}
+        eyebrow="Settings"
         title="Bring your people across"
         description="Moving from another system, or from a spreadsheet. Each step checks the whole file before writing anything — a half-migrated company is harder to put right than a corrected file."
       />

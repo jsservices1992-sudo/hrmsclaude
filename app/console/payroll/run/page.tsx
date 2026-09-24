@@ -202,7 +202,8 @@ export default async function RunPayrollPage(
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-ink">Run payroll</h1>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-indigo">Payroll</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">Run payroll</h1>
           <p className="mt-1 text-sm text-ink-2">{company.name} · everything between attendance and payslips, in order</p>
         </div>
         <MonthNav year={year} month={month} href={periodHref} />

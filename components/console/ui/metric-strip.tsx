@@ -25,7 +25,7 @@ export function MetricStrip({
   items: { label: string; value: React.ReactNode; hint?: React.ReactNode; tone?: Tone; icon?: React.ReactNode }[];
 }) {
   return (
-    <dl className="grid grid-cols-2 overflow-hidden rounded-xl border border-line bg-surface sm:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]">
+    <dl className="grid grid-cols-2 overflow-hidden rounded-2xl border border-line bg-surface card-lift sm:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]">
       {items.map((m) => {
         const t = m.tone ?? "default";
         return (

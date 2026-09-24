@@ -125,11 +125,7 @@ export default async function PayrollConsolePage(
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        eyebrow={
-          preview.source === "run"
-            ? `Register · v${preview.run?.version} ${preview.run?.status.replace(/_/g, " ")}`
-            : "Register · not yet calculated"
-        }
+        eyebrow="Payroll"
         title="Payroll register"
         description={company.name}
         actions={

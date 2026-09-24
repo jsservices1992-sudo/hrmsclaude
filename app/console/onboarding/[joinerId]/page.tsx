@@ -89,6 +89,7 @@ export default async function JoinerDetailPage(
         <Link href="/console/onboarding" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">← Joiners</Link>
       </div>
       <PageHeader
+        eyebrow="People"
         title={
           <span className="flex flex-wrap items-baseline gap-3">
             {j.firstName} {j.lastName}

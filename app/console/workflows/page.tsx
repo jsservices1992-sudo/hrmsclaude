@@ -66,7 +66,7 @@ export default async function WorkflowsPage(props: PageProps<"/console/workflows
   return (
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
-        eyebrow="Workflows"
+        eyebrow="Settings"
         title="Workflows & approvals"
         description={
           <>

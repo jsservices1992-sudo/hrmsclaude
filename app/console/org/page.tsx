@@ -268,7 +268,7 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        eyebrow="Organisation"
+        eyebrow="People"
         title="Org chart"
         description={`${org.headcount} active · ${org.roots.length} at the top · ${departmentRows.length} departments · ${org.maxDepth + 1} levels deep`}
       />

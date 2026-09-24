@@ -70,7 +70,7 @@ export default async function AssetDetailPage(
           ← Assets
         </Link>
         <div className="flex flex-wrap items-baseline gap-3 mt-2">
-          <h1 className="text-2xl font-bold tracking-tight text-ink">{view.asset.assetTag}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">{view.asset.assetTag}</h1>
           <Badge tone={STATUS_TONE[view.asset.status]}>{view.asset.status.replace(/_/g, " ")}</Badge>
         </div>
         <p className="text-sm text-ink-2 mt-1">

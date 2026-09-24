@@ -43,7 +43,7 @@ export default async function JurisdictionDetailPage(
         <Link href="/console/compliance" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
           ← Statutory rules
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-ink mt-2">{jur.name}</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink mt-2">{jur.name}</h1>
         <p className="text-sm text-ink-2 mt-1">
           <span className="font-mono">{jur.stateCode}</span> · {jur.kind === "ut" ? "Union territory" : "State"}
         </p>

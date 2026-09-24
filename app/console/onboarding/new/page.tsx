@@ -39,6 +39,7 @@ export default async function NewJoinerPage(
         </Link>
       </div>
       <PageHeader
+        eyebrow="People"
         title="New joiner"
         description={
           <>

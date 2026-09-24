@@ -95,6 +95,7 @@ export default async function UsersPage(
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        eyebrow="Settings"
         title="Users & access"
         description="Who can sign in, what they may change, and whose pay they can see. Every change is recorded."
         actions={

@@ -25,7 +25,7 @@ export function Panel({
 }) {
   const hasHead = title || actions;
   return (
-    <section className={`rounded-xl border border-line bg-surface ${className}`}>
+    <section className={`rounded-2xl border border-line bg-surface card-lift ${className}`}>
       {hasHead && (
         <header className="flex flex-wrap items-start justify-between gap-3 px-5 pt-4 pb-3">
           <div className="flex min-w-0 items-start gap-3">

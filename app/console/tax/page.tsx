@@ -59,6 +59,7 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
   return (
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
+        eyebrow="Payroll"
         title={`Income tax & TDS · FY ${fyLabel(CURRENT_FY)}`}
         description={
           <>

@@ -286,6 +286,7 @@ export default async function PayrollSettingsPage(
       <SetupWizard companyId={companyId} stepId={setupStep} />
 
       <PageHeader
+        eyebrow="Settings"
         title="Payroll rules"
         description={`${company.name} · what every part-month is worth. Rules are versioned; changing one after a run needs a reason.`}
       />

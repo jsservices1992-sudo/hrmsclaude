@@ -17,6 +17,7 @@ export default async function NewCompanyPage() {
           ← Settings
         </Link>
         <PageHeader
+          eyebrow="Settings"
           title="New legal entity"
           description="Add branches and per-state registrations after creating it. Payroll conventions can be changed later, but doing so after a run exists requires a reason."
         />

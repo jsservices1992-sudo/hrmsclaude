@@ -65,6 +65,7 @@ export default async function ExitDetailPage(
         </Link>
       </div>
       <PageHeader
+        eyebrow="People"
         title={`${employee.firstName} ${employee.lastName}`}
         description={
           <>

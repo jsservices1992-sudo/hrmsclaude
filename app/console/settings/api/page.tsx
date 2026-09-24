@@ -52,6 +52,7 @@ export default async function ApiAdminPage() {
   return (
     <div className="flex flex-col gap-8 max-w-5xl">
       <PageHeader
+        eyebrow="Settings"
         title="API & webhooks"
         description={
           <>

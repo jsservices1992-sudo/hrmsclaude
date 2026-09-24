@@ -96,7 +96,7 @@ export default async function TaxWorksheetPage(
         <div className="flex flex-wrap items-end justify-between gap-4 mt-2">
           <div>
             <p className="text-xs font-medium text-ink-2">FY {fyLabel(CURRENT_FY)}</p>
-            <h1 className="text-2xl font-bold tracking-tight text-ink mt-1">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink mt-1">
               {emp.firstName} {emp.lastName}
             </h1>
             <p className="text-sm text-ink-2 mt-1">

@@ -161,6 +161,7 @@ export default async function PayslipsPage(
             ← Back to list
           </Link>
           <PageHeader
+            eyebrow="Payroll"
             title="Payslips"
             description={`${preview.company.name} · ${MONTHS[month - 1]} ${year} · ${rows.length} payslip(s) · one per page when printed`}
             actions={<PrintButton label="Print all / save as PDF" />}
@@ -193,6 +194,7 @@ export default async function PayslipsPage(
           ← Register
         </Link>
         <PageHeader
+          eyebrow="Payroll"
           title="Payslips"
           description={
             preview.source === "run"

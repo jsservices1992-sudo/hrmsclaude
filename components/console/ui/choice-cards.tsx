@@ -59,7 +59,7 @@ export function ChoiceCards({ label, choices }: { label: string; choices: Choice
           );
         })}
       </div>
-      <div className="rounded-xl border border-line bg-surface p-5">{current?.content}</div>
+      <div className="rounded-2xl border border-line bg-surface card-lift p-5">{current?.content}</div>
     </div>
   );
 }

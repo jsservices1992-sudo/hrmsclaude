@@ -282,7 +282,7 @@ export default async function EmployeeDetailPage(
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-ink">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">
                   {e.firstName} {e.middleName ? e.middleName + " " : ""}
                   {e.lastName}
                 </h1>

@@ -11,8 +11,8 @@
   /* Grounds */
   --paper: #F4F1FF;        /* background — soft lavender */
   --surface: #FFFFFF;      /* cards, sidebar, header */
-  --surface-2: #F7F8F9;    /* surface-secondary: table heads, hovers */
-  --surface-3: #EEF0F4;    /* input background */
+  --surface-2: #F8F6FF;    /* surface-secondary: table heads, hovers */
+  --surface-3: #F1EEFB;    /* input background */
 
   /* Text */
   --ink: #080D18;
@@ -20,20 +20,20 @@
   --ink-3: #7D8AA0;
 
   /* Lines */
-  --line: #D8DFEA;
-  --line-2: #E6ECF4;
+  --line: #E3DEF5;
+  --line-2: #EEEAF9;
   --grid: #D5E3F7;
 
   /* Brand — primary actions, active nav, focus */
-  --indigo: #1239F4;
-  --indigo-2: #0D2ED0;
-  --indigo-soft: #EAEFFE;
+  --indigo: #6D4AFF;
+  --indigo-2: #5B3DF5;
+  --indigo-soft: #EFEBFF;
   --on-indigo: #FFFFFF;
 
   /* Accent — links, labels, highlights */
-  --brass: #5146FF;
-  --brass-2: #4338E8;
-  --brass-soft: #EEEDFF;
+  --brass: #FF5C8A;
+  --brass-2: #F2437A;
+  --brass-soft: #FFEAF1;
 
   /* Status */
   --teal: #0FA875;         /* success text, readable on white */
@@ -57,7 +57,7 @@
   --shadow-sm: 0 0 #0000;
   --shadow-md: 0 6px 20px -6px rgba(16, 38, 94, 0.14), 0 2px 6px -2px rgba(16, 38, 94, 0.06);
   --shadow-lg: 0 24px 48px -16px rgba(16, 38, 94, 0.24);
-  --shadow-ring: 0 0 0 4px rgba(18, 57, 244, 0.14);
+  --shadow-ring: 0 0 0 4px rgba(109, 74, 255, 0.18);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 120ms;
@@ -77,9 +77,9 @@
     --line: #243049;
     --line-2: #1B2538;
     --grid: #1F2C47;
-    --indigo: #4D6BFF;
-    --indigo-2: #6B84FF;
-    --indigo-soft: #16204A;
+    --indigo: #9B7BFF;
+    --indigo-2: #B39BFF;
+    --indigo-soft: #221A4A;
     --on-indigo: #FFFFFF;
     --brass: #8C84FF;
     --brass-2: #A39DFF;
@@ -95,7 +95,7 @@
     --shadow-sm: 0 0 #0000;
     --shadow-md: 0 6px 20px -6px rgba(0, 0, 0, 0.55);
     --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.65);
-    --shadow-ring: 0 0 0 4px rgba(77, 107, 255, 0.25);
+    --shadow-ring: 0 0 0 4px rgba(155, 123, 255, 0.28);
   }
 }
 
@@ -111,9 +111,9 @@
   --line: #243049;
   --line-2: #1B2538;
   --grid: #1F2C47;
-  --indigo: #4D6BFF;
-  --indigo-2: #6B84FF;
-  --indigo-soft: #16204A;
+  --indigo: #9B7BFF;
+  --indigo-2: #B39BFF;
+  --indigo-soft: #221A4A;
   --on-indigo: #FFFFFF;
   --brass: #8C84FF;
   --brass-2: #A39DFF;
@@ -129,7 +129,7 @@
   --shadow-sm: 0 0 #0000;
   --shadow-md: 0 6px 20px -6px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 24px 48px -16px rgba(0, 0, 0, 0.65);
-  --shadow-ring: 0 0 0 4px rgba(77, 107, 255, 0.25);
+  --shadow-ring: 0 0 0 4px rgba(155, 123, 255, 0.28);
 }
 
 @theme inline {
@@ -460,3 +460,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:focus-visible {
 .grad-amber  { background-image: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%); }
 .grad-cta    { background-image: linear-gradient(135deg, #7C4DFF 0%, #FF5C8A 100%); }
 .bg-sidebar  { background-image: linear-gradient(180deg, #FFFFFF 0%, #F7F3FF 100%); }
+
+/* A card that sits on the lavender ground: a whisper of violet shadow. */
+.card-lift { box-shadow: 0 1px 2px rgba(45, 20, 120, 0.04), 0 10px 28px -18px rgba(76, 45, 200, 0.28); }

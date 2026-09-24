@@ -37,7 +37,7 @@ export default async function ComplianceConfigPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        eyebrow="Statutory configuration"
+        eyebrow="Compliance"
         title="Statutory rules"
         description="Every row below is effective-dated. A payroll run records which versions it used, so recomputing a historic period reproduces what was actually paid."
       />

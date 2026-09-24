@@ -29,6 +29,7 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        eyebrow="Settings"
         title="Companies"
         description="Each legal entity has its own registrations, payroll rules and approvals. Branches inherit them unless you override."
         actions={

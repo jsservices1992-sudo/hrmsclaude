@@ -11,8 +11,8 @@ export function buttonClasses(variant: ButtonVariant = "default", size: ButtonSi
     md: "px-3.5 py-2 text-sm",
   };
   const variants: Record<ButtonVariant, string> = {
-    primary: "bg-indigo text-on-indigo shadow-sm shadow-indigo/20 hover:bg-indigo-2 hover:shadow-md",
-    default: "border border-line bg-surface text-ink shadow-sm hover:bg-surface-2 hover:border-ink-3/30",
+    primary: "grad-cta text-white shadow-[0_10px_22px_-12px_#7C4DFF] hover:brightness-105 hover:-translate-y-px",
+    default: "border border-line bg-surface text-ink hover:bg-surface-2 hover:border-indigo/30",
     ghost: "text-ink-2 hover:text-ink hover:bg-surface-2",
     danger: "border border-rust text-rust hover:bg-rust-soft",
   };

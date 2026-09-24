@@ -36,7 +36,7 @@ export default async function EmployeeFlexiPage(
         <Link href="/console/flexi" className="text-sm font-semibold text-indigo hover:text-indigo-2">
           &larr; Flexible benefits
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-ink mt-2">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink mt-2">
           {employee.firstName} {employee.lastName}
         </h1>
         <p className="text-sm text-ink-2 mt-1">

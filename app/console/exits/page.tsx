@@ -114,7 +114,7 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        eyebrow="Exit & settlement"
+        eyebrow="People"
         title="Leavers & settlement"
         description={`${allCases.length} exit ${allCases.length === 1 ? "case" : "cases"}${hasFilters ? ` · ${cases.length} shown` : ""}. Settlement is released only once clearance closes.`}
         actions={

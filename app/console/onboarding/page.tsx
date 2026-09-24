@@ -92,6 +92,7 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        eyebrow="People"
         title="Joiners"
         description={`${inFlight.length} in onboarding. Each joiner fills in their own profile and documents before day one.`}
         actions={

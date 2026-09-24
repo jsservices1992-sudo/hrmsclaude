@@ -36,7 +36,7 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
       </div>
 
       <PageHeader
-        eyebrow="Payroll run"
+        eyebrow="Payroll"
         title={
           <>
             {company.name} — {MONTHS[run.periodMonth - 1]} {run.periodYear}{" "}

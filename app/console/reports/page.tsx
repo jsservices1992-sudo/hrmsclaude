@@ -199,7 +199,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
               <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-soft px-2.5 py-1 text-xs font-semibold text-indigo">
                 {MONTHS[month - 1]} {year} · {company.name}
               </span>
-              <h1 className="text-2xl font-bold tracking-tight text-ink mt-4">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink mt-4">
                 Reports
               </h1>
               <p className="text-ink-2 mt-2 max-w-[60ch]">
@@ -581,7 +581,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
               {selected.icon}
             </span>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-ink">{selected.title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">{selected.title}</h1>
               <p className="text-sm text-ink-2 mt-1">
                 {selected.description} · {company.name} · {MONTHS[month - 1]} {year}
               </p>

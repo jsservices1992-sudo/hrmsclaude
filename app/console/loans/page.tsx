@@ -72,6 +72,7 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
   return (
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
+        eyebrow="Payroll"
         title="Loans & recoveries"
         description={
           <>

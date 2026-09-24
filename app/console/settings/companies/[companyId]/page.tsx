@@ -119,7 +119,7 @@ export default async function CompanySettingsPage(
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-ink">{company.name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">{company.name}</h1>
               {company.isDefault && <Badge tone="teal">Default</Badge>}
             </div>
             <p className="mt-0.5 text-sm text-ink-2">

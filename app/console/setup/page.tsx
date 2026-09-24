@@ -39,7 +39,7 @@ export default async function SetupPage() {
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
       <PageHeader
-        eyebrow={companies[0].name}
+        eyebrow="Settings"
         title={progress.complete ? "You are set up" : "Finish setting up"}
         description={
           progress.complete

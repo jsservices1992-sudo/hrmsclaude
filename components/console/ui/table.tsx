@@ -1,6 +1,6 @@
 export function Table({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`overflow-x-auto rounded-xl border border-line bg-surface ${className}`}>
+    <div className={`overflow-x-auto rounded-2xl border border-line bg-surface ${className}`}>
       <table className="w-full text-sm border-collapse">{children}</table>
     </div>
   );

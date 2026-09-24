@@ -76,6 +76,7 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
   return (
     <div className="flex flex-col gap-5 max-w-[84rem]">
       <PageHeader
+        eyebrow="People"
         title="Assets"
         description={`${company.name} · ${allRows.length} asset${allRows.length === 1 ? "" : "s"}${hasFilters ? ` · ${rows.length} shown` : ""}`}
         actions={

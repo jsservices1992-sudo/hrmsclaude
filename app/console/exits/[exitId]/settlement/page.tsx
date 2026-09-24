@@ -105,7 +105,7 @@ export default async function SettlementPage(
       </div>
 
       <PageHeader
-        eyebrow="Full & final settlement"
+        eyebrow="People"
         title={`${fnf.employee.firstName} ${fnf.employee.lastName}`}
         description={
           <>

@@ -130,7 +130,7 @@ export default async function StatutoryPage(
   return (
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
-        eyebrow="Statutory returns & compliance"
+        eyebrow="Compliance"
         title="Returns & filings"
         description={
           <>

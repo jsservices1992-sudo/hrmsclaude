@@ -53,7 +53,7 @@ export function EmployeeChecklist({
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+    <div className="overflow-hidden rounded-2xl border border-line bg-surface card-lift">
       <div className="flex flex-wrap items-center gap-3 border-b border-line-2 bg-surface-2/60 px-3.5 py-2.5">
         <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-ink">
           <input

@@ -56,7 +56,7 @@ export default async function AccountPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="My account" title={user.name} description={user.email} />
+      <PageHeader eyebrow="Settings" title={user.name} description={user.email} />
 
       <div className="grid lg:grid-cols-2 gap-5">
         <Card padded={false}>

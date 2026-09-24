@@ -47,6 +47,7 @@ export default async function NewEmployeePage(
         </Link>
       </div>
       <PageHeader
+        eyebrow="People"
         title="New employee"
         description={
           <>

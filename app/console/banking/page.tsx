@@ -157,7 +157,7 @@ export default async function BankingPage(props: PageProps<"/console/banking">) 
   return (
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
-        eyebrow="Banking & accounting"
+        eyebrow="Payroll"
         title="Bank & accounting"
         description={
           <>

@@ -169,7 +169,7 @@ export default async function AuditPage(props: PageProps<"/console/audit">) {
   return (
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
-        eyebrow="Audit & controls"
+        eyebrow="Compliance"
         title="Audit log"
         description="For any rupee paid in any period: what it was, how it was computed, who authorised it, and what it was before the last change."
         actions={

@@ -81,7 +81,7 @@ export default async function MasterDataPage(props: PageProps<"/console/settings
   return (
     <div className="flex flex-col gap-6 max-w-[84rem]">
       <PageHeader
-        eyebrow="Master data"
+        eyebrow="Settings"
         title="Master data"
         description={
           <>

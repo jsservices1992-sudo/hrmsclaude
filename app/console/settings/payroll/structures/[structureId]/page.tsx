@@ -103,6 +103,7 @@ export default async function StructureDetailPage(
           ← Salary structures
         </Link>
         <PageHeader
+          eyebrow="Settings"
           title={
             <>
               {structure.name}{" "}
