@@ -30,6 +30,9 @@ export async function GET(request: Request) {
   const deptFilter = url.searchParams.get("department") ?? "";
   const typeFilter = url.searchParams.get("type") ?? "";
   const stateFilter = url.searchParams.get("state") ?? "";
+  /* A selection made on the page wins over the filters that produced it:
+     ticking six people and pressing Export means those six. */
+  const pickedIds = new Set(url.searchParams.getAll("ids").filter(Boolean));
 
   const companies = scopeCompanies(user, await listCompanies());
   const companyIds = companies.map((c) => c.id);
@@ -63,6 +66,7 @@ export async function GET(request: Request) {
     : [];
 
   const rows = allRows.filter((r) => {
+    if (pickedIds.size > 0) return pickedIds.has(r.emp.id);
     if (statusFilter && r.emp.status !== statusFilter) return false;
     if (deptFilter && r.emp.departmentId !== deptFilter) return false;
     if (typeFilter && r.emp.employmentType !== typeFilter) return false;

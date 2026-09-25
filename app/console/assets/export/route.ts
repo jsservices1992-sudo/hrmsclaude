@@ -41,9 +41,12 @@ export async function GET(request: Request) {
   const categoryFilter = url.searchParams.get("category") ?? "";
   const statusFilter = url.searchParams.get("status") ?? "";
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+  /* A selection made on the page wins over the filters behind it. */
+  const pickedIds = new Set(url.searchParams.getAll("ids").filter(Boolean));
 
   const allRows = await listAssets(companyId);
   const rows = allRows.filter((r) => {
+    if (pickedIds.size > 0) return pickedIds.has(r.asset.id);
     if (categoryFilter && r.asset.category !== categoryFilter) return false;
     if (statusFilter && r.asset.status !== statusFilter) return false;
     if (q) {

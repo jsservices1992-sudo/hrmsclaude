@@ -34,6 +34,7 @@ import {
   type BadgeTone, MetricStrip, EmptyState, Alert
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
+import { SelectAllBox, SelectionBar } from "@/components/console/row-selection";
 
 export const metadata = { title: "Joiners" };
 
@@ -190,8 +191,14 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
         </Card>
       ) : (
         <>
+          {/* The row checkboxes belong to this form, so a selection rides
+              the query string of whichever action is pressed. */}
+          <form id="pick-joiners" method="get" action="/console/onboarding/export" />
           <Table className="min-w-[64rem]">
             <THead>
+              <TH className="w-10">
+                <SelectAllBox formId="pick-joiners" />
+              </TH>
               {["Candidate", "Role", "Branch", "Joining", "In", "Offer", "BGV", "Ready", "Status", ""].map((h) => (
                 <TH key={h}>{h}</TH>
               ))}
@@ -201,6 +208,16 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
                 const daysToJoin = daysBetween(TODAY, j.proposedDoj);
                 return (
                   <TR key={j.id}>
+                    <TD className="w-10">
+                      <input
+                        type="checkbox"
+                        name="ids"
+                        value={j.id}
+                        form="pick-joiners"
+                        aria-label={`Select ${j.firstName} ${j.lastName}`}
+                        className="h-4 w-4 accent-[var(--indigo)]"
+                      />
+                    </TD>
                     <TD className="max-w-[14rem]">
                       <Link href={`/console/onboarding/${j.id}`} className="font-medium hover:text-indigo hover:underline truncate block">
                         {j.firstName} {j.lastName}
@@ -262,6 +279,11 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
               })}
             </TBody>
           </Table>
+          <SelectionBar
+            formId="pick-joiners"
+            noun="joiners selected"
+            actions={[{ label: "Export CSV", formAction: "/console/onboarding/export", primary: true }]}
+          />
         </>
       )}
     </div>

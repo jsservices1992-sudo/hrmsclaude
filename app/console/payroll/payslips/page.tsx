@@ -344,7 +344,7 @@ export default async function PayslipsPage(
             })}
           </TBody>
         </Table>
-        <SelectionBar formId="pick-payslips" label="Print" />
+        <SelectionBar formId="pick-payslips" noun="payslips" actions={[{ label: "Print selected", primary: true }]} />
         </>
       )}
     </div>

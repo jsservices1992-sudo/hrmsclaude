@@ -18,11 +18,14 @@ export async function GET(request: Request) {
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
   const statusFilter = url.searchParams.get("status") ?? "";
   const bgvFilter = url.searchParams.get("bgv") ?? "";
+  /* A selection made on the page wins over the filters behind it. */
+  const pickedIds = new Set(url.searchParams.getAll("ids").filter(Boolean));
 
   const companies = scopeCompanies(user, await listCompanies());
   const allJoiners = await listJoiners(companies.map((c) => c.id));
 
   const joiners = allJoiners.filter(({ joiner: j }) => {
+    if (pickedIds.size > 0) return pickedIds.has(j.id);
     if (statusFilter && j.status !== statusFilter) return false;
     if (bgvFilter && j.bgvStatus !== bgvFilter) return false;
     if (q) {

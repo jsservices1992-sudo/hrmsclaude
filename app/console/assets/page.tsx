@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth/session";
 import { CreateAssetForm } from "./forms";
 import { PageHeader, Card, Input, Select, FilterBar, FilterField, Badge, EmptyState, Table, THead, TH, TBody, TR, TD, type BadgeTone, MetricStrip, DrawerButton } from "@/components/console/ui";
+import { SelectAllBox, SelectionBar } from "@/components/console/row-selection";
 
 export const metadata = { title: "Assets" };
 
@@ -150,8 +151,14 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
         </Card>
       ) : (
         <div className="overflow-x-auto">
-          <Table className="min-w-[56rem]">
+          <form id="pick-assets" method="get" action="/console/assets/export">
+          <input type="hidden" name="company" value={companyId} />
+        </form>
+        <Table className="min-w-[56rem]">
             <THead>
+              <TH className="w-10">
+                <SelectAllBox formId="pick-assets" />
+              </TH>
               {["Tag", "Category", "Make / model", "Status", "Holder", "Issued", "Value", ""].map((h) => (
                 <TH key={h}>{h}</TH>
               ))}
@@ -159,6 +166,16 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
             <TBody>
               {rows.map((r) => (
                 <TR key={r.asset.id}>
+                  <TD className="w-10">
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={r.asset.id}
+                      form="pick-assets"
+                      aria-label={`Select ${r.asset.assetTag}`}
+                      className="h-4 w-4 accent-[var(--indigo)]"
+                    />
+                  </TD>
                   <TD className="whitespace-nowrap">
                     <Link href={`/console/assets/${r.asset.id}`} className="font-mono text-xs hover:text-indigo hover:underline">
                       {r.asset.assetTag}
@@ -193,6 +210,11 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
               ))}
             </TBody>
           </Table>
+        <SelectionBar
+          formId="pick-assets"
+          noun="assets selected"
+          actions={[{ label: "Export CSV", formAction: "/console/assets/export", primary: true }]}
+        />
         </div>
       )}
 

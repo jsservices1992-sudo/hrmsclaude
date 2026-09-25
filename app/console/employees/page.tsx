@@ -5,9 +5,11 @@ import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { formatINR } from "@/lib/payroll/money";
+import { currentPeriod } from "@/lib/clock";
 import {
   getSessionUser,
   maskIfNeeded,
+  canSeeCompensation,
   canMutate,
   scopeCompanies,
   canActOnPeople,
@@ -18,6 +20,7 @@ import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
 import { ProfileChangeDecisionForm } from "./change-request-form";
 import { BulkEmployeeForm } from "./bulk-form";
 import { formatDate } from "@/lib/format/date";
+import { SelectAllBox, SelectionBar } from "@/components/console/row-selection";
 
 /*
  * A whole month of attendance for a whole company, in one request.
@@ -41,6 +44,9 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
   // A user confined to one entity must not see another entity's people.
   const companies = narrowToSelected(scopeCompanies(user, await listCompanies()), await selectedCompanyId());
   const companyIds = companies.map((c) => c.id);
+  /* The period the payslip action should open on — the payroll month,
+     not today's calendar month. */
+  const period = currentPeriod();
 
   const allRows = companyIds.length
     ? await db
@@ -248,6 +254,16 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
         </details>
       )}
 
+      {/* The row checkboxes point at this form by id, so a selection
+          travels in the query string of whichever action is pressed and
+          the page itself stays a server component. */}
+      <form id="pick-emp" method="get" action="/console/employees/export">
+        {companyIds[0] && <input type="hidden" name="company" value={companyIds[0]} />}
+        <input type="hidden" name="year" value={period.year} />
+        <input type="hidden" name="month" value={period.month} />
+        <input type="hidden" name="view" value="print" />
+      </form>
+
       {/* ---------------- list ---------------- */}
       <section className="rounded-xl border border-line bg-surface">
         <div className="flex flex-col gap-3 border-b border-line p-3 sm:p-4">
@@ -343,6 +359,9 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
             <div className="hidden sm:block">
               <Table className="rounded-none border-0">
                 <THead>
+                  <TH className="w-10">
+                    <SelectAllBox formId="pick-emp" />
+                  </TH>
                   <TH>Employee</TH>
                   <TH>Role</TH>
                   <TH>Location</TH>
@@ -354,6 +373,16 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
                 <TBody>
                   {rows.map((r) => (
                     <TR key={r.emp.id}>
+                      <TD className="w-10">
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={r.emp.id}
+                          form="pick-emp"
+                          aria-label={`Select ${r.emp.firstName} ${r.emp.lastName}`}
+                          className="h-4 w-4 accent-[var(--indigo)]"
+                        />
+                      </TD>
                       <TD>
                         <Link href={`/console/employees/${r.emp.id}`} className="group flex items-center gap-3 min-w-0">
                           <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-indigo-soft text-xs font-bold text-indigo">
@@ -391,6 +420,18 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
             <p className="border-t border-line-2 px-4 py-2.5 text-xs text-ink-3">
               Showing {rows.length} of {allRows.length}
             </p>
+            <div className="px-4 pb-4">
+              <SelectionBar
+                formId="pick-emp"
+                noun={`employee${rows.length === 1 ? "" : "s"} selected`}
+                actions={[
+                  { label: "Export CSV", formAction: "/console/employees/export" },
+                  ...(canSeeCompensation(user) && companyIds.length === 1
+                    ? [{ label: "Payslips", formAction: "/console/payroll/payslips" }]
+                    : []),
+                ]}
+              />
+            </div>
           </>
         )}
       </section>
