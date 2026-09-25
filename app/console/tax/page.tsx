@@ -14,6 +14,8 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { ProofDecisionForm } from "./forms";
+import { RowBox, SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { bulkDecideProofs, bulkSetRegime } from "./bulk-actions";
 import { PageHeader, Card, Badge, type BadgeTone, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 
 export const metadata = { title: "Income tax & TDS" };
@@ -157,6 +159,8 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
                 key={proof.id}
                 className="px-4 py-3 flex flex-wrap items-center justify-between gap-3"
               >
+                <div className="min-w-0 flex items-start gap-3">
+                {canAct && <span className="pt-0.5"><RowBox formId="pick-proofs" value={proof.id} label={`Select ${emp.firstName}'s proof`} /></span>}
                 <div className="min-w-0">
                   <p className="text-sm font-medium">
                     {emp.firstName} {emp.lastName}
@@ -171,6 +175,7 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
                     </span>
                   </p>
                 </div>
+                </div>
                 {canAct && (
                   <ProofDecisionForm
                     proofId={proof.id}
@@ -180,6 +185,28 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
               </li>
             ))}
           </ul>
+        )}
+        {canAct && pending.length > 0 && (
+          <div className="border-t border-line-2 px-4 py-2.5">
+            <form id="pick-proofs" />
+            <span className="flex items-center gap-2 text-xs text-ink-2">
+              <SelectAllBox formId="pick-proofs" /> Select all waiting proofs
+            </span>
+            <SelectionBar
+              formId="pick-proofs"
+              noun="proofs selected"
+              actions={[
+                { label: "Verify at declared amount", run: bulkDecideProofs, hidden: { decision: "verified" }, primary: true, note: "Each proof is admitted at the amount it declared. To admit less, verify that one on its own." },
+                {
+                  label: "Reject",
+                  run: bulkDecideProofs,
+                  hidden: { decision: "rejected" },
+                  danger: true,
+                  fields: [{ name: "note", label: "Reason the employee will see", kind: "textarea", required: true }],
+                },
+              ]}
+            />
+          </div>
         )}
         <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2">
           A verified amount is capped at what was declared. Anything left
@@ -193,8 +220,14 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
         <div className="px-5 py-3.5 border-b border-line-2">
           <span className="text-[15px] font-semibold text-ink">Employee positions</span>
         </div>
+        <form id="pick-tax" />
         <Table>
           <THead>
+            {canAct && (
+              <TH className="w-10">
+                <SelectAllBox formId="pick-tax" />
+              </TH>
+            )}
             {[
               "Employee",
               "Regime",
@@ -212,6 +245,11 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
           <TBody>
             {rows.map((r) => (
               <TR key={r.employeeId}>
+                {canAct && (
+                  <TD className="w-10">
+                    <RowBox formId="pick-tax" value={r.employeeId} label={`Select ${r.name}`} />
+                  </TD>
+                )}
                 <TD className="whitespace-nowrap">
                   <Link
                     href={`/console/tax/${r.employeeId}`}
@@ -265,6 +303,34 @@ export default async function TaxPage(props: PageProps<"/console/tax">) {
             ))}
           </TBody>
         </Table>
+        {canAct && (
+          <div className="px-4 py-3">
+            <SelectionBar
+              formId="pick-tax"
+              noun="employees selected"
+              actions={[
+                {
+                  label: "Set regime",
+                  run: bulkSetRegime,
+                  primary: true,
+                  note: "Records each person's choice for this financial year and reprojects their TDS.",
+                  fields: [
+                    {
+                      name: "regime",
+                      label: "Regime",
+                      kind: "select",
+                      required: true,
+                      options: [
+                        { value: "new", label: "New regime" },
+                        { value: "old", label: "Old regime" },
+                      ],
+                    },
+                  ],
+                },
+              ]}
+            />
+          </div>
+        )}
       </Card>
     </div>
   );

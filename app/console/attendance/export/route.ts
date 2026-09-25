@@ -31,7 +31,10 @@ export async function GET(request: Request) {
     return new Response("No company available.", { status: 404 });
   }
 
-  const months = await deriveMonth({ companyId, year, month });
+  /* A selection made on the page wins over the whole month's list. */
+  const pickedIds = new Set(url.searchParams.getAll("ids").filter(Boolean));
+  const allMonths = await deriveMonth({ companyId, year, month });
+  const months = pickedIds.size > 0 ? allMonths.filter((m) => pickedIds.has(m.employeeId)) : allMonths;
   const empIds = months.map((m) => m.employeeId);
 
   const storedInputs = empIds.length

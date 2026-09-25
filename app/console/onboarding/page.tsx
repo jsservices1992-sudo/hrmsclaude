@@ -35,6 +35,7 @@ import {
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 import { SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { bulkSendOffers, bulkSetBgv } from "./bulk-actions";
 
 export const metadata = { title: "Joiners" };
 
@@ -282,7 +283,34 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
           <SelectionBar
             formId="pick-joiners"
             noun="joiners selected"
-            actions={[{ label: "Export CSV", formAction: "/console/onboarding/export", primary: true }]}
+            actions={[
+              ...(canAdd
+                ? [
+                    { label: "Mark offer sent", run: bulkSendOffers, primary: true, note: "Records the offer as sent for each joiner. Share their portal links as usual." },
+                    {
+                      label: "Set BGV status",
+                      run: bulkSetBgv,
+                      fields: [
+                        {
+                          name: "bgvStatus",
+                          label: "Background verification",
+                          kind: "select" as const,
+                          required: true,
+                          options: [
+                            { value: "not_started", label: "Not started" },
+                            { value: "initiated", label: "Initiated" },
+                            { value: "in_progress", label: "In progress" },
+                            { value: "clear", label: "Clear" },
+                            { value: "discrepancy", label: "Discrepancy" },
+                            { value: "failed", label: "Failed" },
+                          ],
+                        },
+                      ],
+                    },
+                  ]
+                : []),
+              { label: "Export CSV", formAction: "/console/onboarding/export" },
+            ]}
           />
         </>
       )}

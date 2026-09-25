@@ -33,12 +33,15 @@ export async function GET(request: Request) {
   const statusFilter = url.searchParams.get("status") ?? "";
   const schemeFilter = url.searchParams.get("scheme") ?? "";
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+  /* A selection made on the page wins over the filters behind it. */
+  const pickedIds = new Set(url.searchParams.getAll("ids").filter(Boolean));
 
   const { list } = await loadCompanyLoans(companyId);
   const schemes = await listSchemes(companyId);
   const categoryBySchemeId = new Map(schemes.map((x) => [x.id, x.category]));
 
   const filteredList = list.filter((r) => {
+    if (pickedIds.size > 0) return pickedIds.has(r.loan.id);
     if (statusFilter && r.loan.status !== statusFilter) return false;
     if (schemeFilter && r.loan.schemeId !== schemeFilter) return false;
     if (q && !`${r.employeeName} ${r.empCode}`.toLowerCase().includes(q)) return false;

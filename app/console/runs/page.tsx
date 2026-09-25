@@ -23,6 +23,8 @@ import { currentPeriod } from "@/lib/clock";
 import { loadFinalCheck, type FinalCheckResult } from "@/lib/payroll/finalcheck";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 import { loadSodPolicies } from "@/lib/audit/log";
+import { SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { bulkApproveRuns, bulkReopenRuns } from "./bulk-actions";
 
 /*
  * A whole month of attendance for a whole company, in one request.
@@ -325,10 +327,14 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
           </div>
           {/* Scrolls sideways inside its own box rather than pushing the
               page: at tablet width these columns need ~890px. */}
+          <form id="pick-runs" method="get" action="/console/runs/export" />
           <div className="overflow-x-auto pb-2">
           <table className="w-full text-sm min-w-[52rem]">
             <thead>
               <tr className="border-b border-line">
+                <th className="w-10 px-3 py-2">
+                  <SelectAllBox formId="pick-runs" />
+                </th>
                 <th className="text-xs font-medium text-ink-2 text-left px-3 py-2">Period</th>
                 <th className="text-xs font-medium text-ink-2 text-left px-3 py-2">Status</th>
                 <th className="text-xs font-medium text-ink-2 text-right px-3 py-2">Emp.</th>
@@ -349,6 +355,16 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
 
               return (
                 <tr key={run.id} className="group border-b border-line-2 last:border-0 hover:bg-surface-2/60">
+                  <td className="w-10 px-3 py-1.5">
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={run.id}
+                      form="pick-runs"
+                      aria-label={`Select ${MONTHS[run.periodMonth - 1]} ${run.periodYear} run`}
+                      className="h-4 w-4 accent-[var(--indigo)]"
+                    />
+                  </td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
                     <span className="font-medium">
                       {MONTHS[run.periodMonth - 1]} {run.periodYear}
@@ -467,6 +483,30 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
             })}
             </tbody>
           </table>
+          <SelectionBar
+            formId="pick-runs"
+            noun="runs selected"
+            actions={[
+              ...(canMutate(user)
+                ? [
+                    {
+                      label: "Approve",
+                      run: bulkApproveRuns,
+                      primary: true,
+                      note: "Each run goes through the same checks as approving it on its own — segregation of duties included. Runs that cannot be approved are skipped and named.",
+                    },
+                    {
+                      label: "Reopen",
+                      run: bulkReopenRuns,
+                      danger: true,
+                      note: "Reopened runs go back to draft and must be recalculated and approved again.",
+                      fields: [{ name: "reason", label: "Reason (at least 5 characters)", kind: "textarea" as const, required: true }],
+                    },
+                  ]
+                : []),
+              { label: "Export CSV", formAction: "/console/runs/export" },
+            ]}
+          />
           </div>
         </Card>
       )}

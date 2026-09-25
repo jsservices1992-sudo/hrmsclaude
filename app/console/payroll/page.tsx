@@ -27,6 +27,7 @@ import {
   MonthNav,
 } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
+import { RowBox, SelectAllBox, SelectionBar } from "@/components/console/row-selection";
 
 export const metadata = { title: "Payroll register" };
 
@@ -189,10 +190,20 @@ export default async function PayrollConsolePage(
           {results.length === 0 ? (
             <EmptyState title="No employees in this period" />
           ) : (
+            <>
+            <form id="pick-register" method="get" action="/console/payroll/payslips">
+              <input type="hidden" name="company" value={companyId} />
+              <input type="hidden" name="year" value={year} />
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="view" value="print" />
+            </form>
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[64rem]">
                 <thead>
                   <tr className="border-b border-line">
+                    <th className="w-10 px-3 py-2">
+                      <SelectAllBox formId="pick-register" />
+                    </th>
                     <th className="text-xs font-medium text-ink-2 px-3 py-2 text-left">Emp</th>
                     <th className="text-xs font-medium text-ink-2 px-3 py-2 text-left">Employee</th>
                     <th className="text-xs font-medium text-ink-2 px-3 py-2 text-right">Paid days</th>
@@ -223,6 +234,9 @@ export default async function PayrollConsolePage(
                     const base = r.grossPaise - ot - bonus;
                     return (
                       <tr key={r.employeeId} className="border-b border-line-2 last:border-0 hover:bg-surface-2/60">
+                        <td className="w-10 px-3 py-1.5">
+                          <RowBox formId="pick-register" value={r.employeeId} label={`Select ${r.name}`} />
+                        </td>
                         <td className="px-3 py-1.5 font-mono text-xs text-ink-3 whitespace-nowrap">{r.empCode}</td>
                         <td className="px-3 py-1.5 whitespace-nowrap max-w-[13rem] truncate" title={r.name}>
                           {r.name}
@@ -303,6 +317,14 @@ export default async function PayrollConsolePage(
                 </tfoot>
               </table>
             </div>
+            <div className="px-4 pb-3">
+              <SelectionBar
+                formId="pick-register"
+                noun="people selected"
+                actions={[{ label: "Print payslips", formAction: "/console/payroll/payslips", primary: true }]}
+              />
+            </div>
+            </>
           )}
         </Card>
       )}

@@ -7,6 +7,8 @@ import * as s from "@/db/schema";
 import { listCompanies } from "@/lib/payroll/load";
 import { isRecalculable } from "@/lib/payroll/run-status";
 import { formatINR } from "@/lib/payroll/money";
+import { RowBox, SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { bulkRemoveAdjustments } from "@/app/console/attendance/bulk-actions";
 import {
   getSessionUser,
   canSeeCompensation,
@@ -287,8 +289,15 @@ export default async function VariablePayPage(
             description="Overtime, bonus, incentives and ad-hoc deductions added here are folded in the next time this period is calculated."
           />
         ) : (
+          <>
+          <form id="pick-inputs" />
           <Table className="border-0 rounded-none">
             <THead>
+              {canAct && (
+                <TH className="w-10">
+                  <SelectAllBox formId="pick-inputs" />
+                </TH>
+              )}
               <TH>Employee</TH>
               <TH>Type</TH>
               <TH>Label</TH>
@@ -303,6 +312,11 @@ export default async function VariablePayPage(
                 const emp = nameById.get(a.employeeId);
                 return (
                   <TR key={a.id}>
+                    {canAct && (
+                      <TD className="w-10">
+                        <RowBox formId="pick-inputs" value={a.id} label={`Select ${emp ? emp.firstName : "item"}`} />
+                      </TD>
+                    )}
                     <TD className="whitespace-nowrap">
                       {emp ? `${emp.firstName} ${emp.lastName}` : a.employeeId}
                       {emp && <span className="block font-mono text-xs text-ink-3">{emp.empCode}</span>}
@@ -350,6 +364,16 @@ export default async function VariablePayPage(
               })}
             </TBody>
           </Table>
+          {canAct && (
+            <div className="px-4 py-3">
+              <SelectionBar
+                formId="pick-inputs"
+                noun="items selected"
+                actions={[{ label: "Remove", run: bulkRemoveAdjustments, danger: true, note: "Each item comes off this period's pay. Nothing already approved can move." }]}
+              />
+            </div>
+          )}
+          </>
         )}
       </Card>
     </div>

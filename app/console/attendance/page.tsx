@@ -26,6 +26,15 @@ import {
   RemoveAdjustmentForm,
 } from "./forms";
 import { AttendanceDayRow } from "./day-editor";
+import { RowBox, SelectAllBox, SelectionBar, type BulkAction } from "@/components/console/row-selection";
+import {
+  bulkAddPayItem,
+  bulkClearOverride,
+  bulkDecideRequests,
+  bulkMarkDay,
+  bulkRemoveAdjustments,
+  bulkSetLop,
+} from "./bulk-actions";
 import { BulkVariablePayForm } from "@/app/console/payroll/inputs/forms";
 import {
   Badge,
@@ -230,7 +239,7 @@ export default async function AttendancePage(
     : [{ name: "" }];
 
   const payTypes =
-    tab === "adjustments" && canMutateMoney
+    (tab === "adjustments" || tab === "input") && canMutateMoney
       ? await db
           .select()
           .from(s.variablePayTypes)
@@ -291,6 +300,71 @@ export default async function AttendancePage(
 
   const periodHref = (y: number, m: number) =>
     `/console/attendance?company=${companyId}&year=${y}&month=${m}&tab=${tab}`;
+  /* What a ticked set of people on the paid-days list can be put through —
+     each one the same action the row's own controls call. */
+  const periodStart = `${year}-${String(month).padStart(2, "0")}-01`;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const markDate = todayIso.slice(0, 7) === periodStart.slice(0, 7) ? todayIso : periodStart;
+  const paidDaysActions: BulkAction[] = [
+    ...(canAct
+      ? [
+          {
+            label: "Mark a day",
+            run: bulkMarkDay,
+            primary: true,
+            fields: [
+              { name: "date", label: "Date", kind: "date" as const, required: true, defaultValue: markDate },
+              {
+                name: "status",
+                label: "Mark as",
+                kind: "select" as const,
+                required: true,
+                options: [
+                  { value: "present", label: "Present" },
+                  { value: "half_day", label: "Half day" },
+                  { value: "absent", label: "Absent" },
+                  { value: "on_duty", label: "On duty" },
+                  { value: "weekly_off", label: "Weekly off" },
+                  { value: "holiday", label: "Holiday" },
+                ],
+              },
+              { name: "reason", label: "Reason", kind: "textarea" as const, required: true, placeholder: "e.g. Office closed for the audit — everyone on duty" },
+            ],
+          },
+          {
+            label: "Set loss of pay",
+            run: bulkSetLop,
+            note: "Overrides what attendance computed, for this month only. Clear the override to go back.",
+            fields: [
+              { name: "lopDays", label: "Loss-of-pay days", kind: "number" as const, required: true, min: "0", step: "0.5", defaultValue: "0" },
+              { name: "reason", label: "Reason", kind: "textarea" as const, required: true },
+            ],
+          },
+          { label: "Clear override", run: bulkClearOverride, note: "Paid days go back to what attendance computed." },
+        ]
+      : []),
+    ...(canMutateMoney && payTypes.length > 0
+      ? [
+          {
+            label: "Add incentive / deduction",
+            run: bulkAddPayItem,
+            note: `The same amount for each person, for ${MONTHS[month - 1]} ${year} only.`,
+            fields: [
+              {
+                name: "typeId",
+                label: "Type",
+                kind: "select" as const,
+                required: true,
+                options: payTypes.map((t) => ({ value: t.id, label: t.label })),
+              },
+              { name: "amount", label: "Amount (₹, or hours for overtime)", kind: "number" as const, required: true, min: "0", step: "0.01" },
+              { name: "reason", label: "Reason", kind: "textarea" as const, placeholder: "e.g. Diwali bonus" },
+            ],
+          },
+        ]
+      : []),
+    { label: "Export CSV", formAction: "/console/attendance/export" },
+  ];
   const initials = (name: string) =>
     name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
@@ -409,9 +483,20 @@ export default async function AttendancePage(
               container that scrolls on one axis clips the other, which cut
               the override popover off on the lower rows. */}
           <div>
+            {/* The row checkboxes belong to this form, so a selection rides
+                the query string of whichever action is pressed. */}
+            <form id="pick-att" method="get" action="/console/attendance/export">
+              <input type="hidden" name="company" value={companyId} />
+              <input type="hidden" name="companyId" value={companyId} />
+              <input type="hidden" name="year" value={year} />
+              <input type="hidden" name="month" value={month} />
+            </form>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line bg-surface-2/60">
+                  <th className="w-10 px-3 py-2.5">
+                    <SelectAllBox formId="pick-att" />
+                  </th>
                   <th className="text-xs font-semibold text-ink-2 text-left px-3 py-2.5">Employee</th>
                   <th className="text-xs font-semibold text-ink-2 px-3 py-2.5 text-left">Attendance</th>
                   <th className="hidden sm:table-cell text-xs font-semibold text-ink-2 px-3 py-2.5 text-right">From attendance</th>
@@ -436,6 +521,16 @@ export default async function AttendancePage(
                     m.summary.leaveDays === 0;
                   return (
                     <tr key={m.employeeId} className="group border-b border-line-2 last:border-0 hover:bg-surface-2/60 align-top">
+                      <td className="w-10 px-3 py-3">
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={m.employeeId}
+                          form="pick-att"
+                          aria-label={`Select ${m.name}`}
+                          className="h-4 w-4 accent-[var(--indigo)]"
+                        />
+                      </td>
                       <td className="px-3 py-3 whitespace-nowrap">
                         <span className="flex items-center gap-3 min-w-0">
                           <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-indigo-soft text-xs font-bold text-indigo">
@@ -512,6 +607,13 @@ export default async function AttendancePage(
                 })}
               </tbody>
             </table>
+            <div className="px-4 pb-4 pt-3">
+              <SelectionBar
+                formId="pick-att"
+                noun="people selected"
+                actions={paidDaysActions}
+              />
+            </div>
           </div>
         </Panel>
       )}
@@ -525,6 +627,8 @@ export default async function AttendancePage(
             <ul className="divide-y divide-line-2">
               {pendingLeave.map(({ req, type, emp }) => (
                 <li key={req.id} className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex items-start gap-3">
+                  {canAct && <span className="pt-0.5"><RowBox formId="pick-requests" value={`leave:${req.id}`} label={`Select ${emp.firstName}'s leave`} /></span>}
                   <div className="min-w-0">
                     <span className="text-sm font-semibold">{emp.firstName} {emp.lastName}</span>
                     {!type.paid && <Badge tone="rust" className="ml-2">unpaid</Badge>}
@@ -533,11 +637,14 @@ export default async function AttendancePage(
                       {req.reason && ` · ${req.reason}`}
                     </span>
                   </div>
+                  </div>
                   {canAct && <LeaveDecisionForm requestId={req.id} />}
                 </li>
               ))}
               {pendingReg.map(({ req, emp }) => (
                 <li key={req.id} className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex items-start gap-3">
+                  {canAct && <span className="pt-0.5"><RowBox formId="pick-requests" value={`reg:${req.id}`} label={`Select ${emp.firstName}'s correction`} /></span>}
                   <div className="min-w-0">
                     <span className="text-sm font-semibold">{emp.firstName} {emp.lastName}</span>
                     <Badge tone="brass" className="ml-2">correction</Badge>
@@ -545,10 +652,33 @@ export default async function AttendancePage(
                       {formatDate(req.date)} · was {req.originalStatus} · {req.reason}
                     </span>
                   </div>
+                  </div>
                   {canAct && <RegularisationDecisionForm requestId={req.id} />}
                 </li>
               ))}
             </ul>
+          )}
+          {canAct && pendingCount > 0 && (
+            <div className="border-t border-line-2 px-5 py-3">
+              <form id="pick-requests" />
+              <span className="flex items-center gap-2 text-xs text-ink-2">
+                <SelectAllBox formId="pick-requests" /> Select all waiting requests
+              </span>
+              <SelectionBar
+                formId="pick-requests"
+                noun="requests selected"
+                actions={[
+                  { label: "Approve", run: bulkDecideRequests, hidden: { decision: "approved" }, primary: true },
+                  {
+                    label: "Reject",
+                    run: bulkDecideRequests,
+                    hidden: { decision: "rejected" },
+                    danger: true,
+                    fields: [{ name: "decisionNote", label: "Reason the employee will see", kind: "textarea", required: true }],
+                  },
+                ]}
+              />
+            </div>
           )}
         </Panel>
       )}
@@ -633,8 +763,15 @@ export default async function AttendancePage(
               description="Add one below — it applies to this month only."
             />
           ) : (
+            <>
+            <form id="pick-adj" />
             <Table className="border-0 rounded-none">
               <THead>
+                {canMutateMoney && (
+                  <TH className="w-10">
+                    <SelectAllBox formId="pick-adj" />
+                  </TH>
+                )}
                 <TH>Employee</TH>
                 <TH>Kind</TH>
                 <TH>Label</TH>
@@ -647,6 +784,11 @@ export default async function AttendancePage(
                   const emp = employeeNameByEmployeeId[a.employeeId];
                   return (
                     <TR key={a.id}>
+                      {canMutateMoney && (
+                        <TD className="w-10">
+                          <RowBox formId="pick-adj" value={a.id} label={`Select ${emp?.name ?? "item"}`} />
+                        </TD>
+                      )}
                       <TD className="whitespace-nowrap">
                         {emp?.name ?? a.employeeId}
                         {emp && <span className="block font-mono text-xs text-ink-3">{emp.empCode}</span>}
@@ -667,6 +809,16 @@ export default async function AttendancePage(
                 })}
               </TBody>
             </Table>
+            {canMutateMoney && (
+              <div className="px-4 py-3">
+                <SelectionBar
+                  formId="pick-adj"
+                  noun="items selected"
+                  actions={[{ label: "Remove", run: bulkRemoveAdjustments, danger: true, note: "Each item comes off this month's pay. Nothing already approved can move." }]}
+                />
+              </div>
+            )}
+            </>
           )}
           {canMutateMoney && (
             <div className="px-5 py-4 border-t border-line-2 bg-surface-2/40 rounded-b-xl">

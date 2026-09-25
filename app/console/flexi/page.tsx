@@ -12,6 +12,8 @@ import {
   canActOnPeople,
 } from "@/lib/auth/session";
 import { ClaimDecisionForm } from "./forms";
+import { RowBox, SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { bulkDecideClaims } from "./bulk-actions";
 import { PageHeader, Card, Badge, StatCard, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
@@ -113,6 +115,8 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
           <ul className="divide-y divide-line-2">
             {pending.map(({ claim, emp, head }) => (
               <li key={claim.id} className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0 flex items-start gap-3">
+                {canAct && <span className="pt-0.5"><RowBox formId="pick-claims" value={claim.id} label={`Select ${emp.firstName}'s claim`} /></span>}
                 <div className="min-w-0">
                   <p className="text-sm font-medium">
                     {emp.firstName} {emp.lastName}
@@ -125,10 +129,29 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
                     {claim.billDate && ` · ${formatDate(claim.billDate)}`}
                   </p>
                 </div>
+                </div>
                 {canAct && <ClaimDecisionForm claimId={claim.id} />}
               </li>
             ))}
           </ul>
+        )}
+        {canAct && pending.length > 0 && (
+          <div className="border-t border-line-2 px-4 py-2.5">
+            <form id="pick-claims" />
+            <span className="flex items-center gap-2 text-xs text-ink-2">
+              <SelectAllBox formId="pick-claims" /> Select all waiting claims
+            </span>
+            <SelectionBar formId="pick-claims" noun="claims selected" actions={[
+                  { label: "Approve", run: bulkDecideClaims, hidden: { decision: "approved" }, primary: true },
+                  {
+                    label: "Reject",
+                    run: bulkDecideClaims,
+                    hidden: { decision: "rejected" },
+                    danger: true,
+                    fields: [{ name: "note", label: "Reason the employee will see", kind: "textarea", required: true }],
+                  },
+                ]} />
+          </div>
         )}
         <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2">
           Approving computes the admissible amount from the declaration, the

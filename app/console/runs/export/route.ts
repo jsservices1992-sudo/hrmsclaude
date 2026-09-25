@@ -23,6 +23,8 @@ export async function GET(request: Request) {
   const yearFilter = url.searchParams.get("year") ?? "";
   const monthFilter = url.searchParams.get("month") ?? "";
   const statusFilter = url.searchParams.get("status") ?? "";
+  /* A selection made on the page wins over the filters behind it. */
+  const pickedIds = new Set(url.searchParams.getAll("ids").filter(Boolean));
 
   const companies = scopeCompanies(user, await listCompanies());
   const companyIds = companies.map((c) => c.id);
@@ -40,6 +42,7 @@ export async function GET(request: Request) {
     : [];
 
   const runs = allRuns.filter((r) => {
+    if (pickedIds.size > 0) return pickedIds.has(r.id);
     if (companyFilter && r.companyId !== companyFilter) return false;
     if (yearFilter && String(r.periodYear) !== yearFilter) return false;
     if (monthFilter && String(r.periodMonth) !== monthFilter) return false;

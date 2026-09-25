@@ -14,6 +14,8 @@ import {
   canMutate,
 } from "@/lib/auth/session";
 import { DisburseForm } from "./forms";
+import { SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { bulkHoldLoans, bulkResumeLoans } from "./bulk-actions";
 import { PageHeader, Card, Select, Input, FilterBar, FilterField, Badge, type BadgeTone, Table, THead, TH, TBody, TR, TD, DrawerButton, MetricStrip, Alert } from "@/components/console/ui";
 
 export const metadata = { title: "Loans & recoveries" };
@@ -192,8 +194,15 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
         ) : filteredList.length === 0 ? (
           <p className="px-4 py-6 text-sm text-ink-3">No loans match these filters.</p>
         ) : (
+          <>
+          <form id="pick-loans" method="get" action="/console/loans/export">
+            <input type="hidden" name="company" value={companyId} />
+          </form>
           <Table className="min-w-[64rem]">
             <THead>
+              <TH className="w-10">
+                <SelectAllBox formId="pick-loans" />
+              </TH>
               {[
                 "Employee",
                 "Scheme",
@@ -212,6 +221,16 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
             <TBody>
               {filteredList.map((r) => (
                 <TR key={r.loan.id}>
+                  <TD className="w-10">
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={r.loan.id}
+                      form="pick-loans"
+                      aria-label={`Select ${r.employeeName}'s loan`}
+                      className="h-4 w-4 accent-[var(--indigo)]"
+                    />
+                  </TD>
                   <TD className="max-w-[12rem]">
                     <Link
                       href={`/console/loans/${r.loan.id}`}
@@ -292,6 +311,29 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
               ))}
             </TBody>
           </Table>
+          <SelectionBar
+            formId="pick-loans"
+            noun="loans selected"
+            actions={[
+              ...(canMutate(user)
+                ? [
+                    {
+                      label: "Put on hold",
+                      run: bulkHoldLoans,
+                      primary: true,
+                      note: "Recovery pauses for the months you give. Loans that are not active are skipped and named.",
+                      fields: [
+                        { name: "holdMonths", label: "Months", kind: "number" as const, required: true, min: "1", max: "24", step: "1", defaultValue: "1" },
+                        { name: "reason", label: "Reason on the record", kind: "textarea" as const, required: true },
+                      ],
+                    },
+                    { label: "Resume", run: bulkResumeLoans, note: "Recovery restarts from the next payroll. Loans not on hold are skipped." },
+                  ]
+                : []),
+              { label: "Export CSV", formAction: "/console/loans/export" },
+            ]}
+          />
+          </>
         )}
       </Card>
 

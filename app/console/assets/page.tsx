@@ -14,6 +14,7 @@ import {
 import { CreateAssetForm } from "./forms";
 import { PageHeader, Card, Input, Select, FilterBar, FilterField, Badge, EmptyState, Table, THead, TH, TBody, TR, TD, type BadgeTone, MetricStrip, DrawerButton } from "@/components/console/ui";
 import { SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { bulkRetireAssets, bulkReturnAssets } from "./bulk-actions";
 
 export const metadata = { title: "Assets" };
 
@@ -213,7 +214,35 @@ export default async function AssetsPage(props: PageProps<"/console/assets">) {
         <SelectionBar
           formId="pick-assets"
           noun="assets selected"
-          actions={[{ label: "Export CSV", formAction: "/console/assets/export", primary: true }]}
+          actions={[
+            ...(canAct
+              ? [
+                  {
+                    label: "Mark returned",
+                    run: bulkReturnAssets,
+                    primary: true,
+                    note: "Closes each asset's current allocation. Assets not out with anybody are skipped.",
+                    fields: [
+                      {
+                        name: "returnCondition",
+                        label: "Condition on return",
+                        kind: "select" as const,
+                        options: [
+                          { value: "good", label: "Good" },
+                          { value: "damaged", label: "Damaged" },
+                          { value: "lost", label: "Lost" },
+                        ],
+                      },
+                      { name: "notes", label: "Notes", kind: "textarea" as const },
+                    ],
+                  },
+                ]
+              : []),
+            ...(user.role === "admin"
+              ? [{ label: "Retire", run: bulkRetireAssets, danger: true, note: "Retired assets can no longer be issued. Assets still out with somebody are skipped." }]
+              : []),
+            { label: "Export CSV", formAction: "/console/assets/export" },
+          ]}
         />
         </div>
       )}

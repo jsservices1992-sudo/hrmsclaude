@@ -17,6 +17,9 @@ import * as s2 from "@/db/schema";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { canMutate } from "@/lib/auth/session";
 import { StartExitForm } from "./start-form";
+import { canActOnPeople } from "@/lib/auth/permissions";
+import { RowBox, SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { bulkAcceptExits, bulkPrepareSettlements } from "./bulk-actions";
 import {
   PageHeader,
   Card,
@@ -167,8 +170,14 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
         <div className="px-5 py-3.5 border-b border-line-2">
           <span className="text-[15px] font-semibold text-ink">Settlement queue</span>
         </div>
+        <form id="pick-queue" />
         <Table>
           <THead>
+            {canMutate(user) && (
+              <TH className="w-10">
+                <SelectAllBox formId="pick-queue" />
+              </TH>
+            )}
             {["Employee", "Last working day", "Days elapsed", "Clearance", "Settlement", ""].map((h) => (
               <TH key={h}>{h}</TH>
             ))}
@@ -176,6 +185,11 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
           <TBody>
             {queue.map((q) => (
               <TR key={q.exitCase.id}>
+                {canMutate(user) && (
+                  <TD className="w-10">
+                    <RowBox formId="pick-queue" value={q.exitCase.id} label={`Select ${q.employeeName}`} />
+                  </TD>
+                )}
                 <TD>
                   {q.employeeName}
                   <span className="block font-mono text-xs text-ink-3">{q.empCode}</span>
@@ -221,6 +235,22 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
             ))}
           </TBody>
         </Table>
+        {canMutate(user) && (
+          <div className="px-4 py-3">
+            <SelectionBar
+              formId="pick-queue"
+              noun="exits selected"
+              actions={[
+                {
+                  label: "Draft settlements",
+                  run: bulkPrepareSettlements,
+                  primary: true,
+                  note: "Computes a draft full & final for each. Nothing is paid until a settlement is released on its own page.",
+                },
+              ]}
+            />
+          </div>
+        )}
       </Card>
       )}
 
@@ -256,8 +286,15 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
           <EmptyState title="No exit cases match these filters" description="Widen the type or status, or clear the filters." />
         </Card>
       ) : (
+        <>
+        <form id="pick-exits" />
         <Table>
           <THead>
+            {canActOnPeople(user) && (
+              <TH className="w-10">
+                <SelectAllBox formId="pick-exits" />
+              </TH>
+            )}
             {["Employee", "Type", "Resigned", "Last working day", "Ageing", "Status", ""].map((h) => (
               <TH key={h}>{h}</TH>
             ))}
@@ -267,6 +304,11 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
               const ageing = daysBetween(exit.lastWorkingDay, today);
               return (
                 <TR key={exit.id}>
+                  {canActOnPeople(user) && (
+                    <TD className="w-10">
+                      <RowBox formId="pick-exits" value={exit.id} label={`Select ${employee.firstName} ${employee.lastName}`} />
+                    </TD>
+                  )}
                   <TD>
                     <span className="font-medium">
                       {employee.firstName} {employee.lastName}
@@ -311,6 +353,21 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
             })}
           </TBody>
         </Table>
+        {canActOnPeople(user) && (
+          <SelectionBar
+            formId="pick-exits"
+            noun="exits selected"
+            actions={[
+              {
+                label: "Accept exit",
+                run: bulkAcceptExits,
+                primary: true,
+                note: "Accepts each at the last working day already on record. Withdrawn or settled exits are skipped.",
+              },
+            ]}
+          />
+        )}
+        </>
       )}
     </div>
   );

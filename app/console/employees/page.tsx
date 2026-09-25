@@ -20,7 +20,8 @@ import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
 import { ProfileChangeDecisionForm } from "./change-request-form";
 import { BulkEmployeeForm } from "./bulk-form";
 import { formatDate } from "@/lib/format/date";
-import { SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { RowBox, SelectAllBox, SelectionBar } from "@/components/console/row-selection";
+import { bulkDecideProfileChanges, bulkInviteEmployees } from "./bulk-actions";
 
 /*
  * A whole month of attendance for a whole company, in one request.
@@ -230,6 +231,8 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
               const sensitive = def?.sensitive ?? false;
               return (
                 <li key={req.id} className="px-4 py-3 flex flex-col gap-2">
+                  <div className="min-w-0 flex items-start gap-3">
+                  <span className="pt-0.5"><RowBox formId="pick-changes" value={req.id} label={`Select ${emp.firstName}'s request`} /></span>
                   <div className="min-w-0">
                     <span className="text-sm font-semibold">
                       {emp.firstName} {emp.lastName}
@@ -246,11 +249,32 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
                       {req.reason && ` · ${req.reason}`}
                     </span>
                   </div>
+                  </div>
                   <ProfileChangeDecisionForm requestId={req.id} />
                 </li>
               );
             })}
           </ul>
+          <form id="pick-changes" />
+          <div className="flex items-center justify-between gap-3 border-t border-amber/20 px-4 py-2 text-xs text-ink-2">
+            <span className="flex items-center gap-2"><SelectAllBox formId="pick-changes" /> Select all requests</span>
+          </div>
+          <div className="px-4 pb-3">
+            <SelectionBar
+              formId="pick-changes"
+              noun="requests selected"
+              actions={[
+                { label: "Approve", run: bulkDecideProfileChanges, hidden: { decision: "approved" }, primary: true },
+                {
+                  label: "Reject",
+                  run: bulkDecideProfileChanges,
+                  hidden: { decision: "rejected" },
+                  danger: true,
+                  fields: [{ name: "decisionNote", label: "Reason the employee will see", kind: "textarea", required: true }],
+                },
+              ]}
+            />
+          </div>
         </details>
       )}
 
@@ -425,6 +449,16 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
                 formId="pick-emp"
                 noun={`employee${rows.length === 1 ? "" : "s"} selected`}
                 actions={[
+                  ...(canActOnPeople(user)
+                    ? [
+                        {
+                          label: "Invite to portal",
+                          run: bulkInviteEmployees,
+                          primary: true,
+                          note: "Each person gets a sign-in invitation at the email on their record. Anyone already signed up, or with no email, is skipped and named.",
+                        },
+                      ]
+                    : []),
                   { label: "Export CSV", formAction: "/console/employees/export" },
                   ...(canSeeCompensation(user) && companyIds.length === 1
                     ? [{ label: "Payslips", formAction: "/console/payroll/payslips" }]
