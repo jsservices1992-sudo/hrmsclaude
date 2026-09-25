@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DateRangeFilter } from "@/components/console/ui/date-range-filter";
+import { hasRange, inRange, readRange } from "@/lib/format/date-range";
 import { redirect } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -63,13 +65,15 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
   const statusFilter = typeof sp.status === "string" ? sp.status : "";
   const schemeFilter = typeof sp.scheme === "string" ? sp.scheme : "";
   const q = (typeof sp.q === "string" ? sp.q : "").trim().toLowerCase();
+  const disbursed = readRange(sp);
   const filteredList = list.filter((r) => {
     if (statusFilter && r.loan.status !== statusFilter) return false;
     if (schemeFilter && r.loan.schemeId !== schemeFilter) return false;
     if (q && !`${r.employeeName} ${r.empCode}`.toLowerCase().includes(q)) return false;
+    if (!inRange(r.loan.disbursedOn, disbursed)) return false;
     return true;
   });
-  const hasFilters = statusFilter || schemeFilter || q;
+  const hasFilters = statusFilter || schemeFilter || q || hasRange(disbursed);
 
   return (
     <div className="flex flex-col gap-6 max-w-[84rem]">
@@ -182,6 +186,9 @@ export default async function LoansPage(props: PageProps<"/console/loans">) {
                       <option key={sc.id} value={sc.id}>{sc.label}</option>
                     ))}
                   </Select>
+                </FilterField>
+                <FilterField label="Disbursed">
+                  <DateRangeFilter label="Disbursed" from={disbursed.from} to={disbursed.to} />
                 </FilterField>
               </FilterBar>
             )}

@@ -1,4 +1,6 @@
 import { narrowToSelected } from "@/lib/company-cookie";
+import { DateRangeFilter } from "@/components/console/ui/date-range-filter";
+import { hasRange, inRange, readRange } from "@/lib/format/date-range";
 import { selectedCompanyId } from "@/lib/company-cookie-server";
 import { today as clockToday } from "@/lib/clock";
 import Link from "next/link";
@@ -69,12 +71,14 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
 
   const typeFilter = typeof sp.type === "string" ? sp.type : "";
   const statusFilter = typeof sp.status === "string" ? sp.status : "";
+  const leaving = readRange(sp);
   const cases = allCases.filter(({ exit }) => {
     if (typeFilter && exit.exitType !== typeFilter) return false;
     if (statusFilter && exit.status !== statusFilter) return false;
+    if (!inRange(exit.lastWorkingDay, leaving)) return false;
     return true;
   });
-  const hasFilters = typeFilter || statusFilter;
+  const hasFilters = typeFilter || statusFilter || hasRange(leaving);
 
   // The settlement work queue — FR-PAY-21 asks for a queue, not a report,
   // so the most overdue case is the one at the top.
@@ -276,6 +280,9 @@ export default async function ExitsPage(props: PageProps<"/console/exits">) {
                 <option key={st} value={st}>{st.replace(/_/g, " ")}</option>
               ))}
             </Select>
+          </FilterField>
+          <FilterField label="Last working day">
+            <DateRangeFilter label="Leaving" from={leaving.from} to={leaving.to} />
           </FilterField>
         </FilterBar>
       </Card>

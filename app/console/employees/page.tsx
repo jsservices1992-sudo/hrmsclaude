@@ -20,6 +20,8 @@ import { profileFieldFor, maskAccount } from "@/lib/ess/profile";
 import { ProfileChangeDecisionForm } from "./change-request-form";
 import { BulkEmployeeForm } from "./bulk-form";
 import { formatDate } from "@/lib/format/date";
+import { DateRangeFilter } from "@/components/console/ui/date-range-filter";
+import { hasRange, inRange, readRange } from "@/lib/format/date-range";
 import { RowBox, SelectAllBox, SelectionBar } from "@/components/console/row-selection";
 import { bulkDecideProfileChanges, bulkInviteEmployees } from "./bulk-actions";
 
@@ -111,12 +113,14 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
   const deptFilter = typeof sp.department === "string" ? sp.department : "";
   const typeFilter = typeof sp.type === "string" ? sp.type : "";
   const stateFilter = typeof sp.state === "string" ? sp.state : "";
+  const joined = readRange(sp);
 
   const rows = allRows.filter((r) => {
     if (statusFilter && r.emp.status !== statusFilter) return false;
     if (deptFilter && r.emp.departmentId !== deptFilter) return false;
     if (typeFilter && r.emp.employmentType !== typeFilter) return false;
     if (stateFilter && r.branch.stateCode !== stateFilter) return false;
+    if (!inRange(r.emp.dateOfJoining, joined)) return false;
     if (q) {
       const hay = `${r.emp.empCode} ${r.emp.firstName} ${r.emp.lastName} ${r.emp.designation ?? ""}`.toLowerCase();
       if (!hay.includes(q)) return false;
@@ -130,7 +134,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
   }, {});
   const departmentOptions = [...new Map(allRows.filter((r) => r.department).map((r) => [r.department!.id, r.department!.name])).entries()];
   const stateOptions = [...new Set(allRows.map((r) => r.branch.stateCode))].sort();
-  const hasFilters = q || statusFilter || deptFilter || typeFilter || stateFilter;
+  const hasFilters = q || statusFilter || deptFilter || typeFilter || stateFilter || hasRange(joined);
 
   const activeCount = allRows.filter((r) => r.emp.status === "active").length;
   const resignedCount = allRows.filter((r) => r.emp.status === "resigned").length;
@@ -154,7 +158,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
   ];
   const withParams = (patch: Record<string, string>) => {
     const p = new URLSearchParams();
-    const cur: Record<string, string> = { q, status: statusFilter, department: deptFilter, type: typeFilter, state: stateFilter, ...patch };
+    const cur: Record<string, string> = { q, status: statusFilter, department: deptFilter, type: typeFilter, state: stateFilter, from: joined.from, to: joined.to, ...patch };
     for (const [k, v] of Object.entries(cur)) if (v) p.set(k, v);
     const qs = p.toString();
     return qs ? `/console/employees?${qs}` : "/console/employees";
@@ -338,6 +342,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
                 ))}
               </Select>
             )}
+            <DateRangeFilter label="Joined" from={joined.from} to={joined.to} />
             <Button type="submit">Apply</Button>
             {hasFilters && (
               <Link href="/console/employees" className="px-2 text-sm font-semibold text-ink-3 hover:text-ink">

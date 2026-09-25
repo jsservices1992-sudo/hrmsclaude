@@ -1,4 +1,6 @@
 import { narrowToSelected } from "@/lib/company-cookie";
+import { DateRangeFilter } from "@/components/console/ui/date-range-filter";
+import { hasRange, inRange, readRange } from "@/lib/format/date-range";
 import { selectedCompanyId } from "@/lib/company-cookie-server";
 import { today } from "@/lib/clock";
 import Link from "next/link";
@@ -76,16 +78,18 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
   const q = (typeof sp.q === "string" ? sp.q : "").trim().toLowerCase();
   const statusFilter = typeof sp.status === "string" ? sp.status : "";
   const bgvFilter = typeof sp.bgv === "string" ? sp.bgv : "";
+  const joining = readRange(sp);
   const joiners = allJoiners.filter(({ joiner: j }) => {
     if (statusFilter && j.status !== statusFilter) return false;
     if (bgvFilter && j.bgvStatus !== bgvFilter) return false;
+    if (!inRange(j.proposedDoj, joining)) return false;
     if (q) {
       const hay = `${j.firstName} ${j.lastName} ${j.personalEmail} ${j.designation ?? ""}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
   });
-  const hasFilters = q || statusFilter || bgvFilter;
+  const hasFilters = q || statusFilter || bgvFilter || hasRange(joining);
   const exportQuery = new URLSearchParams();
   if (q) exportQuery.set("q", q);
   if (statusFilter) exportQuery.set("status", statusFilter);
@@ -175,6 +179,9 @@ export default async function OnboardingPage(props: PageProps<"/console/onboardi
               <option value="discrepancy">Discrepancy</option>
               <option value="failed">Failed</option>
             </Select>
+          </FilterField>
+          <FilterField label="Joining date">
+            <DateRangeFilter label="Joining" from={joining.from} to={joining.to} />
           </FilterField>
         </FilterBar>
       </Card>
