@@ -53,7 +53,8 @@ describe("EPF", () => {
     });
     assert.equal(r.applicable, true);
     assert.equal(r.employeePaise, R(1440)); // 12% of 12,000
-    assert.equal(r.employerEpsPaise, Math.round((R(12000) * 833) / 10000));
+    // 8.33% of 12,000 is ₹999.60, filed as ₹1,000.
+    assert.equal(r.employerEpsPaise, R(1000));
     // Employer PF is the remainder after EPS, not a flat percentage.
     assert.equal(r.employerPfPaise, R(1440) - r.employerEpsPaise);
   });
@@ -153,8 +154,8 @@ describe("ESIC", () => {
       coveredAtPeriodStart: false,
     });
     assert.equal(r.applicable, true);
-    assert.equal(r.employeePaise, Math.ceil((R(18000) * 75) / 10000));
-    assert.equal(r.employerPaise, Math.ceil((R(18000) * 325) / 10000));
+    assert.equal(r.employeePaise, Math.ceil((R(18000) * 75) / 1000000) * 100);
+    assert.equal(r.employerPaise, Math.ceil((R(18000) * 325) / 1000000) * 100);
   });
 
   test("THE RULE: coverage persists to period end after a mid-period raise", () => {
@@ -169,7 +170,7 @@ describe("ESIC", () => {
     });
     assert.equal(r.applicable, true, "must remain covered mid-period");
     // Contribution is on ACTUAL wages, not capped at the threshold.
-    assert.equal(r.employeePaise, Math.ceil((R(25000) * 75) / 10000));
+    assert.equal(r.employeePaise, Math.ceil((R(25000) * 75) / 1000000) * 100);
     assert.match(r.reason, /coverage continues/i);
     // But they drop out at the next period boundary.
     assert.equal(r.coveredForNextPeriod, false);
@@ -240,7 +241,7 @@ describe("ESIC", () => {
       coveredAtPeriodStart: true,
     });
     assert.equal(r.employeePaise, 0, "₹170 a day");
-    assert.equal(r.employerPaise, Math.ceil((R(5100) * 325) / 10000), "employer still pays");
+    assert.equal(r.employerPaise, Math.ceil((R(5100) * 325) / 1000000) * 100, "employer still pays");
     assert.match(r.reason, /no employee share/);
   });
 
@@ -1056,5 +1057,38 @@ describe("Establishments the Acts do not reach", () => {
     });
     assert.deepEqual(withFlag, without);
     assert.equal(withFlag.applicable, true);
+  });
+});
+
+describe("rounding and edges as the law writes them", () => {
+  test("PT: a wage carrying paise still lands in a band", () => {
+    const mh = [
+      { minPaise: 0, maxPaise: R(7500), amountPaise: 0, gender: "male" as const },
+      { minPaise: R(7501), maxPaise: R(10000), amountPaise: R(175), gender: "male" as const },
+      { minPaise: R(10001), maxPaise: null, amountPaise: R(200), gender: "male" as const },
+    ];
+    const pt = (wage: number) =>
+      computeProfessionalTax({ stateCode: "MH", ptBasePaise: wage, month: 7, gender: "male", slabs: mh, applicable: true }).amountPaise;
+    assert.equal(pt(R(10000) + 65), R(200), "₹10,000.65 exceeds ₹10,000");
+    assert.equal(pt(R(7500) + 70), R(175));
+    assert.equal(pt(R(23579) + 65), R(200));
+  });
+
+  test("EPF: every contribution is a whole rupee", () => {
+    const r = computeEpf({ pfWagePaise: R(11789) + 83, params: EPF, onActualBasic: false, hadPriorMembership: true, optedIn: false });
+    for (const v of [r.employeePaise, r.employerPfPaise, r.employerEpsPaise]) assert.equal(v % 100, 0);
+    assert.equal(r.employeePaise, R(1415)); // 12% of 11,789.83 = 1,414.78
+  });
+
+  test("EPF: no pension share once the member is 58", () => {
+    const r = computeEpf({ pfWagePaise: R(15000), params: EPF, onActualBasic: false, hadPriorMembership: true, optedIn: false, pensionEligible: false });
+    assert.equal(r.employerEpsPaise, 0);
+    assert.equal(r.employerPfPaise, R(1800));
+  });
+
+  test("ESIC: rounded up to the next whole rupee", () => {
+    const r = computeEsic({ coverageWagePaise: R(15000), contributionWagePaise: R(15000), month: 7, params: ESIC, implementedArea: true, coveredAtPeriodStart: true });
+    assert.equal(r.employeePaise, R(113)); // 0.75% = 112.50
+    assert.equal(r.employerPaise, R(488)); // 3.25% = 487.50
   });
 });

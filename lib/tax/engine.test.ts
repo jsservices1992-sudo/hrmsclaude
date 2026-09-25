@@ -568,7 +568,8 @@ test("over-deduction leaves nothing further to deduct, never a negative", () => 
 });
 
 test("no PAN triggers the section 206AA higher rate when it exceeds slab tax", () => {
-  const annual = annualFor(L(1000000));
+  // Tax is due here (about 10% on average), so 20% is the higher of the two.
+  const annual = annualFor(L(2000000));
   const r = projectMonthlyTds({
     annual,
     tdsDeductedToDatePaise: 0,
@@ -884,4 +885,39 @@ test("the fourth character identifies the holder type", () => {
 test("an unconfigured financial year refuses rather than guessing", () => {
   assert.throws(() => regimeConfig("old", 2019), /No tax configuration/);
   assert.equal(regimeConfig("new", 2026).regime, "new");
+});
+
+test("surcharge marginal relief: ₹1 over ₹50 lakh costs at most ₹1 more", () => {
+  const at = computeSlabTax(L(5000000), NEW_REGIME_2026);
+  const over = computeSlabTax(L(5000000) + 100, NEW_REGIME_2026);
+  const before = at.taxAfterRebatePaise + at.surchargePaise;
+  const after = over.taxAfterRebatePaise + over.surchargePaise;
+  assert.ok(after - before <= 100 + 1, `crossing ₹50L added ₹${(after - before) / 100}`);
+  // Far enough above the threshold, the full 10% applies again.
+  const far = computeSlabTax(L(6000000), NEW_REGIME_2026);
+  assert.equal(far.surchargePaise, Math.round(far.taxAfterRebatePaise * 0.1));
+});
+
+test("surcharge marginal relief holds at ₹1 crore too", () => {
+  const at = computeSlabTax(L(10000000), OLD_REGIME_2026);
+  const over = computeSlabTax(L(10000000) + L(1000), OLD_REGIME_2026);
+  const diff = over.taxAfterRebatePaise + over.surchargePaise - (at.taxAfterRebatePaise + at.surchargePaise);
+  assert.ok(diff <= L(1000) + 1, `crossing ₹1Cr by ₹1,000 added ₹${diff / 100}`);
+});
+
+test("no PAN but no tax due: nothing is deducted under 206AA", () => {
+  const annual = computeAnnualTax({
+    grossSalaryPaise: L(600000),
+    exemptAllowancesPaise: 0,
+    perquisitesPaise: 0,
+    previousEmployerSalaryPaise: 0,
+    previousEmployerTdsPaise: 0,
+    professionalTaxPaidPaise: 0,
+    deductions: { lines: [], totalAllowedPaise: 0 } as never,
+    config: NEW_REGIME_2026,
+  });
+  assert.equal(annual.netTaxPayablePaise, 0);
+  const p = projectMonthlyTds({ annual, tdsDeductedToDatePaise: 0, monthsRemaining: 12, hasValidPan: false, higherRateBps: 2000 });
+  assert.equal(p.monthlyTdsPaise, 0);
+  assert.equal(p.higherRateApplied, false);
 });

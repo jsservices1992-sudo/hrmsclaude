@@ -822,8 +822,13 @@ export async function previewRun(args: {
         dateOfExit: emp.dateOfExit,
         lopDays: lopByEmployee[emp.id] ?? 0,
         offDaysWorked: offDaysByEmployee[emp.id] ?? 0,
-        hadPriorPfMembership: emp.hadPriorPfMembership,
+        /* A UAN is proof of membership: somebody who joined within the
+           wage ceiling stays a member after a raise takes them over it
+           (EPF Scheme para 26). Reading the joining-time flag alone
+           stopped their PF the month the raise landed. */
+        hadPriorPfMembership: emp.hadPriorPfMembership || Boolean(emp.uan?.trim()),
         pfOptedIn: emp.pfOptedIn,
+        dateOfBirth: emp.dateOfBirth,
         pfApplicability: emp.pfApplicability,
         esicApplicability: emp.esicApplicability,
         ptApplicability: emp.ptApplicability,

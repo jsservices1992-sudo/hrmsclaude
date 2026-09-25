@@ -114,7 +114,24 @@ export function computeSlabTax(
   const band = [...config.surcharge]
     .sort((a, b) => b.abovePaise - a.abovePaise)
     .find((b) => income > b.abovePaise);
-  const surcharge = band ? Math.round((afterRebate * band.rateBps) / 10000) : 0;
+  let surcharge = band ? Math.round((afterRebate * band.rateBps) / 10000) : 0;
+
+  /* Marginal relief at each surcharge threshold: crossing ₹50 lakh (or
+     ₹1 crore, ₹2 crore, ₹5 crore) may not cost more in tax and surcharge
+     than the income that crossed it. Without this, one rupee over ₹50
+     lakh under the new regime added over ₹1,08,000 of surcharge. The
+     figure at the threshold is computed the same way, so relief at a
+     higher threshold already carries the lower one's. */
+  if (band) {
+    const atThreshold = computeSlabTax(band.abovePaise, config);
+    const ceiling =
+      atThreshold.taxAfterRebatePaise +
+      atThreshold.surchargePaise +
+      (income - band.abovePaise);
+    if (afterRebate + surcharge > ceiling) {
+      surcharge = Math.max(0, ceiling - afterRebate);
+    }
+  }
 
   const cess = Math.round(((afterRebate + surcharge) * config.cessBps) / 10000);
   const total = afterRebate + surcharge + cess;
@@ -563,7 +580,11 @@ export function projectMonthlyTds(input: ProjectionInput): ProjectionResult {
 
   // Section 206AA — without a valid PAN, tax is deducted at the higher of
   // the normal rate or a flat rate. The liability lands on the employer.
-  if (!input.hasValidPan) {
+  /* Only where tax is actually due: an employee whose income stays below
+     the taxable limit has nothing deducted under section 192 with or
+     without a PAN (CBDT Circular 1/2012). Applying the flat rate anyway
+     took 20% of the salary of somebody who owes nothing. */
+  if (!input.hasValidPan && annualTax > 0) {
     const flat = Math.round(
       (input.annual.taxableIncomePaise * input.higherRateBps) / 10000,
     );

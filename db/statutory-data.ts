@@ -4,8 +4,8 @@
  * IMPORTANT — every PT slab and LWF rate below is marked `verified: false`.
  * These are indicative figures for development, NOT a compliance source.
  * Each must be checked against the state Act / latest notification and
- * flipped to verified before any real payroll runs. Two jurisdictions
- * (Odisha, Chhattisgarh) additionally have contested APPLICABILITY.
+ * flipped to verified before any real payroll runs. Chhattisgarh
+ * additionally has contested APPLICABILITY.
  */
 
 import { PT_UNMODELLED } from "../lib/payroll/statutory";
@@ -51,9 +51,9 @@ export const JURISDICTIONS: JurisdictionSeed[] = [
     code: "OD",
     name: "Odisha",
     kind: "state",
-    pt: false,
+    pt: true,
     lwf: true,
-    note: "PT applicability CONTESTED — Odisha levies PT under its own Act; verify before running payroll for this state",
+    note: "Odisha State Tax on Professions, Trades, Callings and Employments Act 2000 — levied; slabs below are unverified",
   },
   { code: "PB", name: "Punjab", kind: "state", pt: true, lwf: true },
   { code: "RJ", name: "Rajasthan", kind: "state", pt: false, lwf: false },
@@ -127,8 +127,10 @@ const MONTHLY = (state: string, bands: [number | null, number][]) => ladder(stat
 
 export const PT_SLABS: PtSlabSeed[] = [
   // Karnataka
+  /* Karnataka (Amendment) Act 2025: ₹200 a month and ₹300 in February,
+     so the year comes to the constitutional ₹2,500 rather than ₹2,400. */
   { state: "KA", min: 0, max: R(24999), amount: 0 },
-  { state: "KA", min: R(25000), max: null, amount: R(200) },
+  { state: "KA", min: R(25000), max: null, amount: R(200), overrideMonth: 2, overrideAmount: R(300) },
 
   // Maharashtra — ₹300 in February; different threshold for women
   { state: "MH", min: 0, max: R(7500), amount: 0, gender: "male" },
@@ -153,8 +155,9 @@ export const PT_SLABS: PtSlabSeed[] = [
   { state: "TG", min: R(20001), max: null, amount: R(200) },
 
   // Gujarat
-  { state: "GJ", min: 0, max: R(12000), amount: 0 },
-  { state: "GJ", min: R(12001), max: null, amount: R(200) },
+  // Gujarat charges "₹12,000 or more" — ₹12,000 itself is taxed.
+  { state: "GJ", min: 0, max: R(11999), amount: 0 },
+  { state: "GJ", min: R(12000), max: null, amount: R(200) },
 
   /* Madhya Pradesh. The statute sets a higher amount in the TWELFTH
      month of the tax year — March on an April-March year, not February —
@@ -218,6 +221,13 @@ export const PT_SLABS: PtSlabSeed[] = [
    * `requiresIncomeTaxLiability` in lib/payroll/statutory.ts.
    */
   { state: "PB", min: 0, max: null, amount: R(200), annualCap: R(2400), requiresIncomeTaxLiability: true },
+
+  /* Odisha levies on annual income: nil to ₹1,60,000, ₹1,500 a year to
+     ₹3,00,000, and ₹2,500 above — the top band as ₹200 a month with ₹300
+     in February. Held as monthly bands (₹13,333 and ₹25,000 a month). */
+  { state: "OD", min: 0, max: R(13333), amount: 0 },
+  { state: "OD", min: R(13334), max: R(25000), amount: R(125) },
+  { state: "OD", min: R(25001), max: null, amount: R(200), overrideMonth: 2, overrideAmount: R(300) },
 
   // Monthly-wage states.
   ...MONTHLY("AS", [[10000, 0], [14999, 150], [24999, 180], [null, 208]]),
@@ -327,7 +337,8 @@ export const LWF_RATES: LwfRateSeed[] = [
  */
 export const PT_SOURCES: Record<string, string> = {
   MH: "Maharashtra Profession Tax Act 1975, Schedule I (rates from 01-04-2023) — mahagst.gov.in",
-  KA: "Karnataka Tax on Professions Act, Schedule (see s.3(2)), Sl.No.1 — ptax.karnataka.gov.in",
+  KA: "Karnataka Tax on Professions Act, Schedule (see s.3(2)), Sl.No.1, as amended by the Karnataka Tax on Professions (Amendment) Act 2025 — ptax.karnataka.gov.in",
+  OD: "Odisha State Tax on Professions, Trades, Callings and Employments Act 2000, Schedule — odishatax.gov.in",
   NL: "Nagaland Commissioner of State Taxes, Public Notice No. CT/LEG/P.TAX/2/2022 dated 25 September 2025 — nagalandtax.nic.in",
   TR: "Tripura Gazette Extraordinary No. 443, 25 July 2018, No.F.II-I(7)-TAX/99(P-I), as corrected by Gazette No. 1031 of 30 October 2018 — taxes.tripura.gov.in",
   MP: "MP Commercial Tax Dept PT schedule — mptax.mp.gov.in. The higher amount falls in the twelfth month of the tax year.",

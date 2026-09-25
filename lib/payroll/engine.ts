@@ -95,6 +95,8 @@ export type EmployeeInput = {
   offDaysWorked?: number;
   hadPriorPfMembership: boolean;
   pfOptedIn: boolean;
+  /** For the pension scheme, which stops at 58. Unknown means still in it. */
+  dateOfBirth?: string | null;
   /**
    * Whether each charge reaches this person at all — FR-STAT-1.
    *
@@ -397,6 +399,7 @@ export function computeEmployeePay(args: {
     optedIn: e.pfOptedIn,
     vpfPercent: e.vpfPercent,
     establishmentCovered: e.epfEstablishmentCovered,
+    pensionEligible: !attained58(e.dateOfBirth, year, month),
   });
 
   /* A person switched out of a fund on their own record produces no
@@ -775,4 +778,18 @@ export function summariseRun(results: SummarisableResult[]): RunTotals {
     byCode,
     warnings,
   };
+}
+
+/**
+ * Whether the member is 58 by the end of the period. EPS contributions
+ * stop there (EPS 1995, para 12) — the ECR already knew this; the payslip
+ * kept showing a pension share nobody was filing.
+ */
+function attained58(dateOfBirth: string | null | undefined, year: number, month: number): boolean {
+  if (!dateOfBirth || !/^\d{4}-\d{2}-\d{2}/.test(dateOfBirth)) return false;
+  const [by, bm, bd] = dateOfBirth.slice(0, 10).split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  let age = year - by;
+  if (month < bm || (month === bm && lastDay < bd)) age -= 1;
+  return age >= 58;
 }

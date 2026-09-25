@@ -61,6 +61,13 @@ export type EpfInput = {
    * caller keeps the behaviour it had.
    */
   establishmentCovered?: boolean;
+  /**
+   * Whether this member still belongs to the pension scheme. EPS stops
+   * at 58 (EPS 1995, para 12) and the whole employer share then goes to
+   * provident fund. Undefined means eligible, so every existing caller
+   * keeps the behaviour it had.
+   */
+  pensionEligible?: boolean;
 };
 
 export type EpfResult = {
@@ -94,6 +101,9 @@ export function epfExcluded(input: {
     !input.hadPriorMembership
   );
 }
+
+/** Nearest whole rupee, half a rupee going up — how EPFO rounds. */
+const rupee = (paise: number): Paise => Math.round(paise / 100) * 100;
 
 export function computeEpf(input: EpfInput): EpfResult {
   const { params } = input;
@@ -139,21 +149,24 @@ export function computeEpf(input: EpfInput): EpfResult {
     ? params.wageCeilingPaise
     : input.pfWagePaise;
 
-  const employee = Math.round((consideredWage * params.employeeBps) / 10000);
+  /* Every EPF figure is a whole rupee — the ECR is filed in rupees and
+     EPFO rounds each contribution to the nearest one (fifty paise and up
+     going to the next). Leaving paise on the payslip meant a member was
+     deducted ₹1,414.78 while the return said ₹1,415. */
+  const employee = rupee((consideredWage * params.employeeBps) / 10000);
 
   // EPS is computed on its own ceiling, and the remainder of the employer
   // share goes to PF — so employer PF is not simply a percentage.
-  const epsWage = input.isInternationalWorker
-    ? 0
-    : Math.min(consideredWage, params.epsCeilingPaise);
-  const eps = Math.round((epsWage * params.epsBps) / 10000);
-  const employerTotal = Math.round(
-    (consideredWage * params.employerBps) / 10000,
-  );
+  const epsWage =
+    input.isInternationalWorker || input.pensionEligible === false
+      ? 0
+      : Math.min(consideredWage, params.epsCeilingPaise);
+  const eps = rupee((epsWage * params.epsBps) / 10000);
+  const employerTotal = rupee((consideredWage * params.employerBps) / 10000);
   const employerPf = Math.max(0, employerTotal - eps);
 
   const vpf = input.vpfPercent
-    ? Math.round((input.pfWagePaise * input.vpfPercent) / 100)
+    ? rupee((input.pfWagePaise * input.vpfPercent) / 100)
     : 0;
 
   return {
@@ -163,7 +176,9 @@ export function computeEpf(input: EpfInput): EpfResult {
     employerPfPaise: employerPf,
     employerEpsPaise: eps,
     vpfPaise: vpf,
-    reason: restrictToCeiling
+    reason: input.pensionEligible === false && !input.isInternationalWorker
+      ? "Attained 58 — no pension share; the whole employer share goes to provident fund"
+      : restrictToCeiling
       ? "Contribution restricted to statutory wage ceiling"
       : input.isInternationalWorker
         ? "International worker — ceiling not applied"
@@ -277,7 +292,11 @@ export function computeEsic(input: EsicInput): EsicResult {
 
   // Contribution is on actual wages, not on the capped threshold.
   const wage = input.contributionWagePaise;
-  const employer = Math.ceil((wage * params.employerBps) / 10000);
+  /* ESI contributions are rounded to the NEXT HIGHER rupee (ESI (Central)
+     Rules 1950, r.51) — ₹112.50 is ₹113, not ₹112.50. Rounding up to the
+     next paisa, which is what this did, under-paid every challan. */
+  const upToRupee = (paise: number) => Math.ceil(Math.round(paise) / 100) * 100;
+  const employer = upToRupee((wage * params.employerBps) / 10000);
 
   /* The lowest paid owe nothing themselves, and the employer may not
      recover its own share from them either — so this zeroes one side and
@@ -288,7 +307,7 @@ export function computeEsic(input: EsicInput): EsicResult {
     params.lowWageDailyPaise != null &&
     averageDaily != null &&
     averageDaily <= params.lowWageDailyPaise;
-  const employee = exempt ? 0 : Math.ceil((wage * params.employeeBps) / 10000);
+  const employee = exempt ? 0 : upToRupee((wage * params.employeeBps) / 10000);
 
   const coverage = withinThreshold
     ? "Within wage threshold"
@@ -491,11 +510,17 @@ export function computeProfessionalTax(input: PtInput): PtResult {
       ? s.overrideAmountPaise
       : s.amountPaise;
 
+  /* Schedules are printed in whole rupees — "up to ₹10,000", then
+     "₹10,001 and above" — so a wage carrying paise fell between the two
+     bands and matched neither: ₹10,000.65 in Maharashtra paid no PT
+     against ₹200 due, ₹24,999.50 in Karnataka likewise. The wage is read
+     in rupees, as the schedule is. */
+  const base = Math.round(input.ptBasePaise / RUPEE) * RUPEE;
   const inBand = candidates
     .filter(
       (s) =>
-        input.ptBasePaise >= s.minPaise &&
-        (s.maxPaise === null || input.ptBasePaise <= s.maxPaise),
+        base >= s.minPaise &&
+        (s.maxPaise === null || base <= s.maxPaise),
     )
     .sort((a, b) => amountOf(b) - amountOf(a));
 

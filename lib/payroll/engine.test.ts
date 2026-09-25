@@ -472,8 +472,8 @@ describe("ESIC on the Code's definition of wages", () => {
     /* 20,000 gross on the default structure: basic 10,000, HRA 4,000,
        conveyance 1,600, special 4,400. Exclusions 5,600 — under 10,000. */
     const r = run({ monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true });
-    assert.equal(line(r, "ESIC_EE"), Math.ceil((L(14400) * 75) / 10000));
-    assert.equal(line(r, "ESIC_ER"), Math.ceil((L(14400) * 325) / 10000));
+    assert.equal(line(r, "ESIC_EE"), Math.ceil((L(14400) * 75) / 1000000) * 100);
+    assert.equal(line(r, "ESIC_ER"), Math.ceil((L(14400) * 325) / 1000000) * 100);
   });
 
   test("a gross over ₹21,000 is still covered when its ESI wage is not", () => {
@@ -494,7 +494,7 @@ describe("ESIC on the Code's definition of wages", () => {
     });
     /* Wages 14,400; exclusions 5,600 + 15,000 OT = 20,600 against half of
        35,000 — 3,100 over, so 3,100 is added back. */
-    assert.equal(line(withOt, "ESIC_EE"), Math.ceil((L(17500) * 75) / 10000));
+    assert.equal(line(withOt, "ESIC_EE"), Math.ceil((L(17500) * 75) / 1000000) * 100);
     assert.ok(line(withOt, "ESIC_EE") > line(without, "ESIC_EE"));
   });
 
@@ -518,7 +518,7 @@ describe("ESIC on the Code's definition of wages", () => {
         { code: "INC", label: "Incentive", kind: "earning", category: "incentive", amountPaise: L(2000) },
       ],
     });
-    assert.equal(line(withIncentive, "ESIC_ER") - line(base, "ESIC_ER"), Math.ceil((L(2000) * 325) / 10000));
+    assert.equal(line(withIncentive, "ESIC_ER") - line(base, "ESIC_ER"), Math.ceil((L(2000) * 325) / 1000000) * 100);
   });
 
   test("a period before the Code keeps the ESI Act's wage", () => {
@@ -529,7 +529,7 @@ describe("ESIC on the Code's definition of wages", () => {
       year: 2025,
       month: 9,
     });
-    assert.equal(line(r, "ESIC_EE"), Math.ceil((L(20000) * 75) / 10000), "full gross, as filed then");
+    assert.equal(line(r, "ESIC_EE"), Math.ceil((L(20000) * 75) / 1000000) * 100, "full gross, as filed then");
   });
 
   test("the payslip says how the wage was reached", () => {

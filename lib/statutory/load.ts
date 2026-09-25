@@ -181,7 +181,12 @@ export async function buildEpfReturn(
     const pfWagePaise = m.amounts[CODE.pfWages] ?? 0;
 
     const pension = isEpsEligible({
-      hadPriorPfMembership: emp.hadPriorPfMembership,
+      /* Only somebody who OPTED IN above the ceiling is outside the
+         pension scheme. A member who joined within it and was later raised
+         over ₹15,000 is contributing because they are a member, and their
+         pension share continues — reading "no prior membership" alone
+         filed a nil EPS for every such person. */
+      hadPriorPfMembership: emp.hadPriorPfMembership || !emp.pfOptedIn,
       pfWagePaise,
       wageCeilingPaise: EPF_CHARGES_2026.wageCeilingPaise,
       ageAsOfPeriod: ageAsOfMonth(emp.dateOfBirth, register.run.periodYear, register.run.periodMonth),
