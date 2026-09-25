@@ -29,7 +29,7 @@ export function CardHeader({
     <div className="flex items-start justify-between gap-4 mb-4">
       <div>
         {eyebrow && <p className="text-xs font-medium text-ink-2 mb-1">{eyebrow}</p>}
-        <h3 className="font-display text-lg font-semibold">{title}</h3>
+        <h3 className="font-display text-lg font-bold tracking-tight">{title}</h3>
       </div>
       {action}
     </div>

@@ -30,7 +30,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     <Link href="/console" className="flex items-center gap-2.5 min-w-0">
       <span
         aria-hidden
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg grad-violet text-white font-display text-lg font-bold leading-none shadow-[0_6px_14px_-6px_#6D4AFF]"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg grad-violet text-white font-display text-lg font-bold leading-none shadow-[0_6px_14px_-6px_var(--indigo)]"
       >
         ल
       </span>
@@ -84,19 +84,19 @@ function NavList({
               title={collapsed ? entry.label : undefined}
               className={`flex items-center gap-2.5 px-3 min-h-10 rounded-lg text-sm transition-base focus-visible:shadow-ring ${
                 !active
-                  ? "text-ink-2 hover:text-ink hover:bg-[#6D4AFF]/8"
+                  ? "text-ink-2 hover:text-ink hover:bg-[var(--indigo)]/8"
                   : open
                     ? "text-ink font-semibold"
-                    : "bg-[#6D4AFF]/12 text-[#5B3DF5] font-semibold"
+                    : "bg-[var(--indigo)]/12 text-[var(--indigo-2)] font-semibold"
               } ${collapsed ? "justify-center" : ""}`}
             >
-              <span className={active ? "text-[#6D4AFF]" : ""}>
+              <span className={active ? "text-[var(--indigo)]" : ""}>
                 <Icon />
               </span>
               {!collapsed && <span className="truncate">{entry.label}</span>}
             </Link>
             {open && (
-              <ul className="mt-0.5 mb-1.5 ml-[1.35rem] border-l border-[#6D4AFF]/20 pl-2 flex flex-col gap-0.5">
+              <ul className="mt-0.5 mb-1.5 ml-[1.35rem] border-l border-[var(--indigo)]/20 pl-2 flex flex-col gap-0.5">
                 {entry.children!.map((child) => {
                   const on = isItemActive(child, pathname);
                   return (
@@ -106,7 +106,7 @@ function NavList({
                         onClick={onNavigate}
                         aria-current={on ? "page" : undefined}
                         className={`block px-2.5 py-1.5 rounded-lg text-[13px] transition-base focus-visible:shadow-ring ${
-                          on ? "bg-[#6D4AFF]/12 text-[#5B3DF5] font-semibold" : "text-ink-2 hover:text-ink hover:bg-[#6D4AFF]/8"
+                          on ? "bg-[var(--indigo)]/12 text-[var(--indigo-2)] font-semibold" : "text-ink-2 hover:text-ink hover:bg-[var(--indigo)]/8"
                         }`}
                       >
                         {child.label}
@@ -182,7 +182,7 @@ function CompanySwitcher({
             aria-label={`Company: ${currentName}. Change company`}
             className="flex w-full items-center gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-2 text-left hover:bg-surface-2 transition-base focus-visible:shadow-ring"
           >
-            <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#6D4AFF]/12 text-xs font-bold text-[#5B3DF5]">
+            <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--indigo)]/12 text-xs font-bold text-[var(--indigo-2)]">
               {currentName.slice(0, 2).toUpperCase()}
             </span>
             <span className="min-w-0 flex-1">

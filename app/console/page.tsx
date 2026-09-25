@@ -17,7 +17,7 @@ import {
 } from "@/lib/auth/session";
 import { loadOnboardingFunnelReport } from "@/lib/reports/load";
 import { Donut, CategoryPie, type ColumnPoint } from "@/components/console/charts";
-import { IconCheck } from "@/components/console/icons";
+import { IconCheck, IconUsers, IconBanknote, IconCoins, IconInbox } from "@/components/console/icons";
 import { Card, Badge } from "@/components/console/ui";
 import { GradientStat, RangeBars, Ring, PeopleTable } from "./dashboard-widgets";
 import { formatDate } from "@/lib/format/date";
@@ -425,18 +425,19 @@ export default async function DashboardPage(props: PageProps<"/console">) {
       )}
 
       {/* ---------------- greeting ---------------- */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold tracking-[0.14em] text-[#6D4AFF]">DASHBOARD</p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+      <div className="relative flex flex-wrap items-end justify-between gap-4 overflow-hidden rounded-2xl border border-line hero-wash p-6 sm:p-7">
+        <div aria-hidden className="hero-orb -top-16 right-10 h-56 w-56" />
+        <div className="relative min-w-0">
+          <p className="kpi-label text-indigo">Dashboard</p>
+          <h1 className="mt-1.5 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
             {greeting}, {firstName} <span aria-hidden>👋</span>
           </h1>
           <p className="mt-1 text-sm text-ink-2">
             {entityLine} · {PERIOD.label} payroll
-            {seesPay && run ? <> · <span className="font-semibold text-[#6D4AFF] capitalize">{runStatus}</span></> : null}
+            {seesPay && run ? <> · <span className="font-semibold text-[var(--indigo)] capitalize">{runStatus}</span></> : null}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex flex-wrap items-center gap-2">
           <Link
             href="/console/attendance?tab=import"
             className="inline-flex items-center rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-base hover:bg-surface-2"
@@ -445,7 +446,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
           </Link>
           <Link
             href="/console/payroll/run"
-            className="grad-cta inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-[0_12px_26px_-12px_#7C4DFF] transition-base hover:-translate-y-0.5"
+            className="grad-cta inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-[0_12px_26px_-12px_var(--indigo)] transition-base hover:-translate-y-0.5"
           >
             + Run payroll
           </Link>
@@ -457,6 +458,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
         {seesPay && (
           <GradientStat
             tone="violet"
+            icon={<IconCoins />}
             label="Monthly cost to company"
             value={compact(previewGross + previewEmployer)}
             pill={growth === null ? undefined : `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`}
@@ -468,6 +470,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
         {seesPay && (
           <GradientStat
             tone="pink"
+            icon={<IconBanknote />}
             label="Net to pay"
             value={compact(previewNet)}
             sub={`${cycleRows.length} employee${cycleRows.length === 1 ? "" : "s"} · ${run ? `v${run.version}` : "not calculated"}`}
@@ -477,6 +480,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
         )}
         <GradientStat
           tone="teal"
+          icon={<IconUsers />}
           label="Active employees"
           value={headcount[0]?.n ?? 0}
           sub={activeJoiners.length ? `${activeJoiners.length} joining soon` : "Nobody joining right now"}
@@ -484,6 +488,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
         />
         <GradientStat
           tone="amber"
+          icon={<IconInbox />}
           label="Pending approvals"
           value={approvals}
           pill={seesPay && openExits.length ? `${openExits.length} exit${openExits.length === 1 ? "" : "s"}` : undefined}
@@ -498,10 +503,10 @@ export default async function DashboardPage(props: PageProps<"/console">) {
           <Card padded={false} className="rounded-2xl">
             <div className="flex flex-wrap items-start justify-between gap-3 px-6 pt-5">
               <div>
-                <h2 className="text-base font-bold text-ink">Payroll cost trend</h2>
+                <h2 className="font-display text-base font-bold tracking-tight text-ink">Payroll cost trend</h2>
                 <p className="mt-0.5 text-xs text-ink-3">Gross payroll, as actually run · {PERIOD.label} shown until it is</p>
               </div>
-              <div className="inline-flex rounded-full bg-[#6D4AFF]/10 p-1 text-xs font-semibold">
+              <div className="inline-flex rounded-full bg-[var(--indigo)]/10 p-1 text-xs font-semibold">
                 {[
                   { v: "6", l: "6M" },
                   { v: "12", l: "1Y" },
@@ -511,7 +516,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
                     href={`/console?range=${t.v}`}
                     scroll={false}
                     className={`rounded-full px-3.5 py-1.5 transition-base ${
-                      String(rangeMonths) === t.v ? "bg-[#6D4AFF] text-white shadow-sm" : "text-[#5B3DF5] hover:bg-[#6D4AFF]/10"
+                      String(rangeMonths) === t.v ? "bg-[var(--indigo)] text-white shadow-sm" : "text-[var(--indigo-2)] hover:bg-[var(--indigo)]/10"
                     }`}
                   >
                     {t.l}
@@ -532,13 +537,13 @@ export default async function DashboardPage(props: PageProps<"/console">) {
 
           <Card padded={false} className="rounded-2xl">
             <div className="px-6 pt-5">
-              <h2 className="text-base font-bold text-ink">Pay run · {PERIOD.label}</h2>
+              <h2 className="font-display text-base font-bold tracking-tight text-ink">Pay run · {PERIOD.label}</h2>
               <p className="mt-0.5 text-xs text-ink-3">{run ? `Version ${run.version} · ${runStatus}` : "Calculate to begin"}</p>
             </div>
             <div className="flex flex-wrap items-center gap-5 px-6 py-5">
               <Ring percent={runPercent} label="steps done" />
               <div className="min-w-0">
-                <p className="text-2xl font-extrabold tracking-tight tnum text-ink">{formatINR(previewNet)}</p>
+                <p className="font-display text-2xl font-bold tracking-tight tnum text-ink">{formatINR(previewNet)}</p>
                 <p className="text-xs text-ink-3">net to pay · {cycleRows.length} employees</p>
               </div>
             </div>
@@ -548,7 +553,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
                   <span
                     aria-hidden
                     className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${
-                      st.done ? "bg-[#00BFA5]/15 text-[#00806E]" : "warn" in st && st.warn ? "bg-[#F59E0B]/15 text-[#B45309]" : "bg-surface-3 text-ink-3"
+                      st.done ? "bg-teal-soft text-teal" : "warn" in st && st.warn ? "bg-amber-soft text-amber" : "bg-surface-3 text-ink-3"
                     }`}
                   >
                     {st.done ? "✓" : "warn" in st && st.warn ? "!" : "·"}
@@ -559,7 +564,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
               ))}
             </ul>
             <div className="border-t border-line-2 px-6 py-4">
-              <Link href="/console/payroll/run" className="text-sm font-semibold text-[#6D4AFF] hover:text-[#5B3DF5]">
+              <Link href="/console/payroll/run" className="text-sm font-semibold text-[var(--indigo)] hover:text-[var(--indigo-2)]">
                 Open the payroll hub →
               </Link>
             </div>
@@ -572,27 +577,27 @@ export default async function DashboardPage(props: PageProps<"/console">) {
         <Card padded={false} className="rounded-2xl">
           <div className="flex flex-wrap items-start justify-between gap-3 px-6 pt-5">
             <div>
-              <h2 className="text-base font-bold text-ink">People · this cycle</h2>
+              <h2 className="font-display text-base font-bold tracking-tight text-ink">People · this cycle</h2>
               <p className="mt-0.5 text-xs text-ink-3">Highest pay first · {PERIOD.label}</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="inline-flex rounded-full bg-[#6D4AFF]/10 p-1 text-xs font-semibold">
+              <div className="inline-flex rounded-full bg-[var(--indigo)]/10 p-1 text-xs font-semibold">
                 <Link
                   href="/console?people=all"
                   scroll={false}
-                  className={`rounded-full px-3.5 py-1.5 ${peopleView === "all" ? "bg-[#6D4AFF] text-white shadow-sm" : "text-[#5B3DF5]"}`}
+                  className={`rounded-full px-3.5 py-1.5 ${peopleView === "all" ? "bg-[var(--indigo)] text-white shadow-sm" : "text-[var(--indigo-2)]"}`}
                 >
                   All
                 </Link>
                 <Link
                   href="/console?people=review"
                   scroll={false}
-                  className={`rounded-full px-3.5 py-1.5 ${peopleView === "review" ? "bg-[#6D4AFF] text-white shadow-sm" : "text-[#5B3DF5]"}`}
+                  className={`rounded-full px-3.5 py-1.5 ${peopleView === "review" ? "bg-[var(--indigo)] text-white shadow-sm" : "text-[var(--indigo-2)]"}`}
                 >
                   Needs review{reviewCount > 0 ? ` (${reviewCount})` : ""}
                 </Link>
               </div>
-              <Link href="/console/payroll" className="hidden text-xs font-semibold text-[#6D4AFF] sm:inline">
+              <Link href="/console/payroll" className="hidden text-xs font-semibold text-[var(--indigo)] sm:inline">
                 Full register →
               </Link>
             </div>

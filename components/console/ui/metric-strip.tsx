@@ -39,8 +39,8 @@ export function MetricStrip({
               </span>
             )}
             <div className="min-w-0">
-              <dt className="text-xs font-medium text-ink-2">{m.label}</dt>
-              <dd className={`mt-0.5 text-xl font-bold tracking-tight tnum ${figure[t]}`}>{m.value}</dd>
+              <dt className="kpi-label text-ink-3">{m.label}</dt>
+              <dd className={`mt-1.5 font-display text-xl font-bold tracking-tight tnum ${figure[t]}`}>{m.value}</dd>
               {m.hint && <dd className="mt-0.5 text-xs text-ink-3">{m.hint}</dd>}
             </div>
           </div>

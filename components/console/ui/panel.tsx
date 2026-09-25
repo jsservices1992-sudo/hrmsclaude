@@ -35,7 +35,7 @@ export function Panel({
               </span>
             )}
             <div className="min-w-0">
-              <h2 className="flex flex-wrap items-center gap-2 text-[15px] font-semibold text-ink">
+              <h2 className="flex flex-wrap items-center gap-2 font-display text-[15px] font-bold text-ink">
                 {title}
                 {badge}
               </h2>

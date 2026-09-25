@@ -9,47 +9,47 @@
   color-scheme: light;
 
   /* Grounds */
-  --paper: #F4F1FF;        /* background — soft lavender */
+  --paper: #FAFAFE;        /* background — the demo's near-white lavender */
   --surface: #FFFFFF;      /* cards, sidebar, header */
-  --surface-2: #F8F6FF;    /* surface-secondary: table heads, hovers */
-  --surface-3: #F1EEFB;    /* input background */
+  --surface-2: #F5F5FB;    /* surface-secondary: table heads, hovers */
+  --surface-3: #EFEFF7;    /* input background */
 
   /* Text */
-  --ink: #080D18;
-  --ink-2: #52617A;
-  --ink-3: #7D8AA0;
+  --ink: #1A1630;
+  --ink-2: #6B6880;
+  --ink-3: #8F8CA3;
 
   /* Lines */
-  --line: #E3DEF5;
-  --line-2: #EEEAF9;
+  --line: #E6E4F0;
+  --line-2: #F0EFF7;
   --grid: #D5E3F7;
 
   /* Brand — primary actions, active nav, focus */
-  --indigo: #6D4AFF;
-  --indigo-2: #5B3DF5;
-  --indigo-soft: #EFEBFF;
+  --indigo: #5B4BE8;
+  --indigo-2: #4A3BD4;
+  --indigo-soft: #EDEBFE;
   --on-indigo: #FFFFFF;
 
   /* Accent — links, labels, highlights */
-  --brass: #FF5C8A;
-  --brass-2: #F2437A;
-  --brass-soft: #FFEAF1;
+  --brass: #8B5CF6;
+  --brass-2: #7C3AED;
+  --brass-soft: #F3EEFE;
 
   /* Status */
-  --teal: #0FA875;         /* success text, readable on white */
-  --teal-soft: #E9FBF4;
+  --teal: #059669;         /* success text, readable on white */
+  --teal-soft: #E7F8F1;
   --success: #16C98D;
-  --rust: #E0364B;
-  --rust-soft: #FDEDEF;
+  --rust: #E11D48;
+  --rust-soft: #FFECF0;
   --amber: #B45309;
-  --amber-soft: #FEF6E7;
+  --amber-soft: #FEF3E2;
 
   --rule: rgba(8, 13, 24, 0.06);
 
   /* 8 for controls (rounded-lg), 12 for panels (rounded-xl). */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
   --radius-full: 999px;
 
   /* Soft, blue-tinted elevation */
@@ -57,7 +57,7 @@
   --shadow-sm: 0 0 #0000;
   --shadow-md: 0 6px 20px -6px rgba(16, 38, 94, 0.14), 0 2px 6px -2px rgba(16, 38, 94, 0.06);
   --shadow-lg: 0 24px 48px -16px rgba(16, 38, 94, 0.24);
-  --shadow-ring: 0 0 0 4px rgba(109, 74, 255, 0.18);
+  --shadow-ring: 0 0 0 4px rgba(91, 75, 232, 0.18);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 120ms;
@@ -174,9 +174,9 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-ring: var(--shadow-ring);
 
-  --font-display: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
-  --font-sans: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
-  --font-mono: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
+  --font-display: var(--font-grotesk), var(--font-dm), system-ui, sans-serif;
+  --font-sans: var(--font-dm), var(--font-grotesk), system-ui, sans-serif;
+  --font-mono: var(--font-dm), var(--font-grotesk), system-ui, sans-serif;
 }
 
 /* In the base layer so a border-colour utility (border-indigo, border-rust…)
@@ -194,7 +194,7 @@ html {
 body {
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
+  font-family: var(--font-dm), var(--font-grotesk), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -261,7 +261,7 @@ dialog::backdrop {
 
 /* The small utility voice: field labels, table heads, eyebrows. */
 .label {
-  font-family: var(--font-jakarta), var(--font-plex-sans), system-ui, sans-serif;
+  font-family: var(--font-dm), var(--font-grotesk), system-ui, sans-serif;
   font-size: 0.75rem;
   letter-spacing: 0;
   font-weight: 600;
@@ -454,12 +454,30 @@ input[type="date"]::-webkit-calendar-picker-indicator:focus-visible {
    Dashboard palette — the violet / pink / teal / amber set the
    dashboard cards and the sidebar are drawn in.
    --------------------------------------------------------------- */
-.grad-violet { background-image: linear-gradient(135deg, #6D4AFF 0%, #9B6BFF 100%); }
+.grad-violet { background-image: linear-gradient(135deg, #5B4BE8 0%, #8B5CF6 100%); }
 .grad-pink   { background-image: linear-gradient(135deg, #FF5C8A 0%, #FF7EA8 100%); }
 .grad-teal   { background-image: linear-gradient(135deg, #00BFA5 0%, #19D8B8 100%); }
 .grad-amber  { background-image: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%); }
-.grad-cta    { background-image: linear-gradient(135deg, #7C4DFF 0%, #FF5C8A 100%); }
-.bg-sidebar  { background-image: linear-gradient(180deg, #FFFFFF 0%, #F7F3FF 100%); }
+.grad-cta    { background-image: linear-gradient(135deg, #5B4BE8 0%, #4338CA 100%); }
+.bg-sidebar  { background: #FCFCFF; }
 
 /* A card that sits on the lavender ground: a whisper of violet shadow. */
 .card-lift { box-shadow: 0 1px 2px rgba(45, 20, 120, 0.04), 0 10px 28px -18px rgba(76, 45, 200, 0.28); }
+
+/* The demo's pale hero wash, with a blurred primary orb over it. */
+.hero-wash { background-image: linear-gradient(135deg, #eef2ff, #f5f3ff 55%, #ecfeff); }
+.hero-orb {
+  position: absolute;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--indigo) 20%, transparent);
+  filter: blur(60px);
+}
+
+/* A pastel KPI tile: a tint of its own accent, with a solid icon chip. */
+.tile-indigo  { background-image: linear-gradient(135deg, rgba(91,75,232,.10), rgba(139,92,246,.06)); }
+.tile-emerald { background-image: linear-gradient(135deg, rgba(16,185,129,.12), rgba(16,185,129,.05)); }
+.tile-amber   { background-image: linear-gradient(135deg, rgba(245,158,11,.14), rgba(245,158,11,.05)); }
+.tile-sky     { background-image: linear-gradient(135deg, rgba(14,165,233,.12), rgba(16,185,129,.06)); }
+
+/* Uppercase micro-label, the demo's KPI caption. */
+.kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
