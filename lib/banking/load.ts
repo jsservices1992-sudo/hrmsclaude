@@ -313,23 +313,31 @@ export async function loadChart(companyId: string): Promise<{
     .from(s.glMappings)
     .where(eq(s.glMappings.companyId, companyId));
 
-  if (accountRows.length === 0) {
+  if (accountRows.length === 0 && mappingRows.length === 0) {
     // Falling back to the shipped chart means a customer sees a working
     // journal on day one; the UI says it is the default.
     return { accounts: DEFAULT_ACCOUNTS, mappings: DEFAULT_MAPPINGS, isDefault: true };
   }
 
+  /* The company's own accounts and mappings win; the shipped chart fills
+     whatever they do not cover. Replacing the whole chart the moment one
+     account was added sent every line of the journal to suspense — one
+     "HR-OPS" account and no mappings posted ₹5 lakh of payroll there. */
+  const ownAccounts = accountRows.map((a) => ({
+    code: a.code,
+    name: a.name,
+    type: a.accountType,
+  }));
+  const ownMappings = mappingRows.map((m) => ({
+    componentCode: m.componentCode,
+    debitAccount: m.debitAccount,
+    creditAccount: m.creditAccount,
+  }));
+  const ownCodes = new Set(ownAccounts.map((a) => a.code));
+  const mappedCodes = new Set(ownMappings.map((m) => m.componentCode));
   return {
-    accounts: accountRows.map((a) => ({
-      code: a.code,
-      name: a.name,
-      type: a.accountType,
-    })),
-    mappings: mappingRows.map((m) => ({
-      componentCode: m.componentCode,
-      debitAccount: m.debitAccount,
-      creditAccount: m.creditAccount,
-    })),
+    accounts: [...ownAccounts, ...DEFAULT_ACCOUNTS.filter((a) => !ownCodes.has(a.code))],
+    mappings: [...ownMappings, ...DEFAULT_MAPPINGS.filter((m) => !mappedCodes.has(m.componentCode))],
     isDefault: false,
   };
 }
