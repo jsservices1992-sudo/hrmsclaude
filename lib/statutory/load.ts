@@ -3,14 +3,15 @@ import { and, desc, eq, gte, lte, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { validatePan } from "../tax/engine";
-import { effectiveAsOf } from "../payroll/statutory";
+import { effectiveAsOf, pensionEligibility } from "../payroll/statutory";
+import { loadStatutoryConfig } from "../payroll/load";
 import {
   buildEcrLine,
   formatEcrFile,
   computeChallan,
   reconcileWithRegister,
   blockingIssues,
-  isEpsEligible,
+  type EpfChargeParams,
   ageAsOfMonth,
   EPF_CHARGES_2026,
   ECR_VERSION,
@@ -174,23 +175,37 @@ export async function buildEpfReturn(
 
   const pensionWarnings: string[] = [];
 
+  /* The ceilings and charges in force for this wage month — dated rows, so
+     September 2026 files on the revised ₹25,000 while August files on
+     ₹15,000. */
+  const periodEnd = new Date(Date.UTC(register.run.periodYear, register.run.periodMonth, 0))
+    .toISOString()
+    .slice(0, 10);
+  const statutory = await loadStatutoryConfig(periodEnd, register.run.companyId);
+  const charges: EpfChargeParams = {
+    ...EPF_CHARGES_2026,
+    adminChargeBps: statutory.epf.adminBps ?? EPF_CHARGES_2026.adminChargeBps,
+    edliBps: statutory.epf.edliBps ?? EPF_CHARGES_2026.edliBps,
+    wageCeilingPaise: statutory.epf.wageCeilingPaise,
+    epsCeilingPaise: statutory.epf.epsCeilingPaise,
+    edliCeilingPaise: statutory.epf.edliCeilingPaise ?? statutory.epf.wageCeilingPaise,
+  };
+
   const lines = members.map((m) => {
     const emp = register.employees.get(m.employeeId)!;
     const summary = register.summaries.get(m.employeeId);
     const exit = exitByEmployee.get(m.employeeId);
     const pfWagePaise = m.amounts[CODE.pfWages] ?? 0;
 
-    const pension = isEpsEligible({
-      /* Only somebody who OPTED IN above the ceiling is outside the
-         pension scheme. A member who joined within it and was later raised
-         over ₹15,000 is contributing because they are a member, and their
-         pension share continues — reading "no prior membership" alone
-         filed a nil EPS for every such person. */
-      hadPriorPfMembership: emp.hadPriorPfMembership || !emp.pfOptedIn,
+    /* The same rule the payslip applied, from the same employee master:
+       an existing member (prior membership or a UAN) stays in EPS whatever
+       their wage; EPS Applicable on the record overrides; 58 ends it. */
+    const pension = pensionEligibility({
+      age: ageAsOfMonth(emp.dateOfBirth, register.run.periodYear, register.run.periodMonth),
+      epsApplicability: emp.epsApplicability,
+      existingMember: emp.hadPriorPfMembership || Boolean(emp.uan?.trim()),
       pfWagePaise,
-      wageCeilingPaise: EPF_CHARGES_2026.wageCeilingPaise,
-      ageAsOfPeriod: ageAsOfMonth(emp.dateOfBirth, register.run.periodYear, register.run.periodMonth),
-      isInternationalWorker: false,
+      coverageCeilingPaise: statutory.epf.coverageCeilingPaise ?? statutory.epf.wageCeilingPaise,
     });
     if (!pension.eligible) {
       pensionWarnings.push(`${emp.firstName} ${emp.lastName} (${emp.empCode}): ${pension.reason}`);
@@ -214,12 +229,12 @@ export async function buildEpfReturn(
         dateOfExit: emp.dateOfExit,
         reasonForLeaving: exit ? exit.exitType : emp.dateOfExit ? null : null,
       },
-      EPF_CHARGES_2026,
-      epsBps,
+      charges,
+      statutory.epf.epsBps ?? epsBps,
     );
   });
 
-  const challan = computeChallan(lines, EPF_CHARGES_2026);
+  const challan = computeChallan(lines, charges);
 
   const reconciliation = reconcileWithRegister({
     lines,

@@ -98,6 +98,9 @@ export async function resolvePay(args: {
     esicThresholdPaise: statutory.esic.wageThresholdPaise,
     esicEmployerBps: statutory.esic.employerBps,
     gratuityAccrualBps: statutory.gratuity.accrualBps,
+    epfEdliBps: statutory.epf.edliBps,
+    epfEdliCeilingPaise: statutory.epf.edliCeilingPaise,
+    epfAdminBps: statutory.epf.adminBps,
   };
 
   const rupees = (args.amountPaise / 100).toLocaleString("en-IN");

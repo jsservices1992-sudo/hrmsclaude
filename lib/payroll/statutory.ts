@@ -34,7 +34,64 @@ export type EpfParams = {
   epsBps: number;
   /** Pension scheme is capped at the ceiling even when PF is not. */
   epsCeilingPaise: Paise;
+  /**
+   * The wage that decides whether PF is compulsory for a new member —
+   * the coverage (eligibility) ceiling, held apart from the contribution
+   * ceiling above because a notification can move one without the
+   * other. Absent means the same as `wageCeilingPaise`.
+   */
+  coverageCeilingPaise?: Paise;
+  /** EDLI: employer-only, on wages up to its own ceiling. */
+  edliCeilingPaise?: Paise;
+  edliBps?: number;
+  /** EPFO administration charge, employer-only, on EPF wages. */
+  adminBps?: number;
 };
+
+/**
+ * Whether a member belongs to the pension scheme this month.
+ *
+ * One answer, used by the payslip and by the ECR, so the two can never
+ * disagree about a member's EPS share.
+ *
+ * - EPS stops at 58 (EPS 1995, para 12) — nothing overrides that.
+ * - An explicit Yes/No on the employee master wins over the automatic test.
+ * - Automatically, an existing EPF member (a prior membership, or a UAN on
+ *   record) stays in EPS whatever their wage now is. Somebody who is not
+ *   an existing member and whose wage is above the coverage ceiling is an
+ *   excluded employee contributing voluntarily, and never enters EPS.
+ */
+export function pensionEligibility(args: {
+  age: number | null;
+  epsApplicability?: "auto" | "yes" | "no" | null;
+  existingMember: boolean;
+  pfWagePaise: Paise;
+  coverageCeilingPaise: Paise;
+  isInternationalWorker?: boolean;
+}): { eligible: boolean; reason: string } {
+  if (args.isInternationalWorker) {
+    return { eligible: true, reason: "International worker — no wage ceiling applies" };
+  }
+  if (args.age != null && args.age >= 58) {
+    return {
+      eligible: false,
+      reason: "Attained 58 years — pension contribution ceases; the whole employer share goes to provident fund",
+    };
+  }
+  if (args.epsApplicability === "no") {
+    return { eligible: false, reason: "EPS set to No on the employee record" };
+  }
+  if (args.epsApplicability === "yes") {
+    return { eligible: true, reason: "EPS set to Yes on the employee record" };
+  }
+  if (!args.existingMember && args.pfWagePaise > args.coverageCeilingPaise) {
+    return {
+      eligible: false,
+      reason: "Excluded employee — not an existing member and PF wage above the coverage ceiling; a voluntary member outside EPS",
+    };
+  }
+  return { eligible: true, reason: "Existing member, or within the coverage ceiling" };
+}
 
 export type EpfInput = {
   /** Sum of components flagged as PF base (typically basic + DA). */
@@ -68,6 +125,8 @@ export type EpfInput = {
    * keeps the behaviour it had.
    */
   pensionEligible?: boolean;
+  /** EDLI cover. Undefined means covered. */
+  edliApplicable?: boolean;
 };
 
 export type EpfResult = {
@@ -77,6 +136,13 @@ export type EpfResult = {
   employerPfPaise: Paise;
   employerEpsPaise: Paise;
   vpfPaise: Paise;
+  /** Wage the pension share was charged on (EPS ceiling applied). */
+  epsWagePaise: Paise;
+  /** EDLI wage and contribution — employer only. */
+  edliWagePaise: Paise;
+  edliPaise: Paise;
+  /** EPFO administration charge — employer only. */
+  adminPaise: Paise;
   reason: string;
 };
 
@@ -113,9 +179,14 @@ export function computeEpf(input: EpfInput): EpfResult {
     employerPfPaise: 0,
     employerEpsPaise: 0,
     vpfPaise: 0,
+    epsWagePaise: 0,
+    edliWagePaise: 0,
+    edliPaise: 0,
+    adminPaise: 0,
   };
 
   const aboveCeiling = input.pfWagePaise > params.wageCeilingPaise;
+  const coverageCeiling = params.coverageCeilingPaise ?? params.wageCeilingPaise;
 
   if (input.establishmentCovered === false) {
     return {
@@ -128,7 +199,7 @@ export function computeEpf(input: EpfInput): EpfResult {
   if (
     epfExcluded({
       pfWagePaise: input.pfWagePaise,
-      wageCeilingPaise: params.wageCeilingPaise,
+      wageCeilingPaise: coverageCeiling,
       optedIn: input.optedIn,
       hadPriorMembership: input.hadPriorMembership,
     })
@@ -169,6 +240,16 @@ export function computeEpf(input: EpfInput): EpfResult {
     ? rupee((input.pfWagePaise * input.vpfPercent) / 100)
     : 0;
 
+  /* EDLI and the administration charge are the employer's alone — never
+     deducted — each on its own wage base. EDLI has its own ceiling;
+     international workers are not capped. Rates default to none, so a
+     caller that does not supply them sees no change. */
+  const edliWage = input.isInternationalWorker
+    ? consideredWage
+    : Math.min(consideredWage, params.edliCeilingPaise ?? params.wageCeilingPaise);
+  const edli = input.edliApplicable === false ? 0 : rupee((edliWage * (params.edliBps ?? 0)) / 10000);
+  const admin = rupee((consideredWage * (params.adminBps ?? 0)) / 10000);
+
   return {
     applicable: true,
     pfWageConsidered: consideredWage,
@@ -176,6 +257,10 @@ export function computeEpf(input: EpfInput): EpfResult {
     employerPfPaise: employerPf,
     employerEpsPaise: eps,
     vpfPaise: vpf,
+    epsWagePaise: epsWage,
+    edliWagePaise: input.edliApplicable === false ? 0 : edliWage,
+    edliPaise: edli,
+    adminPaise: admin,
     reason: input.pensionEligible === false && !input.isInternationalWorker
       ? "Attained 58 — no pension share; the whole employer share goes to provident fund"
       : restrictToCeiling

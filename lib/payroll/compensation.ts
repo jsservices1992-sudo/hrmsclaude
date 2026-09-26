@@ -474,6 +474,13 @@ export type EmployerCostParams = {
   hadPriorPfMembership?: boolean;
   /** Employer NPS, basis points of basic + DA. Absent or 0: none. */
   employerNpsBps?: number;
+  /**
+   * EDLI and the EPFO administration charge — employer-only statutory
+   * costs that belong in CTC. Absent: not counted.
+   */
+  epfEdliBps?: number;
+  epfEdliCeilingPaise?: Paise;
+  epfAdminBps?: number;
 };
 
 export type CtcBreakdown = {
@@ -509,7 +516,11 @@ export function employerCostFor(
   const pfWage = p.epfOnActualBasic
     ? evaluation.pfWagePaise
     : Math.min(evaluation.pfWagePaise, p.epfCeilingPaise);
-  const pf = excluded ? 0 : pfRupee((pfWage * p.epfEmployerBps) / 10000);
+  const pf = excluded
+    ? 0
+    : pfRupee((pfWage * p.epfEmployerBps) / 10000) +
+      pfRupee((Math.min(pfWage, p.epfEdliCeilingPaise ?? pfWage) * (p.epfEdliBps ?? 0)) / 10000) +
+      pfRupee((pfWage * (p.epfAdminBps ?? 0)) / 10000);
 
   const esic =
     evaluation.esicCoverageBasePaise <= p.esicThresholdPaise

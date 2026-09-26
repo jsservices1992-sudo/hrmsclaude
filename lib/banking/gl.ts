@@ -500,6 +500,8 @@ export const DEFAULT_MAPPINGS: GlMapping[] = [
 
   { componentCode: "EPF_ER", debitAccount: "EMPLOYER_PF", creditAccount: "PF_PAYABLE" },
   { componentCode: "EPS_ER", debitAccount: "EMPLOYER_PF", creditAccount: "PF_PAYABLE" },
+  { componentCode: "EDLI_ER", debitAccount: "EMPLOYER_PF", creditAccount: "PF_PAYABLE" },
+  { componentCode: "EPF_ADMIN_ER", debitAccount: "EMPLOYER_PF", creditAccount: "PF_PAYABLE" },
   { componentCode: "ESIC_ER", debitAccount: "EMPLOYER_ESIC", creditAccount: "ESIC_PAYABLE" },
   { componentCode: "LWF_ER", debitAccount: "EMPLOYER_LWF", creditAccount: "LWF_PAYABLE" },
   { componentCode: "NPS_ER", debitAccount: "EMPLOYER_NPS", creditAccount: "NPS_PAYABLE" },

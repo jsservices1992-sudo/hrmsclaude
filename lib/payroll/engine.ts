@@ -42,6 +42,7 @@ import {
 import {
   computeEpf,
   computeEsic,
+  pensionEligibility,
   computeLwf,
   computeProfessionalTax,
   type EpfParams,
@@ -102,6 +103,16 @@ export type EmployeeInput = {
    * means the employer does not contribute and no line appears.
    */
   employerNpsBps?: number;
+  /** Employee master: EPS Applicable. "auto" applies the statutory test. */
+  epsApplicability?: "auto" | "yes" | "no";
+  /** Employee master: EDLI Applicable. */
+  edliApplicability?: "auto" | "no";
+  /**
+   * Employee master: Contribution Basis. "ceiling" contributes on the
+   * statutory contribution ceiling, "higher" on the actual PF wage under a
+   * higher-wage arrangement, "company" follows the company setting.
+   */
+  pfContributionBasis?: "company" | "ceiling" | "higher";
   /**
    * Whether each charge reaches this person at all — FR-STAT-1.
    *
@@ -559,15 +570,24 @@ export function computeEmployeePay(args: {
      components flagged as PF base (basic and DA). */
   const pfWage = esiWage.rule === "social_security_code" ? esiWage.contributionWagePaise : epfBase;
   const epfLines: typeof lines = [];
+  const basis = e.pfContributionBasis ?? "company";
+  const pension = pensionEligibility({
+    age: ageAtPeriodEnd(e.dateOfBirth, year, month),
+    epsApplicability: e.epsApplicability ?? "auto",
+    existingMember: e.hadPriorPfMembership,
+    pfWagePaise: pfWage,
+    coverageCeilingPaise: s.epf.coverageCeilingPaise ?? s.epf.wageCeilingPaise,
+  });
   const epf = computeEpf({
     pfWagePaise: pfWage,
     params: s.epf,
-    onActualBasic: c.epfOnActualBasic,
+    onActualBasic: basis === "company" ? c.epfOnActualBasic : basis === "higher",
+    edliApplicable: e.edliApplicability !== "no",
     hadPriorMembership: e.hadPriorPfMembership,
     optedIn: e.pfOptedIn,
     vpfPercent: e.vpfPercent,
     establishmentCovered: e.epfEstablishmentCovered,
-    pensionEligible: !attained58(e.dateOfBirth, year, month),
+    pensionEligible: pension.eligible,
   });
 
   /* A person switched out of a fund on their own record produces no
@@ -616,8 +636,28 @@ export function computeEmployeePay(args: {
       label: "Pension scheme — employer",
       kind: "employer_contribution",
       amountPaise: epf.employerEpsPaise,
-      basis: "8.33% of pension wage, capped at the pension ceiling",
+      basis: pension.eligible
+        ? `8.33% of pension wage ₹${(epf.epsWagePaise / 100).toFixed(0)}, capped at the pension ceiling`
+        : `No pension share — ${pension.reason}`,
     });
+    if (epf.edliPaise > 0) {
+      epfLines.push({
+        code: "EDLI_ER",
+        label: "EDLI — employer",
+        kind: "employer_contribution",
+        amountPaise: epf.edliPaise,
+        basis: `EDLI on ₹${(epf.edliWagePaise / 100).toFixed(0)} — employer only, never deducted`,
+      });
+    }
+    if (epf.adminPaise > 0) {
+      epfLines.push({
+        code: "EPF_ADMIN_ER",
+        label: "EPF administration charge",
+        kind: "employer_contribution",
+        amountPaise: epf.adminPaise,
+        basis: `On EPF wages ₹${(epf.pfWageConsidered / 100).toFixed(0)} — employer only`,
+      });
+    }
   } else {
     warnings.push(epf.reason);
   }
@@ -819,16 +859,12 @@ export function summariseRun(results: SummarisableResult[]): RunTotals {
   };
 }
 
-/**
- * Whether the member is 58 by the end of the period. EPS contributions
- * stop there (EPS 1995, para 12) — the ECR already knew this; the payslip
- * kept showing a pension share nobody was filing.
- */
-function attained58(dateOfBirth: string | null | undefined, year: number, month: number): boolean {
-  if (!dateOfBirth || !/^\d{4}-\d{2}-\d{2}/.test(dateOfBirth)) return false;
+/** Age in completed years on the last day of the period, or null if unknown. */
+function ageAtPeriodEnd(dateOfBirth: string | null | undefined, year: number, month: number): number | null {
+  if (!dateOfBirth || !/^\d{4}-\d{2}-\d{2}/.test(dateOfBirth)) return null;
   const [by, bm, bd] = dateOfBirth.slice(0, 10).split("-").map(Number);
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   let age = year - by;
   if (month < bm || (month === bm && lastDay < bd)) age -= 1;
-  return age >= 58;
+  return age;
 }

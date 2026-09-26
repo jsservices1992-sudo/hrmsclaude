@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
+import { effectiveAsOf } from "../lib/payroll/statutory";
 import { test } from "node:test";
-import { PT_SLABS, PT_UNMODELLED, JURISDICTIONS, LWF_RATES } from "./statutory-data";
+import { PT_SLABS, PT_UNMODELLED, JURISDICTIONS, LWF_RATES, STATUTORY_PARAMS } from "./statutory-data";
 import { checkSlabCoverage, computeProfessionalTax, type PtSlab } from "../lib/payroll/statutory";
 
 const R = (rupees: number) => Math.round(rupees * 100);
@@ -133,4 +134,27 @@ test("Delhi's welfare fund carries all three shares and its headcount floor", ()
      2026), distinct from the LWF Act's own unestablished figure. */
   assert.deepEqual(dl.excludedCategories, ["managerial", "supervisory"]);
   assert.equal(dl.excludeAboveWage, R(18_000));
+});
+
+test("PF ceilings are dated rows: ₹15,000 to 16 Sep 2026, ₹25,000 from 17 Sep", () => {
+  const rows = STATUTORY_PARAMS.map((p) => ({
+    key: p.key,
+    value: p.value,
+    effectiveFrom: ("effectiveFrom" in p && p.effectiveFrom) || "2020-04-01",
+    effectiveTo: ("effectiveTo" in p && p.effectiveTo) || null,
+  }));
+  const at = (key: string, date: string) => {
+    const hit = effectiveAsOf(rows.filter((r) => r.key === key), date);
+    assert.equal(hit.length, 1, `${key} on ${date} resolves to exactly one row`);
+    return hit[0].value / 100;
+  };
+  for (const key of ["epf.wage_ceiling", "epf.coverage_ceiling"]) {
+    assert.equal(at(key, "2026-08-31"), 15000);
+    assert.equal(at(key, "2026-09-16"), 15000);
+    assert.equal(at(key, "2026-09-17"), 25000);
+    assert.equal(at(key, "2026-09-30"), 25000);
+  }
+  // EPS and EDLI move only when their own schemes are verified as revised.
+  assert.equal(at("epf.eps_ceiling", "2026-09-30"), 15000);
+  assert.equal(at("epf.edli_ceiling", "2026-09-30"), 15000);
 });

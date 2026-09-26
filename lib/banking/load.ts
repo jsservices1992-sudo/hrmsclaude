@@ -261,7 +261,9 @@ export async function loadStatutoryPayments(args: {
     );
 
   const items: { purpose: string; label: string; codes: string[]; filingKind: string }[] = [
-    { purpose: "pf", label: "Provident fund", codes: ["EPF_EE", "VPF", "EPF_ER", "EPS_ER"], filingKind: "epf_ecr" },
+    /* EDLI and the administration charge are paid on the same EPF challan
+       (A/c 21 and A/c 2), so they belong in the same remittance. */
+    { purpose: "pf", label: "Provident fund", codes: ["EPF_EE", "VPF", "EPF_ER", "EPS_ER", "EDLI_ER", "EPF_ADMIN_ER"], filingKind: "epf_ecr" },
     { purpose: "esic", label: "ESIC", codes: ["ESIC_EE", "ESIC_ER"], filingKind: "esic_contribution" },
     { purpose: "tds", label: "TDS", codes: ["TDS"], filingKind: "tds_deposit" },
     { purpose: "pt", label: "Professional tax", codes: ["PT"], filingKind: "pt_return" },

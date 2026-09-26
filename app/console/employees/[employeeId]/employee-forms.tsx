@@ -301,12 +301,14 @@ export function PayrollOverridesForm({
   applicability,
   employerNpsBps = 0,
   pran = null,
+  pfMaster = { epsApplicability: "auto", edliApplicability: "auto", pfContributionBasis: "company" },
 }: {
   employeeId: string;
   pfOptedIn: boolean;
   vpfPercent: number;
   employerNpsBps?: number;
   pran?: string | null;
+  pfMaster?: { epsApplicability: string; edliApplicability: string; pfContributionBasis: string };
   taxRegime: string;
   hadPriorPfMembership: boolean;
   applicability: {
@@ -360,6 +362,42 @@ export function PayrollOverridesForm({
           <Select name="taxRegime" defaultValue={taxRegime}>
             <option value="new">New</option>
             <option value="old">Old</option>
+          </Select>
+        </label>
+      </div>
+      {/* The EPF employee master. Membership is kept apart from wage: a
+          member whose pay rises past the ceiling stays a member. */}
+      <div className="grid sm:grid-cols-4 gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-2">Existing EPF member</span>
+          <Select name="existingEpfMember" defaultValue={hadPriorPfMembership ? "yes" : "no"}>
+            <option value="yes">Yes — already a member</option>
+            <option value="no">No — new to EPF</option>
+          </Select>
+          <span className="text-xs text-ink-3">A UAN on record also counts as membership.</span>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-2">Contribution basis</span>
+          <Select name="pfContributionBasis" defaultValue={pfMaster.pfContributionBasis}>
+            <option value="company">As the company sets it</option>
+            <option value="ceiling">Statutory ceiling</option>
+            <option value="higher">Higher / actual wage</option>
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-2">EPS applicable</span>
+          <Select name="epsApplicability" defaultValue={pfMaster.epsApplicability}>
+            <option value="auto">Automatic — the statutory test</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </Select>
+          <span className="text-xs text-ink-3">Set No for a post-2014 joiner above the ceiling who opted in. EPS always stops at 58.</span>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-2">EDLI applicable</span>
+          <Select name="edliApplicability" defaultValue={pfMaster.edliApplicability}>
+            <option value="auto">Yes — every EPF member</option>
+            <option value="no">No — exempted scheme</option>
           </Select>
         </label>
       </div>

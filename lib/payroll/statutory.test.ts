@@ -10,6 +10,7 @@ import {
   checkSlabCoverage,
   lwfEmployerTopUp,
   projectAnnualProfessionalTax,
+  pensionEligibility,
   type EpfParams,
   type LwfInput,
   type LwfRate,
@@ -1090,5 +1091,73 @@ describe("rounding and edges as the law writes them", () => {
     const r = computeEsic({ coverageWagePaise: R(15000), contributionWagePaise: R(15000), month: 7, params: ESIC, implementedArea: true, coveredAtPeriodStart: true });
     assert.equal(r.employeePaise, R(113)); // 0.75% = 112.50
     assert.equal(r.employerPaise, R(488)); // 3.25% = 487.50
+  });
+});
+
+describe("PF rule engine 2026 — ₹25,000 ceiling (owner's rule set)", () => {
+  const P25: EpfParams = {
+    wageCeilingPaise: R(25000),
+    coverageCeilingPaise: R(25000),
+    employeeBps: 1200,
+    employerBps: 1200,
+    epsBps: 833,
+    epsCeilingPaise: R(15000),
+    edliCeilingPaise: R(15000),
+    edliBps: 50,
+    adminBps: 50,
+  };
+  const pf = (wage: number, opts: Partial<Parameters<typeof computeEpf>[0]> = {}) =>
+    computeEpf({ pfWagePaise: R(wage), params: P25, onActualBasic: false, hadPriorMembership: false, optedIn: true, ...opts });
+
+  test("example 13 — ₹19,000: employee and employer ₹2,280", () => {
+    const r = pf(19000);
+    assert.equal(r.employeePaise, R(2280));
+    assert.equal(r.employerPfPaise + r.employerEpsPaise, R(2280));
+  });
+
+  test("example 14 — ₹25,000 is inside the ceiling: ₹3,000 each", () => {
+    const r = pf(25000);
+    assert.equal(r.applicable, true);
+    assert.equal(r.employeePaise, R(3000));
+    assert.equal(r.employerPfPaise + r.employerEpsPaise, R(3000));
+  });
+
+  test("example 15 — ₹35,000 existing member on the ceiling basis: ₹3,000 each, not removed", () => {
+    const r = pf(35000, { hadPriorMembership: true, optedIn: false });
+    assert.equal(r.applicable, true);
+    assert.equal(r.pfWageConsidered, R(25000));
+    assert.equal(r.employeePaise, R(3000));
+  });
+
+  test("case C — a fresh joiner above ₹25,000 is not made a member automatically", () => {
+    const r = pf(30000, { hadPriorMembership: false, optedIn: false });
+    assert.equal(r.applicable, false);
+  });
+
+  test("higher-wage basis contributes on the actual wage, not the ₹25,000 cap", () => {
+    const r = pf(40000, { hadPriorMembership: true, onActualBasic: true });
+    assert.equal(r.employeePaise, R(4800));
+  });
+
+  test("EPS and EDLI each keep their own ceiling; the employer's 12% is split, not added to", () => {
+    const r = pf(25000);
+    assert.equal(r.employerEpsPaise, R(1250), "8.33% of the ₹15,000 EPS ceiling");
+    assert.equal(r.employerPfPaise, R(1750), "the rest of the employer's ₹3,000");
+    assert.equal(r.edliPaise, R(75), "0.5% of the ₹15,000 EDLI ceiling — employer only");
+    assert.equal(r.adminPaise, R(125), "0.5% of EPF wages — employer only");
+  });
+
+  test("example 11 — LOP: ₹24,000 for 20 of 30 days is ₹16,000 earned, ₹1,920 PF", () => {
+    const earned = Math.round((R(24000) / 30) * 20);
+    const r = computeEpf({ pfWagePaise: earned, params: P25, onActualBasic: false, hadPriorMembership: true, optedIn: true });
+    assert.equal(r.employeePaise, R(1920));
+  });
+
+  test("EPS: an existing member above the coverage ceiling stays in; a voluntary one does not", () => {
+    const base = { age: 30, pfWagePaise: R(30000), coverageCeilingPaise: R(25000) };
+    assert.equal(pensionEligibility({ ...base, existingMember: true }).eligible, true);
+    assert.equal(pensionEligibility({ ...base, existingMember: false }).eligible, false);
+    assert.equal(pensionEligibility({ ...base, existingMember: true, epsApplicability: "no" }).eligible, false);
+    assert.equal(pensionEligibility({ ...base, existingMember: true, age: 58, epsApplicability: "yes" }).eligible, false, "58 ends EPS regardless");
   });
 });

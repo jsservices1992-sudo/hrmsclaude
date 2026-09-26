@@ -1,3 +1,4 @@
+import { pensionEligibility } from "../payroll/statutory";
 import type { Paise } from "../payroll/money";
 
 /**
@@ -28,8 +29,11 @@ export type EpfChargeParams = {
   edliMinPaise: Paise;
   /** A/c 22 — EDLI administrative charges. Waived since 2015. */
   edliAdminBps: number;
-  /** EDLI and EPS wages are both capped at the statutory ceiling. */
+  /** The PF contribution ceiling. */
   wageCeilingPaise: Paise;
+  /** EPS and EDLI wages each have their own ceiling. Absent: the contribution ceiling. */
+  epsCeilingPaise?: Paise;
+  edliCeilingPaise?: Paise;
 };
 
 export const EPF_CHARGES_2026: EpfChargeParams = {
@@ -85,22 +89,14 @@ export function isEpsEligible(args: {
   ageAsOfPeriod: number | null;
   isInternationalWorker: boolean;
 }): { eligible: boolean; reason: string } {
-  if (args.isInternationalWorker) {
-    return { eligible: true, reason: "International worker — no wage ceiling applies" };
-  }
-  if (args.ageAsOfPeriod != null && args.ageAsOfPeriod >= 58) {
-    return {
-      eligible: false,
-      reason: "Attained 58 years — pension contribution ceases; the employer share now goes to provident fund alone",
-    };
-  }
-  if (!args.hadPriorPfMembership && args.pfWagePaise > args.wageCeilingPaise) {
-    return {
-      eligible: false,
-      reason: "Excluded employee — no prior PF membership and PF wage above the statutory ceiling; never enters EPS",
-    };
-  }
-  return { eligible: true, reason: "Within the wage ceiling, or an existing member carried over regardless of wages" };
+  // One rule for the payslip and the return — see pensionEligibility.
+  return pensionEligibility({
+    age: args.ageAsOfPeriod,
+    existingMember: args.hadPriorPfMembership,
+    pfWagePaise: args.pfWagePaise,
+    coverageCeilingPaise: args.wageCeilingPaise,
+    isInternationalWorker: args.isInternationalWorker,
+  });
 }
 
 /* ==================================================================
@@ -173,11 +169,14 @@ export function buildEcrLine(
     ? Infinity
     : params.wageCeilingPaise;
 
-  // Pension and EDLI wages are capped even where provident fund is not.
+  // Pension and EDLI wages are capped even where provident fund is not,
+  // each at its own ceiling.
+  const epsCeiling = member.isInternationalWorker ? Infinity : (params.epsCeilingPaise ?? ceiling);
+  const edliCeiling = member.isInternationalWorker ? Infinity : (params.edliCeilingPaise ?? ceiling);
   const epsWagesPaise = member.eligibleForPension
-    ? Math.min(member.epfWagesPaise, ceiling)
+    ? Math.min(member.epfWagesPaise, epsCeiling)
     : 0;
-  const edliWagesPaise = Math.min(member.epfWagesPaise, ceiling);
+  const edliWagesPaise = Math.min(member.epfWagesPaise, edliCeiling);
 
   const epsContributionPaise = member.eligibleForPension
     ? Math.round((epsWagesPaise * epsBps) / 10000)

@@ -474,6 +474,14 @@ export const employees = pgTable(
     employerNpsBps: integer("employer_nps_bps").notNull().default(0),
     /** Permanent Retirement Account Number, for the NPS contribution file. */
     pran: text("pran"),
+    /** EPF master: EPS Applicable. "auto" is the statutory test (58, excluded voluntary members). */
+    epsApplicability: text("eps_applicability", { enum: ["auto", "yes", "no"] }).notNull().default("auto"),
+    /** EPF master: EDLI Applicable. */
+    edliApplicability: text("edli_applicability", { enum: ["auto", "no"] }).notNull().default("auto"),
+    /** EPF master: contribute on the statutory ceiling, on the higher actual wage, or as the company does. */
+    pfContributionBasis: text("pf_contribution_basis", { enum: ["company", "ceiling", "higher"] })
+      .notNull()
+      .default("company"),
     hadPriorPfMembership: boolean("had_prior_pf_membership")
       .notNull()
       .default(false),

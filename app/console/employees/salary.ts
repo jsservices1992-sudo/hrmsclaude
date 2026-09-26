@@ -210,6 +210,9 @@ export async function reviseSalary(
     esicThresholdPaise: statutory.esic.wageThresholdPaise,
     esicEmployerBps: statutory.esic.employerBps,
     gratuityAccrualBps: statutory.gratuity.accrualBps,
+    epfEdliBps: statutory.epf.edliBps,
+    epfEdliCeilingPaise: statutory.epf.edliCeilingPaise,
+    epfAdminBps: statutory.epf.adminBps,
     employerNpsBps: employee.employerNpsBps,
   };
 
@@ -549,7 +552,7 @@ export async function setPayrollOverrides(
     return { error: "Not authorised." };
   }
 
-  const pfOptedIn = fd.get("pfOptedIn") === "on";
+  let pfOptedIn = fd.get("pfOptedIn") === "on";
   const vpfPercentRaw = Number(fd.get("vpfPercent") ?? 0);
   const taxRegime = String(fd.get("taxRegime") ?? "");
 
@@ -581,9 +584,24 @@ export async function setPayrollOverrides(
     return { error: "Add the employee's PRAN — an employer NPS contribution cannot be credited without one." };
   }
 
+  const pick = <T extends string>(name: string, allowed: readonly T[], current: T): T => {
+    const raw = fd.get(name);
+    return raw !== null && (allowed as readonly string[]).includes(String(raw)) ? (String(raw) as T) : current;
+  };
+  const existingRaw = fd.get("existingEpfMember");
+  const hadPriorPfMembership = existingRaw === null ? employee.hadPriorPfMembership : existingRaw === "yes";
+  const epsApplicability = pick("epsApplicability", ["auto", "yes", "no"] as const, employee.epsApplicability);
+  const edliApplicability = pick("edliApplicability", ["auto", "no"] as const, employee.edliApplicability);
+  const pfContributionBasis = pick("pfContributionBasis", ["company", "ceiling", "higher"] as const, employee.pfContributionBasis);
+
+  /* An existing member contributes — there is nothing to opt out of. The
+     checkbox is disabled for them on the form, and a disabled box is
+     never submitted, so reading it as "opted out" refused every save. */
+  if (hadPriorPfMembership) pfOptedIn = true;
+
   // The excluded-employee rule: someone with no prior membership above
   // the ceiling may opt out, but nobody else may.
-  if (!pfOptedIn && employee.hadPriorPfMembership) {
+  if (!pfOptedIn && hadPriorPfMembership) {
     return {
       error:
         "This employee has prior PF membership, so provident fund is compulsory and cannot be opted out of.",
@@ -607,6 +625,10 @@ export async function setPayrollOverrides(
     vpfPercent: employee.vpfPercent,
     employerNpsBps: employee.employerNpsBps,
     pran: employee.pran,
+    hadPriorPfMembership: employee.hadPriorPfMembership,
+    epsApplicability: employee.epsApplicability,
+    edliApplicability: employee.edliApplicability,
+    pfContributionBasis: employee.pfContributionBasis,
     taxRegime: employee.taxRegime,
     pfApplicability: employee.pfApplicability,
     esicApplicability: employee.esicApplicability,
@@ -621,6 +643,10 @@ export async function setPayrollOverrides(
       vpfPercent: vpfPercentRaw,
       employerNpsBps,
       pran,
+      hadPriorPfMembership,
+      epsApplicability,
+      edliApplicability,
+      pfContributionBasis,
       taxRegime,
       pfApplicability: pfApplicability as "auto" | "yes" | "no",
       esicApplicability: esicApplicability as "auto" | "yes" | "no",
@@ -640,6 +666,10 @@ export async function setPayrollOverrides(
       vpfPercent: vpfPercentRaw,
       employerNpsBps,
       pran,
+      hadPriorPfMembership,
+      epsApplicability,
+      edliApplicability,
+      pfContributionBasis,
       taxRegime,
       pfApplicability,
       esicApplicability,

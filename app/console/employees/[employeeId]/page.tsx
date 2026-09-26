@@ -150,6 +150,9 @@ export default async function EmployeeDetailPage(
       // 15 days' wages a year over 26 working days, spread monthly — the
       // standard accrual, same rate the CTC-mode revision solves against.
       gratuityAccrualBps: statutory.gratuity.accrualBps,
+      epfEdliBps: statutory.epf.edliBps,
+      epfEdliCeilingPaise: statutory.epf.edliCeilingPaise,
+      epfAdminBps: statutory.epf.adminBps,
       pfOptedIn: e.pfOptedIn,
       hadPriorPfMembership: e.hadPriorPfMembership,
       employerNpsBps: e.employerNpsBps,
@@ -436,7 +439,12 @@ export default async function EmployeeDetailPage(
             <Row k="PAN" v={e.pan ? <span className="font-mono">{e.pan}</span> : <span className="text-rust">Missing — higher TDS applies</span>} />
             <Row k="UAN" v={e.uan ? <span className="font-mono">{e.uan}</span> : null} />
             <Row k="ESIC IP" v={e.esicIp ? <span className="font-mono">{e.esicIp}</span> : <span className="text-ink-3">Not covered</span>} />
-            <Row k="Prior PF member" v={e.hadPriorPfMembership ? "Yes" : "No"} />
+            <Row k="Existing EPF member" v={e.hadPriorPfMembership || e.uan ? `Yes${!e.hadPriorPfMembership && e.uan ? " (UAN on record)" : ""}` : "No"} />
+            <Row
+              k="PF contribution basis"
+              v={{ company: "As the company sets it", ceiling: "Statutory ceiling", higher: "Higher / actual wage" }[e.pfContributionBasis]}
+            />
+            <Row k="EPS / EDLI" v={`EPS ${e.epsApplicability === "auto" ? "automatic" : e.epsApplicability} · EDLI ${e.edliApplicability === "no" ? "no" : "yes"}`} />
             <Row k="VPF" v={e.vpfPercent > 0 ? `${e.vpfPercent}%` : null} />
             <Row k="Employer NPS" v={e.employerNpsBps > 0 ? `${(e.employerNpsBps / 100).toFixed(2)}% of basic + DA${e.pran ? ` · PRAN ${e.pran}` : ""}` : "None"} />
             <Row
@@ -860,6 +868,11 @@ export default async function EmployeeDetailPage(
                   vpfPercent={detail.employee.vpfPercent}
                   employerNpsBps={detail.employee.employerNpsBps}
                   pran={detail.employee.pran}
+                  pfMaster={{
+                    epsApplicability: detail.employee.epsApplicability,
+                    edliApplicability: detail.employee.edliApplicability,
+                    pfContributionBasis: detail.employee.pfContributionBasis,
+                  }}
                   taxRegime={detail.employee.taxRegime}
                   hadPriorPfMembership={detail.employee.hadPriorPfMembership}
                   applicability={{

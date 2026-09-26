@@ -525,11 +525,26 @@ export const MINIMUM_WAGES: MinimumWageSeed[] = [
 ].flat();
 
 export const STATUTORY_PARAMS = [
-  { key: "epf.wage_ceiling", value: R(15000), unit: "paise" as const, note: "EPF & MP Act statutory wage ceiling", source: "Employees' Provident Funds & Miscellaneous Provisions Act 1952, s.6, read with the ₹15,000 ceiling notified with effect from 1 September 2014" },
+  /* The PF wage ceiling moved from ₹15,000 to ₹25,000 with effect from
+     17 September 2026, for coverage and for contribution — per the EPFO
+     notification the owner supplied on 26 September 2026. Each ceiling is
+     its own dated row so that a later notification can move one without
+     the others; nothing reads a single "PF limit". */
+  { key: "epf.wage_ceiling", value: R(15000), unit: "paise" as const, effectiveTo: "2026-09-16", note: "PF contribution ceiling", source: "EPF & MP Act 1952, s.6, read with the ₹15,000 ceiling notified with effect from 1 September 2014" },
+  { key: "epf.wage_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "PF contribution ceiling — revised", source: "EPFO notification revising the wage ceiling from ₹15,000 to ₹25,000 w.e.f. 17-09-2026 (supplied by the owner; verify against the Gazette)" },
+  { key: "epf.coverage_ceiling", value: R(15000), unit: "paise" as const, effectiveTo: "2026-09-16", note: "PF coverage (eligibility) ceiling — above it a new joiner with no prior membership is an excluded employee", source: "EPF Scheme 1952, para 2(f)" },
+  { key: "epf.coverage_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "PF coverage (eligibility) ceiling — revised", source: "EPFO notification revising the wage ceiling to ₹25,000 w.e.f. 17-09-2026 (supplied by the owner; verify against the Gazette)" },
+  /* EDLI keeps its own ceiling and rate. Left at ₹15,000 until the
+     consequential amendment to the EDLI Scheme is verified — the revision
+     notice speaks of EDLI coverage but not of its figures. */
+  { key: "epf.edli_ceiling", value: R(15000), unit: "paise" as const, note: "EDLI wage ceiling — VERIFY: not yet confirmed as revised with the PF ceiling", source: "EDLI Scheme 1976, para 8" },
+  { key: "epf.edli_bps", value: 50, unit: "bps" as const, note: "0.5% EDLI contribution, employer only", source: "EDLI Scheme 1976, para 8(1)" },
+  { key: "epf.admin_bps", value: 50, unit: "bps" as const, note: "0.5% EPF administration charge, employer only", source: "EPF Scheme 1952, para 30 — 0.50% w.e.f. 1 June 2018" },
   { key: "epf.employee_bps", value: 1200, unit: "bps" as const, note: "12% employee share", source: "Employees' Provident Funds Scheme 1952, para 29(1)" },
   { key: "epf.employer_bps", value: 1200, unit: "bps" as const, note: "12% employer share", source: "EPF & MP Act 1952, s.6 — the employer's contribution equals the employee's" },
   { key: "epf.eps_bps", value: 833, unit: "bps" as const, note: "8.33% diverted to pension scheme", source: "Employees' Pension Scheme 1995, para 3(1)" },
-  { key: "epf.eps_ceiling", value: R(15000), unit: "paise" as const, note: "Pension scheme wage ceiling", source: "Employees' Pension Scheme 1995, para 3 — the pension contribution is computed on wages up to the statutory ceiling even where provident fund is not" },
+  // Left at ₹15,000 until the EPS Scheme's own amendment is verified.
+  { key: "epf.eps_ceiling", value: R(15000), unit: "paise" as const, note: "Pension scheme wage ceiling — VERIFY: not yet confirmed as revised with the PF ceiling", source: "Employees' Pension Scheme 1995, para 3 — the pension contribution is computed on wages up to the statutory ceiling even where provident fund is not" },
   { key: "esic.wage_threshold", value: R(21000), unit: "paise" as const, note: "Monthly gross coverage threshold", source: "Employees' State Insurance (Central) Rules 1950, rule 50" },
   { key: "esic.employee_bps", value: 75, unit: "bps" as const, note: "0.75% employee share", source: "Employees' State Insurance (Central) Rules 1950, rule 51 — with effect from 1 July 2019" },
   { key: "esic.employer_bps", value: 325, unit: "bps" as const, note: "3.25% employer share", source: "Employees' State Insurance (Central) Rules 1950, rule 51 — with effect from 1 July 2019" },

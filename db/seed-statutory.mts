@@ -187,10 +187,15 @@ try {
 
   /* Central parameters carry no per-state verification, so these are
      simply replaced at this effective date. */
+  /* A parameter may now carry its own dates — a revised ceiling is a
+     second row from its effective date, the first closed the day before.
+     Every date this seed writes is cleared first, so a re-run replaces
+     rather than duplicates. */
+  const fromDates = [...new Set(STATUTORY_PARAMS.map((p) => ("effectiveFrom" in p && p.effectiveFrom) || EFFECTIVE_FROM))];
   await db.delete(s.statutoryParams).where(
     and(
       inArray(s.statutoryParams.key, STATUTORY_PARAMS.map((p) => p.key)),
-      eq(s.statutoryParams.effectiveFrom, EFFECTIVE_FROM),
+      inArray(s.statutoryParams.effectiveFrom, fromDates),
     ),
   );
   await db.insert(s.statutoryParams).values(
@@ -199,8 +204,8 @@ try {
       key: p.key,
       value: p.value,
       unit: p.unit,
-      effectiveFrom: EFFECTIVE_FROM,
-      effectiveTo: null,
+      effectiveFrom: ("effectiveFrom" in p && p.effectiveFrom) || EFFECTIVE_FROM,
+      effectiveTo: ("effectiveTo" in p && p.effectiveTo) || null,
       note: p.note,
       source: "source" in p ? p.source : null,
     })),

@@ -136,6 +136,13 @@ export async function loadStatutoryConfig(
       employerBps: p["epf.employer_bps"] ?? 1200,
       epsBps: p["epf.eps_bps"] ?? 833,
       epsCeilingPaise: p["epf.eps_ceiling"] ?? 1_500_000,
+      /* Held separately so a notification can move one without the
+         others: coverage decides who must join, the contribution ceiling
+         what they contribute on, EPS and EDLI their own wage bases. */
+      coverageCeilingPaise: p["epf.coverage_ceiling"] ?? p["epf.wage_ceiling"] ?? 1_500_000,
+      edliCeilingPaise: p["epf.edli_ceiling"] ?? 1_500_000,
+      edliBps: p["epf.edli_bps"] ?? 50,
+      adminBps: p["epf.admin_bps"] ?? 50,
     },
     esic: {
       wageThresholdPaise: p["esic.wage_threshold"] ?? 2_100_000,
@@ -830,6 +837,9 @@ export async function previewRun(args: {
         pfOptedIn: emp.pfOptedIn,
         dateOfBirth: emp.dateOfBirth,
         employerNpsBps: emp.employerNpsBps,
+        epsApplicability: emp.epsApplicability,
+        edliApplicability: emp.edliApplicability,
+        pfContributionBasis: emp.pfContributionBasis,
         pfApplicability: emp.pfApplicability,
         esicApplicability: emp.esicApplicability,
         ptApplicability: emp.ptApplicability,
@@ -916,6 +926,9 @@ export async function previewRun(args: {
                 esicThresholdPaise: statutory.esic.wageThresholdPaise,
                 esicEmployerBps: statutory.esic.employerBps,
                 gratuityAccrualBps: statutory.gratuity.accrualBps,
+                epfEdliBps: statutory.epf.edliBps,
+                epfEdliCeilingPaise: statutory.epf.edliCeilingPaise,
+                epfAdminBps: statutory.epf.adminBps,
                 pfOptedIn: employee.pfOptedIn,
                 hadPriorPfMembership: employee.hadPriorPfMembership,
                 employerNpsBps: employee.employerNpsBps ?? 0,
