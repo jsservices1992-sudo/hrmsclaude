@@ -4,6 +4,7 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { previewRun, loadStatutoryConfig } from "./load";
 import { minimumWageFacts, checkWageCodeSplit } from "./compensation";
+import { codeWageSplit } from "./esic-wage";
 
 export type FinalCheckResult = {
   pendingLeaveCount: number;
@@ -196,20 +197,18 @@ export async function loadFinalCheck(args: {
 
   /* The Code on Wages split, per person, from the preview rather than a
      saved run — the point is to see it before calculating. */
-  const wageCodes = new Set(components.filter((c) => c.epfBase).map((c) => c.code));
   const nameByEmployee = new Map(
     activeEmployees.map((e) => [e.id, { name: `${e.firstName} ${e.lastName}`, empCode: e.empCode }]),
   );
   const wageCodeBreaches: FinalCheckResult["wageCodeBreaches"] = [];
-  if (preview && wageCodes.size > 0) {
+  if (preview && components.length > 0) {
     for (const r of preview.results) {
       if (r.grossPaise <= 0) continue;
-      const wages = r.lines
-        .filter((l) => l.kind === "earning" && wageCodes.has(l.code))
-        .reduce((a, l) => a + l.amountPaise, 0);
+      const split = codeWageSplit(r.lines, components);
+      if (split.remunerationPaise <= 0) continue;
       const check = checkWageCodeSplit({
-        wagesPaise: wages,
-        remunerationPaise: r.grossPaise,
+        wagesPaise: split.wagesPaise,
+        remunerationPaise: split.remunerationPaise,
         minimumShareBps: statutory.wageCodeMinimumShareBps,
       });
       if (!check.compliant) {

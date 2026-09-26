@@ -7,6 +7,7 @@ import {
   type PayrollException,
 } from "./exceptions";
 import { minimumWageFacts, assessStatutoryBonus, checkWageCodeSplit } from "./compensation";
+import { codeWageSplit } from "./esic-wage";
 import { loadStatutoryConfig } from "./load";
 
 function periodEndDate(year: number, month: number) {
@@ -45,6 +46,8 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
       .select({
         employeeId: s.payrollLines.employeeId,
         code: s.payrollLines.code,
+        kind: s.payrollLines.kind,
+        category: s.payrollLines.category,
         amountPaise: s.payrollLines.amountPaise,
         basis: s.payrollLines.basis,
       })
@@ -112,16 +115,14 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
         ? "No pay component is marked as the one that pays the statutory bonus, so the Act's figure cannot be set against what is already paid. Classify the components in master data."
         : null;
 
-  /* "Wages" under the Code is basic and dearness allowance — the same
-     set the Act computes provident fund on, which is what epfBase marks.
-     Everything else the person is paid is the allowance side of the
-     test. */
-  const wageCodes = new Set(components.filter((c) => c.epfBase).map((c) => c.code));
-  const wagesByEmployee = new Map<string, number>();
+  /* "Wages" under the Code is everything paid that is not on its
+     exclusion list — the same per-component treatment PF and ESI use —
+     so a special allowance counts as wages, not as the allowance side. */
+  const linesByEmployee = new Map<string, typeof lines>();
   for (const l of lines) {
-    if (wageCodes.has(l.code)) {
-      wagesByEmployee.set(l.employeeId, (wagesByEmployee.get(l.employeeId) ?? 0) + l.amountPaise);
-    }
+    const list = linesByEmployee.get(l.employeeId) ?? [];
+    list.push(l);
+    linesByEmployee.set(l.employeeId, list);
   }
 
   const bonusWageByEmployee = new Map<string, number>();
@@ -179,12 +180,13 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
   };
 
   const wageCodeFacts = (employeeId: string, grossPaise: number) => {
-    if (wageCodes.size === 0 || grossPaise <= 0) {
+    const split = codeWageSplit(linesByEmployee.get(employeeId) ?? [], components);
+    if (components.length === 0 || grossPaise <= 0 || split.remunerationPaise <= 0) {
       return { wageCodeShortfallPaise: null, wageCodeShare: null };
     }
     const r = checkWageCodeSplit({
-      wagesPaise: wagesByEmployee.get(employeeId) ?? 0,
-      remunerationPaise: grossPaise,
+      wagesPaise: split.wagesPaise,
+      remunerationPaise: split.remunerationPaise,
       minimumShareBps: statutory.wageCodeMinimumShareBps,
     });
     return { wageCodeShortfallPaise: r.shortfallPaise, wageCodeShare: r.share };

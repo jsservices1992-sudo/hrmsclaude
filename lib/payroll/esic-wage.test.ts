@@ -6,6 +6,7 @@ import {
   defaultEsicTreatment,
   esicTreatmentForCategory,
   type EsicWageLine,
+  codeWageSplit,
 } from "./esic-wage";
 
 const R = (rupees: number) => Math.round(rupees * 100);
@@ -148,4 +149,25 @@ describe("Default treatments", () => {
     assert.equal(esicTreatmentForCategory("bonus"), "excluded_50");
     assert.equal(esicTreatmentForCategory("deduction"), "excluded");
   });
+});
+
+test("the Code's 50% split counts special allowance and a monthly bonus as wages, not basic alone", () => {
+  // JBM00041's September: take-home held at ₹40,000, gross re-solved to ₹43,000.
+  const lines = [
+    { code: "BASIC", kind: "earning", amountPaise: 2_090_000 },
+    { code: "HRA", kind: "earning", amountPaise: 836_000 },
+    { code: "BONUS", kind: "earning", amountPaise: 58_310 },
+    { code: "SPL", kind: "earning", amountPaise: 1_315_690 },
+    { code: "EPF_EE", kind: "deduction", amountPaise: 300_000 },
+  ];
+  const components = [
+    { code: "BASIC", esicBase: true, esicTreatment: null },
+    { code: "HRA", esicBase: true, esicTreatment: null },
+    { code: "BONUS", esicBase: false, esicTreatment: "included" as const },
+    { code: "SPL", esicBase: true, esicTreatment: null },
+  ];
+  const split = codeWageSplit(lines, components);
+  assert.equal(split.remunerationPaise, 4_300_000);
+  assert.equal(split.wagesPaise, 4_300_000 - 836_000, "only HRA is excluded");
+  assert.ok(split.wagesPaise / split.remunerationPaise > 0.5, "80.6% — compliant, not 48.6%");
 });

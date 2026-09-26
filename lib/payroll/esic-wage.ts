@@ -184,3 +184,34 @@ export function describeEsicWage(w: EsicWage): string {
       : "")
   );
 }
+
+/**
+ * The Code on Wages 50% split, read off a month's earning lines with the
+ * same per-component treatment PF and ESI use.
+ *
+ * "Wages" is everything paid that is not on the Code's exclusion list —
+ * basic and DA, and also a special allowance or a monthly bonus — not
+ * basic alone. Measuring basic alone flagged people as short whose only
+ * exclusion was a modest HRA. Fully excluded sums (reimbursements,
+ * gratuity) are not remuneration and sit on neither side.
+ */
+export function codeWageSplit(
+  lines: { code: string; kind: string; category?: string | null; amountPaise: Paise }[],
+  components: { code: string; esicTreatment?: EsicTreatment | null; esicBase: boolean }[],
+): { wagesPaise: Paise; remunerationPaise: Paise } {
+  const byCode = new Map(components.map((c) => [c.code, c]));
+  let included = 0;
+  let excluded = 0;
+  for (const l of lines) {
+    if (l.kind !== "earning") continue;
+    const comp = byCode.get(l.code);
+    const t: EsicTreatment = comp
+      ? comp.esicTreatment ?? defaultEsicTreatment(comp.code, comp.esicBase)
+      : l.code === "OFF_DAY_WORK"
+        ? "included"
+        : esicTreatmentForCategory(l.category ?? undefined);
+    if (t === "included") included += l.amountPaise;
+    else if (t === "excluded_50" || t === "overtime") excluded += l.amountPaise;
+  }
+  return { wagesPaise: included, remunerationPaise: included + excluded };
+}
