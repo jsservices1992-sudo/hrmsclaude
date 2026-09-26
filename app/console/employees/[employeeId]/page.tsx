@@ -152,6 +152,7 @@ export default async function EmployeeDetailPage(
       gratuityAccrualBps: statutory.gratuity.accrualBps,
       pfOptedIn: e.pfOptedIn,
       hadPriorPfMembership: e.hadPriorPfMembership,
+      employerNpsBps: e.employerNpsBps,
     };
 
     /* For a salary held at a net, the stored gross is a derived figure and
@@ -437,6 +438,7 @@ export default async function EmployeeDetailPage(
             <Row k="ESIC IP" v={e.esicIp ? <span className="font-mono">{e.esicIp}</span> : <span className="text-ink-3">Not covered</span>} />
             <Row k="Prior PF member" v={e.hadPriorPfMembership ? "Yes" : "No"} />
             <Row k="VPF" v={e.vpfPercent > 0 ? `${e.vpfPercent}%` : null} />
+            <Row k="Employer NPS" v={e.employerNpsBps > 0 ? `${(e.employerNpsBps / 100).toFixed(2)}% of basic + DA${e.pran ? ` · PRAN ${e.pran}` : ""}` : "None"} />
             <Row
               k="Paid as"
               v={
@@ -856,6 +858,8 @@ export default async function EmployeeDetailPage(
                   employeeId={detail.employee.id}
                   pfOptedIn={detail.employee.pfOptedIn}
                   vpfPercent={detail.employee.vpfPercent}
+                  employerNpsBps={detail.employee.employerNpsBps}
+                  pran={detail.employee.pran}
                   taxRegime={detail.employee.taxRegime}
                   hadPriorPfMembership={detail.employee.hadPriorPfMembership}
                   applicability={{

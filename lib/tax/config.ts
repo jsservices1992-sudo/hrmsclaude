@@ -220,6 +220,8 @@ export const DEDUCTION_LIMITS_2026: DeductionLimits = {
   section80eebPaise: L(150000),
   // Rent paid where no HRA is received at all — ₹5,000 a month.
   section80ggMaxPaise: L(60000),
+  section80ccd2NewRegimeBps: 1400,
+  section80ccd2OldRegimeBps: 1000,
 };
 
 /** Landlord PAN is required once annual rent crosses ₹1,00,000. */

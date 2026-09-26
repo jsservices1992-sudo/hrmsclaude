@@ -79,6 +79,14 @@ export function completedYears(dateOfJoining: string, lastWorkingDay: string): n
  * Six months or more of a part year rounds up — the rule that decides
  * whether someone at 4 years 7 months qualifies at all.
  */
+/** Days served past the given completed-year anniversary, both ends counted. */
+function daysBeyondAnniversary(dateOfJoining: string, lastWorkingDay: string, years: number): number {
+  const from = new Date(dateOfJoining + "T00:00:00Z");
+  const anniversary = Date.UTC(from.getUTCFullYear() + years, from.getUTCMonth(), from.getUTCDate());
+  const to = Date.parse(lastWorkingDay + "T00:00:00Z");
+  return Math.floor((to - anniversary) / 86_400_000) + 1;
+}
+
 export function computeGratuity(input: {
   dateOfJoining: string;
   lastWorkingDay: string;
@@ -95,6 +103,13 @@ export function computeGratuity(input: {
    * the provision exists to answer.
    */
   fixedTerm?: boolean;
+  /**
+   * Count 4 years and 240 days as five years' service. A company choice
+   * made after legal review — some High Courts read s.2A this way, the
+   * statute does not say it — so it is off unless turned on, and never
+   * applies to fixed-term service, which has its own one-year rule.
+   */
+  fourYears240Days?: boolean;
   /** Forfeiture requires an explicit, reasoned decision — never a default. */
   forfeited?: boolean;
   forfeitureReason?: string;
@@ -137,15 +152,24 @@ export function computeGratuity(input: {
   }
 
   // The five-year qualifying period does not apply on death or disablement.
-  const waivesQualifying = input.exitType === "death_in_service";
+  /* Payment of Gratuity Act s.4(1) proviso, carried into the Code on
+     Social Security s.53(1): five years' continuous service is not
+     required where employment ends on death or disablement due to
+     accident or disease. */
+  const waivesQualifying =
+    input.exitType === "death_in_service" || input.exitType === "disablement";
   const qualifying = input.fixedTerm
     ? p.fixedTermQualifyingYears
     : p.qualifyingYears;
 
-  if (
-    !waivesQualifying &&
-    completedYears(input.dateOfJoining, input.lastWorkingDay) < qualifying
-  ) {
+  const completed = completedYears(input.dateOfJoining, input.lastWorkingDay);
+  const via240 =
+    !input.fixedTerm &&
+    input.fourYears240Days === true &&
+    completed === qualifying - 1 &&
+    daysBeyondAnniversary(input.dateOfJoining, input.lastWorkingDay, completed) >= 240;
+
+  if (!waivesQualifying && !via240 && completed < qualifying) {
     return {
       eligible: false,
       ...empty,
@@ -170,8 +194,14 @@ export function computeGratuity(input: {
     cappedPaise: capped,
     exemptPaise: exempt,
     taxablePaise: Math.max(0, capped - exempt),
-    reason: waivesQualifying
-      ? "Qualifying period waived on death in service"
+    reason: via240
+      ? `${countedYears} counted years — 4 years and 240 days treated as five under the company's legal-review setting`
+      : input.fixedTerm
+      ? `Fixed-term employment: ${countedYears} years pro rata at ${p.daysPerYear}/${p.monthDivisor} of last drawn wages (one-year qualifying period)`
+      : waivesQualifying
+      ? input.exitType === "disablement"
+        ? "Qualifying period waived on disablement"
+        : "Qualifying period waived on death in service"
       : `${countedYears} counted years at ${p.daysPerYear}/${p.monthDivisor} of last drawn wages`,
   };
 }

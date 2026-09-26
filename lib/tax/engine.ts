@@ -259,6 +259,13 @@ export type DeductionLimits = {
   section80eebPaise: Paise;
   /** 80GG — rent paid where no HRA is received at all, annual cap. */
   section80ggMaxPaise: Paise;
+  /**
+   * 80CCD(2) cap on employer NPS, as basis points of basic + DA: 14% under
+   * the new regime (Finance Act 2024), 10% under the old for a
+   * non-government employer.
+   */
+  section80ccd2NewRegimeBps?: number;
+  section80ccd2OldRegimeBps?: number;
 };
 
 /** How severely disabled a person is, for 80DD/80U — "none" claims nothing. */
@@ -331,6 +338,8 @@ export function computeDeductions(args: {
    * from nothing.
    */
   grossSalaryPaise?: Paise;
+  /** Annual basic + DA — what the 80CCD(2) percentage cap is taken of. */
+  basicDaPaise?: Paise;
 }): DeductionResult {
   const { claims: c, limits: l } = args;
   const lines: DeductionLine[] = [];
@@ -370,7 +379,19 @@ export function computeDeductions(args: {
   add("80CCD(1B)", c.section80ccd1bPaise, l.section80ccd1bPaise, via, "Over and above 80C");
 
   // Employer NPS survives the new regime — the one notable exception.
-  add("80CCD(2)", c.section80ccd2Paise, null, true, "Employer contribution, allowed in both regimes");
+  const ccd2Bps =
+    args.regime === "new" ? l.section80ccd2NewRegimeBps : l.section80ccd2OldRegimeBps;
+  const ccd2Cap =
+    ccd2Bps != null && args.basicDaPaise != null
+      ? Math.round((args.basicDaPaise * ccd2Bps) / 10000)
+      : null;
+  add(
+    "80CCD(2)",
+    c.section80ccd2Paise,
+    ccd2Cap,
+    true,
+    ccd2Bps != null ? `employer NPS up to ${ccd2Bps / 100}% of basic + DA` : "Employer contribution, allowed in both regimes",
+  );
 
   add(
     "80D — self & family",

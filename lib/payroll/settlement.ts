@@ -38,6 +38,8 @@ export type SettlementInput = {
    * payee instead, and never reaches here.
    */
   employmentType?: string;
+  /** The company's legal-review choice to count 4 years 240 days as five. */
+  gratuityFourYears240Days?: boolean;
 
   /** Salary for days worked in the final month, already prorated. */
   finalMonthSalaryPaise: Paise;
@@ -161,6 +163,7 @@ export function computeSettlement(input: SettlementInput): SettlementResult {
     lastDrawnWagePaise: input.monthlyBasicPaise,
     exitType: input.exitType,
     fixedTerm: input.employmentType === "contract",
+    fourYears240Days: input.gratuityFourYears240Days ?? false,
     forfeited: input.gratuityForfeited,
     forfeitureReason: input.gratuityForfeitureReason,
   });

@@ -92,6 +92,7 @@ export type SettingsValues = {
   sandwichRule: boolean;
   epfOnActualBasic: boolean;
   advancedTaxEnabled: boolean;
+  gratuityFourYears240Days: boolean;
   retroLopTreatment: string;
   weeklyOffWorkTreatment: string;
   financialYearStartMonth: number;
@@ -134,6 +135,7 @@ export function PayrollSettingsForm({
           {values.sandwichRule && <input type="hidden" name="sandwichRule" value="on" />}
           {values.epfOnActualBasic && <input type="hidden" name="epfOnActualBasic" value="on" />}
           {values.advancedTaxEnabled && <input type="hidden" name="advancedTaxEnabled" value="on" />}
+          {values.gratuityFourYears240Days && <input type="hidden" name="gratuityFourYears240Days" value="on" />}
           <input type="hidden" name="retroLopTreatment" value={values.retroLopTreatment} />
           <input type="hidden" name="weeklyOffWorkTreatment" value={values.weeklyOffWorkTreatment} />
           <input type="hidden" name="financialYearStartMonth" value={values.financialYearStartMonth} />
@@ -221,6 +223,13 @@ export function PayrollSettingsForm({
             <Check
               label="EPF on actual basic" name="epfOnActualBasic" defaultChecked={values.epfOnActualBasic} disabled={d}
               hint="Otherwise contributions are restricted to the statutory ceiling"
+            />
+            <Check
+              label="Gratuity: count 4 years 240 days as 5 years"
+              name="gratuityFourYears240Days"
+              defaultChecked={values.gratuityFourYears240Days}
+              disabled={d}
+              hint="Legal review needed. Some High Courts read s.2A this way; the Act itself says five years. Off by default, and never applied to fixed-term staff, who qualify after one year."
             />
             <Num label="Financial year starts (month)" name="financialYearStartMonth" defaultValue={values.financialYearStartMonth} disabled={d} hint="4 = April" />
           </Group>

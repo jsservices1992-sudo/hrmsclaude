@@ -123,6 +123,14 @@ export const companies = pgTable("companies", {
     .notNull()
     .default(false),
   /**
+   * Whether 4 years and 240 days counts as the five years gratuity needs.
+   * A reading some High Courts give s.2A, not the statute's own words —
+   * off unless the company turns it on after legal review.
+   */
+  gratuityFourYears240Days: boolean("gratuity_four_years_240_days")
+    .notNull()
+    .default(false),
+  /**
    * Special-rate income (capital gains, VDA, lottery, gaming) is real
    * but rare — most salaried employees have none of it, and showing the
    * form to everyone would put CA-level tax vocabulary in front of
@@ -462,6 +470,10 @@ export const employees = pgTable(
     esicIp: text("esic_ip"),
     /* No prior PF membership + basic above ceiling at joining = excluded
        employee, PF optional. PRD FR-STAT-1 */
+    /** Employer NPS as basis points of basic + DA. 0 = the employer does not contribute. */
+    employerNpsBps: integer("employer_nps_bps").notNull().default(0),
+    /** Permanent Retirement Account Number, for the NPS contribution file. */
+    pran: text("pran"),
     hadPriorPfMembership: boolean("had_prior_pf_membership")
       .notNull()
       .default(false),
@@ -1781,6 +1793,7 @@ export const exitCases = pgTable(
         "retirement",
         "contract_end",
         "death_in_service",
+        "disablement",
       ],
     }).notNull(),
     resignationDate: text("resignation_date").notNull(),

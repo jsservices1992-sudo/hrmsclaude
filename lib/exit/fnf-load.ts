@@ -183,7 +183,14 @@ export async function loadFnfCase(
     }),
   });
 
+  const [companyRule] = await db
+    .select({ fourYears240Days: s.companies.gratuityFourYears240Days })
+    .from(s.companies)
+    .where(eq(s.companies.id, employee.companyId))
+    .limit(1);
+
   const settlement = computeSettlement({
+    gratuityFourYears240Days: companyRule?.fourYears240Days ?? false,
     employeeId: employee.id,
     name: `${employee.firstName} ${employee.lastName}`,
     exitType: exitCase.exitType,

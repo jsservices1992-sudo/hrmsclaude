@@ -330,7 +330,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
               <option value="">All types</option>
               <option value="permanent">Permanent</option>
               <option value="probation">Probation</option>
-              <option value="contract">Contract</option>
+              <option value="contract">Fixed-term (FTE)</option>
               <option value="intern">Intern</option>
               <option value="consultant">Consultant</option>
             </Select>

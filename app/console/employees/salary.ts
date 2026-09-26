@@ -210,6 +210,7 @@ export async function reviseSalary(
     esicThresholdPaise: statutory.esic.wageThresholdPaise,
     esicEmployerBps: statutory.esic.employerBps,
     gratuityAccrualBps: statutory.gratuity.accrualBps,
+    employerNpsBps: employee.employerNpsBps,
   };
 
   // From a target CTC or take-home, work back to the gross that produces it.
@@ -562,6 +563,24 @@ export async function setPayrollOverrides(
     return { error: "Choose a tax regime." };
   }
 
+  /* Employer NPS. Capped at 14% here only because nothing above it can be
+     deducted under either regime — an employer may pay more, but it would
+     all be taxed, which is a decision to take deliberately elsewhere. */
+  const npsRaw = fd.get("employerNpsPercent");
+  const npsPercent = npsRaw === null || String(npsRaw).trim() === "" ? employee.employerNpsBps / 100 : Number(npsRaw);
+  if (!Number.isFinite(npsPercent) || npsPercent < 0 || npsPercent > 14) {
+    return { error: "Employer NPS is a percentage of basic + DA between 0 and 14." };
+  }
+  const employerNpsBps = Math.round(npsPercent * 100);
+  const pranRaw = fd.get("pran");
+  const pran = pranRaw === null ? employee.pran : String(pranRaw).trim() || null;
+  if (pran && !/^\d{12}$/.test(pran)) {
+    return { error: "A PRAN is 12 digits." };
+  }
+  if (employerNpsBps > 0 && !pran) {
+    return { error: "Add the employee's PRAN — an employer NPS contribution cannot be credited without one." };
+  }
+
   // The excluded-employee rule: someone with no prior membership above
   // the ceiling may opt out, but nobody else may.
   if (!pfOptedIn && employee.hadPriorPfMembership) {
@@ -586,6 +605,8 @@ export async function setPayrollOverrides(
   const before = {
     pfOptedIn: employee.pfOptedIn,
     vpfPercent: employee.vpfPercent,
+    employerNpsBps: employee.employerNpsBps,
+    pran: employee.pran,
     taxRegime: employee.taxRegime,
     pfApplicability: employee.pfApplicability,
     esicApplicability: employee.esicApplicability,
@@ -598,6 +619,8 @@ export async function setPayrollOverrides(
     .set({
       pfOptedIn,
       vpfPercent: vpfPercentRaw,
+      employerNpsBps,
+      pran,
       taxRegime,
       pfApplicability: pfApplicability as "auto" | "yes" | "no",
       esicApplicability: esicApplicability as "auto" | "yes" | "no",
@@ -615,6 +638,8 @@ export async function setPayrollOverrides(
     after: {
       pfOptedIn,
       vpfPercent: vpfPercentRaw,
+      employerNpsBps,
+      pran,
       taxRegime,
       pfApplicability,
       esicApplicability,

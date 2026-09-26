@@ -98,6 +98,11 @@ export type EmployeeInput = {
   /** For the pension scheme, which stops at 58. Unknown means still in it. */
   dateOfBirth?: string | null;
   /**
+   * Employer NPS, basis points of basic + DA (1000 = 10%). Zero or absent
+   * means the employer does not contribute and no line appears.
+   */
+  employerNpsBps?: number;
+  /**
    * Whether each charge reaches this person at all — FR-STAT-1.
    *
    * "auto" is the statutory test. "no" is honoured only where the test
@@ -390,66 +395,10 @@ export function computeEmployeePay(args: {
     });
   });
 
-  /* ---- EPF ---- */
-  const epf = computeEpf({
-    pfWagePaise: epfBase,
-    params: s.epf,
-    onActualBasic: c.epfOnActualBasic,
-    hadPriorMembership: e.hadPriorPfMembership,
-    optedIn: e.pfOptedIn,
-    vpfPercent: e.vpfPercent,
-    establishmentCovered: e.epfEstablishmentCovered,
-    pensionEligible: !attained58(e.dateOfBirth, year, month),
-  });
-
-  /* A person switched out of a fund on their own record produces no
-     finding. It is a decision somebody made once, with their name on it
-     in the audit trail; repeating it every month for every such person
-     buries the findings that do need reading under ones that do not. */
-  if (epf.applicable) {
-    // The wage the contribution was computed on. Recorded as its own line
-    // because the ECR files it as a column, and a stored run has to be
-    // able to produce the return without recomputing the whole month.
-    lines.push({
-      code: "EPF_WAGES",
-      label: "PF wage considered",
-      kind: "info",
-      amountPaise: epf.pfWageConsidered,
-      basis: epf.reason,
-    });
-    lines.push({
-      code: "EPF_EE",
-      label: "Provident fund — employee",
-      kind: "deduction",
-      amountPaise: epf.employeePaise,
-      basis: `12% of PF wage ₹${(epf.pfWageConsidered / 100).toFixed(0)} — ${epf.reason}`,
-    });
-    if (epf.vpfPaise > 0) {
-      lines.push({
-        code: "VPF",
-        label: "Voluntary provident fund",
-        kind: "deduction",
-        amountPaise: epf.vpfPaise,
-        basis: `${e.vpfPercent}% of PF wage, voluntary`,
-      });
-    }
-    lines.push({
-      code: "EPF_ER",
-      label: "Provident fund — employer",
-      kind: "employer_contribution",
-      amountPaise: epf.employerPfPaise,
-      basis: "Employer share after pension diversion",
-    });
-    lines.push({
-      code: "EPS_ER",
-      label: "Pension scheme — employer",
-      kind: "employer_contribution",
-      amountPaise: epf.employerEpsPaise,
-      basis: "8.33% of pension wage, capped at the pension ceiling",
-    });
-  } else {
-    warnings.push(epf.reason);
-  }
+  /* PF is computed further down, once overtime and incentives are in —
+     the Code's wage cannot be known before then — but its lines belong
+     here on the slip, straight after the earnings. */
+  const epfLinesAt = lines.length;
 
   /* ---- Professional tax ---- */
   const pt = computeProfessionalTax({
@@ -602,6 +551,96 @@ export function computeEmployeePay(args: {
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const periodEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
   const esiWage = esicWage(esicLines, esicRuleFor(periodEnd));
+
+  /* ---- EPF ---- */
+  /* Under the Code on Social Security (from 21 November 2025) PF is
+     charged on the Code's "wages" — the same wage ESI uses — and only
+     then are PF's own ceiling and coverage rules applied. Before it, the
+     components flagged as PF base (basic and DA). */
+  const pfWage = esiWage.rule === "social_security_code" ? esiWage.contributionWagePaise : epfBase;
+  const epfLines: typeof lines = [];
+  const epf = computeEpf({
+    pfWagePaise: pfWage,
+    params: s.epf,
+    onActualBasic: c.epfOnActualBasic,
+    hadPriorMembership: e.hadPriorPfMembership,
+    optedIn: e.pfOptedIn,
+    vpfPercent: e.vpfPercent,
+    establishmentCovered: e.epfEstablishmentCovered,
+    pensionEligible: !attained58(e.dateOfBirth, year, month),
+  });
+
+  /* A person switched out of a fund on their own record produces no
+     finding. It is a decision somebody made once, with their name on it
+     in the audit trail; repeating it every month for every such person
+     buries the findings that do need reading under ones that do not. */
+  if (epf.applicable) {
+    // The wage the contribution was computed on. Recorded as its own line
+    // because the ECR files it as a column, and a stored run has to be
+    // able to produce the return without recomputing the whole month.
+    epfLines.push({
+      code: "EPF_WAGES",
+      label: "PF wage considered",
+      kind: "info",
+      amountPaise: epf.pfWageConsidered,
+      basis:
+        esiWage.rule === "social_security_code" && pfWage !== epfBase
+          ? `${epf.reason} — Code on Wages wage ₹${(pfWage / 100).toFixed(2)} (basic ₹${(epfBase / 100).toFixed(2)} plus allowances counted as wages)`
+          : epf.reason,
+    });
+    epfLines.push({
+      code: "EPF_EE",
+      label: "Provident fund — employee",
+      kind: "deduction",
+      amountPaise: epf.employeePaise,
+      basis: `12% of PF wage ₹${(epf.pfWageConsidered / 100).toFixed(0)} — ${epf.reason}`,
+    });
+    if (epf.vpfPaise > 0) {
+      epfLines.push({
+        code: "VPF",
+        label: "Voluntary provident fund",
+        kind: "deduction",
+        amountPaise: epf.vpfPaise,
+        basis: `${e.vpfPercent}% of PF wage, voluntary`,
+      });
+    }
+    epfLines.push({
+      code: "EPF_ER",
+      label: "Provident fund — employer",
+      kind: "employer_contribution",
+      amountPaise: epf.employerPfPaise,
+      basis: "Employer share after pension diversion",
+    });
+    epfLines.push({
+      code: "EPS_ER",
+      label: "Pension scheme — employer",
+      kind: "employer_contribution",
+      amountPaise: epf.employerEpsPaise,
+      basis: "8.33% of pension wage, capped at the pension ceiling",
+    });
+  } else {
+    warnings.push(epf.reason);
+  }
+
+  /* ---- Employer NPS ----
+     Paid by the employer into the employee's NPS account, on basic + DA
+     as earned this month. Part of what the employee costs, never taken
+     from pay; its tax treatment — salary under s.17(1), deductible under
+     80CCD(2) up to 14% (new regime) or 10% (old) of basic + DA — is the
+     tax worksheet's to apply. */
+  const npsBps = e.employerNpsBps ?? 0;
+  if (npsBps > 0 && epfBase > 0) {
+    const nps = Math.round((epfBase * npsBps) / 10000 / 100) * 100;
+    epfLines.push({
+      code: "NPS_ER",
+      label: "NPS — employer",
+      kind: "employer_contribution",
+      amountPaise: nps,
+      basis: `${(npsBps / 100).toFixed(2)}% of basic + DA ₹${(epfBase / 100).toFixed(2)} — deductible under 80CCD(2)`,
+    });
+  }
+  lines.splice(epfLinesAt, 0, ...epfLines);
+
 
   const esic = computeEsic({
     coverageWagePaise: esiWage.coverageWagePaise,

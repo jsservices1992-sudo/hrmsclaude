@@ -337,8 +337,9 @@ export function detectExceptions(
         severity: "warning",
         message:
           `Wages are ${((r.wageCodeShare ?? 0) * 100).toFixed(1)}% of total pay, under the half the ` +
-          `Code on Wages requires. Basic would have to rise by ${rupees(r.wageCodeShortfallPaise)} ` +
-          `a month, which also raises provident fund, gratuity and bonus.`,
+          `Code on Wages requires. PF and ESI are already charged on the Code's wage, with the ` +
+          `${rupees(r.wageCodeShortfallPaise)} excess added back; the structure itself would need basic ` +
+          `raised by that much a month, which also moves gratuity and bonus.`,
       });
     }
 

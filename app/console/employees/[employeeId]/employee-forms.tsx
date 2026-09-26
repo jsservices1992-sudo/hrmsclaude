@@ -299,10 +299,14 @@ export function PayrollOverridesForm({
   taxRegime,
   hadPriorPfMembership,
   applicability,
+  employerNpsBps = 0,
+  pran = null,
 }: {
   employeeId: string;
   pfOptedIn: boolean;
   vpfPercent: number;
+  employerNpsBps?: number;
+  pran?: string | null;
   taxRegime: string;
   hadPriorPfMembership: boolean;
   applicability: {
@@ -357,6 +361,25 @@ export function PayrollOverridesForm({
             <option value="new">New</option>
             <option value="old">Old</option>
           </Select>
+        </label>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-2">Employer NPS (% of basic + DA)</span>
+          <Input
+            name="employerNpsPercent"
+            type="number"
+            min={0}
+            max={14}
+            step={0.01}
+            defaultValue={employerNpsBps / 100}
+            className="font-mono tnum"
+          />
+          <span className="text-xs text-ink-3">0 if the employer does not contribute. Deductible under 80CCD(2) up to 14% (new regime) or 10% (old).</span>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-2">PRAN</span>
+          <Input name="pran" defaultValue={pran ?? ""} placeholder="12-digit NPS account number" className="font-mono" />
         </label>
       </div>
       <div className="grid sm:grid-cols-4 gap-3">

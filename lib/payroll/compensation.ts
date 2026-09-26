@@ -207,7 +207,16 @@ export type EvaluatedComponent = {
 export type EvaluationResult = {
   components: EvaluatedComponent[];
   grossPaise: Paise;
+  /** Basic + DA — the components flagged as PF base. Also what HRA and 80CCD(2) read. */
   epfBasePaise: Paise;
+  /**
+   * The wage provident fund is charged on. Under the Code on Social
+   * Security it is the Code's "wages" — basic, DA and every allowance not
+   * on the exclusion list, plus whatever of HRA, conveyance, overtime and
+   * commission exceeds half of all pay — the same wage ESI now uses. PF's
+   * own ceiling and coverage rules are applied to it afterwards.
+   */
+  pfWagePaise: Paise;
   /** ESI contribution wage — what 0.75% and 3.25% are charged on. */
   esicBasePaise: Paise;
   /** ESI coverage wage — what the ₹21,000 ceiling is tested on. */
@@ -278,6 +287,7 @@ export function evaluateStructure(
       components: [],
       grossPaise: 0,
       epfBasePaise: 0,
+      pfWagePaise: 0,
       esicBasePaise: 0,
       esicCoverageBasePaise: 0,
       ptBasePaise: 0,
@@ -430,6 +440,8 @@ export function evaluateStructure(
     components: evaluated,
     grossPaise: gross,
     epfBasePaise: sumWhere((c) => c.epfBase),
+    pfWagePaise:
+      esicRule === "social_security_code" ? esi.contributionWagePaise : sumWhere((c) => c.epfBase),
     esicBasePaise: esi.contributionWagePaise,
     esicCoverageBasePaise: esi.coverageWagePaise,
     ptBasePaise: sumWhere((c) => c.ptBase),
@@ -460,6 +472,8 @@ export type EmployerCostParams = {
    */
   pfOptedIn?: boolean;
   hadPriorPfMembership?: boolean;
+  /** Employer NPS, basis points of basic + DA. Absent or 0: none. */
+  employerNpsBps?: number;
 };
 
 export type CtcBreakdown = {
@@ -468,6 +482,7 @@ export type CtcBreakdown = {
   components: EvaluatedComponent[];
   employerPfPaise: Paise;
   employerEsicPaise: Paise;
+  employerNpsPaise: Paise;
   gratuityProvisionPaise: Paise;
   otherEmployerPaise: Paise;
   monthlyCtcPaise: Paise;
@@ -475,33 +490,42 @@ export type CtcBreakdown = {
   warnings: string[];
 };
 
+/* The same rounding the payroll engine applies, so a projected take-home
+   is the one the payslip will show: PF to the nearest rupee, ESI up to
+   the next. */
+const pfRupee = (paise: number): Paise => Math.round(paise / 100) * 100;
+const esiRupee = (paise: number): Paise => Math.ceil(Math.round(paise) / 100) * 100;
+
 export function employerCostFor(
   evaluation: EvaluationResult,
   p: EmployerCostParams,
-): { pf: Paise; esic: Paise; gratuity: Paise; bonus: Paise; other: Paise } {
+): { pf: Paise; esic: Paise; nps: Paise; gratuity: Paise; bonus: Paise; other: Paise } {
   const excluded = epfExcluded({
-    pfWagePaise: evaluation.epfBasePaise,
+    pfWagePaise: evaluation.pfWagePaise,
     wageCeilingPaise: p.epfCeilingPaise,
     optedIn: p.pfOptedIn ?? true,
     hadPriorMembership: p.hadPriorPfMembership ?? false,
   });
   const pfWage = p.epfOnActualBasic
-    ? evaluation.epfBasePaise
-    : Math.min(evaluation.epfBasePaise, p.epfCeilingPaise);
-  const pf = excluded ? 0 : Math.round((pfWage * p.epfEmployerBps) / 10000);
+    ? evaluation.pfWagePaise
+    : Math.min(evaluation.pfWagePaise, p.epfCeilingPaise);
+  const pf = excluded ? 0 : pfRupee((pfWage * p.epfEmployerBps) / 10000);
 
   const esic =
     evaluation.esicCoverageBasePaise <= p.esicThresholdPaise
-      ? Math.ceil((evaluation.esicBasePaise * p.esicEmployerBps) / 10000)
+      ? esiRupee((evaluation.esicBasePaise * p.esicEmployerBps) / 10000)
       : 0;
 
   const gratuity = Math.round(
     (evaluation.gratuityBasePaise * p.gratuityAccrualBps) / 10000,
   );
 
+  const nps = pfRupee((evaluation.epfBasePaise * (p.employerNpsBps ?? 0)) / 10000);
+
   return {
     pf,
     esic,
+    nps,
     gratuity,
     bonus: evaluation.employerBonusPaise,
     other: p.otherMonthlyPaise ?? 0,
@@ -522,7 +546,7 @@ export function buildFromGross(args: {
   const cost = employerCostFor(evaluation, args.employer);
 
   const monthlyCtc =
-    evaluation.grossPaise + cost.pf + cost.esic + cost.gratuity + cost.bonus + cost.other;
+    evaluation.grossPaise + cost.pf + cost.esic + cost.nps + cost.gratuity + cost.bonus + cost.other;
 
   return {
     monthlyGrossPaise: evaluation.grossPaise,
@@ -530,6 +554,7 @@ export function buildFromGross(args: {
     components: evaluation.components,
     employerPfPaise: cost.pf,
     employerEsicPaise: cost.esic,
+    employerNpsPaise: cost.nps,
     gratuityProvisionPaise: cost.gratuity,
     otherEmployerPaise: cost.other,
     monthlyCtcPaise: monthlyCtc,
@@ -616,20 +641,20 @@ export function takeHomeFor(
   const excluded =
     p.epfEstablishmentCovered === false ||
     epfExcluded({
-      pfWagePaise: evaluation.epfBasePaise,
+      pfWagePaise: evaluation.pfWagePaise,
       wageCeilingPaise: p.epfCeilingPaise,
       optedIn: p.pfOptedIn ?? true,
       hadPriorMembership: p.hadPriorPfMembership ?? false,
     });
   const pfWage = p.epfOnActualBasic
-    ? evaluation.epfBasePaise
-    : Math.min(evaluation.epfBasePaise, p.epfCeilingPaise);
-  const epf = excluded ? 0 : Math.round((pfWage * p.epfEmployeeBps) / 10000);
+    ? evaluation.pfWagePaise
+    : Math.min(evaluation.pfWagePaise, p.epfCeilingPaise);
+  const epf = excluded ? 0 : pfRupee((pfWage * p.epfEmployeeBps) / 10000);
 
   const esic =
     p.esicEstablishmentCovered !== false &&
     evaluation.esicCoverageBasePaise <= p.esicThresholdPaise
-      ? Math.ceil((evaluation.esicBasePaise * p.esicEmployeeBps) / 10000)
+      ? esiRupee((evaluation.esicBasePaise * p.esicEmployeeBps) / 10000)
       : 0;
 
   const pt = p.professionalTaxPaise;

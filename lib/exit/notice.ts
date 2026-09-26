@@ -8,7 +8,8 @@ export type ExitType =
   | "abscondment"
   | "retirement"
   | "contract_end"
-  | "death_in_service";
+  | "death_in_service"
+  | "disablement";
 
 export type NoticeBasis = "calendar_days" | "working_days";
 
@@ -109,12 +110,16 @@ export function valueNotice(input: {
     };
   }
 
-  // Death in service never carries a notice recovery.
-  if (input.exitType === "death_in_service") {
+  /* Death in service never carries a notice recovery, and neither does a
+     separation because the employee can no longer work — there was no
+     notice they could have served. */
+  if (input.exitType === "death_in_service" || input.exitType === "disablement") {
     return {
       kind: "none",
       amountPaise: 0,
-      note: "Notice not applicable on death in service",
+      note: input.exitType === "disablement"
+        ? "Notice not applicable on separation due to disablement"
+        : "Notice not applicable on death in service",
     };
   }
 

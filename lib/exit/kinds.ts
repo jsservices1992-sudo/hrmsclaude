@@ -15,6 +15,7 @@ export const EXIT_TYPES = [
   { id: "retirement", label: "Retirement" },
   { id: "contract_end", label: "End of contract" },
   { id: "death_in_service", label: "Death in service" },
+  { id: "disablement", label: "Disablement" },
 ] as const;
 
 export type ExitType = (typeof EXIT_TYPES)[number]["id"];

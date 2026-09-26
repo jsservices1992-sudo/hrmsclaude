@@ -73,7 +73,7 @@ export function NewJoinerForm({
             options={[
               { id: "permanent", label: "Permanent" },
               { id: "probation", label: "Probation" },
-              { id: "contract", label: "Contract" },
+              { id: "contract", label: "Fixed-term (FTE)" },
               { id: "intern", label: "Intern" },
               { id: "consultant", label: "Consultant" },
             ]} error={err("employmentType")} />

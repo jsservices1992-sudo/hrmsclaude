@@ -659,3 +659,57 @@ describe("Both kinds of people in one company", () => {
     }
   });
 });
+
+describe("PF on the Code on Social Security's wage", () => {
+  const line = (r: ReturnType<typeof run>, code: string) =>
+    r.lines.find((l) => l.code === code)?.amountPaise ?? 0;
+  test("from 21 November 2025, PF is charged on the Code's wage, not basic alone", () => {
+    /* 20,000 gross: basic 10,000, HRA 4,000, conveyance 1,600, special
+       allowance 4,400. Special allowance is not on the exclusion list, so
+       wages are 14,400; the 5,600 of HRA and conveyance is under half. */
+    const r = run({ monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true });
+    assert.equal(line(r, "EPF_WAGES"), L(14400));
+    assert.equal(line(r, "EPF_EE"), L(1728));
+  });
+
+  test("the PF ceiling still applies after the Code's wage is found", () => {
+    const r = run({ monthlyGrossPaise: L(80000) });
+    assert.equal(line(r, "EPF_WAGES"), L(15000));
+    assert.equal(line(r, "EPF_EE"), L(1800));
+  });
+
+  test("a month before the Code keeps PF on basic", () => {
+    const r = computeEmployeePay({
+      employee: { ...employee, monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true },
+      company,
+      statutory,
+      year: 2025,
+      month: 10,
+    });
+    assert.equal(line(r, "EPF_WAGES"), L(10000));
+    assert.equal(line(r, "EPF_EE"), L(1200));
+  });
+
+  test("PF lines still sit straight after the earnings on the slip", () => {
+    const r = run({ monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true });
+    const firstNonEarning = r.lines.findIndex((l) => l.kind !== "earning");
+    assert.equal(r.lines[firstNonEarning].code, "EPF_WAGES");
+  });
+});
+
+describe("employer NPS", () => {
+  const line = (r: ReturnType<typeof run>, code: string) =>
+    r.lines.find((l) => l.code === code)?.amountPaise ?? 0;
+
+  test("no contribution, no line", () => {
+    assert.equal(run().lines.some((l) => l.code === "NPS_ER"), false);
+  });
+
+  test("10% of basic + DA, as an employer cost that is not taken from pay", () => {
+    const without = run({ monthlyGrossPaise: L(80000) });
+    const withNps = run({ monthlyGrossPaise: L(80000), employerNpsBps: 1000 });
+    assert.equal(line(withNps, "NPS_ER"), L(4000), "basic is 40,000");
+    assert.equal(withNps.netPaise, without.netPaise, "net pay is untouched");
+    assert.equal(withNps.employerCostPaise - without.employerCostPaise, L(4000));
+  });
+});

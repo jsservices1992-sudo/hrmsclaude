@@ -267,6 +267,7 @@ export async function loadPayslips(args: {
         gratuityAccrualBps: statutory.gratuity.accrualBps,
         pfOptedIn: emp.pfOptedIn,
         hadPriorPfMembership: emp.hadPriorPfMembership,
+        employerNpsBps: emp.employerNpsBps,
       });
       /* Labour welfare fund falls in named months, so a monthly package
          carries its share of the year rather than the whole charge. */
@@ -280,6 +281,7 @@ export async function loadPayslips(args: {
         full.grossPaise +
         cost.pf +
         cost.esic +
+        cost.nps +
         cost.gratuity +
         cost.bonus +
         cost.other +

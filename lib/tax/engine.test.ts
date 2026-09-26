@@ -921,3 +921,27 @@ test("no PAN but no tax due: nothing is deducted under 206AA", () => {
   assert.equal(p.monthlyTdsPaise, 0);
   assert.equal(p.higherRateApplied, false);
 });
+
+/* ---------------- Employer NPS — 80CCD(2) ---------------- */
+
+test("80CCD(2) is capped at 14% of basic + DA under the new regime", () => {
+  const r = computeDeductions({
+    claims: { ...noClaims, section80ccd2Paise: L(100000) },
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "new",
+    allowsChapterViA: false,
+    basicDaPaise: L(600000),
+  });
+  assert.equal(r.totalAllowedPaise, L(84000), "14% of ₹6,00,000");
+});
+
+test("80CCD(2) is capped at 10% under the old regime", () => {
+  const r = computeDeductions({
+    claims: { ...noClaims, section80ccd2Paise: L(100000) },
+    limits: DEDUCTION_LIMITS_2026,
+    regime: "old",
+    allowsChapterViA: true,
+    basicDaPaise: L(600000),
+  });
+  assert.equal(r.totalAllowedPaise, L(60000), "10% of ₹6,00,000");
+});

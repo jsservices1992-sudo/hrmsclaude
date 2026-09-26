@@ -157,7 +157,7 @@ export async function loadJoiner(joinerId: string): Promise<JoinerView | null> {
   const statutory = await loadStatutoryConfig(j.proposedDoj, row.company.id);
   const stateCode = row.branch?.stateCode ?? "";
   const monthlyGross = j.offeredCtcPaise ? Math.round(j.offeredCtcPaise / 12) : 0;
-  const pfWage = evaluateStructure(DEFAULT_STRUCTURE, monthlyGross).epfBasePaise;
+  const pfWage = evaluateStructure(DEFAULT_STRUCTURE, monthlyGross).pfWagePaise;
 
   const enrolment = determineEnrolment({
     monthlyGrossPaise: monthlyGross,

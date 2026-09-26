@@ -270,7 +270,8 @@ describe("Code on Wages split on a run", () => {
     assert.equal(hit.severity, "warning", "stage one reports; it does not correct");
     assert.match(hit.message, /40.0%/);
     assert.match(hit.message, /₹2,000.00/);
-    assert.match(hit.message, /provident fund, gratuity and bonus/, "says what else would move");
+    assert.match(hit.message, /PF and ESI are already charged on the Code.s wage/, "says PF and ESI already use the Code wage");
+    assert.match(hit.message, /gratuity and bonus/, "says what else would move");
   });
 
   test("a compliant split raises nothing", () => {

@@ -50,6 +50,7 @@ const TYPE_LABEL: Record<string, string> = {
   retirement: "Retirement",
   contract_end: "Contract end",
   death_in_service: "Death in service",
+  disablement: "Disablement",
 };
 
 const STATUS_TONE: Record<string, BadgeTone> = {

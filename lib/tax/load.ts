@@ -34,7 +34,12 @@ import {
   TAX_CONFIG_VERIFICATION,
 } from "./config";
 import { hasTaxConfig } from "./config";
-import { summarisePerquisites, type PerquisiteLine } from "./perquisites";
+import {
+  summarisePerquisites,
+  valueExcessRetirals,
+  PERQUISITE_RATES_2026,
+  type PerquisiteLine,
+} from "./perquisites";
 import {
   combineSpecialRateWithNormalTax,
   type SpecialRateDeclaration,
@@ -55,6 +60,31 @@ export {
  * structure and rent the employee already declared, since a person either
  * receives HRA or claims 80GG on the same rent, never both.
  */
+/** Nothing declared — the starting point when only employer NPS is to be deducted. */
+const NO_CLAIMS: DeductionClaims = {
+  section80cPaise: 0,
+  section80ccd1bPaise: 0,
+  section80ccd2Paise: 0,
+  section80dSelfPaise: 0,
+  section80dParentsPaise: 0,
+  selfOrFamilyIsSenior: false,
+  parentsAreSenior: false,
+  section80ePaise: 0,
+  section80gPaise: 0,
+  savingsInterestPaise: 0,
+  taxpayerIsSenior: false,
+  homeLoanInterestPaise: 0,
+  isSelfOccupied: true,
+  dependentDisability: "none",
+  selfDisability: "none",
+  section80ddbPaise: 0,
+  ddbPersonIsSenior: false,
+  section80eebPaise: 0,
+  section80ggcPaise: 0,
+  section80ggRentPaise: 0,
+  receivesHra: false,
+};
+
 function claimsFrom(
   d: typeof s.taxDeclarations.$inferSelect,
   args: { receivesHra: boolean },
@@ -203,25 +233,56 @@ function composeWorksheet(
 
   const flexiExempt = flexiApprovedPaise;
 
-  const perquisites = summarisePerquisites(
-    perqRows.map((p) => ({
+  /* ---- employer NPS ----
+     The employer's contribution is salary under s.17(1)(viii), and comes
+     back out under 80CCD(2) up to the regime's share of basic + DA — in
+     either regime. Whatever sits above that cap stays taxed. */
+  const npsBps = emp.employerNpsBps ?? 0;
+  const annualEmployerNps = npsBps > 0 ? (Math.round((monthlyBasic * npsBps) / 10000 / 100) * 100) * 12 : 0;
+
+  /* Employer PF and NPS above ₹7.5 lakh a year together are a perquisite
+     under s.17(2)(vii). Worked out here unless somebody has already
+     entered the retirals perquisite by hand, which then stands. Employer
+     PF is taken at the ceiling — the least it can be — so this never
+     overstates. */
+  const autoRetiral =
+    annualEmployerNps > 0 && !perqRows.some((p) => p.code === "RETIRAL")
+      ? valueExcessRetirals(
+          {
+            employerPfPaise:
+              Math.round((statutory.epf.wageCeilingPaise * statutory.epf.employerBps) / 10000) * 12,
+            employerNpsPaise: annualEmployerNps,
+            employerSuperannuationPaise: 0,
+          },
+          PERQUISITE_RATES_2026,
+        )
+      : null;
+
+  const perquisites = summarisePerquisites([
+    ...perqRows.map((p) => ({
       code: p.code,
       label: p.label,
       valuePaise: p.valuePaise,
       basis: p.basis,
     })),
-  );
+    ...(autoRetiral && autoRetiral.valuePaise > 0 ? [autoRetiral] : []),
+  ]);
 
   /* ---- deductions ---- */
-  const deductions = decl
-    ? computeDeductions({
-        claims: claimsFrom(decl, { receivesHra: annualHra > 0 }),
-        limits: DEDUCTION_LIMITS_2026,
-        regime,
-        allowsChapterViA: config.allowsChapterViA,
-        grossSalaryPaise: annualGross,
-      })
-    : { lines: [], totalAllowedPaise: 0, disallowedPaise: 0 };
+  const deductions =
+    decl || annualEmployerNps > 0
+      ? computeDeductions({
+          claims: {
+            ...(decl ? claimsFrom(decl, { receivesHra: annualHra > 0 }) : NO_CLAIMS),
+            section80ccd2Paise: annualEmployerNps,
+          },
+          limits: DEDUCTION_LIMITS_2026,
+          regime,
+          allowsChapterViA: config.allowsChapterViA,
+          grossSalaryPaise: annualGross,
+          basicDaPaise: annualBasic,
+        })
+      : { lines: [], totalAllowedPaise: 0, disallowedPaise: 0 };
 
   /* ---- professional tax, projected for the whole year ---- */
   let projectedPtPaise = 0;
@@ -249,7 +310,7 @@ function composeWorksheet(
   const exemptAllowances = (hra?.exemptPaise ?? 0) + flexiExempt;
 
   const annual = computeAnnualTax({
-    grossSalaryPaise: annualGross,
+    grossSalaryPaise: annualGross + annualEmployerNps,
     exemptAllowancesPaise: exemptAllowances,
     perquisitesPaise: perquisites.totalPaise,
     previousEmployerSalaryPaise: decl?.previousSalaryPaise ?? 0,

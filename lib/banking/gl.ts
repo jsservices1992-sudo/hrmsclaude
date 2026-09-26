@@ -471,10 +471,12 @@ export const DEFAULT_ACCOUNTS: GlAccount[] = [
   { code: "EMPLOYER_PF", name: "Employer provident fund", type: "expense" },
   { code: "EMPLOYER_ESIC", name: "Employer ESIC", type: "expense" },
   { code: "EMPLOYER_LWF", name: "Employer labour welfare fund", type: "expense" },
+  { code: "EMPLOYER_NPS", name: "Employer NPS contribution", type: "expense" },
   { code: "PF_PAYABLE", name: "Provident fund payable", type: "liability" },
   { code: "ESIC_PAYABLE", name: "ESIC payable", type: "liability" },
   { code: "PT_PAYABLE", name: "Professional tax payable", type: "liability" },
   { code: "LWF_PAYABLE", name: "Labour welfare fund payable", type: "liability" },
+  { code: "NPS_PAYABLE", name: "NPS payable", type: "liability" },
   { code: "TDS_PAYABLE", name: "TDS payable", type: "liability" },
   { code: NET_PAYABLE_ACCOUNT, name: "Salaries payable", type: "liability" },
   { code: "LOAN_RECEIVABLE", name: "Employee loans receivable", type: "asset" },
@@ -500,6 +502,7 @@ export const DEFAULT_MAPPINGS: GlMapping[] = [
   { componentCode: "EPS_ER", debitAccount: "EMPLOYER_PF", creditAccount: "PF_PAYABLE" },
   { componentCode: "ESIC_ER", debitAccount: "EMPLOYER_ESIC", creditAccount: "ESIC_PAYABLE" },
   { componentCode: "LWF_ER", debitAccount: "EMPLOYER_LWF", creditAccount: "LWF_PAYABLE" },
+  { componentCode: "NPS_ER", debitAccount: "EMPLOYER_NPS", creditAccount: "NPS_PAYABLE" },
 
   /*
    * Net-pay rounding. The account existed and nothing pointed at it, so

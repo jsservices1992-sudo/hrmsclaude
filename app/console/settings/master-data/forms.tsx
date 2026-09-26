@@ -445,7 +445,7 @@ export function PayComponentForm({
           which is how the Code treats HRA and conveyance — so ESIC gets a
           treatment rather than a checkbox. */}
       <label className="flex flex-col gap-1 max-w-md">
-        <span className="text-xs font-medium text-ink-2">ESIC wages</span>
+        <span className="text-xs font-medium text-ink-2">Code on Wages — PF &amp; ESIC wages</span>
         <Select
           name="esicTreatment"
           defaultValue={
@@ -461,7 +461,8 @@ export function PayComponentForm({
           ))}
         </Select>
         <span className="text-xs text-ink-3">
-          Under the Code, excluded components come back into ESI wages only
+          From 21 Nov 2025 this decides both PF and ESI wages. Under the Code,
+          excluded components come back into wages only
           where together they exceed half of the month&apos;s pay. Overtime is
           left out of the ₹21,000 coverage test.
         </span>
@@ -720,7 +721,7 @@ export function VariablePayTypeForm({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-ink-2">ESIC wages</span>
+          <span className="text-xs font-medium text-ink-2">Code on Wages — PF &amp; ESIC wages</span>
           <Select
             name="esicTreatment"
             defaultValue={state.values?.esicTreatment ?? editing?.esicTreatment ?? ""}
