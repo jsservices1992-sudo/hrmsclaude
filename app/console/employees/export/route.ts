@@ -89,8 +89,12 @@ export async function GET(request: Request) {
     "Employment type",
     "Status",
     "Date of joining",
-    "Prior PF membership",
-    ...(canPay ? ["Monthly gross"] : []),
+    "UAN",
+    "Existing EPF member",
+    "PF contribution basis",
+    "EPS applicable",
+    "EDLI applicable",
+    ...(canPay ? ["Employer NPS %", "Monthly gross"] : []),
   ];
 
   const csv = toCsv(
@@ -102,11 +106,18 @@ export async function GET(request: Request) {
       r.company.name,
       r.branch.name,
       r.branch.stateCode,
-      r.emp.employmentType,
+      r.emp.employmentType === "contract" ? "Fixed-term (FTE)" : r.emp.employmentType,
       r.emp.status,
       r.emp.dateOfJoining,
-      r.emp.hadPriorPfMembership ? "Member" : "New",
-      ...(canPay ? [r.salary ? formatINR(r.salary.monthlyGrossPaise) : ""] : []),
+      r.emp.uan ?? "",
+      // The same test the payroll run applies: prior membership or a UAN.
+      r.emp.hadPriorPfMembership || r.emp.uan ? "Yes" : "No",
+      r.emp.pfContributionBasis,
+      r.emp.epsApplicability === "auto" ? "Automatic" : r.emp.epsApplicability === "yes" ? "Yes" : "No",
+      r.emp.edliApplicability === "no" ? "No" : "Yes",
+      ...(canPay
+        ? [(r.emp.employerNpsBps / 100).toFixed(2), r.salary ? formatINR(r.salary.monthlyGrossPaise) : ""]
+        : []),
     ]),
   );
 

@@ -397,6 +397,9 @@ export function renderAuditPack(pack: AuditPack): string {
       rupees(pack.summaries.pf.employerTotalPaise),
       rupees(pack.summaries.pf.totalPaise),
     );
+    if (pack.summaries.pf.chargesPaise > 0) {
+      row("PF — EDLI & admin charges (employer)", "", "", rupees(pack.summaries.pf.chargesPaise), rupees(pack.summaries.pf.chargesPaise));
+    }
     row(
       "ESIC",
       pack.summaries.esic.coveredCount,

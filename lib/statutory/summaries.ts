@@ -31,6 +31,8 @@ export const CODE = {
   pfEmployee: "EPF_EE",
   pfEmployer: "EPF_ER",
   pension: "EPS_ER",
+  edli: "EDLI_ER",
+  pfAdmin: "EPF_ADMIN_ER",
   vpf: "VPF",
   esicEmployee: "ESIC_EE",
   esicEmployer: "ESIC_ER",
@@ -55,6 +57,10 @@ export type PfSummary = {
   pensionSharePaise: Paise;
   employerTotalPaise: Paise;
   totalPaise: Paise;
+  /** EDLI and the administration charge — employer-only, paid on the same challan. */
+  chargesPaise: Paise;
+  /** Everything the PF challan carries for these members: contributions plus charges. */
+  payablePaise: Paise;
   /** Members with a contribution but no UAN cannot be filed. */
   missingUan: string[];
   warnings: string[];
@@ -89,6 +95,9 @@ export function summarisePf(
     pensionSharePaise: pension,
     employerTotalPaise: employerPf + pension,
     totalPaise: employee + employerPf + pension,
+    chargesPaise: sum(contributing, CODE.edli) + sum(contributing, CODE.pfAdmin),
+    payablePaise:
+      employee + employerPf + pension + sum(contributing, CODE.edli) + sum(contributing, CODE.pfAdmin),
     missingUan,
     warnings,
   };

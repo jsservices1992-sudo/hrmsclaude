@@ -1008,6 +1008,12 @@ export async function bulkUploadEmployees(
         uan: r.uan,
         bankAccount: r.bankAccount,
         ifsc: r.ifsc,
+        hadPriorPfMembership: r.existingEpfMember,
+        pfContributionBasis: r.pfContributionBasis,
+        epsApplicability: r.epsApplicability,
+        edliApplicability: r.edliApplicability,
+        employerNpsBps: r.employerNpsBps,
+        pran: r.pran,
         status: "active",
         createdBy: user.email,
       });

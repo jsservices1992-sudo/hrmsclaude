@@ -332,3 +332,27 @@ test("a salary structure can be named per person in the file", () => {
     "blank follows the department's assignment, or the company default",
   );
 });
+
+test("an employee file carries the EPF master, and fixed-term is accepted by name", () => {
+  const header = EMPLOYEE_COLUMNS.join(",");
+  const base = ["E9", "Ravi", "K", "", "", "male", "", "01/04/2026", "Fixed-term (FTE)", "", "HQ", "", "", "", "", "", "", "", "", "gross", "30000", ""];
+  const row = [...base, "yes", "higher", "no", "", "10", "110012345678"].join(",");
+  const { rows, problems } = parseEmployeeCsv([header, row].join("\n"));
+  assert.deepEqual(problems, []);
+  assert.equal(rows[0].employmentType, "contract");
+  assert.equal(rows[0].existingEpfMember, true);
+  assert.equal(rows[0].pfContributionBasis, "higher");
+  assert.equal(rows[0].epsApplicability, "no");
+  assert.equal(rows[0].edliApplicability, "auto");
+  assert.equal(rows[0].employerNpsBps, 1000);
+});
+
+test("an older file without the EPF columns still imports, on the automatic test", () => {
+  const cols = EMPLOYEE_COLUMNS.slice(0, EMPLOYEE_COLUMNS.indexOf("existingEpfMember"));
+  const row = ["E10", "Asha", "R", "", "", "female", "", "01/04/2026", "permanent", "", "HQ", "", "", "", "", "", "", "", "", "gross", "30000", ""].join(",");
+  const { rows, problems } = parseEmployeeCsv([cols.join(","), row].join("\n"));
+  assert.deepEqual(problems, []);
+  assert.equal(rows[0].existingEpfMember, false);
+  assert.equal(rows[0].pfContributionBasis, "company");
+  assert.equal(rows[0].employerNpsBps, 0);
+});

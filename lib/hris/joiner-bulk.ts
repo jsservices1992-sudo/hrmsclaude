@@ -4,7 +4,7 @@ import {
   IDENTIFIER_MESSAGES as MSG,
 } from "./identifiers";
 import { parseFlexibleDate } from "../format/date";
-import { EMPLOYMENT_TYPES, splitCsvLine, type RowProblem } from "./employee-bulk";
+import { EMPLOYMENT_TYPES, normaliseEmploymentType, splitCsvLine, type RowProblem } from "./employee-bulk";
 
 /**
  * Bulk onboarding — creating several joiner shells from a spreadsheet.
@@ -155,7 +155,7 @@ export function parseJoinerCsv(text: string): JoinerParseResult {
     const mobile = normaliseMobile(mobileRaw);
     if (mobile && !MOBILE_RE.test(mobile)) problem("mobile", `"${mobile}" — ${MSG.mobile}`);
 
-    const typeRaw = (get("employmentType") ?? "permanent").toLowerCase().replace(/\s+/g, "_");
+    const typeRaw = normaliseEmploymentType(get("employmentType"));
     const employmentType = (EMPLOYMENT_TYPES as readonly string[]).includes(typeRaw)
       ? (typeRaw as JoinerRow["employmentType"])
       : null;

@@ -616,12 +616,13 @@ export default async function StatutoryPage(
               <div className="px-4 py-4">
                 <p className="text-xs font-medium text-ink-2">Provident fund</p>
                 <p className="font-display text-xl font-semibold tnum mt-1">
-                  {formatINR(summaries.pf.totalPaise)}
+                  {formatINR(summaries.pf.payablePaise)}
                 </p>
                 <p className="text-xs text-ink-2 mt-1">
                   {summaries.pf.memberCount} members · employee{" "}
                   {formatINR(summaries.pf.employeeSharePaise)} · employer{" "}
                   {formatINR(summaries.pf.employerTotalPaise)}
+                  {summaries.pf.chargesPaise > 0 && <> · EDLI &amp; admin {formatINR(summaries.pf.chargesPaise)}</>}
                 </p>
               </div>
               <div className="px-4 py-4">

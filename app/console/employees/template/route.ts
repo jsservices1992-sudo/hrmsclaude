@@ -80,6 +80,7 @@ export async function GET(request: Request) {
     "02/04/1995", "01/04/2026", "permanent", "Software Engineer",
     firstBranch, firstDept, firstGrade, "", "", "ABCPD1234E", "", "", "",
     "gross", "45000", structures.find((x) => x.isDefault)?.name ?? "",
+    "no", "company", "", "", "0", "",
   ];
 
   const lines = [
@@ -94,7 +95,7 @@ export async function GET(request: Request) {
     "#                  Use your own codes if these are not yours — anything not",
     "#                  listed above is offered for creation when you upload.",
     `# gender:          ${GENDERS.join(" | ")}`,
-    `# employmentType:  ${EMPLOYMENT_TYPES.join(" | ")}`,
+    `# employmentType:  ${EMPLOYMENT_TYPES.join(" | ")} — contract means a fixed-term employee (FTE); fixed-term and fte are accepted too`,
     `# skillCategory:   ${SKILL_CATEGORIES.join(" | ")} — optional, only used to match a notified minimum wage`,
     "# dates:           DD/MM/YYYY (31/01/2026) — write dates this way",
     "# required:        empCode, firstName, lastName, dateOfJoining, branchCode, payMode, payAmount",
@@ -108,6 +109,14 @@ export async function GET(request: Request) {
     "# payMode take_home:     payAmount is the monthly net in hand — the gross is worked back from it, and re-solved every",
     "#                        run against that period's rates, so the amount reaching the bank never drifts",
     "# both columns must be filled in together, or both left blank to add this person with no salary yet",
+    "#",
+    "# --- EPF employee master — all optional ---",
+    "# existingEpfMember:   yes | no — already an EPF member (a UAN also counts). A member stays in PF when pay rises past the ceiling",
+    "# pfContributionBasis: company | ceiling | higher — statutory ceiling, or the higher actual wage; blank follows the company",
+    "# epsApplicable:       yes | no — blank applies the statutory test (EPS stops at 58)",
+    "# edliApplicable:      yes | no — blank is yes",
+    "# employerNpsPercent:  0 to 14 — employer NPS as % of basic + DA; 0 or blank means none",
+    "# pran:                12 digits — required when employerNpsPercent is above 0",
     "#",
     "# --- salaryStructure: which set of components this person is on ---",
     `# salaryStructure:  ${structures.length ? structures.map((x) => `${x.name} (${BASIS_LABEL[x.basis] ?? x.basis})`).join(" | ") : "none yet — leave blank"}`,

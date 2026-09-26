@@ -54,6 +54,17 @@ export const SKILL_CATEGORIES = [
 export const PAY_MODES = ["gross", "annual_gross", "ctc", "take_home"] as const;
 
 
+/**
+ * An employment type as written in a file. "contract" is what is stored
+ * for a fixed-term employee (FTE); the words people actually write for
+ * one — fixed-term, FTE, "Fixed-term (FTE)" as the export shows it — are
+ * accepted as well, so an export re-uploads cleanly.
+ */
+export function normaliseEmploymentType(raw: string | null | undefined): string {
+  const v = (raw ?? "permanent").trim().toLowerCase().replace(/[()]/g, "").replace(/[\s-]+/g, "_");
+  return ["fixed_term", "fixed_term_fte", "fte", "fixed_term_employee"].includes(v) ? "contract" : v || "permanent";
+}
+
 /** The columns, in the order the template writes them. */
 export const EMPLOYEE_COLUMNS = [
   "empCode",
@@ -78,6 +89,15 @@ export const EMPLOYEE_COLUMNS = [
   "payMode",
   "payAmount",
   "salaryStructure",
+  /* The EPF employee master. Optional: a file without them keeps
+     everybody on the automatic statutory test, and a UAN still counts
+     as existing membership. */
+  "existingEpfMember",
+  "pfContributionBasis",
+  "epsApplicable",
+  "edliApplicable",
+  "employerNpsPercent",
+  "pran",
 ] as const;
 
 export type EmployeeRow = {
@@ -118,6 +138,12 @@ export type EmployeeRow = {
    * department's assignment, or the company default.
    */
   salaryStructure: string | null;
+  existingEpfMember: boolean;
+  pfContributionBasis: "company" | "ceiling" | "higher";
+  epsApplicability: "auto" | "yes" | "no";
+  edliApplicability: "auto" | "no";
+  employerNpsBps: number;
+  pran: string | null;
 };
 
 export type RowProblem = {
@@ -294,7 +320,7 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
       : null;
     if (!gender) problem("gender", `"${genderRaw}" is not one of: ${GENDERS.join(", ")}.`);
 
-    const typeRaw = (get("employmentType") ?? "permanent").toLowerCase().replace(/\s+/g, "_");
+    const typeRaw = normaliseEmploymentType(get("employmentType"));
     const employmentType = (EMPLOYMENT_TYPES as readonly string[]).includes(typeRaw)
       ? (typeRaw as EmployeeRow["employmentType"])
       : null;
@@ -367,7 +393,43 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
       problem("payMode", "An amount is given but no pay mode — choose gross, annual_gross, ctc or take_home.");
     }
 
+    /* EPF master. Yes/No columns read the usual spellings; anything else
+       is a problem rather than a guess. */
+    const yesNo = (name: string): boolean | null | "bad" => {
+      const v = get(name)?.trim().toLowerCase();
+      if (!v) return null;
+      if (["yes", "y", "true", "1", "member"].includes(v)) return true;
+      if (["no", "n", "false", "0", "new"].includes(v)) return false;
+      return "bad";
+    };
+    const member = yesNo("existingEpfMember");
+    if (member === "bad") problem("existingEpfMember", "Write Yes or No.");
+    const basisRaw = get("pfContributionBasis")?.trim().toLowerCase().replace(/[\s/-]+/g, "_") ?? "";
+    const pfContributionBasis = !basisRaw || basisRaw === "company"
+      ? "company"
+      : basisRaw.startsWith("ceiling") || basisRaw === "statutory_ceiling"
+        ? "ceiling"
+        : basisRaw.startsWith("higher") || basisRaw === "actual" || basisRaw === "actual_wage"
+          ? "higher"
+          : null;
+    if (!pfContributionBasis) problem("pfContributionBasis", "Write company, ceiling or higher.");
+    const eps = yesNo("epsApplicable");
+    if (eps === "bad") problem("epsApplicable", "Write Yes, No, or leave blank for automatic.");
+    const edli = yesNo("edliApplicable");
+    if (edli === "bad") problem("edliApplicable", "Write Yes, No, or leave blank for automatic.");
+    const npsRaw = get("employerNpsPercent")?.replace("%", "").trim();
+    const npsPercent = npsRaw ? Number(npsRaw) : 0;
+    if (!Number.isFinite(npsPercent) || npsPercent < 0 || npsPercent > 14) {
+      problem("employerNpsPercent", "Employer NPS is a percentage of basic + DA from 0 to 14.");
+    }
+    const pran = get("pran")?.replace(/\s+/g, "") || null;
+    if (pran && !/^\d{12}$/.test(pran)) problem("pran", "A PRAN is 12 digits.");
+    if (npsPercent > 0 && !pran) problem("pran", "An employer NPS contribution needs the employee's PRAN.");
+
     if (!empCode || !firstName || !lastName || !gender || !employmentType || !branchCode) continue;
+    if (member === "bad" || eps === "bad" || edli === "bad" || !pfContributionBasis) continue;
+    if (!Number.isFinite(npsPercent) || npsPercent < 0 || npsPercent > 14) continue;
+    if ((pran && !/^\d{12}$/.test(pran)) || (npsPercent > 0 && !pran)) continue;
     if (!dateOfJoining) continue;
     if (dateOfBirthRaw && !dateOfBirth) continue;
     if (payModeRaw && !payMode) continue;
@@ -398,6 +460,12 @@ export function parseEmployeeCsv(text: string): EmployeeParseResult {
       payMode,
       payAmountPaise,
       salaryStructure: get("salaryStructure"),
+      existingEpfMember: member === true,
+      pfContributionBasis,
+      epsApplicability: eps === null ? "auto" : eps ? "yes" : "no",
+      edliApplicability: edli === false ? "no" : "auto",
+      employerNpsBps: Math.round(npsPercent * 100),
+      pran,
     });
   }
 
