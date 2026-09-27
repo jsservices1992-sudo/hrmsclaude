@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import { markAttendanceDay, type AttendanceState } from "./actions";
 import { Dialog, Input, Select, SubmitButton, FormFeedback } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
@@ -68,8 +69,12 @@ export function AttendanceDayRow({
         );
       })}
 
-      {canEdit && (
-        <Dialog open={openDate !== null} onClose={() => setOpenDate(null)} size="sm" labelledBy={headingId}>
+      {/* Portalled to the body, and only while open: this component renders
+          inside a table row, and a <dialog> there is invalid HTML the
+          browser moves out of the table — every row then hydrated against
+          markup the server never sent (React #418). */}
+      {canEdit && openDate !== null && createPortal(
+        <Dialog open onClose={() => setOpenDate(null)} size="sm" labelledBy={headingId}>
           <div className="flex items-start justify-between gap-4 mb-3">
             <div>
               <h2 id={headingId} className="text-xs font-semibold text-ink">{name}</h2>
@@ -116,7 +121,8 @@ export function AttendanceDayRow({
             <SubmitButton variant="primary" pendingText="Saving…">Save day</SubmitButton>
             <FormFeedback state={state} />
           </form>
-        </Dialog>
+        </Dialog>,
+        document.body,
       )}
     </>
   );

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CONSOLE_NAV, isItemActive, navFor, navPages } from "./console-nav";
+import { CONSOLE_NAV, CRUMB_HREF, isItemActive, navFor, navPages } from "./console-nav";
 
 function findItem(href: string) {
   for (const entry of CONSOLE_NAV) {
@@ -71,4 +71,29 @@ test("the audit log is only offered to tenant-wide users", () => {
   const confined = navFor({ compensation: true, tenantWide: false });
   const compliance = confined.find((e) => e.label === "Compliance")!;
   assert.equal(compliance.children!.some((c) => c.href === "/console/audit"), false);
+});
+
+test("every breadcrumb step leads to a page that exists", async () => {
+  const { existsSync, readdirSync, statSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const pages = new Set<string>();
+  const walk = (dir: string, url: string) => {
+    for (const f of readdirSync(dir)) {
+      const p = join(dir, f);
+      if (statSync(p).isDirectory()) walk(p, `${url}/${f}`);
+      else if (f === "page.tsx") pages.add(url);
+    }
+  };
+  walk("app/console", "/console");
+  for (const page of pages) {
+    const segs = page.split("/").filter(Boolean);
+    let pre = "";
+    for (const s of segs) {
+      if (s.startsWith("[")) break;
+      pre += `/${s}`;
+      const target = CRUMB_HREF[pre] ?? pre;
+      assert.ok(pages.has(target), `breadcrumb ${pre} on ${page} leads to ${target}, which has no page`);
+    }
+  }
+  assert.ok(existsSync("app/console/page.tsx"));
 });

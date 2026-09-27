@@ -101,14 +101,22 @@ export function RangeBars({
           <div key={p.key} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
             <div className="relative flex w-full flex-1 items-end justify-center">
               {last && p.value > 0 && (
-                <span className="absolute z-10 whitespace-nowrap rounded-full bg-[var(--indigo)] px-2.5 py-1 text-xs font-bold text-white shadow-md tnum" style={{ bottom: `calc(${h}% + 8px)` }}>
+                <span
+                  className={`absolute z-10 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold shadow-md tnum ${
+                    p.provisional ? "border border-dashed border-[var(--indigo)] bg-surface text-[var(--indigo)]" : "bg-[var(--indigo)] text-white"
+                  }`}
+                  style={{ bottom: `calc(${h}% + 8px)` }}
+                >
                   {format(p.value)}
+                  {p.provisional && <span className="ml-1 font-semibold opacity-70">preview</span>}
                 </span>
               )}
+              {/* A month not yet calculated is drawn dashed: the figure is
+                  what the run would come to today, not a result. */}
               <div
                 title={`${p.label}: ${format(p.value)}${p.provisional ? " (not yet run)" : ""}`}
                 className={`w-full max-w-[3.4rem] rounded-t-xl ${
-                  last
+                  last && !p.provisional
                     ? "grad-violet"
                     : p.provisional
                       ? "border-2 border-dashed border-[var(--indigo)]/40 bg-[var(--indigo)]/10"
@@ -184,14 +192,16 @@ const AVATAR = ["grad-violet", "grad-pink", "grad-teal", "grad-amber"];
 export function PeopleTable({ rows }: { rows: PersonRow[] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[34rem] text-sm">
+      {/* Fixed columns on a phone, so a long designation truncates instead
+          of pushing the gross off the edge; natural widths from sm up. */}
+      <table className="w-full table-fixed text-sm sm:table-auto sm:min-w-[34rem]">
         <thead>
           <tr className="text-left text-xs font-semibold text-ink-3">
             <th className="px-1 pb-3 font-semibold">Employee</th>
-            <th className="px-3 pb-3 font-semibold">Days paid</th>
-            <th className="w-40 px-3 pb-3 font-semibold">Progress</th>
-            <th className="px-3 pb-3 text-right font-semibold">Gross</th>
-            <th className="px-1 pb-3 text-right font-semibold">Status</th>
+            <th className="hidden px-3 pb-3 font-semibold sm:table-cell">Days paid</th>
+            <th className="hidden w-40 px-3 pb-3 font-semibold sm:table-cell">Progress</th>
+            <th className="w-28 px-3 pb-3 text-right font-semibold sm:w-auto">Gross</th>
+            <th className="hidden px-1 pb-3 text-right font-semibold sm:table-cell">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -210,16 +220,16 @@ export function PeopleTable({ rows }: { rows: PersonRow[] }) {
                     </span>
                   </Link>
                 </td>
-                <td className="px-3 py-3 tnum text-ink-2">
+                <td className="hidden px-3 py-3 tnum text-ink-2 sm:table-cell">
                   {r.paidDays}/{r.totalDays}
                 </td>
-                <td className="px-3 py-3">
+                <td className="hidden px-3 py-3 sm:table-cell">
                   <span aria-hidden className="block h-2 overflow-hidden rounded-full bg-[var(--indigo)]/12">
                     <span className={`block h-full rounded-full ${pct < 100 ? "bg-gradient-to-r from-[var(--indigo)] to-[#8B5CF6]" : "grad-violet"}`} style={{ width: `${pct}%` }} />
                   </span>
                 </td>
                 <td className="px-3 py-3 text-right font-semibold tnum text-ink">{r.gross}</td>
-                <td className="px-1 py-3 text-right">
+                <td className="hidden px-1 py-3 text-right sm:table-cell">
                   <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS[r.status].cls}`}>{STATUS[r.status].label}</span>
                 </td>
               </tr>

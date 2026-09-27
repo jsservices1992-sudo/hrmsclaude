@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { SITE } from "@/lib/site";
 import {
   SEGMENT_LABELS,
+  CRUMB_HREF,
   isItemActive,
   type ConsoleNavEntry,
 } from "@/lib/console-nav";
@@ -246,7 +247,8 @@ function Breadcrumbs({ pathname }: { pathname: string }) {
   return (
     <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 min-w-0">
       {crumbs.map((seg, i) => {
-        const href = "/" + parts.slice(0, parts.indexOf(seg) + 1).join("/");
+        const path = "/" + parts.slice(0, parts.indexOf(seg) + 1).join("/");
+        const href = CRUMB_HREF[path] ?? path;
         const last = i === crumbs.length - 1;
         const label = SEGMENT_LABELS[seg] ?? seg;
         return (

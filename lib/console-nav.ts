@@ -142,6 +142,17 @@ export const QUICK_ACTIONS: { label: string; href: string; icon: IconName }[] = 
   { href: "/console/assets", label: "Assets", icon: "box" },
 ];
 
+/**
+ * Breadcrumb steps whose own URL has no page. Each points at the page that
+ * lists what is under it; linking the bare path was a 404 (and a failed
+ * prefetch on every visit to the page below it).
+ */
+export const CRUMB_HREF: Record<string, string> = {
+  "/console/settings/companies": "/console/settings",
+  "/console/payslip": "/console/payroll/payslips",
+  "/console/settings/payroll/structures": "/console/settings/payroll",
+};
+
 /** Human labels for breadcrumbs, keyed by path segment. */
 export const SEGMENT_LABELS: Record<string, string> = {
   console: "Home",

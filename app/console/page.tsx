@@ -21,6 +21,8 @@ import { IconCheck, IconUsers, IconBanknote, IconCoins, IconInbox } from "@/comp
 import { Card, Badge } from "@/components/console/ui";
 import { GradientStat, RangeBars, Ring, PeopleTable } from "./dashboard-widgets";
 import { formatDate } from "@/lib/format/date";
+import { loadCalendar } from "@/lib/statutory/load";
+import { dashboardDues, dueAmount, type DashboardDue } from "@/lib/statutory/dues";
 
 export const metadata = { title: "Home" };
 
@@ -163,6 +165,73 @@ export default async function DashboardPage(props: PageProps<"/console">) {
 
   const approvals = pendingLeave.length + pendingReg.length;
 
+  /* ---- statutory dues ----
+     This month's remittances with what each will carry, from the same pay
+     lines the returns are built from; and last month's, whose deadlines
+     fall in this one, until they are marked filed. */
+  const prevPeriod = PERIOD.month === 1 ? { year: PERIOD.year - 1, month: 12 } : { year: PERIOD.year, month: PERIOD.month - 1 };
+  const MONTH_NAME = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const dues: DashboardDue[] = [];
+  if (seesPay) {
+    const prevRuns = companyIds.length
+      ? await db
+          .select()
+          .from(s.payrollRuns)
+          .where(
+            and(
+              inArray(s.payrollRuns.companyId, companyIds),
+              eq(s.payrollRuns.periodYear, prevPeriod.year),
+              eq(s.payrollRuns.periodMonth, prevPeriod.month),
+            ),
+          )
+      : [];
+    const prevLatest = new Map<string, (typeof prevRuns)[number]>();
+    for (const r of prevRuns) {
+      const cur = prevLatest.get(r.companyId);
+      if (!cur || r.version > cur.version) prevLatest.set(r.companyId, r);
+    }
+    const prevLines = prevLatest.size
+      ? await db
+          .select({ runId: s.payrollLines.runId, code: s.payrollLines.code, amountPaise: s.payrollLines.amountPaise, basis: s.payrollLines.basis })
+          .from(s.payrollLines)
+          .where(inArray(s.payrollLines.runId, [...prevLatest.values()].map((r) => r.id)))
+      : [];
+    const calendars = await Promise.all(
+      companies.flatMap((c, i) => [
+        loadCalendar({ companyId: c.id, year: PERIOD.year, month: PERIOD.month, today: TODAY }).then((cal) => ({
+          cal, company: c, period: PERIOD, lines: (previews[i]?.results ?? []).flatMap((r) => r.lines),
+        })),
+        loadCalendar({ companyId: c.id, year: prevPeriod.year, month: prevPeriod.month, today: TODAY }).then((cal) => {
+          const runId = prevLatest.get(c.id)?.id;
+          return { cal, company: c, period: prevPeriod, lines: runId ? prevLines.filter((l) => l.runId === runId) : null };
+        }),
+      ]),
+    );
+    for (const { cal, company, period, lines } of calendars) {
+      if (!cal) continue;
+      for (const item of cal.items) {
+        /* A remittance for a month with no payroll run: nothing was
+           deducted, so there is nothing to deposit. Returns still stand. */
+        if (lines === null && dueAmount(item, []) !== null) continue;
+        dues.push({
+          key: `${company.id}:${period.year}-${period.month}:${item.kind}:${item.stateCode ?? ""}`,
+          label: item.label,
+          authority: item.authority,
+          companyName: company.name,
+          dueDate: item.dueDate,
+          daysUntilDue: item.daysUntilDue,
+          status: item.status,
+          amountPaise: lines ? dueAmount(item, lines) : null,
+          periodLabel:
+            item.frequency === "quarterly"
+              ? `Q${[4, 4, 4, 1, 1, 1, 2, 2, 2, 3, 3, 3][period.month - 1]} ${period.month >= 4 ? period.year : period.year - 1}-${String((period.month >= 4 ? period.year + 1 : period.year) % 100).padStart(2, "0")} quarter`
+              : `${MONTH_NAME[period.month - 1]} ${period.year} wages`,
+        });
+      }
+    }
+  }
+  const shownDues = dashboardDues(dues).slice(0, 6);
+
   /* ---- Payroll trend: the last six months, as actually run ----
      The newest version of each company's run for each month, summed. The
      current month, if it has not been run yet, is drawn from the preview
@@ -302,22 +371,41 @@ export default async function DashboardPage(props: PageProps<"/console">) {
      at a wall of zeros. */
   const setup = companyIds[0] ? setupProgress(await loadSetupFacts(companyIds[0])) : null;
 
-  const run = runRows[0];
-
-  /* ---- the pay run, as four steps with honest states ---- */
+  /* ---- the pay run, as four steps with honest states ----
+     One run per company: with several entities in view, "the" run used to
+     be whichever row the database returned first, and the card described
+     one company as though it were all of them. Each step now counts the
+     entities that have payroll this month. */
   const APPROVED = ["approved", "finalised", "disbursed", "closed"];
-  const runApproved = Boolean(run && APPROVED.includes(run.status));
-  const runPaid = Boolean(run && ["disbursed", "closed"].includes(run.status));
+  const periodRun = new Map<string, (typeof runRows)[number]>();
+  for (const r of runRows) {
+    const cur = periodRun.get(r.companyId);
+    if (!cur || r.version > cur.version) periodRun.set(r.companyId, r);
+  }
+  const payingCompanies = companies.filter((c, i) => (previews[i]?.results.length ?? 0) > 0 || periodRun.has(c.id));
+  const entities = Math.max(1, payingCompanies.length);
+  const runsIn = payingCompanies.map((c) => periodRun.get(c.id)).filter((r): r is NonNullable<typeof r> => Boolean(r));
+  const calculatedN = runsIn.length;
+  const approvedN = runsIn.filter((r) => APPROVED.includes(r.status)).length;
+  const paidN = runsIn.filter((r) => ["disbursed", "closed"].includes(r.status)).length;
+  const run = runsIn.length === 1 && entities === 1 ? runsIn[0] : undefined;
+  const runApproved = approvedN === entities;
+  const runPaid = paidN === entities;
+  const ofAll = (n: number) => (entities > 1 ? `${n} of ${entities} entities` : null);
   const runSteps = [
-    { label: "Payroll calculated", done: Boolean(run), note: run ? `Version ${run.version}` : "Not started" },
+    {
+      label: "Payroll calculated",
+      done: calculatedN === entities,
+      note: ofAll(calculatedN) ?? (run ? `Version ${run.version}` : "Not started"),
+    },
     {
       label: "Findings reviewed",
-      done: Boolean(run) && findingsCount === 0,
-      note: findingsCount === 0 ? (run ? "Nothing to review" : "After calculating") : `${findingsCount} to review`,
+      done: calculatedN === entities && findingsCount === 0,
+      note: findingsCount === 0 ? (calculatedN ? "Nothing to review" : "After calculating") : `${findingsCount} to review`,
       warn: findingsCount > 0,
     },
-    { label: "Approved", done: runApproved, note: runApproved ? "Signed off" : "Waiting on approval" },
-    { label: "Paid out", done: runPaid, note: runPaid ? "Bank file released" : "Bank file & payslips" },
+    { label: "Approved", done: runApproved, note: ofAll(approvedN) ?? (runApproved ? "Signed off" : "Waiting on approval") },
+    { label: "Paid out", done: runPaid, note: ofAll(paidN) ?? (runPaid ? "Bank file released" : "Bank file & payslips") },
   ];
   const runPercent = Math.round((runSteps.filter((x) => x.done).length / runSteps.length) * 100);
 
@@ -345,13 +433,18 @@ export default async function DashboardPage(props: PageProps<"/console">) {
   const growth = prevPoint && prevPoint.a > 0 ? ((previewGross - prevPoint.a) / prevPoint.a) * 100 : null;
   const hourIst = (new Date().getUTCHours() + 5 + (new Date().getUTCMinutes() + 30 >= 60 ? 1 : 0)) % 24;
   const greeting = hourIst < 12 ? "Good morning" : hourIst < 17 ? "Good afternoon" : "Good evening";
-  const runStatus = run ? run.status.replace(/_/g, " ") : "Not calculated";
+  const runStatus = run
+    ? run.status.replace(/_/g, " ")
+    : calculatedN > 0
+      ? `${calculatedN} of ${entities} calculated`
+      : "Not calculated";
   const firstName = user.name.split(" ")[0];
   const entityLine =
     companies.length === 1 ? companies[0].name : `${companies.length} legal entities`;
 
   /* Everything that is waiting on somebody, in one list — the question a
      dashboard is opened to answer. */
+  const joinersMissing = activeJoiners.filter((x) => !x.j.pan || !x.j.bankAccount).length;
   const todo = [
     approvals > 0 && {
       key: "approvals",
@@ -365,9 +458,9 @@ export default async function DashboardPage(props: PageProps<"/console">) {
       href: "/console/payroll/run",
       tone: "brass" as const,
     },
-    activeJoiners.filter((x) => !x.j.pan || !x.j.bankAccount).length > 0 && {
+    joinersMissing > 0 && {
       key: "joiners",
-      label: `${activeJoiners.filter((x) => !x.j.pan || !x.j.bankAccount).length} joiner(s) missing PAN or bank details`,
+      label: `${joinersMissing} joiner${joinersMissing === 1 ? " is" : "s are"} missing PAN or bank details`,
       href: "/console/onboarding",
       tone: "rust" as const,
     },
@@ -434,7 +527,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
           </h1>
           <p className="mt-1 text-sm text-ink-2">
             {entityLine} · {PERIOD.label} payroll
-            {seesPay && run ? <> · <span className="font-semibold text-[var(--indigo)] capitalize">{runStatus}</span></> : null}
+            {seesPay && calculatedN > 0 ? <> · <span className="font-semibold text-[var(--indigo)] capitalize">{runStatus}</span></> : null}
           </p>
         </div>
         <div className="relative flex flex-wrap items-center gap-2">
@@ -504,7 +597,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
             <div className="flex flex-wrap items-start justify-between gap-3 px-6 pt-5">
               <div>
                 <h2 className="font-display text-base font-bold tracking-tight text-ink">Payroll cost trend</h2>
-                <p className="mt-0.5 text-xs text-ink-3">Gross payroll, as actually run · {PERIOD.label} shown until it is</p>
+                <p className="mt-0.5 text-xs text-ink-3">Gross payroll by month, as run · {PERIOD.label} is a preview until it is calculated</p>
               </div>
               <div className="inline-flex rounded-full bg-[var(--indigo)]/10 p-1 text-xs font-semibold">
                 {[
@@ -533,12 +626,26 @@ export default async function DashboardPage(props: PageProps<"/console">) {
                 </p>
               )}
             </div>
+            {/* This month in four figures — what the bars cannot say. */}
+            <dl className="mt-auto grid grid-cols-2 border-t border-line-2 sm:grid-cols-4">
+              {[
+                { k: "Gross", v: previewGross, cls: "text-ink" },
+                { k: "Deductions", v: previews.reduce((a, p) => a + (p?.totals.deductionsPaise ?? 0), 0), cls: "text-rust" },
+                { k: "Employer cost", v: previews.reduce((a, p) => a + (p?.totals.employerCostPaise ?? 0), 0), cls: "text-ink" },
+                { k: "Net to pay", v: previewNet, cls: "text-teal" },
+              ].map((f, i) => (
+                <div key={f.k} className={`px-6 py-4 ${i > 0 ? "sm:border-l sm:border-line-2" : ""} ${i % 2 === 1 ? "border-l border-line-2 sm:border-l" : ""} ${i >= 2 ? "border-t border-line-2 sm:border-t-0" : ""}`}>
+                  <dt className="kpi-label text-ink-3">{f.k}</dt>
+                  <dd className={`mt-1 font-display text-lg font-bold tnum ${f.cls}`}>{compact(f.v)}</dd>
+                </div>
+              ))}
+            </dl>
           </Card>
 
           <Card padded={false} className="rounded-2xl">
             <div className="px-6 pt-5">
               <h2 className="font-display text-base font-bold tracking-tight text-ink">Pay run · {PERIOD.label}</h2>
-              <p className="mt-0.5 text-xs text-ink-3">{run ? `Version ${run.version} · ${runStatus}` : "Calculate to begin"}</p>
+              <p className="mt-0.5 text-xs text-ink-3">{run ? `Version ${run.version} · ${runStatus}` : calculatedN > 0 ? runStatus : "Calculate to begin"}</p>
             </div>
             <div className="flex flex-wrap items-center gap-5 px-6 py-5">
               <Ring percent={runPercent} label="steps done" />
@@ -612,7 +719,8 @@ export default async function DashboardPage(props: PageProps<"/console">) {
         </Card>
       )}
 
-      {/* ---------------- needs attention ---------------- */}
+      {/* ---------------- attention + statutory dues ---------------- */}
+      <div className={`grid gap-5 ${seesPay ? "lg:grid-cols-2 lg:items-start" : ""}`}>
       <SectionCard title="Needs your attention" subtitle={todo.length ? `${todo.length} item(s)` : "Nothing waiting"}>
         {todo.length === 0 ? (
           <div className="px-5 pb-5">
@@ -621,7 +729,7 @@ export default async function DashboardPage(props: PageProps<"/console">) {
             </p>
           </div>
         ) : (
-          <ul className="grid gap-2 px-5 pb-5 sm:grid-cols-2">
+          <ul className="grid gap-2 px-5 pb-5">
             {todo.map((t) => (
               <li key={t.key}>
                 <Link
@@ -639,6 +747,63 @@ export default async function DashboardPage(props: PageProps<"/console">) {
           </ul>
         )}
       </SectionCard>
+
+      {seesPay && (
+        <SectionCard
+          title="Statutory dues"
+          subtitle={
+            shownDues.length === 0
+              ? "Nothing to deposit or file right now"
+              : `${shownDues.filter((d) => d.status === "overdue").length > 0 ? `${shownDues.filter((d) => d.status === "overdue").length} overdue · ` : ""}next ${shownDues.length} deadline${shownDues.length === 1 ? "" : "s"}`
+          }
+          action={{ href: "/console/statutory", label: "Returns" }}
+        >
+          {shownDues.length === 0 ? (
+            <Empty>Every remittance and return for this month and last is filed.</Empty>
+          ) : (
+            <ul className="divide-y divide-line-2 border-t border-line-2">
+              {shownDues.map((d) => {
+                const overdue = d.status === "overdue";
+                const soon = !overdue && d.daysUntilDue <= 7;
+                return (
+                  <li key={d.key} className="flex items-center gap-3 px-5 py-3">
+                    <span
+                      aria-hidden
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-center leading-none ${
+                        overdue ? "bg-rust-soft text-rust" : soon ? "bg-amber-soft text-amber" : "bg-indigo-soft text-indigo"
+                      }`}
+                    >
+                      <span>
+                        <span className="block font-display text-sm font-bold tnum">{Number(d.dueDate.slice(8))}</span>
+                        <span className="block text-[9px] font-semibold uppercase tracking-wider">
+                          {MONTH_NAME[Number(d.dueDate.slice(5, 7)) - 1].slice(0, 3)}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-ink">{d.label}</span>
+                      <span className="block text-xs leading-snug text-ink-3">
+                        {d.periodLabel}{companies.length > 1 ? ` · ${d.companyName}` : ""} ·{" "}
+                        <span className={overdue ? "font-semibold text-rust" : soon ? "font-semibold text-amber" : ""}>
+                          {overdue
+                            ? `${Math.abs(d.daysUntilDue)} day${Math.abs(d.daysUntilDue) === 1 ? "" : "s"} overdue`
+                            : d.daysUntilDue === 0
+                              ? "due today"
+                              : `in ${d.daysUntilDue} day${d.daysUntilDue === 1 ? "" : "s"}`}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right font-display text-sm font-bold tnum text-ink">
+                      {d.amountPaise === null ? <span className="text-xs font-medium text-ink-3">return</span> : formatINR(d.amountPaise)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </SectionCard>
+      )}
+      </div>
 
       {/* ---------------- where the money goes ---------------- */}
       <div className="grid lg:grid-cols-2 gap-5">

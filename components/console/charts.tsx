@@ -362,6 +362,11 @@ export function CategoryPie({
   const rOuter = size / 2 - 2;
   const rInner = rOuter * 0.6;
   const fmt = format ?? ((v: number) => String(v));
+  /* The figure has to sit inside the hole. "₹6.78 L" at the size a
+     two-digit count uses ran over the ring, so the type shrinks with the
+     string: a bold digit is a little over half an em wide. */
+  const centerText = total === 0 ? "—" : fmt(total);
+  const centerSize = Math.min(size * 0.17, (rInner * 2 * 0.84) / (centerText.length * 0.6));
 
   return (
     <div className="flex flex-wrap items-center gap-6">
@@ -386,8 +391,8 @@ export function CategoryPie({
             />
           ))
         )}
-        <text x={cx} y={cy - (centerLabel ? 8 : 0)} textAnchor="middle" dominantBaseline="central" className="tnum" style={{ fontSize: size * 0.17, fontWeight: 800, fill: "var(--ink)" }}>
-          {total === 0 ? "—" : fmt(total)}
+        <text x={cx} y={cy - (centerLabel ? 8 : 0)} textAnchor="middle" dominantBaseline="central" className="tnum" style={{ fontSize: centerSize, fontWeight: 800, fill: "var(--ink)" }}>
+          {centerText}
         </text>
         {centerLabel && (
           <text x={cx} y={cy + size * 0.14} textAnchor="middle" dominantBaseline="central" style={{ fontSize: size * 0.07, fill: "var(--ink-3)" }}>
