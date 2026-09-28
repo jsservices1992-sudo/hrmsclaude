@@ -11,7 +11,8 @@ import {
   canMutate,
   scopeCompanies,
 } from "@/lib/auth/session";
-import { CalculateForm, ApproveForm, ReopenForm } from "./run-actions";
+import { CalculateForm, ApproveForm, ReopenForm, UnlockPeriodForm } from "./run-actions";
+import { periodStateFor } from "@/lib/payroll/period-unlock";
 import { RowPopover } from "./row-actions";
 import { RunOutputs } from "@/components/console/run-outputs";
 import {
@@ -104,11 +105,16 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
     currentPeriod();
   const calcYear = chosen.year;
   const calcMonth = chosen.month;
-  const calcState = periodState(calcYear, calcMonth);
+  /* The calendar's lock, with any one-off unlock an admin has granted for
+     this company's month. Resolved once the company is known, below. */
+  const calendarState = periodState(calcYear, calcMonth);
   const periods = selectablePeriods();
   /* Which company gets run: the one being filtered on, so that somebody
      with two companies can run the second. */
   const calcCompany = companies.find((c) => c.id === companyFilter) ?? companies[0];
+  const calcState = calcCompany
+    ? await periodStateFor(calcCompany.id, calcYear, calcMonth)
+    : { ...calendarState, unlocked: false };
   /* allRuns is ordered newest version first, so the first match is the
      one that stands for this period. */
   const latestForPeriod =
@@ -199,6 +205,17 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                   year={calcYear}
                   month={calcMonth}
                   label={hasRunForPeriod ? "Recalculate run" : "Calculate & save run"}
+                />
+              )}
+              {calcState.unlocked && (
+                <span className="basis-full text-xs text-amber">{calcState.reason}</span>
+              )}
+              {!calcState.open && !signedOff && user.role === "admin" && !/not started/.test(calcState.reason) && (
+                <UnlockPeriodForm
+                  companyId={calcCompany.id}
+                  year={calcYear}
+                  month={calcMonth}
+                  label={`${MONTHS[calcMonth - 1]} ${calcYear}`}
                 />
               )}
             </div>

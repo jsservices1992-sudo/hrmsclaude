@@ -1,5 +1,7 @@
 "use server";
 
+import { periodStateFor, consumeUnlock } from "@/lib/payroll/period-unlock";
+import { UNLOCK_HOURS } from "@/lib/payroll/period-unlock-rule";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
@@ -74,7 +76,7 @@ export async function calculateRun(
 
   /* Checked here and not only on the screen: a Server Function is
      reachable by direct POST, and a closed month is the whole point. */
-  const state = periodState(year, month);
+  const state = await periodStateFor(companyId, year, month);
   if (!state.open) return { error: state.reason };
 
   const preview = await previewRun({ companyId, year, month });
@@ -229,8 +231,12 @@ export async function calculateRun(
       headcount: preview.totals.headcount,
       netPaise: preview.totals.netPaise,
       excluded: preview.excluded.map((e) => e.empCode),
+      ...(state.unlocked ? { calculatedUnder: state.reason } : {}),
     },
   });
+
+  /* An unlock opens a closed month for one recalculation only. */
+  if (state.unlocked) await consumeUnlock(companyId, year, month, runId);
 
   revalidatePath("/console/payroll");
   revalidatePath("/console/runs");
@@ -564,4 +570,68 @@ export async function reopenRun(
 
   revalidatePath("/console/runs");
   return { ok: `Version ${newVersion} created. Version ${run.version} is preserved.` };
+}
+
+/**
+ * Reopen a closed month once, for one company, so it can be recalculated.
+ *
+ * For a month whose salaries have not gone out: an admin decision with a
+ * written reason, on the record, lasting one recalculation or 24 hours.
+ * A month already approved or paid is refused — that is what reopening
+ * the run, or an arrear in the month now running, is for.
+ */
+export async function grantPeriodUnlock(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Not authorised." };
+  if (user.role !== "admin") return { error: "Only an administrator can unlock a closed month." };
+
+  const companyId = String(formData.get("companyId") ?? "");
+  const year = Number(formData.get("year"));
+  const month = Number(formData.get("month"));
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
+  if (!year || !month || month < 1 || month > 12) return { error: "Invalid period." };
+  if (reason.length < 10) return { error: "Say why this month is being reopened — at least a sentence." };
+
+  const state = await periodStateFor(companyId, year, month);
+  if (state.open) return { error: state.unlocked ? "This month is already unlocked." : "This month is open — no unlock needed." };
+  if (/not started/.test(state.reason)) return { error: state.reason };
+
+  const [latest] = await db
+    .select()
+    .from(s.payrollRuns)
+    .where(and(eq(s.payrollRuns.companyId, companyId), eq(s.payrollRuns.periodYear, year), eq(s.payrollRuns.periodMonth, month)))
+    .orderBy(desc(s.payrollRuns.version))
+    .limit(1);
+  if (latest && !isRecalculable(latest.status)) {
+    return {
+      error: `Version ${latest.version} is ${latest.status.replace("_", " ")}. A month that has been approved or paid is corrected by reopening the run or by an arrear, not by unlocking it.`,
+    };
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + UNLOCK_HOURS * 3_600_000).toISOString();
+  const id = randomUUID();
+  await db.insert(s.periodUnlocks).values({
+    id,
+    companyId,
+    periodYear: year,
+    periodMonth: month,
+    reason,
+    grantedBy: user.email,
+    grantedAt: now.toISOString(),
+    expiresAt,
+  });
+  await audit({
+    actor: user.email,
+    action: "period.unlocked",
+    entity: "period_unlock",
+    entityId: id,
+    reason,
+    after: { companyId, period: `${year}-${month}`, expiresAt },
+  });
+
+  revalidatePath("/console/runs");
+  revalidatePath("/console/payroll");
+  return { ok: `Unlocked for one recalculation, until ${expiresAt.slice(0, 16).replace("T", " ")} UTC.` };
 }

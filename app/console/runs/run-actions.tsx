@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import {
+  grantPeriodUnlock,
   calculateRun,
   approveRun,
   reopenRun,
@@ -67,6 +68,37 @@ export function ReopenForm({ runId }: { runId: string }) {
       <SubmitButton variant="default" pendingText="Working…">
         Reverse &amp; recalculate
       </SubmitButton>
+      <FormFeedback state={state} />
+    </form>
+  );
+}
+
+/**
+ * Reopen a closed month once, for an unpaid run. Admin only, with a
+ * reason on the record; the server decides whether it is allowed.
+ */
+export function UnlockPeriodForm({
+  companyId,
+  year,
+  month,
+  label,
+}: {
+  companyId: string;
+  year: number;
+  month: number;
+  label: string;
+}) {
+  const [state, action] = useActionState<ActionState, FormData>(grantPeriodUnlock, {});
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="companyId" value={companyId} />
+      <input type="hidden" name="year" value={year} />
+      <input type="hidden" name="month" value={month} />
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-ink-2">{label} is locked — reason to unlock once</span>
+        <Input name="reason" required minLength={10} placeholder="e.g. Salaries not yet paid; recalculating on the revised PF rules" className="w-80" />
+      </label>
+      <SubmitButton variant="default" pendingText="Unlocking…">Unlock for recalculation</SubmitButton>
       <FormFeedback state={state} />
     </form>
   );

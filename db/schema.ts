@@ -3104,3 +3104,27 @@ export const assetAllocations = pgTable(
     index("asset_allocations_employee_idx").on(t.employeeId),
   ],
 );
+
+/**
+ * A closed payroll month reopened once for one company — by an admin, with
+ * a reason, for a single recalculation within 24 hours. See
+ * lib/payroll/period-unlock.ts.
+ */
+export const periodUnlocks = pgTable(
+  "period_unlocks",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id")
+      .notNull()
+      .references(() => companies.id),
+    periodYear: integer("period_year").notNull(),
+    periodMonth: integer("period_month").notNull(),
+    reason: text("reason").notNull(),
+    grantedBy: text("granted_by").notNull(),
+    grantedAt: text("granted_at").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    usedAt: text("used_at"),
+    usedByRunId: text("used_by_run_id"),
+  },
+  (t) => [index("period_unlocks_company_idx").on(t.companyId, t.periodYear, t.periodMonth)],
+);
