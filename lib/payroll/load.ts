@@ -1,3 +1,4 @@
+import { isStipendiary } from "@/lib/hris/stipend";
 import "server-only";
 
 /* The headcount each Act reaches from. Defaults, not law-by-state: a
@@ -861,15 +862,18 @@ export async function previewRun(args: {
         epfEstablishmentCovered:
           emp.pfApplicability === "yes"
             ? true
-            : emp.pfApplicability === "no"
+            : emp.pfApplicability === "no" || isStipendiary(emp.employmentType)
               ? false
               : epfEstablishmentCovered,
         esicEstablishmentCovered:
           emp.esicApplicability === "yes"
             ? true
-            : emp.esicApplicability === "no"
+            : emp.esicApplicability === "no" || isStipendiary(emp.employmentType)
               ? false
               : esicEstablishmentCovered,
+        /* An intern's stipend is not wages: no PF or ESI unless their
+           record says Yes, and no statutory bonus. */
+        stipendiary: isStipendiary(emp.employmentType),
         vpfPercent: emp.vpfPercent,
         // Read the stored decision for this contribution period. Falling back
         // to current wages only covers an employee with no record yet (a new

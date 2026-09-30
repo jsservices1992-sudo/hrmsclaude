@@ -1,3 +1,4 @@
+import { isStipendiary } from "@/lib/hris/stipend";
 import "server-only";
 import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { db } from "@/db";
@@ -67,6 +68,7 @@ export async function loadFinalCheck(args: {
       branchId: s.employees.branchId,
       gradeId: s.employees.gradeId,
       skillCategory: s.employees.skillCategory,
+      employmentType: s.employees.employmentType,
     })
     .from(s.employees)
     .where(and(eq(s.employees.companyId, companyId), eq(s.employees.status, "active")));
@@ -151,6 +153,8 @@ export async function loadFinalCheck(args: {
   const minimumWageUncheckable: FinalCheckResult["minimumWageUncheckable"] = [];
 
   for (const e of activeEmployees) {
+    // A stipend is not wages; the minimum wage does not reach an intern.
+    if (isStipendiary(e.employmentType)) continue;
     const who = { id: e.id, name: `${e.firstName} ${e.lastName}`, empCode: e.empCode };
     const facts = minimumWageFacts({
       stateCode: e.branchId ? stateByBranch.get(e.branchId) ?? null : null,
@@ -202,8 +206,9 @@ export async function loadFinalCheck(args: {
   );
   const wageCodeBreaches: FinalCheckResult["wageCodeBreaches"] = [];
   if (preview && components.length > 0) {
+    const internIds = new Set(activeEmployees.filter((e) => isStipendiary(e.employmentType)).map((e) => e.id));
     for (const r of preview.results) {
-      if (r.grossPaise <= 0) continue;
+      if (r.grossPaise <= 0 || internIds.has(r.employeeId)) continue;
       const split = codeWageSplit(r.lines, components);
       if (split.remunerationPaise <= 0) continue;
       const check = checkWageCodeSplit({

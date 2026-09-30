@@ -1,3 +1,4 @@
+import { isStipendiary } from "@/lib/hris/stipend";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
@@ -214,7 +215,16 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
       dateOfExit: e?.dateOfExit ?? null,
       salaryChangedInPeriod: salaryChanged.has(sm.employeeId),
       engineWarnings: warningsByEmployee.get(sm.employeeId) ?? [],
-      ...minimumWageFacts({
+      /* An intern's stipend is not wages: none of the minimum wage,
+         bonus or Code on Wages tests reach it. */
+      ...(isStipendiary(e?.employmentType)
+        ? {
+            monthlyGrossPaise: rateByEmployee.get(sm.employeeId) ?? null,
+            monthlyBasicPaise: null,
+            minimumWagePaise: null,
+            minimumWageUnknown: null,
+          }
+        : minimumWageFacts({
         stateCode: e?.branchId ? stateByBranch.get(e.branchId) ?? null : null,
         zone: e?.branchId ? zoneByBranch.get(e.branchId) ?? null : null,
         skillCategory:
@@ -229,9 +239,10 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
         rules: statutory.minimumWages,
         asOf,
         companyId: run.companyId,
-      }),
-      ...bonusFacts(sm.employeeId),
-      ...wageCodeFacts(sm.employeeId, sm.grossPaise),
+      })),
+      ...(isStipendiary(e?.employmentType)
+        ? { bonusShortfallPaise: null, bonusEntitlementPaise: null, wageCodeShortfallPaise: null, wageCodeShare: null }
+        : { ...bonusFacts(sm.employeeId), ...wageCodeFacts(sm.employeeId, sm.grossPaise) }),
     };
   });
 

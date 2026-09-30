@@ -113,6 +113,8 @@ export type EmployeeInput = {
    * higher-wage arrangement, "company" follows the company setting.
    */
   pfContributionBasis?: "company" | "ceiling" | "higher";
+  /** An intern on a stipend: no statutory bonus, and PF/ESI only if their record says Yes. */
+  stipendiary?: boolean;
   /**
    * Whether each charge reaches this person at all — FR-STAT-1.
    *
@@ -325,8 +327,10 @@ export function computeEmployeePay(args: {
   const bonusIndex = c.structure.findIndex(
     (def) => def.calcMethod === "statutory_bonus",
   );
-  let employerBonusThisMonth = prorate(evaluated.employerBonusPaise, proration);
-  if (bonusIndex >= 0) {
+  /* The Payment of Bonus Act reaches employees earning wages; a stipend
+     is neither, so an intern accrues none. */
+  let employerBonusThisMonth = e.stipendiary ? 0 : prorate(evaluated.employerBonusPaise, proration);
+  if (bonusIndex >= 0 && !e.stipendiary) {
     const def = c.structure[bonusIndex];
     const earnedWage = c.structure.reduce(
       (a, x, i) => (x.kind === "earning" && x.bonusBase ? a + proratedAmounts[i] : a),
@@ -658,7 +662,9 @@ export function computeEmployeePay(args: {
         basis: `On EPF wages ₹${(epf.pfWageConsidered / 100).toFixed(0)} — employer only`,
       });
     }
-  } else {
+  } else if (!(e.stipendiary && e.pfApplicability !== "yes")) {
+    /* An intern is outside PF by default — that is the rule working, not
+       a finding. Anyone else excluded is still named. */
     warnings.push(epf.reason);
   }
 

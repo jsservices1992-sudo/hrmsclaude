@@ -1,3 +1,4 @@
+import { isStipendiary } from "@/lib/hris/stipend";
 import "server-only";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
@@ -490,8 +491,11 @@ export async function loadProvisions(args: {
   for (const line of register.lines) {
     const emp = register.employees.get(line.employeeId)!;
     const basic = line.amounts.BASIC ?? 0;
+    /* An intern's stipend earns no gratuity and no statutory bonus; leave
+       they hold can still be encashed, so that provision stays. */
+    const intern = isStipendiary(emp.employmentType);
 
-    gratuityInputs.push({
+    if (!intern) gratuityInputs.push({
       employeeId: emp.id,
       empCode: emp.empCode,
       monthlyBasicPaise: basic,
@@ -514,7 +518,7 @@ export async function loadProvisions(args: {
       encashmentCapDays: 45,
     });
 
-    bonusInputs.push({
+    if (!intern) bonusInputs.push({
       employeeId: emp.id,
       empCode: emp.empCode,
       // No bonus has been declared in the seed; the provision is nil

@@ -713,3 +713,15 @@ describe("employer NPS", () => {
     assert.equal(withNps.employerCostPaise - without.employerCostPaise, L(4000));
   });
 });
+
+describe("interns on a stipend", () => {
+  const line = (r: ReturnType<typeof run>, code: string) =>
+    r.lines.find((l) => l.code === code)?.amountPaise ?? 0;
+
+  test("no PF or ESI finding, and no bonus accrual, for an intern", () => {
+    const r = run({ monthlyGrossPaise: L(8000), stipendiary: true, epfEstablishmentCovered: false, esicEstablishmentCovered: false, esicCoveredAtPeriodStart: true });
+    assert.equal(line(r, "EPF_EE"), 0);
+    assert.equal(line(r, "ESIC_EE"), 0);
+    assert.ok(!r.warnings.some((w) => /EPF Act/.test(w)), "being outside PF is not a finding for an intern");
+  });
+});
