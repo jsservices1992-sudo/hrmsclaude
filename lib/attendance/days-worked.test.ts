@@ -7,8 +7,8 @@ describe("Reading a days-worked register", () => {
     const { rows, errors } = parseDaysWorkedCsv("JBM00015,13\nJBM00025,25");
     assert.deepEqual(errors, []);
     assert.deepEqual(rows, [
-      { empCode: "JBM00015", daysWorked: 13, halfDays: 0 },
-      { empCode: "JBM00025", daysWorked: 25, halfDays: 0 },
+      { empCode: "JBM00015", daysWorked: 13, halfDays: 0, paidDays: null },
+      { empCode: "JBM00025", daysWorked: 25, halfDays: 0, paidDays: null },
     ]);
   });
 
@@ -17,12 +17,12 @@ describe("Reading a days-worked register", () => {
       "empCode,name,daysWorked\nJBM00015,BADAL SINGH,13\n",
     );
     assert.deepEqual(errors, []);
-    assert.deepEqual(rows, [{ empCode: "JBM00015", daysWorked: 13, halfDays: 0 }]);
+    assert.deepEqual(rows, [{ empCode: "JBM00015", daysWorked: 13, halfDays: 0, paidDays: null }]);
   });
 
   test("half days are read when they are there", () => {
     const { rows } = parseDaysWorkedCsv("empCode,name,daysWorked,halfDays\nE1,Asha,20,2");
-    assert.deepEqual(rows, [{ empCode: "E1", daysWorked: 20, halfDays: 2 }]);
+    assert.deepEqual(rows, [{ empCode: "E1", daysWorked: 20, halfDays: 2, paidDays: null }]);
   });
 
   test("zero days is a real answer, not a missing one", () => {
@@ -34,7 +34,7 @@ describe("Reading a days-worked register", () => {
   test("a line with no number is refused by name", () => {
     const { rows, errors } = parseDaysWorkedCsv("E1,Asha,\nE2,21");
     assert.equal(rows.length, 1);
-    assert.match(errors[0].message, /E1 has no number/);
+    assert.match(errors[0].message, /E1 has neither days worked nor paid days/);
   });
 
   test("a negative figure is refused", () => {
@@ -62,13 +62,13 @@ describe("What days worked means for the month", () => {
   const august = { workingDays: 25, employedDays: 31 };
 
   test("working every working day is a full month", () => {
-    const r = outcomeForDaysWorked({ ...august, daysWorked: 25, halfDays: 0 });
+    const r = outcomeForDaysWorked({ ...august, daysWorked: 25, halfDays: 0, paidDays: null });
     assert.equal(r.lopDays, 0);
     assert.equal(r.paidDays, 31);
   });
 
   test("thirteen days worked costs the twelve not worked", () => {
-    const r = outcomeForDaysWorked({ ...august, daysWorked: 13, halfDays: 0 });
+    const r = outcomeForDaysWorked({ ...august, daysWorked: 13, halfDays: 0, paidDays: null });
     assert.equal(r.lopDays, 12);
     assert.equal(r.paidDays, 19);
   });
@@ -76,7 +76,7 @@ describe("What days worked means for the month", () => {
   test("weekly offs and holidays are paid without being counted", () => {
     /* The answer to the question everybody asks: the 13 does not include
        the Sundays, and the Sundays are paid anyway. */
-    const r = outcomeForDaysWorked({ ...august, daysWorked: 13, halfDays: 0 });
+    const r = outcomeForDaysWorked({ ...august, daysWorked: 13, halfDays: 0, paidDays: null });
     assert.equal(r.paidDays - r.lopDays, 31 - 2 * 12);
     assert.equal(r.paidDays, 13 + 6, "the days worked plus the offs and the holiday");
   });
@@ -87,13 +87,13 @@ describe("What days worked means for the month", () => {
   });
 
   test("nobody worked is a whole month of loss of pay, not an error", () => {
-    const r = outcomeForDaysWorked({ ...august, daysWorked: 0, halfDays: 0 });
+    const r = outcomeForDaysWorked({ ...august, daysWorked: 0, halfDays: 0, paidDays: null });
     assert.equal(r.lopDays, 25);
     assert.equal(r.paidDays, 6);
   });
 
   test("more days than the month has is refused, and says why", () => {
-    const r = outcomeForDaysWorked({ ...august, daysWorked: 31, halfDays: 0 });
+    const r = outcomeForDaysWorked({ ...august, daysWorked: 31, halfDays: 0, paidDays: null });
     assert.match(r.problem!, /only 25 working day/);
   });
 
@@ -129,9 +129,9 @@ describe("The template's own shape", () => {
     const { rows, errors } = parseDaysWorkedCsv(template);
     assert.deepEqual(errors, []);
     assert.deepEqual(rows, [
-      { empCode: "JBM00015", daysWorked: 13, halfDays: 0 },
-      { empCode: "JBM00025", daysWorked: 25, halfDays: 0 },
-      { empCode: "JBM00080", daysWorked: 18, halfDays: 0 },
+      { empCode: "JBM00015", daysWorked: 13, halfDays: 0, paidDays: null },
+      { empCode: "JBM00025", daysWorked: 25, halfDays: 0, paidDays: null },
+      { empCode: "JBM00080", daysWorked: 18, halfDays: 0, paidDays: null },
     ]);
   });
 
@@ -159,4 +159,25 @@ describe("The template's own shape", () => {
     assert.equal(r.lopDays, 12);
     assert.equal(r.paidDays, 19);
   });
+});
+
+test("paidDays, when filled, is exactly what gets paid", () => {
+  const csv = "empCode,name,workingDaysThisMonth,daysWorked,halfDays,paidDays\nE1,Asha,26,26,0,24\nE2,Ravi,26,20,2,\n";
+  const { rows, errors } = parseDaysWorkedCsv(csv);
+  assert.deepEqual(errors, []);
+  assert.equal(rows[0].paidDays, 24);
+  assert.equal(rows[1].paidDays, null);
+  const a = outcomeForDaysWorked({ workingDays: 26, employedDays: 30, daysWorked: 26, halfDays: 0, paidDays: 24 });
+  assert.deepEqual([a.paidDays, a.lopDays, a.problem], [24, 6, null]);
+  // Blank paidDays: 20 full + 2 half = 21 of 26 worked → 5 not paid → 25 of 30.
+  const b = outcomeForDaysWorked({ workingDays: 26, employedDays: 30, daysWorked: 20, halfDays: 2, paidDays: null });
+  assert.deepEqual([b.paidDays, b.lopDays], [25, 5]);
+});
+
+test("paid days above the days employed are refused, and a row may carry paid days alone", () => {
+  const over = outcomeForDaysWorked({ workingDays: 26, employedDays: 30, daysWorked: 0, halfDays: 0, paidDays: 31 });
+  assert.ok(over.problem);
+  const { rows, errors } = parseDaysWorkedCsv("empCode,paidDays\nE9,18\n");
+  assert.deepEqual(errors, []);
+  assert.equal(rows[0].paidDays, 18);
 });

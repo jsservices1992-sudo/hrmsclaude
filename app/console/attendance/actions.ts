@@ -1539,7 +1539,26 @@ async function daysWorkedUpload(
 
   const isOff = (status: string) => status === "weekly_off" || status === "holiday";
   const period = `${year}-${String(month).padStart(2, "0")}`;
-  const settled: { m: (typeof months)[number]; lopDays: number; paidDays: number; worked: number; workingDays: number }[] = [];
+  const deptRows = await db
+    .select({ id: s.employees.id, departmentId: s.employees.departmentId })
+    .from(s.employees)
+    .where(eq(s.employees.companyId, companyId));
+  const deptOf = new Map(deptRows.map((r) => [r.id, r.departmentId]));
+  const conventionCache = new Map<string, Awaited<ReturnType<typeof loadConventions>>>();
+  const conventionsFor = async (departmentId: string | null) => {
+    const key = departmentId ?? "";
+    if (!conventionCache.has(key)) conventionCache.set(key, await loadConventions(companyId, departmentId));
+    return conventionCache.get(key)!;
+  };
+  const settled: {
+    m: (typeof months)[number];
+    lopDays: number;
+    paidDays: number;
+    worked: number;
+    workingDays: number;
+    paidEntered: boolean;
+    employedDays: number;
+  }[] = [];
   const problems: string[] = [];
 
   for (const row of rows) {
@@ -1561,17 +1580,36 @@ async function daysWorkedUpload(
       employedDays,
       daysWorked: row.daysWorked,
       halfDays: row.halfDays,
+      paidDays: row.paidDays,
     });
     if (outcome.problem) {
       problems.push(`${row.empCode} ${m.name}: ${outcome.problem}`);
       continue;
     }
+    /* The register speaks in calendar days; payroll prorates on the
+       company's own basis (a fixed 30, a 26-day month…). The share of the
+       month not paid is what carries across, so "26 of 30" pays 26/30 of
+       the month whichever basis is set — identical on calendar days. */
+    const conventions = await conventionsFor(deptOf.get(m.employeeId) ?? null);
+    const fullPaid = paidDaysForPeriod({
+      year,
+      month,
+      basis: conventions.prorationBasis as ProrationBasis,
+      standardDays: conventions.standardDays,
+      dateOfJoining: m.dateOfJoining,
+      dateOfExit: m.dateOfExit,
+      lopDays: 0,
+    });
+    const storedLop =
+      employedDays > 0 ? Math.round(((fullPaid * outcome.lopDays) / employedDays) * 100) / 100 : 0;
     settled.push({
       m,
-      lopDays: outcome.lopDays,
+      lopDays: storedLop,
       paidDays: outcome.paidDays,
       worked: row.daysWorked + row.halfDays / 2,
       workingDays,
+      paidEntered: row.paidDays != null,
+      employedDays,
     });
   }
 
@@ -1603,7 +1641,9 @@ async function daysWorkedUpload(
 
   await db.transaction(async (tx) => {
     for (const x of settled) {
-      const reason = `Days worked: ${x.worked} of ${x.workingDays} working day(s), from an uploaded register`;
+      const reason = x.paidEntered
+        ? `Paid days: ${x.paidDays} of ${x.employedDays}, from an uploaded register`
+        : `Days worked: ${x.worked} of ${x.workingDays} working day(s) — ${x.paidDays} paid day(s), from an uploaded register`;
       const id = existingId.get(x.m.employeeId);
       if (id) {
         await tx

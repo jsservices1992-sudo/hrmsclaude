@@ -69,7 +69,7 @@ export function DaysWorkedUploadForm({
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
-      <FileDrop hint="One line per person · empCode, name, daysWorked" />
+      <FileDrop hint="One line per person · empCode, name, workingDaysThisMonth, daysWorked, halfDays, paidDays" />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <a
           href={`/console/attendance/template/days-worked?company=${companyId}&year=${year}&month=${month}`}
@@ -82,9 +82,11 @@ export function DaysWorkedUploadForm({
       <details className="text-xs text-ink-3">
         <summary className="cursor-pointer font-medium text-ink-2 hover:text-ink">How the file is read</summary>
         <p className="mt-1.5 max-w-[60ch]">
-          <code className="font-mono">empCode,name,daysWorked</code>. Weekly offs and holidays are paid
-          without being counted, so leave them out — the days not worked are not paid. The
-          template has everybody on a full month; change only the people who were away.
+          <code className="font-mono">empCode, name, workingDaysThisMonth, daysWorked, halfDays, paidDays</code>.
+          Either change <b>daysWorked</b> (and <b>halfDays</b>, each counted as half a day) — weekly offs and
+          holidays are paid without being counted, so leave them out — or fill <b>paidDays</b> directly, which
+          then decides that person&rsquo;s pay. The template has everybody on a full month; change only the
+          people who were away. Payroll picks the result up on the next calculation.
         </p>
       </details>
       <FormFeedback state={state} />

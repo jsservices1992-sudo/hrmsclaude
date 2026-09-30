@@ -725,3 +725,13 @@ describe("interns on a stipend", () => {
     assert.ok(!r.warnings.some((w) => /EPF Act/.test(w)), "being outside PF is not a finding for an intern");
   });
 });
+
+describe("paid days from the attendance register reach the payslip", () => {
+  test("26 paid of 30 pays 26/30 of every prorating component", () => {
+    // An upload of paidDays 26 in a 30-day month stores 4 days not paid.
+    const full = run({ monthlyGrossPaise: L(30000) });
+    const part = run({ monthlyGrossPaise: L(30000), lopDays: 4 });
+    assert.equal(part.paidDays, 26);
+    assert.equal(part.grossPaise, Math.round((full.grossPaise * 26) / 30));
+  });
+});

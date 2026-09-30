@@ -22,6 +22,12 @@ export type DaysWorkedRow = {
   daysWorked: number;
   /** Half days, counted as half a day worked. */
   halfDays: number;
+  /**
+   * Paid days entered directly. When given it is the answer — daysWorked
+   * and halfDays are then only there to read. Null when left blank, and
+   * the paid days are worked out from the days worked.
+   */
+  paidDays: number | null;
 };
 
 export type DaysWorkedError = { line: number; message: string };
@@ -66,6 +72,7 @@ export function parseDaysWorkedCsv(text: string): DaysWorkedParse {
   };
   const daysColumn = hasHeader ? columnFor("daysWorked", "days", "presentDays") : -1;
   const halfColumn = hasHeader ? columnFor("halfDays", "half") : -1;
+  const paidColumn = hasHeader ? columnFor("paidDays", "paid") : -1;
 
   for (let i = startAt; i < lines.length; i++) {
     const raw = lines[i];
@@ -92,15 +99,22 @@ export function parseDaysWorkedCsv(text: string): DaysWorkedParse {
       halfRaw = numeric[1];
     }
 
-    if (daysRaw === undefined || daysRaw === "") {
+    const paidRaw = paidColumn >= 0 ? (cols[paidColumn] ?? "").trim() : "";
+    const paidDays = paidRaw === "" ? null : readNumber(paidRaw);
+    if (paidRaw !== "" && paidDays === null) {
+      errors.push({ line: lineNo, message: `${empCode}: paid days must be a number of zero or more.` });
+      continue;
+    }
+
+    if ((daysRaw === undefined || daysRaw === "") && paidDays === null) {
       errors.push({
         line: lineNo,
-        message: `${empCode} has no number of days on it.`,
+        message: `${empCode} has neither days worked nor paid days on it.`,
       });
       continue;
     }
 
-    const daysWorked = readNumber(daysRaw);
+    const daysWorked = daysRaw === undefined || daysRaw === "" ? 0 : readNumber(daysRaw);
     const halfDays = halfRaw === undefined ? 0 : readNumber(halfRaw);
     if (daysWorked === null || halfDays === null) {
       errors.push({
@@ -119,7 +133,7 @@ export function parseDaysWorkedCsv(text: string): DaysWorkedParse {
       continue;
     }
     seen.set(empCode, lineNo);
-    rows.push({ empCode, daysWorked, halfDays });
+    rows.push({ empCode, daysWorked, halfDays, paidDays });
   }
 
   return { rows, errors };
@@ -146,7 +160,24 @@ export function outcomeForDaysWorked(args: {
   employedDays: number;
   daysWorked: number;
   halfDays: number;
+  /** Entered directly; wins over the days worked when given. */
+  paidDays?: number | null;
 }): DaysWorkedOutcome {
+  if (args.paidDays != null) {
+    if (args.paidDays > args.employedDays) {
+      return {
+        lopDays: 0,
+        paidDays: args.employedDays,
+        problem: `${args.paidDays} paid day(s), but this person was employed for only ${args.employedDays} day(s) this month.`,
+      };
+    }
+    return {
+      lopDays: Math.round((args.employedDays - args.paidDays) * 100) / 100,
+      paidDays: args.paidDays,
+      problem: null,
+    };
+  }
+
   const worked = args.daysWorked + args.halfDays / 2;
 
   if (worked > args.workingDays) {

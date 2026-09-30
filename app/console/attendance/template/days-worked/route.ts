@@ -65,12 +65,12 @@ export async function GET(request: Request) {
           d.date >= m.dateOfJoining &&
           (!m.dateOfExit || d.date <= m.dateOfExit),
       ).length;
-      return [m.empCode, m.name, String(workingDays), String(workingDays), "0"];
+      return [m.empCode, m.name, String(workingDays), String(workingDays), "0", ""];
     });
 
   const period = `${MONTHS[month - 1]} ${year}`;
   const lines = [
-    toCsv(["empCode", "name", "workingDaysThisMonth", "daysWorked", "halfDays"], rows).trim(),
+    toCsv(["empCode", "name", "workingDaysThisMonth", "daysWorked", "halfDays", "paidDays"], rows).trim(),
     "",
     `# ${company?.name ?? "This company"} — ${period}`,
     "#",
@@ -85,6 +85,13 @@ export async function GET(request: Request) {
     "#",
     "# Days not worked are not paid. Do not add the weekly offs or the",
     "# holiday into daysWorked: they are paid without being counted.",
+    "#",
+    "# halfDays: each half day counts as half a day worked.",
+    "#",
+    "# paidDays: leave it blank and paid days are worked out from daysWorked",
+    "# and halfDays. Or fill it in with the paid days you already know (for",
+    "# example 26 out of 30) — then that is exactly what payroll pays, and",
+    "# daysWorked and halfDays are not used for that person.",
     `# Generated ${formatDate(new Date().toISOString().slice(0, 10))}.`,
   ];
 
