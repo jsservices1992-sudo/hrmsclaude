@@ -362,7 +362,7 @@ export function renderAuditPack(pack: AuditPack): string {
   section("PAYROLL REGISTER");
   const current = pack.versions[pack.versions.length - 1];
   if (current) {
-    row("Employee code", "Name", "Paid days", "LOP days", "Gross", "Deductions", "Net");
+    row("Employee code", "Name", "Paid days", "Total days", "Gross", "Deductions", "Net");
     for (const e of current.employees) {
       row(
         e.empCode,

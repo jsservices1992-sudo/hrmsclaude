@@ -145,10 +145,10 @@ export default function AttendancePage() {
               />
             </div>
             <div className="flex flex-col gap-5">
-              <FeatureCard code="Payroll link" title="Loss of pay">
-                Unpaid absence flows to payroll as loss-of-pay days, valued on the
-                proration basis you configured — not on an assumption the engine
-                made for you.
+              <FeatureCard code="Payroll link" title="Paid days">
+                Attendance reaches payroll as paid days, valued on the proration
+                basis you configured — not on an assumption the engine made for
+                you.
               </FeatureCard>
               <FeatureCard code="Payroll link" title="Encashment">
                 Earned leave encashment computes on your policy&rsquo;s basis, and at

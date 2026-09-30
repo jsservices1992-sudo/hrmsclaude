@@ -83,7 +83,7 @@ export async function GET(request: Request) {
     "# keeps the number that is already in daysWorked, and is paid for the",
     "# whole month including the offs and the holiday.",
     "#",
-    "# Days not worked become loss of pay. Do not add the weekly offs or the",
+    "# Days not worked are not paid. Do not add the weekly offs or the",
     "# holiday into daysWorked: they are paid without being counted.",
     `# Generated ${formatDate(new Date().toISOString().slice(0, 10))}.`,
   ];

@@ -88,7 +88,7 @@ export function setupSteps(f: SetupFacts): SetupStep[] {
     {
       id: "leave",
       title: "Leave types",
-      why: "Earned, casual and sick leave, with how much accrues. Attendance turns anything uncovered into loss of pay.",
+      why: "Earned, casual and sick leave, with how much accrues. Days not covered by leave or attendance are not paid.",
       href: "/console/settings/master-data?tab=leave",
       done: f.leaveTypes > 0,
       blocking: false,
@@ -112,7 +112,7 @@ export function setupSteps(f: SetupFacts): SetupStep[] {
     {
       id: "holidays",
       title: "Holiday calendar",
-      why: "A holiday nobody has declared is an ordinary working day to attendance, which turns it into loss of pay for everyone who took it.",
+      why: "A holiday nobody has declared is an ordinary working day to attendance, so it goes unpaid for everyone who took it.",
       href: "/console/settings/master-data?tab=holidays",
       done: f.holidays > 0,
       blocking: false,

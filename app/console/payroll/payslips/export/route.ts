@@ -74,7 +74,7 @@ export async function GET(request: Request) {
 
   const csv = toCsv(
     [
-      "Employee", "Emp code", "Department", "Paid days", "Total days", "Loss of pay",
+      "Employee", "Emp code", "Department", "Paid days", "Total days",
       "Gross", "Deductions", "Net pay", "Employer cost", "Findings",
     ],
     rows.map((r) => [
@@ -83,7 +83,6 @@ export async function GET(request: Request) {
       deptByEmployee.get(r.employeeId)?.departmentName ?? "",
       r.paidDays,
       r.totalDays,
-      r.lopDays,
       formatINR(r.grossPaise),
       formatINR(r.deductionsPaise),
       formatINR(r.netPaise),

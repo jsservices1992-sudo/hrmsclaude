@@ -13,7 +13,7 @@ import { NAV, PT_COUNT, LWF_COUNT, TOTAL_COUNT } from "@/lib/site";
 
 const STEPS = [
   { t: "People & salary", d: "486 active, all with salary and bank details", s: "done" },
-  { t: "Attendance & leave", d: "11.5 unpaid days across 6 people", s: "done" },
+  { t: "Attendance & leave", d: "6 people paid for part of the month", s: "done" },
   { t: "Incentives & deductions", d: "38 entries · ₹4,12,500 net", s: "done" },
   { t: "Calculate", d: "Version 2 · 486 employees", s: "done" },
   { t: "Review findings", d: "Nothing blocking", s: "next" },

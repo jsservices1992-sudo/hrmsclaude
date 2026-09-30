@@ -49,6 +49,14 @@ export type DayInput = {
   /** Approved on-duty (client visit, offsite) — treated as present. */
   onDuty?: boolean;
   /**
+   * The day was explicitly marked absent — by hand, in bulk, or in an
+   * upload. An absent mark carries no punches, and exception-mode
+   * attendance reads "no punches" as present; without this the recompute
+   * that follows every mark turned it straight back into present and
+   * wrote that over it, so nobody could ever be marked absent.
+   */
+  markedAbsent?: boolean;
+  /**
    * What a working day with NO record at all means.
    *
    * Most companies do not feed punches in for everybody. They record the
@@ -92,7 +100,8 @@ export type DayResult = {
 
 export function workedMinutes(punches: Punch[]): number {
   return punches.reduce(
-    (a, p) => a + Math.max(0, p.outMinute - p.inMinute),
+    // An open punch (no punch-out yet) has worked no measurable time.
+    (a, p) => a + (p.outMinute == null ? 0 : Math.max(0, p.outMinute - p.inMinute)),
     0,
   );
 }
@@ -149,6 +158,28 @@ export function deriveDay(input: DayInput): DayResult {
       offDayWorkedUnits,
       basis: offDayWorkedUnits > 0 ? `${label}, worked` : label,
     };
+  }
+
+  /* Punched in, never punched out. The person came to work; the missing
+     punch-out is a record to complete, not a day to dock. Counting it as
+     "0h worked" made every forgotten punch-out an unpaid absence — nine
+     days in September for one employee, overridden by hand one at a time. */
+  const open = input.punches.find((p) => p.outMinute == null);
+  if (open && input.dayType === "working") {
+    const hh = String(Math.floor(open.inMinute / 60)).padStart(2, "0");
+    const mm = String(open.inMinute % 60).padStart(2, "0");
+    return {
+      ...base,
+      workedMinutes: workedMinutes(input.punches.filter((p) => p.outMinute != null)),
+      status: "present",
+      lopUnits: 0,
+      isPayable: true,
+      basis: `In at ${hh}:${mm}, no punch-out — counted present; correct it if they left early`,
+    };
+  }
+
+  if (input.markedAbsent && input.punches.length === 0) {
+    return { ...base, status: "absent", lopUnits: 1, isPayable: false, basis: "Marked absent" };
   }
 
   if (input.assumePresentWithoutRecord && input.punches.length === 0) {
@@ -225,7 +256,7 @@ export function applySandwichRule(days: DayResult[]): DayResult[] {
           ...out[k],
           lopUnits: 1,
           isPayable: false,
-          basis: `${out[k].basis} — unpaid under the sandwich rule (absent either side)`,
+          basis: `${out[k].basis} — not paid under the sandwich rule (absent either side)`,
         };
       }
     }

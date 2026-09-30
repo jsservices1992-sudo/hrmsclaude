@@ -235,7 +235,7 @@ export async function applyForLeave(_prev: SelfState, fd: FormData): Promise<Sel
   return {
     ok:
       check.lopDays > 0
-        ? `Applied for ${days} day(s). ${check.lopDays} of them exceed your balance and will be unpaid if approved.`
+        ? `Applied for ${days} day(s). ${check.lopDays} of them are beyond your balance and will not be paid if approved.`
         : `Applied for ${days} day(s). It is with your manager.`,
   };
 }

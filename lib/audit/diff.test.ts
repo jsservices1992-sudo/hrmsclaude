@@ -231,7 +231,7 @@ test("loss-of-pay movement is named in the reason", () => {
     thresholdBps: 500,
     absoluteThresholdPaise: L(5000),
   });
-  assert.match(v.flagged[0].reason, /loss of pay changed by 3.0 day\(s\)/);
+  assert.match(v.flagged[0].reason, /paid days changed by -3.0/);
 });
 
 test("a first run says the variance report is not meaningful", () => {

@@ -191,7 +191,6 @@ export default async function AttendancePage(
     .orderBy(asc(s.holidays.date));
 
   const company = companies.find((c) => c.id === companyId)!;
-  const totalLop = months.reduce((a, m) => a + m.summary.lopDays, 0);
   const withLop = months.filter((m) => m.summary.lopDays > 0);
 
   /*
@@ -332,11 +331,11 @@ export default async function AttendancePage(
             ],
           },
           {
-            label: "Set loss of pay",
+            label: "Set paid days",
             run: bulkSetLop,
-            note: "Overrides what attendance computed, for this month only. Clear the override to go back.",
+            note: "Replaces what attendance worked out, for this month only. Someone who joined or left mid-month is never paid for more days than they were employed. Clear the override to go back.",
             fields: [
-              { name: "lopDays", label: "Loss-of-pay days", kind: "number" as const, required: true, min: "0", step: "0.5", defaultValue: "0" },
+              { name: "paidDays", label: `Paid days (of ${daysInThisMonth})`, kind: "number" as const, required: true, min: "0", max: String(daysInThisMonth), step: "0.5", defaultValue: String(daysInThisMonth) },
               { name: "reason", label: "Reason", kind: "textarea" as const, required: true },
             ],
           },
@@ -423,10 +422,13 @@ export default async function AttendancePage(
         items={[
           { label: "Employees", value: months.length, icon: <IconUsers /> },
           {
-            label: "Unpaid days",
-            value: totalLop.toFixed(1),
-            hint: withLop.length > 0 ? `${withLop.length} ${withLop.length === 1 ? "person" : "people"}` : "All paid in full",
-            tone: totalLop > 0 ? "danger" : "success",
+            label: "Paid in full",
+            value: `${months.length - withLop.length}/${months.length}`,
+            hint:
+              withLop.length > 0
+                ? `${withLop.length} ${withLop.length === 1 ? "person" : "people"} paid for fewer days`
+                : "Everyone paid for every day",
+            tone: withLop.length > 0 ? "danger" : "success",
             icon: <IconClock />,
           },
           { label: "Holidays", value: holidayRows.filter((h) => !h.restricted).length, icon: <IconSun /> },
@@ -709,7 +711,7 @@ export default async function AttendancePage(
                     {i + 1}
                   </th>
                 ))}
-                <th className="text-xs font-semibold text-ink-2 px-3 py-2 text-right">LOP</th>
+                <th className="text-xs font-semibold text-ink-2 px-3 py-2 text-right">Paid days</th>
               </tr>
             </thead>
             <tbody>
@@ -728,8 +730,9 @@ export default async function AttendancePage(
                     canEdit={canAct}
                     days={m.days.map((d) => ({ date: d.date, status: d.status, basis: d.basis }))}
                   />
-                  <td className={`px-3 py-1.5 text-right font-mono tnum ${m.summary.lopDays > 0 ? "text-rust" : "text-ink-3"}`}>
-                    {m.summary.lopDays.toFixed(1)}
+                  <td className={`px-3 py-1.5 text-right font-mono tnum whitespace-nowrap ${m.summary.lopDays > 0 ? "text-rust" : "text-ink-3"}`}>
+                    {paidDaysFor(m, m.summary.lopDays).toFixed(1)}
+                    <span className="text-ink-3">/{daysInThisMonth}</span>
                   </td>
                 </tr>
               ))}

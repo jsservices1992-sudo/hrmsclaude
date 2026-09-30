@@ -509,7 +509,6 @@ export function attendanceRegister(rows: AttendanceRegisterRow[]): string {
       "Branch",
       "Total days",
       "Paid days",
-      "Loss of pay (days)",
       "Weekly-off/holiday worked",
     ],
     rows.map((r) => [
@@ -518,7 +517,6 @@ export function attendanceRegister(rows: AttendanceRegisterRow[]): string {
       r.branchName,
       r.totalDays.toFixed(2),
       r.paidDays.toFixed(2),
-      r.lopDays.toFixed(2),
       r.offDaysWorked.toFixed(2),
     ]),
   );
@@ -553,7 +551,7 @@ export function leaveRegister(rows: LeaveRegisterRow[]): string {
       "Name",
       "Leave type",
       "Days taken this period",
-      "Of which, loss of pay",
+      "Of which, beyond the leave balance",
       "Current balance",
       "Balance as of",
     ],

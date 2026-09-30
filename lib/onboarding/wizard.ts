@@ -72,7 +72,7 @@ export function wizardSteps(companyId: string, f: WizardFacts): WizardStep[] {
     {
       id: "leave",
       title: "Leave & holidays",
-      why: "Attendance turns anything uncovered into loss of pay, and an undeclared holiday is an ordinary working day to it.",
+      why: "Days not covered by leave or attendance are not paid, and an undeclared holiday is an ordinary working day.",
       required: false,
       done: f.leaveTypes > 0 && f.holidays > 0,
       href: master("leave"),

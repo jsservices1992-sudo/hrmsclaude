@@ -302,7 +302,7 @@ export function computeVariance(args: {
       reason = flagged
         ? `Net moved by ${(deltaBps / 100).toFixed(1)}%${
             (current.lopDays ?? 0) !== (prior.lopDays ?? 0)
-              ? `, loss of pay changed by ${((current.lopDays ?? 0) - (prior.lopDays ?? 0)).toFixed(1)} day(s)`
+              ? `, paid days changed by ${((prior.lopDays ?? 0) - (current.lopDays ?? 0)).toFixed(1)}`
               : ""
           }`
         : `Within tolerance at ${(deltaBps / 100).toFixed(1)}%`;

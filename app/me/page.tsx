@@ -915,8 +915,7 @@ export default async function MePage(props: PageProps<"/me">) {
                         )}
                       </p>
                       <p className="text-xs text-ink-3 font-mono mt-0.5 tnum">
-                        {p.paidDays} of {p.totalDays} days paid
-                        {p.lopDays > 0 && <span className="text-rust"> · {p.lopDays} unpaid</span>}
+                        <span className={p.lopDays > 0 ? "text-rust" : ""}>{p.paidDays} of {p.totalDays} days paid</span>
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -964,7 +963,7 @@ export default async function MePage(props: PageProps<"/me">) {
               {[
                 ["Present", attendanceMonth.summary.presentDays],
                 ["On leave", attendanceMonth.summary.leaveDays],
-                ["Loss of pay", attendanceMonth.summary.lopDays],
+                ["Paid days", Number((attendanceMonth.days.length - attendanceMonth.summary.lopDays).toFixed(1))],
                 ["Hours worked", attendanceMonth.summary.workedHours],
               ].map(([label, value]) => (
                 <div key={String(label)} className="border border-line bg-surface px-4 py-3 rounded-lg">
@@ -983,7 +982,7 @@ export default async function MePage(props: PageProps<"/me">) {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-line">
-                      {["Date", "Status", "Worked", "Late", "Unpaid", "Basis"].map((h) => (
+                      {["Date", "Status", "Worked", "Late", "Paid", "Basis"].map((h) => (
                         <th key={h} className="text-xs font-medium text-ink-2 text-left px-4 py-2 whitespace-nowrap">
                           {h}
                         </th>
@@ -1016,7 +1015,7 @@ export default async function MePage(props: PageProps<"/me">) {
                           {d.lateMinutes > 0 ? `${d.lateMinutes}m` : "—"}
                         </td>
                         <td className={`px-4 py-1.5 font-mono text-xs tnum ${d.lopUnits > 0 ? "text-rust" : "text-ink-3"}`}>
-                          {d.lopUnits > 0 ? d.lopUnits : "—"}
+                          {d.lopUnits >= 1 ? "No" : d.lopUnits > 0 ? "Half" : "Yes"}
                         </td>
                         <td className="px-4 py-1.5 text-xs text-ink-3 max-w-[20rem] truncate" title={d.basis}>
                           {d.basis}
@@ -1140,7 +1139,7 @@ export default async function MePage(props: PageProps<"/me">) {
                     <div>
                       <p className="text-sm">
                         {type.name} · {req.days} day(s)
-                        {req.lopDays > 0 && <span className="text-rust"> · {req.lopDays} unpaid</span>}
+                        {req.lopDays > 0 && <span className="text-rust"> · {req.lopDays} beyond your balance</span>}
                       </p>
                       <p className="text-xs text-ink-3 font-mono mt-0.5">
                         {formatDate(req.fromDate)} → {formatDate(req.toDate)}
@@ -1556,7 +1555,7 @@ export default async function MePage(props: PageProps<"/me">) {
                         <span className="font-mono">
                           {formatDate(req.fromDate)} → {formatDate(req.toDate)}
                         </span>
-                        {req.lopDays > 0 && <span className="text-rust"> · {req.lopDays} unpaid</span>}
+                        {req.lopDays > 0 && <span className="text-rust"> · {req.lopDays} beyond balance</span>}
                         {req.reason && ` · ${req.reason}`}
                       </p>
                     </div>
@@ -1615,7 +1614,7 @@ export default async function MePage(props: PageProps<"/me">) {
             )}
             <p className="px-4 py-2.5 text-xs text-ink-3 border-t border-line-2">
               Approving replaces what the day shows and recomputes that person&rsquo;s
-              loss of pay. The punches the device recorded are kept on the request.
+              paid days. The punches the device recorded are kept on the request.
             </p>
           </Panel>
 
@@ -1624,7 +1623,7 @@ export default async function MePage(props: PageProps<"/me">) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-line">
-                    {["Name", "Loss of pay", "Status"].map((h) => (
+                    {["Name", "Paid days", "Status"].map((h) => (
                       <th key={h} className="text-xs font-medium text-ink-2 text-left px-4 py-2 whitespace-nowrap">
                         {h}
                       </th>
@@ -1641,7 +1640,7 @@ export default async function MePage(props: PageProps<"/me">) {
                           <span className="block font-mono text-xs text-ink-3">{r.empCode}</span>
                         </td>
                         <td className={`px-4 py-2 font-mono tnum ${att && att.lopDays > 0 ? "text-rust" : "text-ink-3"}`}>
-                          {att ? `${att.lopDays} day(s)` : "—"}
+                          {att ? `${Number((new Date(Date.UTC(year, month, 0)).getUTCDate() - att.lopDays).toFixed(1))} / ${new Date(Date.UTC(year, month, 0)).getUTCDate()}` : "—"}
                         </td>
                         <td className="px-4 py-2 text-xs text-ink-2">{r.status}</td>
                       </tr>

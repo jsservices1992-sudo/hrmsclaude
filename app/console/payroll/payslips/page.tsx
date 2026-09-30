@@ -232,7 +232,7 @@ export default async function PayslipsPage(
           { label: "Payslips", value: (rows.length), hint: (hasFilters ? `of ${preview.results.length}` : undefined) },
           { label: "Total gross", value: (formatINR(totals.gross)) },
           { label: "Total net", value: (formatINR(totals.net)) },
-          { label: "With loss of pay", value: (totals.lop) },
+          { label: "Paid for fewer days", value: (totals.lop) },
         ]}
       />
 
@@ -257,7 +257,7 @@ export default async function PayslipsPage(
           <FilterField label="Show only" className="w-full sm:w-40">
             <Select name="flag" defaultValue={onlyFlag} className="w-full">
               <option value="">Everyone</option>
-              <option value="lop">With loss of pay</option>
+              <option value="lop">Paid for fewer days</option>
               <option value="warnings">With findings</option>
             </Select>
           </FilterField>
@@ -322,7 +322,7 @@ export default async function PayslipsPage(
                   <TD className="tnum text-xs">
                     {r.paidDays} / {r.totalDays}
                     {r.lopDays > 0 && (
-                      <Badge tone="brass" className="ml-1.5">{r.lopDays} LOP</Badge>
+                      <Badge tone="brass" className="ml-1.5">part month</Badge>
                     )}
                   </TD>
                   <TD className="text-right font-mono tnum">{formatINR(r.grossPaise)}</TD>

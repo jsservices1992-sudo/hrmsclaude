@@ -61,11 +61,11 @@ export default function PayrollPage() {
                 used, so a disputed figure can be reconstructed without a support
                 ticket.
               </SpecRow>
-              <SpecRow code="SET-3" title="Loss of pay treatment">
-                Which components reduce, whether a weekly off or holiday adjacent to
-                unpaid absence is itself unpaid — the sandwich rule, stated
-                explicitly rather than assumed — and how retrospective loss of pay
-                is handled after a period closes.
+              <SpecRow code="SET-3" title="Paid days">
+                Which components prorate, whether a weekly off or holiday between
+                days not worked is itself paid — the sandwich rule, stated
+                explicitly rather than assumed — and how a paid-days correction is
+                handled after a period closes.
               </SpecRow>
               <SpecRow code="SET-4" title="Rounding">
                 Configurable at component, gross, statutory-deduction and net level,
@@ -189,7 +189,7 @@ export default function PayrollPage() {
                 </SpecRow>
                 <SpecRow code="LOAN-3" title="Life events">
                   Moratorium, hold, part prepayment with schedule rebuild,
-                  foreclosure, and the case where loss of pay leaves net pay too
+                  foreclosure, and the case where a part month leaves net pay too
                   small to cover the instalment. Skipped instalments extend the
                   schedule rather than disappearing.
                 </SpecRow>
@@ -249,7 +249,7 @@ export default function PayrollPage() {
               </SpecRow>
               <SpecRow code="RUN-4" title="Variance review">
                 Month-on-month movement decomposed into its causes — headcount,
-                revisions, arrears, loss of pay, variable pay, tax. A reviewer
+                revisions, arrears, paid days, variable pay, tax. A reviewer
                 should be able to explain the whole delta before approving, rather
                 than sampling payslips.
               </SpecRow>

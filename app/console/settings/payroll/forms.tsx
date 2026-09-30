@@ -146,7 +146,7 @@ export function PayrollSettingsForm({
         <>
           <Group
             title="Proration"
-            hint="Decides what a single day of pay is worth. Applied uniformly to joiners, leavers, loss of pay and arrears."
+            hint="Decides what a single day of pay is worth. Applied uniformly to joiners, leavers, part months and arrears."
           >
             <Select
               label="Basis" name="prorationBasis" defaultValue={values.prorationBasis} disabled={d}

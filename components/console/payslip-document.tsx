@@ -214,9 +214,10 @@ export function PayslipDocument({
             <Field label="Days paid" value={h.daysPaid} />
           </tr>
           <tr>
-            <Field label="Days LWP" value={h.daysLwp} />
             <Field label="Arrear days" value={h.arrearDays} />
             <Field label="Location" value={h.location} />
+            <th className={KEY} aria-hidden />
+            <td className={CELL} aria-hidden />
           </tr>
           <tr>
             {/* The company's, so it sits apart from the person's. */}

@@ -64,7 +64,7 @@ export const LEAVE_TYPES: LeaveTypeDef[] = [
   },
   {
     code: "LOP",
-    name: "Loss of pay",
+    name: "Unpaid leave",
     annualDays: 0,
     frequency: "annually",
     paid: false,
@@ -224,7 +224,7 @@ export function validateApplication(a: LeaveApplication): ValidationResult {
       // actually happens in practice, and it must reach payroll.
       lop = shortfall;
       warnings.push(
-        `Balance covers ${Math.max(0, a.currentBalance)} day(s); ${shortfall} day(s) will be loss of pay`,
+        `Balance covers ${Math.max(0, a.currentBalance)} day(s); ${shortfall} day(s) beyond it will not be paid`,
       );
     }
   }

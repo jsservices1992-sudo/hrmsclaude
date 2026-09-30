@@ -221,7 +221,7 @@ export function detectExceptions(
         ...who,
         code: "excessive_lop",
         severity: "warning",
-        message: `${r.lopDays} of ${r.totalDays} days are loss of pay — unusually high.`,
+        message: `Paid for only ${Number((r.totalDays - r.lopDays).toFixed(1))} of ${r.totalDays} days — unusually few.`,
       });
     }
 
@@ -392,7 +392,7 @@ export function blockingSummary(list: PayrollException[]): string | null {
     missing_statutory_config: "statutory parameters missing",
     missing_uan: "no UAN",
     missing_esic_id: "no ESIC number",
-    excessive_lop: "excessive loss of pay",
+    excessive_lop: "unusually few paid days",
     attendance_not_finalised: "attendance not final",
     new_joiner: "new joiner",
     exit_in_period: "exit in period",

@@ -128,8 +128,7 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
               <TD className="font-mono text-xs text-ink-3">{e.empCode}</TD>
               <TD>{e.name}</TD>
               <TD className="text-right font-mono tnum text-ink-2">
-                {e.paidDays}/{e.totalDays}
-                {e.lopDays > 0 && <span className="text-rust"> (−{e.lopDays} LOP)</span>}
+                <span className={e.lopDays > 0 ? "text-rust" : ""}>{e.paidDays}/{e.totalDays}</span>
               </TD>
               <TD className="text-right font-mono tnum">{formatINR(e.grossPaise)}</TD>
               <TD className="text-right font-mono tnum text-ink-2">{formatINR(e.deductionsPaise)}</TD>

@@ -604,7 +604,7 @@ function FinalCheckPanel({
       {employeesWithLop > 0 && (
         <FinalCheckRow>
           <span>
-            <Badge tone="brass">{employeesWithLop}</Badge> employee(s) carrying loss of pay
+            <Badge tone="brass">{employeesWithLop}</Badge> employee(s) paid for fewer than all days
           </span>
           <Link href={attendanceLink} className="text-sm font-semibold text-indigo hover:text-indigo-2 whitespace-nowrap">
             Review →

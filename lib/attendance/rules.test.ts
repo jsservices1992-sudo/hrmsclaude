@@ -378,11 +378,11 @@ describe("Leave application validation", () => {
     assert.equal(r.lopDays, 0);
   });
 
-  test("EXCESS BECOMES LOSS OF PAY rather than being blocked", () => {
+  test("days beyond the balance are not paid rather than being blocked", () => {
     const r = app({ days: 5, currentBalance: 2 });
     assert.equal(r.valid, true, "still valid — it just costs pay");
     assert.equal(r.lopDays, 3);
-    assert.ok(r.warnings.some((w) => /loss of pay/.test(w)));
+    assert.ok(r.warnings.some((w) => /beyond it will not be paid/.test(w)));
   });
 
   test("types allowing negative balance go into advance instead of LOP", () => {
@@ -516,4 +516,50 @@ describe("a working day with no record at all", () => {
       0,
     );
   });
+});
+
+test("a day marked absent stays absent in exception mode — it used to come back present", () => {
+  const r = deriveDay({
+    date: "2026-09-10",
+    dayType: "working",
+    punches: [],
+    markedAbsent: true,
+    assumePresentWithoutRecord: true,
+  });
+  assert.equal(r.status, "absent");
+  assert.equal(r.isPayable, false);
+});
+
+test("exception mode still counts a day with no record at all as present", () => {
+  const r = deriveDay({ date: "2026-09-10", dayType: "working", punches: [], assumePresentWithoutRecord: true });
+  assert.equal(r.status, "present");
+});
+
+test("an approved paid leave on a day marked absent is still paid leave", () => {
+  const r = deriveDay({
+    date: "2026-09-10",
+    dayType: "working",
+    punches: [],
+    markedAbsent: true,
+    assumePresentWithoutRecord: true,
+    leave: { paid: true, halfDay: false },
+  });
+  assert.equal(r.isPayable, true);
+});
+
+test("punched in with no punch-out is present, not a 0-hour absence", () => {
+  const r = deriveDay({
+    date: "2026-09-24",
+    dayType: "working",
+    punches: [{ inMinute: 606, outMinute: null as unknown as number }],
+  });
+  assert.equal(r.status, "present");
+  assert.equal(r.isPayable, true);
+  assert.match(r.basis, /no punch-out/);
+});
+
+test("a full punch pair is still measured as before", () => {
+  const r = deriveDay({ date: "2026-09-23", dayType: "working", punches: [{ inMinute: 600, outMinute: 1162 }] });
+  assert.equal(r.status, "present");
+  assert.match(r.basis, /h worked/);
 });

@@ -28,7 +28,8 @@ import {
   BULK_STATUS_LABELS,
 } from "@/lib/attendance/bulk";
 import { DEFAULT_SHIFT } from "@/lib/attendance/rules";
-import { daysInMonth } from "@/lib/payroll/proration";
+import { daysInMonth, paidDaysForPeriod, type ProrationBasis } from "@/lib/payroll/proration";
+import { loadConventions } from "@/lib/payroll/load";
 import { periodSignedOff as signedOff } from "@/lib/payroll/period-lock";
 import { formatDate } from "@/lib/format/date";
 
@@ -139,7 +140,7 @@ export async function recomputeAttendance(
   revalidatePath("/console/attendance");
   revalidatePath("/console/payroll");
   return {
-    ok: `Recomputed ${months.length} employees. Total loss of pay: ${totalLop.toFixed(2)} days.`,
+    ok: `Paid days worked out again for ${months.length} employee(s) from attendance.`,
   };
 }
 
@@ -704,12 +705,15 @@ export async function overrideAttendanceInput(
   const companyId = String(fd.get("companyId") ?? "");
   const year = Number(fd.get("year"));
   const month = Number(fd.get("month"));
-  const lopDays = Number(fd.get("lopDays"));
+  const paidRaw = fd.get("paidDays");
   const reason = String(fd.get("reason") ?? "").trim();
 
   if (!canAccessCompany(user, companyId)) return { error: "Not authorised." };
   if (!year || !month) return { error: "Invalid period." };
-  if (!Number.isFinite(lopDays) || lopDays < 0) return { error: "Enter a loss-of-pay figure of zero or more days." };
+  const paidDays = Number(paidRaw);
+  if (paidRaw === null || String(paidRaw).trim() === "" || !Number.isFinite(paidDays) || paidDays < 0) {
+    return { error: "Enter the paid days — zero or more." };
+  }
   if (!reason) return { error: "A reason is required — this diverges from what attendance actually computed." };
 
   if (await periodSignedOff(companyId, year, month)) {
@@ -720,11 +724,34 @@ export async function overrideAttendanceInput(
   }
 
   const [employee] = await db
-    .select({ id: s.employees.id, companyId: s.employees.companyId })
+    .select({
+      id: s.employees.id,
+      companyId: s.employees.companyId,
+      departmentId: s.employees.departmentId,
+      dateOfJoining: s.employees.dateOfJoining,
+      dateOfExit: s.employees.dateOfExit,
+    })
     .from(s.employees)
     .where(eq(s.employees.id, employeeId))
     .limit(1);
   if (!employee || employee.companyId !== companyId) return { error: "Employee not found." };
+
+  /* People enter paid days; payroll stores the days not paid. The most a
+     person can be paid is what their own employment in the month allows —
+     the same proration the payslip uses — so a mid-month joiner entered
+     as "30" is paid for the days they were employed, never more. */
+  const conventions = await loadConventions(companyId, employee.departmentId);
+  const fullPaid = paidDaysForPeriod({
+    year,
+    month,
+    basis: conventions.prorationBasis as ProrationBasis,
+    standardDays: conventions.standardDays,
+    dateOfJoining: employee.dateOfJoining,
+    dateOfExit: employee.dateOfExit,
+    lopDays: 0,
+  });
+  const lopDays = Math.max(0, Number((fullPaid - Math.min(paidDays, fullPaid)).toFixed(2)));
+  const paidSet = Number((fullPaid - lopDays).toFixed(2));
 
   const existing = await db
     .select()
@@ -765,15 +792,20 @@ export async function overrideAttendanceInput(
     action: "attendance.lop_overridden",
     entity: "attendance_input",
     entityId: `${employeeId}:${year}-${month}`,
-    before: { lopDays: before },
-    after: { lopDays },
+    before: { lopDays: before, paidDays: Number((fullPaid - before).toFixed(2)) },
+    after: { lopDays, paidDays: paidSet },
     reason,
   });
 
   revalidatePath("/console/attendance");
   revalidatePath("/console/payroll");
   revalidatePath("/console/runs");
-  return { ok: `Loss of pay set to ${lopDays} day(s), overriding the computed figure.` };
+  return {
+    ok:
+      paidDays > fullPaid
+        ? `Paid days set to ${paidSet} — the most this person was employed for this month.`
+        : `Paid days set to ${paidSet}, replacing what attendance worked out.`,
+  };
 }
 
 /** Hands the figure back to the recompute engine rather than deleting the row outright. */
@@ -1620,7 +1652,7 @@ async function daysWorkedUpload(
 
   return {
     ok:
-      `Set days worked for ${settled.length} employee(s) — ${totalLop.toFixed(2)} day(s) of loss of pay in total. ` +
+      `Set days worked for ${settled.length} employee(s); paid days follow from them. ` +
       `Weekly offs and holidays are paid on top of the days counted.` +
       (untouched > 0
         ? ` ${untouched} employee(s) were not in the file and are unchanged.`

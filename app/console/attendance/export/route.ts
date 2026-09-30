@@ -52,7 +52,7 @@ export async function GET(request: Request) {
   const storedByEmployee = Object.fromEntries(storedInputs.map((i) => [i.employeeId, i]));
 
   const csv = toCsv(
-    ["Employee", "Emp code", "Present days", "Derived LOP", "Feeds payroll", "Override status"],
+    ["Employee", "Emp code", "Present days", "Paid days (from attendance)", "Paid days (to payroll)", "Total days", "Override status"],
     months.map((m) => {
       const stored = storedByEmployee[m.employeeId];
       const feeds = stored ? stored.lopDays : m.summary.lopDays;
@@ -60,8 +60,9 @@ export async function GET(request: Request) {
         m.name,
         m.empCode,
         m.summary.presentDays,
-        m.summary.lopDays.toFixed(1),
-        feeds.toFixed(1),
+        (m.days.length - m.summary.lopDays).toFixed(1),
+        (m.days.length - feeds).toFixed(1),
+        m.days.length,
         stored?.overridden ? `Overridden by ${stored.overriddenBy}` : "Derived",
       ];
     }),

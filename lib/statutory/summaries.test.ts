@@ -343,13 +343,13 @@ test("a state without a minimum is left alone", () => {
    Attendance, leave and bonus registers
    ================================================================== */
 
-test("attendanceRegister lists total, paid, LOP and off-days-worked", () => {
+test("attendanceRegister lists total, paid and off-days-worked — never LOP", () => {
   const csv = attendanceRegister([
     { empCode: "KA0001", name: "Aarav Nair", branchName: "Bengaluru", totalDays: 31, paidDays: 29, lopDays: 2, offDaysWorked: 1 },
   ]);
   const lines = csv.trim().split("\n");
-  assert.equal(lines[0], "Employee code,Name,Branch,Total days,Paid days,Loss of pay (days),Weekly-off/holiday worked");
-  assert.equal(lines[1], "KA0001,Aarav Nair,Bengaluru,31.00,29.00,2.00,1.00");
+  assert.equal(lines[0], "Employee code,Name,Branch,Total days,Paid days,Weekly-off/holiday worked");
+  assert.equal(lines[1], "KA0001,Aarav Nair,Bengaluru,31.00,29.00,1.00");
 });
 
 test("leaveRegister shows a null balance as blank, not zero", () => {

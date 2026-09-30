@@ -83,7 +83,7 @@ export function DaysWorkedUploadForm({
         <summary className="cursor-pointer font-medium text-ink-2 hover:text-ink">How the file is read</summary>
         <p className="mt-1.5 max-w-[60ch]">
           <code className="font-mono">empCode,name,daysWorked</code>. Weekly offs and holidays are paid
-          without being counted, so leave them out — the days not worked become loss of pay. The
+          without being counted, so leave them out — the days not worked are not paid. The
           template has everybody on a full month; change only the people who were away.
         </p>
       </details>
@@ -329,9 +329,7 @@ export function OverrideAttendanceForm({
 }) {
   const [state, action] = useActionState<AttendanceState, FormData>(overrideAttendanceInput, {});
   const [paid, setPaid] = useState(currentPaidDays);
-  /* The engine wants loss of pay, so the difference goes back the way it
-     came: whatever the derivation said, minus the days being added. */
-  const lop = Math.max(0, Number((currentLopDays + (currentPaidDays - paid)).toFixed(2)));
+  const unpaid = Math.max(0, Number((currentLopDays + (currentPaidDays - paid)).toFixed(2)));
 
   return (
     <form action={action} className="flex flex-col gap-3">
@@ -339,12 +337,12 @@ export function OverrideAttendanceForm({
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="year" value={year} />
       <input type="hidden" name="month" value={month} />
-      <input type="hidden" name="lopDays" value={lop} />
 
       <label className="flex flex-col gap-1">
         <span className="text-xs font-medium text-ink-2">Paid days</span>
         <div className="flex items-baseline gap-2">
           <Input
+            name="paidDays"
             type="number"
             step="0.5"
             min="0"
@@ -356,9 +354,9 @@ export function OverrideAttendanceForm({
           <span className="text-sm text-ink-3">of {totalDays} days</span>
         </div>
         <span className="text-xs text-ink-3">
-          {lop > 0
-            ? `${lop} day(s) will not be paid.`
-            : "The whole month will be paid."}
+          {unpaid > 0
+            ? `Paid for ${paid} of ${totalDays} days.`
+            : "Paid for every day of the month."}
         </span>
       </label>
 
