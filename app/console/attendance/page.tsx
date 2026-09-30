@@ -128,6 +128,10 @@ export default async function AttendancePage(
         )
     : [];
   const storedByEmployee = Object.fromEntries(storedInputs.map((i) => [i.employeeId, i]));
+  /* Who payroll will pay for fewer days: the figure that actually feeds
+     it — an override where HR set one, attendance otherwise. Counting
+     attendance alone reported people HR had already set to a full month. */
+  const withLop = months.filter((m) => (storedByEmployee[m.employeeId]?.lopDays ?? m.summary.lopDays) > 0);
 
   const pendingLeave = empIds.length
     ? await db
@@ -191,7 +195,6 @@ export default async function AttendancePage(
     .orderBy(asc(s.holidays.date));
 
   const company = companies.find((c) => c.id === companyId)!;
-  const withLop = months.filter((m) => m.summary.lopDays > 0);
 
   /*
    * Paid days, worked out by the same function the payroll engine uses.
