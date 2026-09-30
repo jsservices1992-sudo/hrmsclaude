@@ -8,7 +8,7 @@ import {
   type PayrollException,
 } from "./exceptions";
 import { minimumWageFacts, assessStatutoryBonus, checkWageCodeSplit } from "./compensation";
-import { codeWageSplit } from "./esic-wage";
+import { codeWageSplit, esicRuleFor } from "./esic-wage";
 import { loadStatutoryConfig } from "./load";
 
 function periodEndDate(year: number, month: number) {
@@ -234,7 +234,14 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
            full-month rate only when nothing was prorated. */
         monthlyBasicPaise:
           sm.lopDays === 0 && sm.paidDays === sm.totalDays
-            ? basicByEmployee.get(sm.employeeId) ?? null
+            ? /* Under the Code on Wages the floor is measured on wages —
+                 basic, DA and every allowance not on the exclusion list,
+                 special allowance and a monthly bonus included — the same
+                 wage PF is charged on. Basic alone flagged people whose
+                 special allowance already carried them well past it. */
+              esicRuleFor(asOf) === "social_security_code"
+              ? codeWageSplit(linesByEmployee.get(sm.employeeId) ?? [], components).wagesPaise
+              : basicByEmployee.get(sm.employeeId) ?? null
             : null,
         rules: statutory.minimumWages,
         asOf,

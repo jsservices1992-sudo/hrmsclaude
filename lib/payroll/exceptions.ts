@@ -302,9 +302,10 @@ export function detectExceptions(
           code: "basic_below_minimum_wage",
           severity: "warning",
           message:
-            `Total pay clears the minimum wage, but basic of ${rupees(r.monthlyBasicPaise)} ` +
-            `is under the ${rupees(r.minimumWagePaise)} floor. Provident fund is commonly ` +
-            `held to be due on at least the minimum wage — confirm the basis.`,
+            `Total pay clears the minimum wage, but wages of ${rupees(r.monthlyBasicPaise)} — basic and the ` +
+            `allowances the Code on Wages counts, HRA and conveyance left out — are under the ` +
+            `${rupees(r.minimumWagePaise)} floor. Provident fund is commonly held to be due on at least ` +
+            `the minimum wage — confirm the basis.`,
         });
       }
     } else if (r.minimumWageUnknown) {
