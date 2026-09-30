@@ -1170,6 +1170,10 @@ export const payrollRuns = pgTable(
     })
       .notNull()
       .default("draft"),
+    /** An approver sent this run back, and why. Cleared by the next calculation. */
+    rejectedBy: text("rejected_by"),
+    rejectedAt: text("rejected_at"),
+    rejectionRemarks: text("rejection_remarks"),
     /** Conventions frozen at calculation time, so a re-run reproduces. */
     prorationBasis: text("proration_basis").notNull(),
     /**

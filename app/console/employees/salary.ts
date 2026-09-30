@@ -1,5 +1,6 @@
 "use server";
 
+import { coverageFor, pfMembership } from "@/lib/payroll/coverage";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
@@ -198,10 +199,21 @@ export async function reviseSalary(
   // will actually cost.
   const statutory = await loadStatutoryConfig(effectiveFrom, employee.companyId);
   const [companyConfig] = await db
-    .select({ epfOnActualBasic: s.companies.epfOnActualBasic })
+    .select({
+      epfOnActualBasic: s.companies.epfOnActualBasic,
+      epfCoverage: s.companies.epfCoverage,
+      esicCoverage: s.companies.esicCoverage,
+      declaredHeadcount: s.companies.declaredHeadcount,
+    })
     .from(s.companies)
     .where(eq(s.companies.id, employee.companyId))
     .limit(1);
+  /* Whether PF and ESI actually reach this person, as the run decides it.
+     Without this a take-home was always worked back as though PF were
+     deducted, and someone outside PF was stored at a gross above their
+     net that no month ever paid. */
+  const member = pfMembership(employee);
+  const coverage = companyConfig ? coverageFor(companyConfig, employee) : {};
 
   const employerParams: EmployerCostParams = {
     epfCeilingPaise: statutory.epf.wageCeilingPaise,
@@ -214,6 +226,8 @@ export async function reviseSalary(
     epfEdliCeilingPaise: statutory.epf.edliCeilingPaise,
     epfAdminBps: statutory.epf.adminBps,
     employerNpsBps: employee.employerNpsBps,
+    ...member,
+    ...coverage,
   };
 
   // From a target CTC or take-home, work back to the gross that produces it.
@@ -242,10 +256,12 @@ export async function reviseSalary(
     const settled = grossForTargetTakeHome({
       targetMonthlyTakeHomePaise: amountPaise,
       components: structure,
-      employer: employerParams,
+      employer: { ...employerParams, ...member },
       stateCode: branch?.stateCode ?? "",
       gender: employee.gender,
       month: Number(effectiveFrom.slice(5, 7)),
+      ...member,
+      ...coverage,
       statutory,
     });
 

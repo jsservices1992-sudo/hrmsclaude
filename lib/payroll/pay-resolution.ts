@@ -1,3 +1,4 @@
+import { coverageFor, pfMembership } from "./coverage";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
@@ -76,6 +77,20 @@ export async function resolvePay(args: {
   /** Needed only to price professional tax when solving from take-home. */
   branchId?: string | null;
   gender?: "female" | "male" | "other" | null;
+  /**
+   * Who is being paid, as far as it is known — so PF and ESI are only
+   * assumed where they will actually be charged. An intern, somebody
+   * switched out on their record, or a company outside the Acts is solved
+   * without them.
+   */
+  person?: {
+    employmentType?: string | null;
+    pfApplicability?: string | null;
+    esicApplicability?: string | null;
+    hadPriorPfMembership?: boolean;
+    uan?: string | null;
+    pfOptedIn?: boolean;
+  };
 }): Promise<ResolvedPay> {
   const structureCtx = await loadStructureResolutionContext(args.companyId);
   const resolution = resolveEmployeeStructure(structureCtx, {
@@ -86,10 +101,21 @@ export async function resolvePay(args: {
 
   const statutory = await loadStatutoryConfig(args.asOf, args.companyId);
   const [companyConfig] = await db
-    .select({ epfOnActualBasic: s.companies.epfOnActualBasic })
+    .select({
+      epfOnActualBasic: s.companies.epfOnActualBasic,
+      epfCoverage: s.companies.epfCoverage,
+      esicCoverage: s.companies.esicCoverage,
+      declaredHeadcount: s.companies.declaredHeadcount,
+    })
     .from(s.companies)
     .where(eq(s.companies.id, args.companyId))
     .limit(1);
+  const coverage = companyConfig ? coverageFor(companyConfig, args.person ?? {}) : {};
+  const member = pfMembership({
+    hadPriorPfMembership: args.person?.hadPriorPfMembership ?? false,
+    uan: args.person?.uan ?? null,
+    pfOptedIn: args.person?.pfOptedIn ?? true,
+  });
 
   const employer: EmployerCostParams = {
     epfCeilingPaise: statutory.epf.wageCeilingPaise,
@@ -101,6 +127,8 @@ export async function resolvePay(args: {
     epfEdliBps: statutory.epf.edliBps,
     epfEdliCeilingPaise: statutory.epf.edliCeilingPaise,
     epfAdminBps: statutory.epf.adminBps,
+    ...member,
+    ...coverage,
   };
 
   const rupees = (args.amountPaise / 100).toLocaleString("en-IN");
@@ -133,6 +161,8 @@ export async function resolvePay(args: {
       stateCode: branch?.stateCode ?? "",
       gender: args.gender ?? null,
       month: Number(args.asOf.slice(5, 7)),
+      ...member,
+      ...coverage,
       statutory,
     });
     monthlyGrossPaise = solved.monthlyGrossPaise;

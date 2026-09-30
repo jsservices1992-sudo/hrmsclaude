@@ -11,7 +11,7 @@ import {
   canMutate,
   scopeCompanies,
 } from "@/lib/auth/session";
-import { CalculateForm, ApproveForm, ReopenForm, UnlockPeriodForm } from "./run-actions";
+import { CalculateForm, ApproveForm, ReopenForm, UnlockPeriodForm, RejectForm } from "./run-actions";
 import { periodStateFor } from "@/lib/payroll/period-unlock";
 import { RowPopover } from "./row-actions";
 import { RunOutputs } from "@/components/console/run-outputs";
@@ -392,9 +392,14 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                     </span>
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
-                    <Badge tone={STATUS_TONE[run.status] ?? "neutral"}>
-                      {run.status.replace("_", " ")}
+                    <Badge tone={run.rejectionRemarks ? "rust" : STATUS_TONE[run.status] ?? "neutral"}>
+                      {run.rejectionRemarks ? "sent back" : run.status.replace("_", " ")}
                     </Badge>
+                    {run.rejectionRemarks && (
+                      <span className="mt-1 block max-w-[16rem] whitespace-normal text-xs text-rust" title={run.rejectionRemarks}>
+                        {run.rejectionRemarks}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap text-right font-mono tnum text-ink-2">{t.count}</td>
                   <td className="px-3 py-1.5 whitespace-nowrap text-right font-mono tnum text-ink-2">{formatINR(t.gross)}</td>
@@ -403,6 +408,15 @@ export default async function RunsPage(props: PageProps<"/console/runs">) {
                   <td className="px-3 py-1.5 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2">
                       {canApprove && <ApproveForm runId={run.id} />}
+                      {canMutate(user) && ["calculated", "in_review"].includes(run.status) && (
+                        <RowPopover
+                          label="Send back"
+                          title={`Send back ${MONTHS[run.periodMonth - 1]} ${run.periodYear}`}
+                          panelClassName="p-3 w-80"
+                        >
+                          <RejectForm runId={run.id} />
+                        </RowPopover>
+                      )}
                       {canMutate(user) && rowOpen && isRecalculable(run.status) && (
                         <RowPopover
                           label="Recalculate"

@@ -73,6 +73,7 @@ export default async function JoinerDetailPage(
           asOf: j.proposedDoj,
           branchId: j.branchId,
           gender: j.gender,
+          person: { employmentType: j.employmentType, hadPriorPfMembership: j.hadPriorPfMembership, uan: j.uan },
         })
       : null;
 

@@ -156,6 +156,7 @@ export async function createJoiner(
         amountPaise: offeredCtcPaise,
         asOf: d.proposedDoj,
         branchId: d.branchId,
+        person: { employmentType: d.employmentType },
       })
     : null;
 
@@ -393,6 +394,7 @@ export async function bulkUploadJoiners(
         amountPaise: joinerRows[i].offeredCtcPaise,
         asOf: fresh[i].proposedDoj,
         branchId: joinerRows[i].branchId,
+        person: { employmentType: joinerRows[i].employmentType },
       });
       joinerRows[i].offeredMonthlyGrossPaise = pay.monthlyGrossPaise;
     }
@@ -845,6 +847,7 @@ export async function setJoinerPay(
     asOf: j.proposedDoj,
     branchId: j.branchId,
     gender: j.gender,
+    person: { employmentType: j.employmentType, hadPriorPfMembership: j.hadPriorPfMembership, uan: j.uan },
   });
   if (pay.warnings.length > 0) {
     return { error: `The salary structure cannot express this amount: ${pay.warnings.join("; ")}` };
@@ -952,6 +955,7 @@ export async function convertJoiner(
       asOf: j.proposedDoj,
       branchId: j.branchId,
       gender: j.gender,
+      person: { employmentType: j.employmentType, hadPriorPfMembership: j.hadPriorPfMembership, uan: j.uan },
     });
     if (pay.warnings.length > 0) {
       return {
@@ -1205,6 +1209,7 @@ export async function rehireJoiner(
       asOf: j.proposedDoj,
       branchId: j.branchId,
       gender: j.gender,
+      person: { employmentType: j.employmentType, hadPriorPfMembership: j.hadPriorPfMembership, uan: j.uan },
     });
     if (pay.warnings.length > 0) {
       return {

@@ -127,6 +127,9 @@ export async function calculateRun(
         .update(s.payrollRuns)
         .set({
           status: "calculated",
+          rejectedBy: null,
+          rejectedAt: null,
+          rejectionRemarks: null,
           prorationBasis: preview.company.prorationBasis,
           configSnapshot: JSON.stringify({ asOf: preview.asOf }),
           preparedBy: user.email,
@@ -634,4 +637,51 @@ export async function grantPeriodUnlock(_prev: ActionState, formData: FormData):
   revalidatePath("/console/runs");
   revalidatePath("/console/payroll");
   return { ok: `Unlocked for one recalculation, until ${expiresAt.slice(0, 16).replace("T", " ")} UTC.` };
+}
+
+/**
+ * Send a calculated run back instead of approving it.
+ *
+ * An approver who finds something wrong needs a way to say so on the
+ * record rather than simply not approving. The run goes back to draft —
+ * it cannot be approved until it is calculated again — and the remarks
+ * stay on it until then, so whoever prepares it next sees what to fix.
+ */
+export async function rejectRun(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await getSessionUser();
+  if (!user || !canSeeCompensation(user)) return { error: "Not authorised." };
+  if (!canMutate(user)) return { error: "Your role is read-only." };
+
+  const runId = String(formData.get("runId") ?? "");
+  const remarks = String(formData.get("remarks") ?? "").trim();
+  if (remarks.length < 5) return { error: "Say what is wrong, so it can be fixed — at least a few words." };
+
+  const [run] = await db.select().from(s.payrollRuns).where(eq(s.payrollRuns.id, runId)).limit(1);
+  if (!run) return { error: "Run not found." };
+  if (!canAccessCompany(user, run.companyId)) return { error: "Not authorised." };
+  if (run.status !== "calculated" && run.status !== "in_review") {
+    return { error: `A ${run.status.replace("_", " ")} run cannot be sent back. Reopen an approved run instead.` };
+  }
+
+  const now = new Date().toISOString();
+  await db
+    .update(s.payrollRuns)
+    .set({ status: "draft", rejectedBy: user.email, rejectedAt: now, rejectionRemarks: remarks })
+    .where(eq(s.payrollRuns.id, runId));
+
+  await audit({
+    actor: user.email,
+    action: "run.rejected",
+    entity: "payroll_run",
+    entityId: runId,
+    reason: remarks,
+    before: { status: run.status },
+    after: { status: "draft" },
+  });
+
+  revalidatePath("/console/runs");
+  revalidatePath(`/console/runs/${runId}`);
+  revalidatePath("/console/payroll/run");
+  revalidatePath("/console/payroll");
+  return { ok: "Sent back with your remarks. It can be approved once it has been recalculated." };
 }

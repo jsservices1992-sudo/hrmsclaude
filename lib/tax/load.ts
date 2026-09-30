@@ -4,7 +4,8 @@ import { CURRENT_FY, monthsInQuarter, monthsRemainingInFy } from "./fy";
 import { buildForm16PartB } from "./form16";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { loadStructure, loadStatutoryConfig } from "../payroll/load";
+import { loadStructure, loadStatutoryConfig, loadStructureResolutionContext, resolveEmployeeStructure } from "../payroll/load";
+import { effectiveMonthlyGross } from "../payroll/effective-gross";
 import { evaluateStructure } from "../payroll/compensation";
 import { projectAnnualProfessionalTax } from "../payroll/statutory";
 import {
@@ -166,6 +167,7 @@ type WorksheetInputs = {
   stateCode: string | null;
   statutory: Awaited<ReturnType<typeof loadStatutoryConfig>>;
   specialRateDecl: typeof s.taxSpecialRateDeclarations.$inferSelect | null;
+  company: typeof s.companies.$inferSelect | null;
 };
 
 function specialRateDeclarationFrom(
@@ -195,19 +197,33 @@ function composeWorksheet(
   financialYear: number,
   overrideRegime?: Regime,
 ): TaxWorksheet {
-  const { emp, decl, salary, structure, flexiApprovedPaise, perqRows, ledger, proofs, stateCode, statutory, specialRateDecl } = input;
+  const { emp, decl, salary, structure, flexiApprovedPaise, perqRows, ledger, proofs, stateCode, statutory, specialRateDecl, company } = input;
 
   const regime: Regime = overrideRegime ?? ((decl?.regime ?? emp.taxRegime) as Regime);
   const config = regimeConfig(regime, financialYear, ageAsOfFinancialYearEnd(emp.dateOfBirth, financialYear));
   const warnings: string[] = [];
 
   /* ---- salary ---- */
-  const monthlyGross = salary?.monthlyGrossPaise ?? 0;
+  /* A take-home salary projects on the gross the run actually pays, not
+     the one stored when it was saved against assumed deductions. */
+  const effective =
+    salary && company
+      ? effectiveMonthlyGross({
+          salary,
+          components: structure,
+          statutory,
+          company,
+          employee: emp,
+          stateCode: stateCode ?? "",
+          month: new Date().getUTCMonth() + 1,
+        })
+      : null;
+  const monthlyGross = effective?.grossPaise ?? salary?.monthlyGrossPaise ?? 0;
   if (!salary) {
     warnings.push("No salary is on record, so the projection is nil");
   }
 
-  const evaluated = evaluateStructure(structure, monthlyGross);
+  const evaluated = evaluateStructure(structure, monthlyGross, effective?.anchors);
   const monthlyBasic = evaluated.epfBasePaise;
   const monthlyHra =
     evaluated.components.find((c) => c.code === "HRA")?.amountPaise ?? 0;
@@ -511,11 +527,19 @@ export async function loadWorksheetsFor(
     proofsByDecl.set(p.declarationId, list);
   }
 
-  /* The earliest salary row, matching what the single-employee version
-     took: the first of an ascending order. */
+  /* The salary in force today — the latest that has started. It used to
+     be the earliest row, so a worksheet projected a salary from a year
+     and two revisions ago. Someone whose only salary starts later is
+     projected on that one rather than on nothing. */
+  const today = new Date().toISOString().slice(0, 10);
   const salaryByEmployee = new Map<string, (typeof salaries)[number]>();
   for (const row of salaries) {
-    if (!salaryByEmployee.has(row.employeeId)) salaryByEmployee.set(row.employeeId, row);
+    const held = salaryByEmployee.get(row.employeeId);
+    const started = row.effectiveFrom <= today;
+    if (!held) salaryByEmployee.set(row.employeeId, row);
+    else if (started && (held.effectiveFrom > today || row.effectiveFrom > held.effectiveFrom)) {
+      salaryByEmployee.set(row.employeeId, row);
+    }
   }
 
   const flexiByEmployee = new Map<string, number>();
@@ -537,11 +561,16 @@ export async function loadWorksheetsFor(
     ledgerByEmployee.set(l.employeeId, list);
   }
 
-  /* One structure query per company, not per employee. */
-  const structures = new Map<string, Awaited<ReturnType<typeof loadStructure>>>();
-  for (const companyId of new Set(emps.map((e) => e.companyId))) {
-    structures.set(companyId, await loadStructure(companyId));
-  }
+  /* Each person's own structure — their pinned one, or their
+     department's — not the company's generic list, which projected HRA
+     for people whose structure pays none. One context per company. */
+  const companyIds = [...new Set(emps.map((e) => e.companyId))];
+  const structureCtxs = new Map(
+    await Promise.all(companyIds.map(async (id) => [id, await loadStructureResolutionContext(id)] as const)),
+  );
+  const companyRows = new Map(
+    (companyIds.length ? await db.select().from(s.companies).where(inArray(s.companies.id, companyIds)) : []).map((c) => [c.id, c]),
+  );
 
   for (const emp of emps) {
     const decl = declByEmployee.get(emp.id) ?? null;
@@ -552,7 +581,11 @@ export async function loadWorksheetsFor(
           emp,
           decl,
           salary: salaryByEmployee.get(emp.id) ?? null,
-          structure: structures.get(emp.companyId)!,
+          structure: resolveEmployeeStructure(structureCtxs.get(emp.companyId)!, {
+            employeeStructureId: salaryByEmployee.get(emp.id)?.structureId ?? null,
+            employeeDepartmentId: emp.departmentId,
+          }).components,
+          company: companyRows.get(emp.companyId) ?? null,
           flexiApprovedPaise: flexiByEmployee.get(emp.id) ?? 0,
           perqRows: perqByEmployee.get(emp.id) ?? [],
           ledger: ledgerByEmployee.get(emp.id) ?? [],

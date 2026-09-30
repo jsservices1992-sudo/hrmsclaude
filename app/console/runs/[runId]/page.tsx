@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { loadRunDetail } from "@/lib/payroll/load";
 import { formatINR } from "@/lib/payroll/money";
 import { getSessionUser, canSeeCompensation, canAccessCompany, canMutate } from "@/lib/auth/session";
-import { ApproveForm, ReopenForm } from "../run-actions";
+import { RejectForm, ApproveForm, ReopenForm } from "../run-actions";
 import { MONTHS, STATUS_TONE, canApproveRun } from "@/lib/payroll/run-status";
 import { PageHeader, Card, Badge, Table, THead, TH, TBody, TR, TD, MetricStrip } from "@/components/console/ui";
 import { formatDateTime } from "@/lib/format/date";
@@ -102,7 +102,19 @@ export default async function RunDetailPage(props: PageProps<"/console/runs/[run
       />
 
       <div className="flex flex-wrap items-start gap-4">
+        {run.rejectionRemarks && (
+          <div className="basis-full rounded-xl border border-rust/30 bg-rust-soft px-4 py-3">
+            <p className="text-sm font-semibold text-rust">Sent back by {run.rejectedBy}</p>
+            <p className="mt-0.5 text-sm text-ink">{run.rejectionRemarks}</p>
+            <p className="mt-1 text-xs text-ink-2">Fix it and recalculate the month; it can be approved after that.</p>
+          </div>
+        )}
         {canApprove && <ApproveForm runId={run.id} />}
+        {canMutate(user) && ["calculated", "in_review"].includes(run.status) && (
+          <div className="w-full max-w-sm rounded-xl border border-line p-3">
+            <RejectForm runId={run.id} />
+          </div>
+        )}
         {canMutate(user) && ["calculated", "in_review"].includes(run.status) && isPreparer && (
           <p className="text-sm text-amber border border-amber/25 bg-amber-soft rounded-lg px-3 py-2 max-w-sm">
             You prepared this run, so a second person must approve it. Segregation of duties is enforced, not

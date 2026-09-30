@@ -85,6 +85,12 @@ export async function importSalaries(
       departmentId: s.employees.departmentId,
       gender: s.employees.gender,
       dateOfJoining: s.employees.dateOfJoining,
+      employmentType: s.employees.employmentType,
+      pfApplicability: s.employees.pfApplicability,
+      esicApplicability: s.employees.esicApplicability,
+      hadPriorPfMembership: s.employees.hadPriorPfMembership,
+      uan: s.employees.uan,
+      pfOptedIn: s.employees.pfOptedIn,
     })
     .from(s.employees)
     .where(eq(s.employees.companyId, companyId));
@@ -149,6 +155,7 @@ export async function importSalaries(
         departmentId: employee.departmentId,
         branchId: employee.branchId,
         gender: employee.gender,
+        person: { employmentType: employee.employmentType, pfApplicability: employee.pfApplicability, esicApplicability: employee.esicApplicability, hadPriorPfMembership: employee.hadPriorPfMembership, uan: employee.uan, pfOptedIn: employee.pfOptedIn },
       });
       /* Zero is never a salary somebody meant to import. It means the
          company's structure has no components, so everything evaluated

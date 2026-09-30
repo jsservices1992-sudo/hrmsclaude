@@ -138,7 +138,11 @@ export default async function RunPayrollPage(
 
   const [runRow] = figures?.run
     ? await db
-        .select({ preparedBy: s.payrollRuns.preparedBy })
+        .select({
+          preparedBy: s.payrollRuns.preparedBy,
+          rejectedBy: s.payrollRuns.rejectedBy,
+          rejectionRemarks: s.payrollRuns.rejectionRemarks,
+        })
         .from(s.payrollRuns)
         .where(eq(s.payrollRuns.id, figures.run.id))
         .limit(1)
@@ -209,6 +213,14 @@ export default async function RunPayrollPage(
         <MonthNav year={year} month={month} href={periodHref} />
       </div>
 
+      {runRow?.rejectionRemarks && (
+        <div className="rounded-xl border border-rust/30 bg-rust-soft px-5 py-4">
+          <p className="text-sm font-semibold text-rust">Sent back by {runRow.rejectedBy}</p>
+          <p className="mt-0.5 text-sm text-ink">{runRow.rejectionRemarks}</p>
+          <p className="mt-1 text-xs text-ink-2">Fix what the approver asked for, then recalculate — it can be approved after that.</p>
+        </div>
+      )}
+
       {/* ---------------- where the month stands ---------------- */}
       <section className="rounded-xl border border-line bg-surface">
         <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[1.4fr_1fr]">
@@ -253,7 +265,11 @@ export default async function RunPayrollPage(
                 hint: criticalCount > 0 ? "Approval refused" : "Nothing blocking",
                 bad: criticalCount > 0,
               },
-              { k: "Status", v: run ? run.status.replace(/_/g, " ") : "Not started", hint: run ? "Latest version" : "Calculate to begin" },
+              {
+                k: "Status",
+                v: run ? (runRow?.rejectionRemarks ? "Sent back" : run.status.replace(/_/g, " ")) : "Not started",
+                hint: run ? (runRow?.rejectionRemarks ? "Recalculate after fixing" : "Latest version") : "Calculate to begin",
+              },
             ].map((f) => (
               <div key={f.k} className="min-w-0 bg-surface px-4 py-3.5">
                 <dt className="text-xs text-ink-2">{f.k}</dt>

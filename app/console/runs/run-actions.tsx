@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import {
+  rejectRun,
   grantPeriodUnlock,
   calculateRun,
   approveRun,
@@ -99,6 +100,34 @@ export function UnlockPeriodForm({
         <Input name="reason" required minLength={10} placeholder="e.g. Salaries not yet paid; recalculating on the revised PF rules" className="w-80" />
       </label>
       <SubmitButton variant="default" pendingText="Unlocking…">Unlock for recalculation</SubmitButton>
+      <FormFeedback state={state} />
+    </form>
+  );
+}
+
+/**
+ * The other answer an approver can give: send it back, with what is wrong.
+ * The run returns to draft and needs recalculating before it can be approved.
+ */
+export function RejectForm({ runId }: { runId: string }) {
+  const [state, action] = useActionState<ActionState, FormData>(rejectRun, {});
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <input type="hidden" name="runId" value={runId} />
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-ink-2">What needs fixing</span>
+        <textarea
+          name="remarks"
+          required
+          minLength={5}
+          rows={3}
+          placeholder="e.g. Attendance for Rashmi is wrong on 17 Sep; incentive for Ajay missing"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus-visible:shadow-ring"
+        />
+      </label>
+      <SubmitButton variant="default" pendingText="Sending back…" className="text-rust hover:border-rust">
+        Send back
+      </SubmitButton>
       <FormFeedback state={state} />
     </form>
   );

@@ -1,10 +1,9 @@
 import { isStipendiary } from "@/lib/hris/stipend";
+import { coverageFor as personCoverage } from "@/lib/payroll/coverage";
 import "server-only";
 
 /* The headcount each Act reaches from. Defaults, not law-by-state: a
    company that differs says so with its coverage setting. */
-const EPF_HEADCOUNT_THRESHOLD = 20;
-const ESIC_HEADCOUNT_THRESHOLD = 10;
 import { and, asc, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
@@ -565,24 +564,9 @@ export async function previewRun(args: {
    * Twenty for provident fund, ten for ESI — the thresholds the Acts
    * themselves carry. On "auto" the declared headcount decides; a
    * company that registered voluntarily, or holds an exemption, says so
-   * instead. Nothing here excuses a person the Act does reach: this is
-   * the establishment's own answer, asked once.
+   * instead. Decided per person, with their own record and intern
+   * status, by coverageFor in lib/payroll/coverage.ts.
    */
-  const headcount = company.declaredHeadcount;
-  const coverageFor = (
-    setting: string,
-    threshold: number,
-  ): boolean | undefined => {
-    if (setting === "covered") return true;
-    if (setting === "not_covered") return false;
-    /* Auto, and nobody has said how many people work here: the product
-       cannot decide, so it leaves the charge as it always was rather
-       than quietly stopping a deduction. */
-    if (headcount === null || headcount === undefined) return undefined;
-    return headcount >= threshold;
-  };
-  const epfEstablishmentCovered = coverageFor(company.epfCoverage, EPF_HEADCOUNT_THRESHOLD);
-  const esicEstablishmentCovered = coverageFor(company.esicCoverage, ESIC_HEADCOUNT_THRESHOLD);
 
   const companyConfig: CompanyConfig = {
     prorationBasis: company.prorationBasis as ProrationBasis,
@@ -859,18 +843,9 @@ export async function previewRun(args: {
          * it pass unremarked: it is a claim about the law, and it is the
          * employer's to make and to answer for.
          */
-        epfEstablishmentCovered:
-          emp.pfApplicability === "yes"
-            ? true
-            : emp.pfApplicability === "no" || isStipendiary(emp.employmentType)
-              ? false
-              : epfEstablishmentCovered,
-        esicEstablishmentCovered:
-          emp.esicApplicability === "yes"
-            ? true
-            : emp.esicApplicability === "no" || isStipendiary(emp.employmentType)
-              ? false
-              : esicEstablishmentCovered,
+        /* The same coverage every take-home solver uses — see
+           lib/payroll/coverage.ts. */
+        ...personCoverage(company, emp),
         /* An intern's stipend is not wages: no PF or ESI unless their
            record says Yes, and no statutory bonus. */
         stipendiary: isStipendiary(emp.employmentType),

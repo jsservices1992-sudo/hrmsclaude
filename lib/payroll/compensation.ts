@@ -481,6 +481,9 @@ export type EmployerCostParams = {
   epfEdliBps?: number;
   epfEdliCeilingPaise?: Paise;
   epfAdminBps?: number;
+  /** Whether PF and ESI reach this person at all (see lib/payroll/coverage.ts). Undefined: covered. */
+  epfEstablishmentCovered?: boolean;
+  esicEstablishmentCovered?: boolean;
 };
 
 export type CtcBreakdown = {
@@ -507,12 +510,14 @@ export function employerCostFor(
   evaluation: EvaluationResult,
   p: EmployerCostParams,
 ): { pf: Paise; esic: Paise; nps: Paise; gratuity: Paise; bonus: Paise; other: Paise } {
-  const excluded = epfExcluded({
-    pfWagePaise: evaluation.pfWagePaise,
-    wageCeilingPaise: p.epfCeilingPaise,
-    optedIn: p.pfOptedIn ?? true,
-    hadPriorMembership: p.hadPriorPfMembership ?? false,
-  });
+  const excluded =
+    p.epfEstablishmentCovered === false ||
+    epfExcluded({
+      pfWagePaise: evaluation.pfWagePaise,
+      wageCeilingPaise: p.epfCeilingPaise,
+      optedIn: p.pfOptedIn ?? true,
+      hadPriorMembership: p.hadPriorPfMembership ?? false,
+    });
   const pfWage = p.epfOnActualBasic
     ? evaluation.pfWagePaise
     : Math.min(evaluation.pfWagePaise, p.epfCeilingPaise);
@@ -523,6 +528,7 @@ export function employerCostFor(
       pfRupee((pfWage * (p.epfAdminBps ?? 0)) / 10000);
 
   const esic =
+    p.esicEstablishmentCovered !== false &&
     evaluation.esicCoverageBasePaise <= p.esicThresholdPaise
       ? esiRupee((evaluation.esicBasePaise * p.esicEmployerBps) / 10000)
       : 0;

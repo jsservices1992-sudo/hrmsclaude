@@ -1,3 +1,4 @@
+import { effectiveMonthlyGross } from "./effective-gross";
 import { maskAccount } from "@/lib/ess/profile";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
@@ -213,13 +214,33 @@ export async function loadPayslips(args: {
     const dropZero = (l: { amountPaise: number }) =>
       !presentation.hideZeroComponents || l.amountPaise !== 0;
 
+    /* The month's real full-rate gross: a take-home salary re-solved the
+       way the run solves it, not the gross stored when it was saved. */
+    const effective =
+      salary && emp && company
+        ? effectiveMonthlyGross({
+            salary,
+            components: resolveEmployeeStructure(structureCtx, {
+              employeeStructureId: salary.structureId,
+              employeeDepartmentId: emp.departmentId,
+            }).components,
+            statutory,
+            company,
+            employee: emp,
+            stateCode: row?.branchStateCode ?? "",
+            month,
+          })
+        : salary
+          ? { grossPaise: salary.monthlyGrossPaise, anchors: undefined }
+          : null;
+
     let rates: SlipLine[] = [];
-    if (salary) {
+    if (salary && effective) {
       const resolved = resolveEmployeeStructure(structureCtx, {
         employeeStructureId: salary.structureId,
         employeeDepartmentId: emp?.departmentId ?? null,
       });
-      rates = evaluateStructure(resolved.components, salary.monthlyGrossPaise).components.map(
+      rates = evaluateStructure(resolved.components, effective.grossPaise, effective.anchors).components.map(
         /* The column is already headed "Salary rates", so prefixing every
            row with "Fixed" said the same thing twice and left the slip
            reading "Fixed Basic, Fixed HRA" instead of the component
@@ -257,7 +278,7 @@ export async function loadPayslips(args: {
         employeeStructureId: salary.structureId,
         employeeDepartmentId: emp.departmentId,
       });
-      const full = evaluateStructure(resolved.components, salary.monthlyGrossPaise);
+      const full = evaluateStructure(resolved.components, effective?.grossPaise ?? salary.monthlyGrossPaise, effective?.anchors);
       const cost = employerCostFor(full, {
         epfCeilingPaise: statutory.epf.wageCeilingPaise,
         epfEmployerBps: statutory.epf.employerBps,
