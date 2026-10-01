@@ -551,6 +551,15 @@ export default async function EmployeeDetailPage(
 
       {tab === "documents" && (
         <Card padded={false} className="overflow-x-auto">
+          <div className="px-4 py-2.5 border-b border-line-2 flex items-center justify-between gap-2">
+            <span className="text-xs text-ink-3">Papers held for this employee. To issue an offer, relieving, experience or FNF letter, see Letters below.</span>
+            <Link
+              href={`/console/employees/${employeeId}/letters`}
+              className="text-xs font-semibold text-indigo hover:underline shrink-0"
+            >
+              Letters →
+            </Link>
+          </div>
           <table className="w-full text-sm">
             <THead>
               {["Type", "Document", "Issued", "Expires", "Verified", "Access", "File", ""].map((h) => (

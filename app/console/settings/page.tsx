@@ -101,6 +101,9 @@ export default async function SettingsPage() {
               </div>
 
               <div className="mt-auto flex items-center justify-end gap-2 border-t border-line-2 px-5 py-3">
+                <Button href={`/console/settings/letters?company=${c.id}`} variant="ghost" size="sm">
+                  Letter templates
+                </Button>
                 <Button href={`/console/settings/payroll?company=${c.id}`} variant="ghost" size="sm">
                   Payroll rules
                 </Button>

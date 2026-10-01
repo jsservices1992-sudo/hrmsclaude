@@ -2489,6 +2489,68 @@ export const taxSpecialRateDeclarations = pgTable(
 );
 
 /**
+ * Letter templates — offer, relieving, letter of intent, experience
+ * certificate, FNF no-dues certificate. One row per company per letter
+ * type: either pasted text with `{{placeholder}}` fields merged per
+ * employee when issued, or a company-supplied file used as-is (no
+ * merge — a company's own letterhead document is handed over exactly
+ * as they made it).
+ */
+export const letterTemplates = pgTable(
+  "letter_templates",
+  {
+    id: text("id").primaryKey(),
+    companyId: text("company_id")
+      .notNull()
+      .references(() => companies.id),
+    type: text("type", {
+      enum: ["offer", "loi", "relieving", "experience", "fnf_noc"],
+    }).notNull(),
+    mode: text("mode", { enum: ["text", "file"] }).notNull(),
+    /** Set when mode is "text" — the pasted body, with {{placeholders}}. */
+    bodyText: text("body_text"),
+    /** Set when mode is "file" — the company's own document, used verbatim. */
+    fileKey: text("file_key"),
+    fileName: text("file_name"),
+    fileExtension: text("file_extension"),
+    updatedBy: text("updated_by"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [uniqueIndex("letter_template_idx").on(t.companyId, t.type)],
+);
+
+/**
+ * A letter actually issued to someone — a record of what was sent, not
+ * just what the template says today. The template can change tomorrow;
+ * what this person was handed should not quietly change with it.
+ */
+export const letterIssues = pgTable(
+  "letter_issues",
+  {
+    id: text("id").primaryKey(),
+    employeeId: text("employee_id")
+      .notNull()
+      .references(() => employees.id),
+    companyId: text("company_id")
+      .notNull()
+      .references(() => companies.id),
+    type: text("type", {
+      enum: ["offer", "loi", "relieving", "experience", "fnf_noc"],
+    }).notNull(),
+    mode: text("mode", { enum: ["text", "file"] }).notNull(),
+    /** The merged text as issued, for a text-mode letter. */
+    text: text("text"),
+    /** The company file handed over, for a file-mode letter. */
+    fileKey: text("file_key"),
+    fileName: text("file_name"),
+    fileExtension: text("file_extension"),
+    issuedBy: text("issued_by").notNull(),
+    issuedAt: text("issued_at").notNull(),
+  },
+  (t) => [index("letter_issue_emp_idx").on(t.employeeId)],
+);
+
+/**
  * The monthly TDS actually deducted, by run. Kept separately from the
  * payroll line so a recomputed projection can credit what has already
  * gone to the department without re-reading every payslip.
