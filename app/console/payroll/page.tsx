@@ -6,7 +6,7 @@ import * as s from "@/db/schema";
 import { redirect } from "next/navigation";
 import { loadPeriodFigures, listCompanies } from "@/lib/payroll/load";
 import { loadRunExceptions } from "@/lib/payroll/exceptions-load";
-import { criticalsOf } from "@/lib/payroll/exceptions";
+import { criticalsOf, groupExceptionsByCode } from "@/lib/payroll/exceptions";
 import { formatINR } from "@/lib/payroll/money";
 import {
   getSessionUser,
@@ -367,21 +367,35 @@ export default async function PayrollConsolePage(
                 </p>
               )}
               <ul className="divide-y divide-line-2">
-                {exceptions.map((e, i) => (
-                  <li key={`${e.code}-${e.employeeId ?? "run"}-${i}`} className="px-4 py-2 flex items-start gap-3 text-sm">
-                    <Badge tone={e.severity === "critical" ? "rust" : "brass"} className="shrink-0">
-                      {e.severity === "critical" ? "Block" : "Advisory"}
-                    </Badge>
-                    <span className="text-ink-2 min-w-0">
-                      {e.name && (
-                        <>
-                          <span className="text-ink">{e.name}</span>
-                          {e.empCode && <span className="font-mono text-xs text-ink-3 ml-1.5">{e.empCode}</span>}
-                          {" — "}
-                        </>
-                      )}
-                      {e.message}
-                    </span>
+                {groupExceptionsByCode(exceptions).map((g) => (
+                  <li key={g.code}>
+                    <details className="group" open={g.severity === "critical"}>
+                      <summary className="px-4 py-2.5 flex items-center gap-3 text-sm cursor-pointer list-none hover:bg-surface-2">
+                        <span className="text-ink-3 transition-transform group-open:rotate-90 shrink-0">▸</span>
+                        <Badge tone={g.severity === "critical" ? "rust" : "brass"} className="shrink-0">
+                          {g.severity === "critical" ? "Block" : "Advisory"}
+                        </Badge>
+                        <span className="text-ink min-w-0 flex-1">{g.label}</span>
+                        <span className="text-ink-3 tnum shrink-0">{g.items.length}</span>
+                      </summary>
+                      <ul className="divide-y divide-line-2 bg-surface-2/50">
+                        {g.items.map((e, i) => (
+                          <li
+                            key={`${e.employeeId ?? "run"}-${i}`}
+                            className="pl-11 pr-4 py-2 text-sm text-ink-2"
+                          >
+                            {e.name && (
+                              <>
+                                <span className="text-ink">{e.name}</span>
+                                {e.empCode && <span className="font-mono text-xs text-ink-3 ml-1.5">{e.empCode}</span>}
+                                {" — "}
+                              </>
+                            )}
+                            {e.message}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
                   </li>
                 ))}
               </ul>

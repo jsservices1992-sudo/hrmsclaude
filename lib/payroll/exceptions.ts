@@ -377,6 +377,34 @@ export function criticalsOf(list: PayrollException[]): PayrollException[] {
   return list.filter((e) => e.severity === "critical");
 }
 
+/**
+ * What each code means, in a few words — the one place a label is
+ * written, so the blocking summary and the findings list never drift
+ * apart into two different names for the same thing.
+ */
+export const EXCEPTION_LABELS: Record<PayrollExceptionCode, string> = {
+  missing_salary_structure: "No salary on record",
+  missing_bank_details: "No bank details",
+  negative_net: "Negative net pay",
+  zero_paid_days: "No paid days",
+  missing_statutory_config: "Statutory parameters missing",
+  missing_uan: "No UAN",
+  missing_esic_id: "No ESIC number",
+  excessive_lop: "Unusually few paid days",
+  attendance_not_finalised: "Attendance not final",
+  new_joiner: "New joiner",
+  exit_in_period: "Exit in period",
+  salary_changed_mid_period: "Salary changed mid-period",
+  loan_recovery_shortfall: "Loan recovery shortfall",
+  below_minimum_wage: "Below the minimum wage",
+  basic_below_minimum_wage: "Basic below the minimum wage",
+  minimum_wage_unverifiable: "Minimum wage could not be checked",
+  statutory_bonus_short: "Statutory bonus short",
+  statutory_bonus_unassessable: "Statutory bonus could not be assessed",
+  pt_state_unmodelled: "Professional tax not modelled for a state",
+  wage_code_below_share: "Wages under half of pay",
+};
+
 /** One line summarising why approval is refused. */
 export function blockingSummary(list: PayrollException[]): string | null {
   const criticals = criticalsOf(list);
@@ -385,29 +413,40 @@ export function blockingSummary(list: PayrollException[]): string | null {
   const byCode = new Map<PayrollExceptionCode, number>();
   for (const c of criticals) byCode.set(c.code, (byCode.get(c.code) ?? 0) + 1);
 
-  const label: Record<PayrollExceptionCode, string> = {
-    missing_salary_structure: "no salary on record",
-    missing_bank_details: "no bank details",
-    negative_net: "negative net pay",
-    zero_paid_days: "no paid days",
-    missing_statutory_config: "statutory parameters missing",
-    missing_uan: "no UAN",
-    missing_esic_id: "no ESIC number",
-    excessive_lop: "unusually few paid days",
-    attendance_not_finalised: "attendance not final",
-    new_joiner: "new joiner",
-    exit_in_period: "exit in period",
-    salary_changed_mid_period: "salary changed mid-period",
-    loan_recovery_shortfall: "loan recovery shortfall",
-    below_minimum_wage: "below the minimum wage",
-    basic_below_minimum_wage: "basic below the minimum wage",
-    minimum_wage_unverifiable: "minimum wage could not be checked",
-    statutory_bonus_short: "statutory bonus short",
-    statutory_bonus_unassessable: "statutory bonus could not be assessed",
-    pt_state_unmodelled: "professional tax not modelled for a state",
-    wage_code_below_share: "wages under half of pay",
-  };
-
-  const parts = [...byCode.entries()].map(([code, n]) => `${n} × ${label[code]}`);
+  const parts = [...byCode.entries()].map(
+    ([code, n]) => `${n} × ${EXCEPTION_LABELS[code].toLowerCase()}`,
+  );
   return `${criticals.length} blocking issue(s): ${parts.join(", ")}.`;
+}
+
+/**
+ * The same list, grouped by code — what a findings screen actually
+ * needs once a run has more than a handful of people. A thousand
+ * employees each missing a UAN is one thing to read and act on, not a
+ * thousand identical lines to scroll past.
+ */
+export function groupExceptionsByCode(
+  list: PayrollException[],
+): { code: PayrollExceptionCode; label: string; severity: ExceptionSeverity; items: PayrollException[] }[] {
+  const byCode = new Map<PayrollExceptionCode, PayrollException[]>();
+  for (const e of list) {
+    const group = byCode.get(e.code) ?? [];
+    group.push(e);
+    byCode.set(e.code, group);
+  }
+  return [...byCode.entries()]
+    .map(([code, items]) => ({
+      code,
+      label: EXCEPTION_LABELS[code],
+      // A code is only ever one severity in practice, but take the
+      // worst present rather than assume.
+      severity: items.some((i) => i.severity === "critical")
+        ? ("critical" as const)
+        : ("warning" as const),
+      items,
+    }))
+    .sort((a, b) => {
+      if (a.severity !== b.severity) return a.severity === "critical" ? -1 : 1;
+      return b.items.length - a.items.length;
+    });
 }

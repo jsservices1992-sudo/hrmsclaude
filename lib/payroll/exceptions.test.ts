@@ -4,8 +4,10 @@ import {
   detectExceptions,
   criticalsOf,
   blockingSummary,
+  groupExceptionsByCode,
   type ExceptionInput,
   type RunContext,
+  type PayrollException,
 } from "./exceptions";
 
 const ctx: RunContext = {
@@ -285,5 +287,56 @@ describe("Code on Wages split on a run", () => {
   test("a month with nothing to judge is left alone", () => {
     const found = detectExceptions([row({ wageCodeShortfallPaise: null })], ctx);
     assert.equal(found.filter((e) => e.code === "wage_code_below_share").length, 0);
+  });
+});
+
+describe("Grouping findings by code", () => {
+  const make = (over: Partial<PayrollException>): PayrollException => ({
+    code: "missing_uan",
+    severity: "warning",
+    message: "no UAN",
+    ...over,
+  });
+
+  test("a thousand identical findings become one group with a count, not a thousand rows", () => {
+    const list = Array.from({ length: 1000 }, (_, i) =>
+      make({ employeeId: `e${i}`, empCode: `E${i}`, name: `Person ${i}` }),
+    );
+    const groups = groupExceptionsByCode(list);
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0].items.length, 1000);
+    assert.equal(groups[0].label, "No UAN");
+  });
+
+  test("critical groups sort before warning groups, regardless of count", () => {
+    const list = [
+      make({ code: "missing_uan", severity: "warning", employeeId: "a" }),
+      make({ code: "missing_uan", severity: "warning", employeeId: "b" }),
+      make({ code: "negative_net", severity: "critical", employeeId: "c" }),
+    ];
+    const groups = groupExceptionsByCode(list);
+    assert.equal(groups[0].code, "negative_net", "one critical outranks two warnings");
+  });
+
+  test("within the same severity, the larger group sorts first", () => {
+    const list = [
+      make({ code: "missing_uan", employeeId: "a" }),
+      make({ code: "missing_esic_id", employeeId: "b" }),
+      make({ code: "missing_esic_id", employeeId: "c" }),
+    ];
+    const groups = groupExceptionsByCode(list);
+    assert.equal(groups[0].code, "missing_esic_id");
+    assert.equal(groups[0].items.length, 2);
+  });
+
+  test("a code appearing at both severities takes the worse one for the group badge", () => {
+    // Not how this codebase's rules actually emit a code today, but the
+    // grouping itself should not quietly hide a critical among warnings.
+    const list = [
+      make({ code: "missing_uan", severity: "warning", employeeId: "a" }),
+      make({ code: "missing_uan", severity: "critical", employeeId: "b" }),
+    ];
+    const groups = groupExceptionsByCode(list);
+    assert.equal(groups[0].severity, "critical");
   });
 });
