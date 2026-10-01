@@ -3,10 +3,13 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, canOpenEmployeeDocument } from "@/lib/auth/session";
 import { read } from "@/lib/storage";
-import { LETTER_TYPES } from "@/lib/letters/template";
+import { LETTER_TYPES, hasAddressee, letterDefinition, isLetterType } from "@/lib/letters/template";
+import { isLetterTheme, renderLetterHtml } from "@/lib/letters/themes";
+import { formatDateLetter } from "@/lib/format/date";
 
 /**
- * Serving one issued letter — the text as a plain-text download, or the
+ * Serving one issued letter — the text laid out in the theme it was
+ * issued with, as a page to print or save as PDF, or the
  * company's file exactly as it was at the moment of issue. Same access
  * rule as any other employee document: the owner, or console access to
  * that company.
@@ -36,10 +39,34 @@ export async function GET(
   const stamp = row.issue.issuedAt.slice(0, 10);
 
   if (row.issue.mode === "text") {
-    return new Response(row.issue.text ?? "", {
+    const [company] = await db.select().from(s.companies).where(eq(s.companies.id, row.emp.companyId)).limit(1);
+    const type = isLetterType(row.issue.type) ? row.issue.type : "offer";
+    const address = [company?.registeredAddress, company?.registeredCity, company?.registeredStateCode, company?.registeredPincode]
+      .filter(Boolean)
+      .join(", ");
+    const html = renderLetterHtml({
+      theme: isLetterTheme(row.issue.theme) ? row.issue.theme : "classic",
+      companyName: company?.legalName || company?.name || "",
+      companyAddress: address,
+      cin: company?.cin,
+      logoUrl: company?.logoUrl,
+      refNo: row.issue.refNo,
+      date: formatDateLetter(stamp),
+      addressee: hasAddressee(type)
+        ? {
+            name: [row.emp.firstName, row.emp.middleName, row.emp.lastName].filter(Boolean).join(" "),
+            address: [row.emp.addressLine, row.emp.city, row.emp.stateCode, row.emp.pincode].filter(Boolean).join(", ") || null,
+          }
+        : null,
+      subject: letterDefinition(type).subject,
+      body: row.issue.text ?? "",
+      signatoryName: row.issue.signatoryName,
+      signatoryTitle: row.issue.signatoryTitle,
+    });
+    return new Response(html, {
       headers: {
-        "content-type": "text/plain; charset=utf-8",
-        "content-disposition": `inline; filename="${row.emp.empCode}-${label.replace(/\s+/g, "-")}-${stamp}.txt"`,
+        "content-type": "text/html; charset=utf-8",
+        "content-disposition": `inline; filename="${row.emp.empCode}-${label.replace(/\s+/g, "-")}-${stamp}.html"`,
         "cache-control": "no-store",
       },
     });

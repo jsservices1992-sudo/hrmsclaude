@@ -9,7 +9,9 @@ import { getSessionUser, canAccessCompany } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
 import { checkUpload, isSafeKey, MAX_FILE_BYTES } from "@/lib/storage/rules";
 import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
-import { isLetterType, type LetterType } from "@/lib/letters/template";
+import { isLetterType, unknownPlaceholders, type LetterType } from "@/lib/letters/template";
+import { isLetterTheme } from "@/lib/letters/themes";
+import { docxToText } from "@/lib/letters/docx";
 
 export type LetterTemplateState = { error?: string; ok?: string };
 
@@ -30,10 +32,11 @@ function templateFileKey(companyId: string, type: LetterType, extension: string)
 }
 
 /**
- * Saves a company's letter template — either pasted text with
- * `{{placeholder}}` fields, or the company's own file used as-is.
- * Replaces whichever mode was there before: a template is one thing per
- * type per company, not an accumulating list.
+ * Saves a company's letter template — wording with `{{placeholder}}`
+ * fields (typed here, or read out of an uploaded Word template), or the
+ * company's own finished file used as-is. Replaces whichever mode was
+ * there before: a template is one thing per type per company, not an
+ * accumulating list.
  */
 export async function saveLetterTemplate(
   _prev: LetterTemplateState,
@@ -46,8 +49,33 @@ export async function saveLetterTemplate(
   const type = String(fd.get("type") ?? "");
   if (!isLetterType(type)) return { error: "Unknown letter type." };
 
-  const mode = String(fd.get("mode") ?? "");
-  if (mode !== "text" && mode !== "file") return { error: "Choose how this template is provided." };
+  const requestedMode = String(fd.get("mode") ?? "");
+  if (requestedMode !== "text" && requestedMode !== "docx" && requestedMode !== "file") {
+    return { error: "Choose how this template is provided." };
+  }
+  const theme = String(fd.get("theme") ?? "classic");
+  if (!isLetterTheme(theme)) return { error: "Choose a theme." };
+  const signatoryName = String(fd.get("signatoryName") ?? "").trim() || null;
+  const signatoryTitle = String(fd.get("signatoryTitle") ?? "").trim() || null;
+  const look = { theme, signatoryName, signatoryTitle };
+
+  /* A Word template is read for its wording and then saved exactly like
+     typed text — the theme lays it out, so it merges and prints the same. */
+  let bodyFromDocx: string | null = null;
+  if (requestedMode === "docx") {
+    const file = fd.get("docx");
+    if (!(file instanceof File) || file.size === 0) return { error: "Choose the Word file to upload." };
+    if (file.size > MAX_FILE_BYTES) {
+      return { error: `The file is ${(file.size / 1024 / 1024).toFixed(1)}MB. The limit is ${MAX_FILE_BYTES / 1024 / 1024}MB.` };
+    }
+    if (!/\.docx$/i.test(file.name)) {
+      return { error: "That is not a .docx file. In Word, use File → Save As → Word Document (.docx)." };
+    }
+    bodyFromDocx = docxToText(new Uint8Array(await file.arrayBuffer()));
+    if (bodyFromDocx === null) return { error: "That file could not be read as a Word document. Save it again as .docx and retry." };
+    if (!bodyFromDocx.trim()) return { error: "The Word file has no letter text below the line." };
+  }
+  const mode = requestedMode === "file" ? "file" : "text";
 
   const [existing] = await db
     .select()
@@ -58,8 +86,8 @@ export async function saveLetterTemplate(
   const now = new Date().toISOString();
 
   if (mode === "text") {
-    const bodyText = String(fd.get("bodyText") ?? "").trim();
-    if (!bodyText) return { error: "Paste the letter's text." };
+    const bodyText = bodyFromDocx ?? String(fd.get("bodyText") ?? "").trim();
+    if (!bodyText) return { error: "Write or paste the letter's wording." };
 
     // Switching from a file template to text drops the old file — it is
     // no longer referenced by anything, and keeping it would be a file
@@ -71,7 +99,7 @@ export async function saveLetterTemplate(
     if (existing) {
       await db
         .update(s.letterTemplates)
-        .set({ mode: "text", bodyText, fileKey: null, fileName: null, fileExtension: null, updatedBy: user.email, updatedAt: now })
+        .set({ mode: "text", bodyText, fileKey: null, fileName: null, fileExtension: null, ...look, updatedBy: user.email, updatedAt: now })
         .where(eq(s.letterTemplates.id, existing.id));
     } else {
       await db.insert(s.letterTemplates).values({
@@ -80,6 +108,7 @@ export async function saveLetterTemplate(
         type,
         mode: "text",
         bodyText,
+        ...look,
         updatedBy: user.email,
         updatedAt: now,
       });
@@ -87,6 +116,15 @@ export async function saveLetterTemplate(
   } else {
     const file = fd.get("file");
     if (!(file instanceof File) || file.size === 0) {
+      /* Keeping the file already on record and only changing the signatory or theme. */
+      if (existing?.mode === "file") {
+        await db
+          .update(s.letterTemplates)
+          .set({ ...look, updatedBy: user.email, updatedAt: now })
+          .where(eq(s.letterTemplates.id, existing.id));
+        revalidatePath("/console/settings/letters");
+        return { ok: "Template saved — the same file is kept." };
+      }
       return { error: "Choose a file to upload." };
     }
     if (file.size > MAX_FILE_BYTES) {
@@ -116,7 +154,7 @@ export async function saveLetterTemplate(
     if (existing) {
       await db
         .update(s.letterTemplates)
-        .set({ mode: "file", bodyText: null, fileKey: key, fileName: file.name, fileExtension: check.extension, updatedBy: user.email, updatedAt: now })
+        .set({ mode: "file", bodyText: null, fileKey: key, fileName: file.name, fileExtension: check.extension, ...look, updatedBy: user.email, updatedAt: now })
         .where(eq(s.letterTemplates.id, existing.id));
     } else {
       await db.insert(s.letterTemplates).values({
@@ -127,6 +165,7 @@ export async function saveLetterTemplate(
         fileKey: key,
         fileName: file.name,
         fileExtension: check.extension,
+        ...look,
         updatedBy: user.email,
         updatedAt: now,
       });
@@ -138,9 +177,14 @@ export async function saveLetterTemplate(
     action: "letter_template.saved",
     entity: "letter_template",
     entityId: `${companyId}:${type}`,
-    after: { type, mode },
+    after: { type, mode, theme, fromWord: bodyFromDocx !== null },
   });
 
   revalidatePath("/console/settings/letters");
-  return { ok: "Template saved." };
+  const body = mode === "text" ? (bodyFromDocx ?? String(fd.get("bodyText") ?? "")) : "";
+  const unknown = unknownPlaceholders(type, body);
+  const saved = bodyFromDocx !== null ? "Word template read and saved." : "Template saved.";
+  return unknown.length > 0
+    ? { ok: `${saved} Not a field this letter knows — check the spelling: ${unknown.map((k) => `{{${k}}}`).join(", ")}` }
+    : { ok: saved };
 }

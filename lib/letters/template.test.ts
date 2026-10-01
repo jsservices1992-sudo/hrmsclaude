@@ -1,6 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { mergeTemplate, LETTER_TYPES, isLetterType } from "./template";
+import { mergeTemplate, LETTER_TYPES, isLetterType, fieldsForLetter, unknownPlaceholders, SAMPLE_VALUES } from "./template";
+import { renderLetterHtml, LETTER_THEMES } from "./themes";
 
 describe("mergeTemplate", () => {
   test("substitutes every field supplied", () => {
@@ -52,5 +53,50 @@ describe("Letter types", () => {
     assert.ok(isLetterType("offer"));
     assert.ok(!isLetterType("invoice"));
     assert.ok(!isLetterType(undefined));
+  });
+});
+
+describe("Per-letter fields", () => {
+  test("every sample uses only fields its own letter knows", () => {
+    for (const t of LETTER_TYPES) {
+      assert.deepEqual(unknownPlaceholders(t.type, t.sample), [], t.type);
+    }
+  });
+
+  test("each letter has its own fields, not one shared list", () => {
+    const keys = (type: Parameters<typeof fieldsForLetter>[0]) => fieldsForLetter(type).map((f) => f.key);
+    assert.ok(keys("offer").includes("offer_valid_till"));
+    assert.ok(!keys("offer").includes("fnf_net_amount"));
+    assert.ok(keys("fnf_noc").includes("fnf_net_amount"));
+    assert.ok(!keys("relieving").includes("annual_ctc"));
+  });
+
+  test("a misspelt field is reported", () => {
+    assert.deepEqual(unknownPlaceholders("offer", "Dear {{employe_name}}"), ["employe_name"]);
+  });
+
+  test("every sample merges completely with the preview values", () => {
+    for (const t of LETTER_TYPES) {
+      assert.deepEqual(mergeTemplate(t.sample, { ...SAMPLE_VALUES, company_name: "Acme", company_address: "Pune" }).missingFields, [], t.type);
+    }
+  });
+});
+
+describe("Themes", () => {
+  test("every theme renders the body, escaped, and the signatory", () => {
+    for (const { theme } of LETTER_THEMES) {
+      const html = renderLetterHtml({
+        theme,
+        companyName: "Acme <Pvt> Ltd",
+        companyAddress: "Pune",
+        date: "1 October 2026",
+        subject: "Offer of Employment",
+        body: "Dear Asha,\n\nWelcome & congratulations.",
+        signatoryName: "Priya Nair",
+      });
+      assert.ok(html.includes("Acme &lt;Pvt&gt; Ltd"), theme);
+      assert.ok(html.includes("Welcome &amp; congratulations."), theme);
+      assert.ok(html.includes("Priya Nair"), theme);
+    }
   });
 });

@@ -128,3 +128,17 @@ function ymdToIsoIfReal(y: number, mo: number, d: number): string | null {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${y}-${pad(mo)}-${pad(d)}`;
 }
+
+const FULL_MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** `2026-09-15` → `15 September 2026` — how a date is written in a letter. */
+export function formatDateLetter(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const m = ISO.exec(iso);
+  if (!m) return iso;
+  const [, y, mo, d] = m;
+  return `${Number(d)} ${FULL_MONTHS[Number(mo) - 1] ?? mo} ${y}`;
+}

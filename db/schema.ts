@@ -2513,6 +2513,12 @@ export const letterTemplates = pgTable(
     fileKey: text("file_key"),
     fileName: text("file_name"),
     fileExtension: text("file_extension"),
+    /** How a text letter is laid out on the page — see lib/letters/themes. */
+    theme: text("theme", { enum: ["classic", "modern", "minimal", "formal"] })
+      .notNull()
+      .default("classic"),
+    signatoryName: text("signatory_name"),
+    signatoryTitle: text("signatory_title"),
     updatedBy: text("updated_by"),
     updatedAt: text("updated_at").notNull(),
   },
@@ -2544,6 +2550,10 @@ export const letterIssues = pgTable(
     fileKey: text("file_key"),
     fileName: text("file_name"),
     fileExtension: text("file_extension"),
+    theme: text("theme", { enum: ["classic", "modern", "minimal", "formal"] }),
+    signatoryName: text("signatory_name"),
+    signatoryTitle: text("signatory_title"),
+    refNo: text("ref_no"),
     issuedBy: text("issued_by").notNull(),
     issuedAt: text("issued_at").notNull(),
   },

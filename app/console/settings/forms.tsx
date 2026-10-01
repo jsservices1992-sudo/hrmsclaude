@@ -524,7 +524,7 @@ export function CompanyLogoForm({
 
         <form action={action} className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="companyId" value={companyId} />
-          <div className="w-full max-w-md"><FileDrop name="logo" accept="image/png,image/jpeg" hint="PNG or JPG, shown on payslips" /></div>
+          <div className="w-full max-w-md"><FileDrop name="logo" accept="image/png,image/jpeg" hint="PNG or JPG, any size — resized here before upload" shrinkImage={{ maxWidth: 800, maxHeight: 400, maxBytes: 480 * 1024 }} /></div>
           <SubmitButton pendingText="Uploading…">Upload</SubmitButton>
         </form>
 
@@ -539,8 +539,9 @@ export function CompanyLogoForm({
       </div>
 
       <p className="text-xs text-ink-3 max-w-[76ch]">
-        PNG or JPEG, up to 500KB — it prints about a centimetre high on every
-        payslip, so a few hundred pixels wide is plenty. Stored with the
+        PNG or JPEG. A large image is shrunk in your browser before it is
+        sent — it prints about a centimetre high on every payslip, so a few
+        hundred pixels wide is plenty. Stored with the
         company&apos;s other documents and served from here, so the payslip does
         not depend on another host staying up.
       </p>

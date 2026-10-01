@@ -7,7 +7,8 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany, canActOnPeople } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
-import { isLetterType } from "@/lib/letters/template";
+import { isLetterType, mergeTemplate } from "@/lib/letters/template";
+import { nextRefNo } from "@/lib/letters/fields";
 
 export type LetterIssueState = { error?: string; ok?: string };
 
@@ -54,10 +55,17 @@ export async function issueLetter(
   }
 
   const now = new Date().toISOString();
+  const refNo = await nextRefNo(employeeId, type, employee.empCode, now.slice(0, 10));
 
   if (template.mode === "text") {
     const text = String(fd.get("text") ?? "").trim();
     if (!text) return { error: "The letter text is empty." };
+    /* A {{field}} still in the text would print as-is on a letter handed
+       to someone; it is filled in or taken out first. */
+    const blank = mergeTemplate(text, {}).missingFields;
+    if (blank.length > 0) {
+      return { error: `Fill in or remove before issuing: ${blank.map((k) => `{{${k}}}`).join(", ")}` };
+    }
     await db.insert(s.letterIssues).values({
       id: randomUUID(),
       employeeId,
@@ -65,6 +73,10 @@ export async function issueLetter(
       type,
       mode: "text",
       text,
+      theme: template.theme,
+      signatoryName: template.signatoryName,
+      signatoryTitle: template.signatoryTitle,
+      refNo,
       issuedBy: user.email,
       issuedAt: now,
     });
@@ -79,6 +91,7 @@ export async function issueLetter(
       fileKey: template.fileKey,
       fileName: template.fileName,
       fileExtension: template.fileExtension,
+      refNo,
       issuedBy: user.email,
       issuedAt: now,
     });
@@ -93,8 +106,9 @@ export async function issueLetter(
   });
 
   revalidatePath(`/console/employees/${employeeId}/letters`);
-  return { ok: "Letter issued and added to this employee's record." };
+  return { ok: `Letter ${refNo} issued and added to this employee's record.` };
 }
+
 
 export async function loadIssuedLetters(employeeId: string) {
   return db

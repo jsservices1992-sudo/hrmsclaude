@@ -4,11 +4,12 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany, canActOnPeople } from "@/lib/auth/session";
-import { LETTER_TYPES, mergeTemplate, isLetterType, type LetterType } from "@/lib/letters/template";
-import { letterFieldsFor } from "@/lib/letters/fields";
+import { LETTER_TYPES, isLetterType, type LetterType } from "@/lib/letters/template";
+import type { LetterTheme } from "@/lib/letters/themes";
+import { letterFieldsFor, nextRefNo } from "@/lib/letters/fields";
 import { loadIssuedLetters } from "../../letters";
 import { IssueTextLetterForm, IssueFileLetterForm } from "./forms";
-import { Card, Badge } from "@/components/console/ui";
+import { Card, Badge, Tabs, TabLink } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Letters" };
@@ -33,14 +34,23 @@ export default async function EmployeeLettersPage(
     .where(and(eq(s.letterTemplates.companyId, emp.companyId), eq(s.letterTemplates.type, activeType)))
     .limit(1);
 
-  const fields = await letterFieldsFor(employeeId);
-  const merged = template?.mode === "text" ? mergeTemplate(template.bodyText ?? "", fields) : null;
+  const [{ values, inputDefaults }, refNo, [company]] = await Promise.all([
+    letterFieldsFor(employeeId),
+    nextRefNo(employeeId, activeType, emp.empCode, new Date().toISOString().slice(0, 10)),
+    db.select().from(s.companies).where(eq(s.companies.id, emp.companyId)).limit(1),
+  ]);
+  const head = {
+    name: company.legalName || company.name,
+    address: values.company_address ?? "",
+    cin: company.cin,
+    logoUrl: company.logoUrl,
+  };
 
   const issued = await loadIssuedLetters(employeeId);
   const canIssue = canActOnPeople(user);
 
   return (
-    <div className="flex flex-col gap-5 max-w-[64rem]">
+    <div className="flex flex-col gap-5 max-w-[80rem]">
       <div>
         <Link href={`/console/employees/${employeeId}`} className="text-sm font-medium text-ink-2 hover:text-ink">
           ← {emp.firstName} {emp.lastName}
@@ -48,17 +58,13 @@ export default async function EmployeeLettersPage(
         <h1 className="text-xl font-semibold text-ink mt-1">Letters</h1>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
+      <Tabs>
         {LETTER_TYPES.map((t) => (
-          <Link
-            key={t.type}
-            href={`/console/employees/${employeeId}/letters?type=${t.type}`}
-            className={`px-3 py-1.5 text-xs border ${t.type === activeType ? "border-indigo bg-indigo-soft text-indigo" : "border-line text-ink-2"}`}
-          >
+          <TabLink key={t.type} href={`/console/employees/${employeeId}/letters?type=${t.type}`} active={t.type === activeType}>
             {t.label}
-          </Link>
+          </TabLink>
         ))}
-      </div>
+      </Tabs>
 
       <Card padded={false}>
         <div className="px-4 py-2.5 border-b border-line-2">
@@ -66,7 +72,7 @@ export default async function EmployeeLettersPage(
             {LETTER_TYPES.find((t) => t.type === activeType)?.label}
           </span>
         </div>
-        <div className="p-4">
+        <div className="p-5">
           {!template ? (
             <p className="text-sm text-ink-2">
               No template is set for this letter type.{" "}
@@ -81,8 +87,15 @@ export default async function EmployeeLettersPage(
             <IssueTextLetterForm
               employeeId={employeeId}
               type={activeType}
-              mergedText={merged?.text ?? ""}
-              missingFields={merged?.missingFields ?? []}
+              template={template.bodyText ?? ""}
+              values={values}
+              inputDefaults={inputDefaults}
+              theme={(template.theme ?? "classic") as LetterTheme}
+              signatoryName={template.signatoryName}
+              signatoryTitle={template.signatoryTitle}
+              company={head}
+              refNo={refNo}
+              addresseeAddress={values.employee_address ?? ""}
             />
           ) : (
             <div className="flex flex-col gap-3">
@@ -105,7 +118,7 @@ export default async function EmployeeLettersPage(
           <ul className="divide-y divide-line-2">
             {issued.map((l) => (
               <li key={l.id} className="px-4 py-2.5 flex items-center justify-between gap-3 text-sm">
-                <div>
+                <div className="min-w-0">
                   <Link
                     href={`/console/employees/${employeeId}/letters/${l.id}`}
                     className="text-ink font-medium hover:text-indigo hover:underline"
@@ -113,7 +126,7 @@ export default async function EmployeeLettersPage(
                     {LETTER_TYPES.find((t) => t.type === l.type)?.label ?? l.type}
                   </Link>
                   <span className="text-ink-3 ml-2">
-                    {formatDate(l.issuedAt.slice(0, 10))} · {l.issuedBy}
+                    {l.refNo ? `${l.refNo} · ` : ""}{formatDate(l.issuedAt.slice(0, 10))} · {l.issuedBy}
                   </span>
                 </div>
                 <Badge tone={l.mode === "text" ? "indigo" : "brass"}>{l.mode === "text" ? "Text" : "File"}</Badge>
