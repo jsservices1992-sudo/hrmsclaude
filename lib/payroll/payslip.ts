@@ -29,9 +29,10 @@ export type SlipEarningLine = SlipLine & {
 };
 
 export type PayslipHeader = {
+  /** The registered legal entity (companies.legalName), not the brand name. */
   companyName: string;
   companyAddressLines: string[];
-  /** Null falls back to a monogram of the company name. */
+  /** Null falls back to a monogram of the legal company name. */
   logoUrl: string | null;
   name: string;
   employeeId: string;
@@ -322,7 +323,10 @@ export async function loadPayslips(args: {
 
     out.set(r.employeeId, {
       header: {
-        companyName: company?.name ?? "",
+        // The registered legal entity, not the brand name — a payslip is a
+        // statutory record, and the entity that employs someone is the one
+        // its name has to say. The logo alone is where the brand belongs.
+        companyName: company?.legalName || company?.name || "",
         companyAddressLines,
         logoUrl: company?.logoUrl ?? null,
         name: r.name,
