@@ -150,6 +150,43 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="rounded-lg bg-surface-2 px-4 py-6 text-sm text-ink-3 text-center">{children}</p>;
 }
 
+/** The names behind a count — a tile reading "+3" is not actionable until it says who. */
+function NamedList({
+  rows,
+  dateLabel,
+  empty,
+  extraColumn,
+}: {
+  rows: { employeeId: string; empCode: string; name: string; date: string; note?: string }[];
+  dateLabel: string;
+  empty: string;
+  extraColumn?: { label: string };
+}) {
+  if (rows.length === 0) return <Empty>{empty}</Empty>;
+  return (
+    <Table>
+      <THead>
+        <TH>Employee</TH>
+        <TH>{dateLabel}</TH>
+        {extraColumn && <TH>{extraColumn.label}</TH>}
+      </THead>
+      <TBody>
+        {rows.map((r) => (
+          <TR key={r.employeeId}>
+            <TD>
+              <Link href={`/console/employees/${r.employeeId}`} className="font-medium hover:text-indigo">
+                {r.name} <span className="text-xs text-ink-3">{r.empCode}</span>
+              </Link>
+            </TD>
+            <TD className="tnum">{formatDate(r.date)}</TD>
+            {extraColumn && <TD className="text-ink-2">{r.note}</TD>}
+          </TR>
+        ))}
+      </TBody>
+    </Table>
+  );
+}
+
 const compact = (paise: number) => {
   const r = paise / 100;
   if (r >= 1e7) return `₹${(r / 1e7).toFixed(2)} Cr`;
@@ -431,18 +468,28 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
   if (reportId === "headcount") {
     const h = await loadHeadcountReport(companyId, year, month);
     body = (
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Tile label="Opening" value={String(h.openingCount)} />
-        <Tile label="Joiners" value={`+${h.joiners}`} tone="teal" />
-        <Tile label="Leavers" value={`−${h.leavers}`} tone="rust" />
-        <Tile label="Closing" value={String(h.closingCount)} tone="indigo" />
-        <Tile
-          label="Adds up?"
-          value={h.reconciles ? "Yes" : "No"}
-          tone={h.reconciles ? "teal" : "rust"}
-          hint={h.reconciles ? "Opening + joiners − leavers = closing" : `Expected ${h.expectedClosing}`}
-        />
-      </div>
+      <>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <Tile label="Opening" value={String(h.openingCount)} />
+          <Tile label="Joiners" value={`+${h.joiners}`} tone="teal" />
+          <Tile label="Leavers" value={`−${h.leavers}`} tone="rust" />
+          <Tile label="Closing" value={String(h.closingCount)} tone="indigo" />
+          <Tile
+            label="Adds up?"
+            value={h.reconciles ? "Yes" : "No"}
+            tone={h.reconciles ? "teal" : "rust"}
+            hint={h.reconciles ? "Opening + joiners − leavers = closing" : `Expected ${h.expectedClosing}`}
+          />
+        </div>
+        <div className="grid lg:grid-cols-2 gap-5">
+          <Section title={`Joiners (${h.joiners})`}>
+            <NamedList rows={h.joinersList} dateLabel="Date of joining" empty="Nobody joined this month." />
+          </Section>
+          <Section title={`Leavers (${h.leavers})`}>
+            <NamedList rows={h.leaversList} dateLabel="Date of exit" empty="Nobody left this month." />
+          </Section>
+        </div>
+      </>
     );
   }
 
@@ -470,6 +517,14 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
               }))}
             />
           )}
+        </Section>
+        <Section title={`Who left (${a.leaversList.length})`} subtitle="Trailing twelve months, most recent first">
+          <NamedList
+            rows={a.leaversList.map((r) => ({ ...r, note: r.exitType.replace(/_/g, " ") }))}
+            dateLabel="Last working day"
+            empty="Nobody left in these twelve months."
+            extraColumn={{ label: "Reason" }}
+          />
         </Section>
       </>
     );

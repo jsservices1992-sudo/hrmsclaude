@@ -23,11 +23,19 @@ const monthStart = (year: number, month: number) =>
 
 /* ------------------------- headcount ------------------------- */
 
+export type NamedEmployee = { employeeId: string; empCode: string; name: string; date: string };
+
+export type HeadcountReportResult = HeadcountReconciliation & {
+  /** Who the joiners/leavers counts above actually are — a count with nobody behind it is not actionable. */
+  joinersList: NamedEmployee[];
+  leaversList: NamedEmployee[];
+};
+
 export async function loadHeadcountReport(
   companyId: string,
   year: number,
   month: number,
-): Promise<HeadcountReconciliation> {
+): Promise<HeadcountReportResult> {
   const start = monthStart(year, month);
   const end = monthEnd(year, month);
   const dayBeforeStart = new Date(Date.parse(start + "T00:00:00Z") - 86_400_000)
@@ -36,6 +44,10 @@ export async function loadHeadcountReport(
 
   const rows = await db
     .select({
+      id: s.employees.id,
+      empCode: s.employees.empCode,
+      firstName: s.employees.firstName,
+      lastName: s.employees.lastName,
       dateOfJoining: s.employees.dateOfJoining,
       dateOfExit: s.employees.dateOfExit,
     })
@@ -48,14 +60,30 @@ export async function loadHeadcountReport(
   const closingCount = rows.filter(
     (e) => e.dateOfJoining <= end && (!e.dateOfExit || e.dateOfExit > end),
   ).length;
-  const joinersInPeriod = rows.filter(
-    (e) => e.dateOfJoining >= start && e.dateOfJoining <= end,
-  ).length;
-  const leaversInPeriod = rows.filter(
-    (e) => e.dateOfExit && e.dateOfExit >= start && e.dateOfExit <= end,
-  ).length;
+  const joiners = rows.filter((e) => e.dateOfJoining >= start && e.dateOfJoining <= end);
+  const leavers = rows.filter((e) => e.dateOfExit && e.dateOfExit >= start && e.dateOfExit <= end);
 
-  return reconcileHeadcount({ openingCount, joinersInPeriod, leaversInPeriod, closingCount });
+  const named = (e: (typeof rows)[number], date: string): NamedEmployee => ({
+    employeeId: e.id,
+    empCode: e.empCode,
+    name: `${e.firstName} ${e.lastName}`,
+    date,
+  });
+
+  return {
+    ...reconcileHeadcount({
+      openingCount,
+      joinersInPeriod: joiners.length,
+      leaversInPeriod: leavers.length,
+      closingCount,
+    }),
+    joinersList: joiners
+      .map((e) => named(e, e.dateOfJoining))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    leaversList: leavers
+      .map((e) => named(e, e.dateOfExit!))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+  };
 }
 
 /* ------------------------- onboarding funnel ------------------------- */
@@ -85,12 +113,16 @@ export async function loadOnboardingFunnelReport(
 
 /* ------------------------- attrition ------------------------- */
 
+export type AttritionReportResult = AttritionReport & {
+  leaversList: (NamedEmployee & { exitType: string })[];
+};
+
 /** Trailing 12 months ending at the given period — the conventional attrition window. */
 export async function loadAttritionReport(
   companyId: string,
   year: number,
   month: number,
-): Promise<AttritionReport> {
+): Promise<AttritionReportResult> {
   const end = monthEnd(year, month);
   const startDate = new Date(Date.UTC(year, month - 12, 1));
   const start = startDate.toISOString().slice(0, 10);
@@ -112,6 +144,10 @@ export async function loadAttritionReport(
 
   const leaverRows = await db
     .select({
+      employeeId: s.exitCases.employeeId,
+      empCode: s.employees.empCode,
+      firstName: s.employees.firstName,
+      lastName: s.employees.lastName,
       exitType: s.exitCases.exitType,
       dateOfJoining: s.employees.dateOfJoining,
       lastWorkingDay: s.exitCases.lastWorkingDay,
@@ -126,11 +162,25 @@ export async function loadAttritionReport(
       ),
     );
 
-  return buildAttritionReport({
-    leavers: leaverRows,
-    openingHeadcount,
-    closingHeadcount,
-  });
+  return {
+    ...buildAttritionReport({
+      leavers: leaverRows,
+      openingHeadcount,
+      closingHeadcount,
+    }),
+    // Who the leavers actually are, not just how many and why in
+    // aggregate — a reason bucket with no names behind it is not
+    // something anyone can act on.
+    leaversList: leaverRows
+      .map((r) => ({
+        employeeId: r.employeeId,
+        empCode: r.empCode,
+        name: `${r.firstName} ${r.lastName}`,
+        date: r.lastWorkingDay,
+        exitType: r.exitType,
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date)),
+  };
 }
 
 /* ------------------------- cost breakdown ------------------------- */

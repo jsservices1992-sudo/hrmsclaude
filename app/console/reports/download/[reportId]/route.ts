@@ -91,14 +91,14 @@ export async function GET(
   if (reportId === "headcount") {
     const r = await loadHeadcountReport(companyId, year, month);
     const csv = toCsv(
-      ["Metric", "Value"],
+      ["Row", "Employee code", "Name", "Date"],
       [
-        ["Opening", r.openingCount],
-        ["Joiners", r.joiners],
-        ["Leavers", r.leavers],
-        ["Closing", r.closingCount],
-        ["Expected closing", r.expectedClosing],
-        ["Reconciles", r.reconciles ? "Yes" : "No"],
+        ["Opening", "", "", String(r.openingCount)],
+        ["Closing", "", "", String(r.closingCount)],
+        ["Expected closing", "", "", String(r.expectedClosing)],
+        ["Reconciles", "", "", r.reconciles ? "Yes" : "No"],
+        ...r.joinersList.map((j) => ["Joiner", j.empCode, j.name, j.date]),
+        ...r.leaversList.map((j) => ["Leaver", j.empCode, j.name, j.date]),
       ],
     );
     return fileResponse(csv, `headcount-${companyId}-${period}.csv`);
@@ -124,14 +124,10 @@ export async function GET(
   if (reportId === "attrition") {
     const r = await loadAttritionReport(companyId, year, month);
     const csv = toCsv(
-      ["Metric", "Value"],
+      ["Employee code", "Name", "Last working day", "Reason"],
       [
-        ["Leavers", r.leaverCount],
-        ["Average headcount", r.averageHeadcount],
-        ["Attrition rate %", r.attritionRatePercent],
-        ["Early attrition count", r.earlyAttritionCount],
-        ["Early attrition rate %", r.earlyAttritionRatePercent],
-        ...r.reasonBreakdown.map((b) => [`Reason: ${b.exitType}`, b.count]),
+        ["", "", "", `Leavers: ${r.leaverCount} · Attrition rate: ${r.attritionRatePercent}% · Early attrition: ${r.earlyAttritionCount} (${r.earlyAttritionRatePercent}%)`],
+        ...r.leaversList.map((j) => [j.empCode, j.name, j.date, j.exitType.replace(/_/g, " ")]),
       ],
     );
     return fileResponse(csv, `attrition-${companyId}-${period}.csv`);
