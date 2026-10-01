@@ -345,6 +345,77 @@ describe("Take-home", () => {
   });
 });
 
+describe("ESIC continuation inside a take-home solve", () => {
+  // Reproduces a real case: a person covered since the contribution
+  // period started keeps paying ESIC even once wages rise above the
+  // threshold mid-period — a fresh per-month threshold test misses this
+  // and understates the gross a fixed take-home actually needs.
+  const aboveThreshold = evaluateStructure(STRUCTURE, R(30000));
+
+  test("without the flag, a mid-period month applies a fresh threshold test only", () => {
+    const t = takeHomeFor(aboveThreshold, { ...TAKEHOME, month: 9 });
+    assert.equal(t.esic, 0, "wages are above threshold and nothing says otherwise");
+  });
+
+  test("coveredAtPeriodStart keeps ESIC applying inside the period, above the threshold", () => {
+    const t = takeHomeFor(aboveThreshold, { ...TAKEHOME, month: 9, coveredAtPeriodStart: true });
+    assert.ok(t.esic > 0, "coverage continues to period end regardless of the new wage");
+  });
+
+  test("at a period boundary (April/October) coverage is re-tested, not continued", () => {
+    const t = takeHomeFor(aboveThreshold, { ...TAKEHOME, month: 10, coveredAtPeriodStart: true });
+    assert.equal(t.esic, 0, "October re-tests against the threshold even if last period covered them");
+  });
+
+  test("solving a take-home for someone covered mid-period lands on the real target, not short by the ESIC it forgot", () => {
+    const target = R(27000);
+    const statutory = {
+      epf: { wageCeilingPaise: R(15000), employeeBps: 1200 },
+      esic: { wageThresholdPaise: R(21000), employeeBps: 75 },
+      ptSlabsByState: {},
+      ptApplicableByState: {},
+      lwfByState: {},
+      lwfApplicableByState: {},
+    };
+
+    const naive = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: target,
+      components: STRUCTURE,
+      employer: EMPLOYER,
+      stateCode: "UP",
+      gender: "female",
+      month: 9,
+      statutory,
+    });
+    const naiveNet = takeHomeFor(evaluateStructure(STRUCTURE, naive.monthlyGrossPaise), {
+      ...naive.takeHome,
+      month: 9,
+      coveredAtPeriodStart: true, // the real run's fact, which the naive solve never saw
+    }).takeHome;
+    assert.ok(
+      naiveNet < target,
+      `without the flag the solve comes up short of the target (got ${naiveNet} vs ${target})`,
+    );
+
+    const fixed = grossForTargetTakeHome({
+      targetMonthlyTakeHomePaise: target,
+      components: STRUCTURE,
+      employer: EMPLOYER,
+      stateCode: "UP",
+      gender: "female",
+      month: 9,
+      esicCoveredAtPeriodStart: true,
+      statutory,
+    });
+    const fixedNet = takeHomeFor(evaluateStructure(STRUCTURE, fixed.monthlyGrossPaise), fixed.takeHome).takeHome;
+    assert.ok(
+      Math.abs(fixedNet - target) <= R(2),
+      `with the flag the solve lands on the real target (got ${fixedNet} vs ${target})`,
+    );
+    assert.ok(fixed.monthlyGrossPaise > naive.monthlyGrossPaise, "the fixed solve asks for more gross to cover the ESIC the naive one missed");
+  });
+});
+
 describe("Excluded employees", () => {
   /* Somebody joining above the ceiling with no prior PF membership is not
      a compulsory member, and the run does not deduct from them. A screen

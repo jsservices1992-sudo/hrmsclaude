@@ -9,6 +9,7 @@ import {
   computeLwf,
   computeProfessionalTax,
   epfExcluded,
+  isContributionPeriodStart,
   type LwfRate,
   type PtSlab,
 } from "./statutory";
@@ -649,6 +650,22 @@ export type TakeHomeParams = {
    */
   epfEstablishmentCovered?: boolean;
   esicEstablishmentCovered?: boolean;
+  /**
+   * Calendar month 1-12. Only ESIC's continuation rule reads this: at a
+   * contribution-period boundary (April, October) coverage is re-tested
+   * against the threshold; inside a period it is not.
+   */
+  month?: number;
+  /**
+   * Whether this person was covered at the start of the current ESIC
+   * contribution period — the same flag `computeEsic` takes. Omitted,
+   * the solver falls back to a fresh threshold test only, which
+   * understates the gross a mid-period person whose wage has since
+   * risen above the threshold actually needs: they keep paying ESIC
+   * regardless, and a solve that assumes otherwise quietly comes up
+   * short of the promised take-home by exactly that deduction.
+   */
+  coveredAtPeriodStart?: boolean;
 };
 
 export function takeHomeFor(
@@ -668,11 +685,15 @@ export function takeHomeFor(
     : Math.min(evaluation.pfWagePaise, p.epfCeilingPaise);
   const epf = excluded ? 0 : pfRupee((pfWage * p.epfEmployeeBps) / 10000);
 
-  const esic =
+  const withinEsicThreshold = evaluation.esicCoverageBasePaise <= p.esicThresholdPaise;
+  const esicApplicable =
     p.esicEstablishmentCovered !== false &&
-    evaluation.esicCoverageBasePaise <= p.esicThresholdPaise
-      ? esiRupee((evaluation.esicBasePaise * p.esicEmployeeBps) / 10000)
-      : 0;
+    (p.month != null && isContributionPeriodStart(p.month)
+      ? withinEsicThreshold
+      : (p.coveredAtPeriodStart ?? false) || withinEsicThreshold);
+  const esic = esicApplicable
+    ? esiRupee((evaluation.esicBasePaise * p.esicEmployeeBps) / 10000)
+    : 0;
 
   const pt = p.professionalTaxPaise;
   const lwf = p.lwfEmployeePaise ?? 0;
@@ -752,6 +773,14 @@ export function grossForTargetTakeHome(args: {
   epfEstablishmentCovered?: boolean;
   esicEstablishmentCovered?: boolean;
   /**
+   * Whether this person was covered by ESIC at the start of the current
+   * contribution period — see `TakeHomeParams.coveredAtPeriodStart`.
+   * Omitted, a mid-period solve for someone already covered above the
+   * threshold will understate the gross needed by exactly that month's
+   * ESIC deduction, since nothing then tells the solver it still applies.
+   */
+  esicCoveredAtPeriodStart?: boolean;
+  /**
    * Components to hold at their agreed amounts while the gross moves. The
    * balance component takes the difference, which is what it is for.
    */
@@ -796,6 +825,8 @@ export function grossForTargetTakeHome(args: {
     hadPriorPfMembership: args.hadPriorPfMembership,
     epfEstablishmentCovered: args.epfEstablishmentCovered,
     esicEstablishmentCovered: args.esicEstablishmentCovered,
+    month: args.month,
+    coveredAtPeriodStart: args.esicCoveredAtPeriodStart,
   });
 
   const firstPass = buildFromTargetTakeHome({

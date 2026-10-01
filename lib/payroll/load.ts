@@ -921,6 +921,11 @@ export async function previewRun(args: {
                  it has to know which charges this establishment owes. */
               epfEstablishmentCovered: employee.epfEstablishmentCovered,
               esicEstablishmentCovered: employee.esicEstablishmentCovered,
+              /* Same flag the real engine call below reads — without it
+                 the solve forgets a mid-period ESIC continuation and
+                 comes up short of the promised take-home by exactly that
+                 deduction, every month it recurs. */
+              esicCoveredAtPeriodStart: employee.esicCoveredAtPeriodStart,
               statutory,
             }).monthlyGrossPaise,
           }
