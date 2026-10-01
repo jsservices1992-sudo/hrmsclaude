@@ -16,6 +16,7 @@ const MARK: Record<string, { ch: string; cls: string; title: string }> = {
   holiday: { ch: "H", cls: "text-indigo", title: "Holiday" },
   on_leave: { ch: "L", cls: "text-indigo", title: "On leave" },
   on_duty: { ch: "D", cls: "text-teal", title: "On duty" },
+  not_due: { ch: "", cls: "text-ink-3", title: "Not yet due" },
 };
 
 /**

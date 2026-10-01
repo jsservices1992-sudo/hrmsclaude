@@ -37,7 +37,9 @@ export type AttendanceStatus =
   | "weekly_off"
   | "holiday"
   | "on_leave"
-  | "on_duty";
+  | "on_duty"
+  /** A date later than today — nothing has happened yet, so nothing is marked. */
+  | "not_due";
 
 export type DayInput = {
   date: string;
@@ -74,6 +76,16 @@ export type DayInput = {
    * the half-day threshold are still short, whichever way this is set.
    */
   assumePresentWithoutRecord?: boolean;
+  /**
+   * Today's date, so a day later than it can say so rather than be
+   * marked present. Exception mode reads silence on a day that has
+   * already happened as "nobody recorded anything to the contrary" —
+   * that reasoning does not apply to a day that has not happened yet,
+   * where silence just means the day has not arrived. Omitted, every
+   * date is treated as already past, which is what every caller that
+   * only ever processes closed months wants.
+   */
+  today?: string;
 };
 
 export type DayResult = {
@@ -178,6 +190,21 @@ export function deriveDay(input: DayInput): DayResult {
     };
   }
 
+  // A day later than today has not happened — not present, because
+  // nobody knows that yet, and not absent either, for the same reason.
+  // Applies whichever way assumePresentWithoutRecord is set: exception
+  // mode would otherwise mark every day of the month present on the
+  // first of it, and punch mode would mark every one of them absent.
+  if (input.today && input.date > input.today && input.punches.length === 0) {
+    return {
+      ...base,
+      status: "not_due",
+      lopUnits: 0,
+      isPayable: false,
+      basis: "This date has not occurred yet",
+    };
+  }
+
   if (input.markedAbsent && input.punches.length === 0) {
     return { ...base, status: "absent", lopUnits: 1, isPayable: false, basis: "Marked absent" };
   }
@@ -279,6 +306,8 @@ export type MonthSummary = {
   lopDays: number;
   lateDays: number;
   workedHours: number;
+  /** Days later than today — part of the month, but nothing to report yet. */
+  notDueDays: number;
 };
 
 export function summariseMonth(days: DayResult[]): MonthSummary {
@@ -295,6 +324,7 @@ export function summariseMonth(days: DayResult[]): MonthSummary {
     offDaysWorked: Number(days.reduce((a, d) => a + d.offDayWorkedUnits, 0).toFixed(2)),
     lateDays: days.filter((d) => d.lateMinutes > 0).length,
     workedHours: Number((days.reduce((a, d) => a + d.workedMinutes, 0) / 60).toFixed(1)),
+    notDueDays: count("not_due"),
   };
 }
 

@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gte, lte, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gte, lte, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import {
@@ -52,6 +52,7 @@ export async function deriveMonth(args: {
   const total = daysInMonth(year, month);
   const from = iso(year, month, 1);
   const to = iso(year, month, total);
+  const today = new Date().toISOString().slice(0, 10);
 
   /* Six queries that do not depend on each other, asked together.
      A hosted database is half a second away, so run in turn they were
@@ -75,6 +76,13 @@ export async function deriveMonth(args: {
         and(
           eq(s.employees.companyId, companyId),
           lte(s.employees.dateOfJoining, to),
+          // Someone who left before this period even started has no
+          // attendance to derive for it — without this they kept
+          // appearing every month after they exited, each day past
+          // their last working day priced as a paid weekly-off, which
+          // is how a departed employee ends up with "paid days" on a
+          // month they were never on the rolls for.
+          or(isNull(s.employees.dateOfExit), gte(s.employees.dateOfExit, from)),
         ),
       )
       .orderBy(asc(s.employees.empCode)),
@@ -210,6 +218,7 @@ export async function deriveMonth(args: {
         /* Only total silence is affected. A punch that falls short of
            the half-day threshold is still short either way. */
         assumePresentWithoutRecord: company.attendanceMode === "exception",
+        today,
       });
     }
 

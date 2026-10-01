@@ -1402,7 +1402,7 @@ export const attendanceRecords = pgTable(
       .notNull()
       .default("working"),
     status: text("status", {
-      enum: ["present", "half_day", "absent", "weekly_off", "holiday", "on_leave", "on_duty"],
+      enum: ["present", "half_day", "absent", "weekly_off", "holiday", "on_leave", "on_duty", "not_due"],
     }).notNull(),
     workedMinutes: integer("worked_minutes").notNull().default(0),
     lateMinutes: integer("late_minutes").notNull().default(0),

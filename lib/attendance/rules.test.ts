@@ -518,6 +518,60 @@ describe("a working day with no record at all", () => {
   });
 });
 
+describe("A date later than today", () => {
+  const futureDay = {
+    date: "2026-10-15",
+    dayType: "working" as const,
+    punches: [],
+    shift: DEFAULT_SHIFT,
+    today: "2026-10-01",
+  };
+
+  test("is not_due in exception mode, not present — nothing has happened yet to assume", () => {
+    const d = deriveDay({ ...futureDay, assumePresentWithoutRecord: true });
+    assert.equal(d.status, "not_due");
+    assert.equal(d.lopUnits, 0);
+    assert.equal(d.isPayable, false);
+    assert.match(d.basis, /not occurred/i);
+  });
+
+  test("is not_due in punch mode too, not absent — a day that has not come cannot be a missed punch", () => {
+    const d = deriveDay({ ...futureDay, assumePresentWithoutRecord: false });
+    assert.equal(d.status, "not_due");
+  });
+
+  test("today itself is not in the future", () => {
+    const d = deriveDay({ ...futureDay, date: "2026-10-01", assumePresentWithoutRecord: true });
+    assert.equal(d.status, "present");
+  });
+
+  test("an approved leave already on record for a future date still shows, not_due does not override it", () => {
+    const d = deriveDay({ ...futureDay, leave: { paid: true, halfDay: false } });
+    assert.equal(d.status, "on_leave");
+  });
+
+  test("a future weekly off still shows as weekly off, not not_due", () => {
+    const d = deriveDay({ ...futureDay, dayType: "weekly_off" });
+    assert.equal(d.status, "weekly_off");
+  });
+
+  test("omitting today treats every date as already past, for callers that only process closed months", () => {
+    const d = deriveDay({ date: "2026-10-15", dayType: "working", punches: [], assumePresentWithoutRecord: true });
+    assert.equal(d.status, "present");
+  });
+
+  test("summariseMonth counts not-due days separately from present or absent", () => {
+    const days = [
+      deriveDay({ ...futureDay, assumePresentWithoutRecord: true }),
+      deriveDay({ ...futureDay, date: "2026-10-01", assumePresentWithoutRecord: true }),
+    ];
+    const summary = summariseMonth(days);
+    assert.equal(summary.notDueDays, 1);
+    assert.equal(summary.presentDays, 1);
+    assert.equal(summary.totalDays, 2);
+  });
+});
+
 test("a day marked absent stays absent in exception mode — it used to come back present", () => {
   const r = deriveDay({
     date: "2026-09-10",
