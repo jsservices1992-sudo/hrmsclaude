@@ -1,4 +1,4 @@
-import { currentPeriod } from "@/lib/clock";
+import { currentPeriod, today as clockToday } from "@/lib/clock";
 import Link from "next/link";
 import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
@@ -221,7 +221,7 @@ export default async function AttendancePage(
   const pendingCount = pendingLeave.length + pendingReg.length;
   const tab =
     typeof sp.tab === "string" &&
-    ["input", "approvals", "grid", "adjustments", "import"].includes(sp.tab)
+    ["input", "approvals", "grid", "adjustments", "import", "punches"].includes(sp.tab)
       ? sp.tab
       : "input";
   const q = `company=${companyId}&year=${year}&month=${month}`;
@@ -269,8 +269,10 @@ export default async function AttendancePage(
   /* Self-service punches that were turned away. Only the employee saw
      these, so a branch pinned in the wrong place looked to HR like
      nobody punching and to the employee like being called a liar. */
+  const refusalWindowStart = new Date(new Date(clockToday()).getTime() - 30 * 86_400_000).toISOString();
   const refusedPunches = await db
     .select({
+      employeeId: s.attendancePunches.employeeId,
       at: s.attendancePunches.at,
       distanceMetres: s.attendancePunches.distanceMetres,
       accuracyMetres: s.attendancePunches.accuracyMetres,
@@ -285,10 +287,45 @@ export default async function AttendancePage(
       and(
         eq(s.employees.companyId, companyId),
         eq(s.attendancePunches.accepted, false),
+        gte(s.attendancePunches.at, refusalWindowStart),
       ),
     )
     .orderBy(desc(s.attendancePunches.at))
-    .limit(8);
+    .limit(500);
+
+  /* One row per person, not per attempt — someone retrying five times in
+     a minute is one problem, and with a few hundred people a list of
+     attempts buries the dashboard under it. */
+  const refusalsByPerson = [
+    ...refusedPunches
+      .reduce((map, p) => {
+        const g = map.get(p.employeeId) ?? {
+          employeeId: p.employeeId,
+          name: `${p.firstName} ${p.lastName}`,
+          empCode: p.empCode,
+          attempts: 0,
+          lastAt: p.at,
+          days: new Set<string>(),
+          accuracies: [] as number[],
+          distances: [] as number[],
+          weakSignal: 0,
+        };
+        g.attempts++;
+        g.days.add(p.at.slice(0, 10));
+        if (p.accuracyMetres != null) g.accuracies.push(p.accuracyMetres);
+        if (p.distanceMetres != null) g.distances.push(p.distanceMetres);
+        if (p.distanceMetres == null && p.accuracyMetres != null) g.weakSignal++;
+        map.set(p.employeeId, g);
+        return map;
+      }, new Map<string, { employeeId: string; name: string; empCode: string; attempts: number; lastAt: string; days: Set<string>; accuracies: number[]; distances: number[]; weakSignal: number }>())
+      .values(),
+  ].sort((a, b) => b.days.size - a.days.size || b.attempts - a.attempts);
+  const range = (xs: number[]) =>
+    xs.length === 0
+      ? null
+      : Math.round(Math.min(...xs)) === Math.round(Math.max(...xs))
+        ? `${Math.round(xs[0])} m`
+        : `${Math.round(Math.min(...xs))}–${Math.round(Math.max(...xs))} m`;
 
   /* Every refusal landing at much the same distance is the signature of
      a misplaced office pin rather than of people punching from home. */
@@ -393,34 +430,6 @@ export default async function AttendancePage(
         </Alert>
       )}
 
-      {refusedPunches.length > 0 && (
-        <Panel
-          title="Punches turned away"
-          badge={<Badge tone={looksMisplaced ? "rust" : "neutral"}>{refusedPunches.length} recent</Badge>}
-          description={
-            looksMisplaced
-              ? "They all land at about the same distance — that is a misplaced office pin, not people punching from home. Check the branch location."
-              : undefined
-          }
-          flush
-        >
-          <ul className="divide-y divide-line-2">
-            {refusedPunches.map((p, i) => (
-              <li key={i} className="px-5 py-2.5 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
-                <span className="font-medium w-44 shrink-0 truncate">{p.firstName} {p.lastName}</span>
-                <span className="text-xs text-ink-3 w-36 shrink-0">{formatDateTime(p.at)}</span>
-                <span className="text-ink-2 flex-1 min-w-[12rem]">
-                  {p.distanceMetres != null ? `${Math.round(p.distanceMetres)} m from the office` : p.reason}
-                  {p.accuracyMetres != null && (
-                    <span className="text-ink-3"> · accurate to {Math.round(p.accuracyMetres)} m</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      )}
-
       <MetricStrip
         items={[
           { label: "Employees", value: months.length, icon: <IconUsers /> },
@@ -446,6 +455,23 @@ export default async function AttendancePage(
         ]}
       />
 
+      {refusalsByPerson.length > 0 && tab !== "punches" && (
+        <Link
+          href={`/console/attendance?${q}&tab=punches`}
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber/30 bg-amber-soft px-4 py-3 text-sm hover:border-amber/60 transition-base"
+        >
+          <span className="text-ink-2">
+            <span className="font-semibold text-ink">
+              {refusalsByPerson.length === 1
+                ? `${refusalsByPerson[0].name} could not punch in`
+                : `${refusalsByPerson.length} people could not punch in`}
+            </span>{" "}
+            on {new Set(refusedPunches.map((p) => `${p.employeeId}|${p.at.slice(0, 10)}`)).size} day(s) in the last 30 days.
+          </span>
+          <span className="font-semibold text-amber">Review →</span>
+        </Link>
+      )}
+
       <div className="flex flex-col gap-5">
       <Tabs>
         <TabLink href={`/console/attendance?${q}&tab=input`} active={tab === "input"}>
@@ -467,7 +493,61 @@ export default async function AttendancePage(
             Upload
           </TabLink>
         )}
+        {refusalsByPerson.length > 0 && (
+          <TabLink href={`/console/attendance?${q}&tab=punches`} active={tab === "punches"} count={refusalsByPerson.length}>
+            Punch issues
+          </TabLink>
+        )}
       </Tabs>
+
+      {/* ---------------- refused punches ---------------- */}
+      {tab === "punches" && (
+        <Panel
+          title="Could not punch in"
+          description={
+            looksMisplaced
+              ? "Every refusal lands at about the same distance — that is a misplaced office pin, not people punching from home. Check the branch location under Settings."
+              : "Last 30 days, one row per person. Weak GPS means the phone could not place itself precisely enough to be sure it was inside the office area — usually indoors, away from a window."
+          }
+          flush
+        >
+          {refusalsByPerson.length === 0 ? (
+            <EmptyState title="No refused punches" description="Everyone who tried to punch in the last 30 days got through." />
+          ) : (
+            <Table>
+              <THead>
+                <TH>Employee</TH>
+                <TH className="text-right">Days affected</TH>
+                <TH className="text-right">Attempts</TH>
+                <TH>Why</TH>
+                <TH>Last attempt</TH>
+              </THead>
+              <TBody>
+                {refusalsByPerson.map((g) => (
+                  <TR key={g.employeeId}>
+                    <TD>
+                      <Link href={`/console/employees/${g.employeeId}`} className="font-medium hover:text-indigo">
+                        {g.name}
+                      </Link>
+                      <span className="block font-mono text-xs text-ink-3">{g.empCode}</span>
+                    </TD>
+                    <TD className="text-right tnum font-semibold">{g.days.size}</TD>
+                    <TD className="text-right tnum text-ink-2">{g.attempts}</TD>
+                    <TD className="text-ink-2 whitespace-normal">
+                      {g.weakSignal >= g.attempts / 2
+                        ? `Weak GPS — accurate only to ${range(g.accuracies)}`
+                        : g.distances.length > 0
+                          ? `Outside the office area — ${range(g.distances)} away`
+                          : "Refused"}
+                    </TD>
+                    <TD className="text-xs text-ink-3 whitespace-nowrap">{formatDateTime(g.lastAt)}</TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          )}
+        </Panel>
+      )}
 
       {/* ---------------- payroll input ---------------- */}
       {tab === "input" && (

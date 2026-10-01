@@ -11,6 +11,7 @@ import { selectedCompanyId } from "@/lib/company-cookie-server";
 import { logout } from "@/app/login/actions";
 import { navFor } from "@/lib/console-nav";
 import ConsoleShell from "@/components/console/shell";
+import { loadAttention } from "@/lib/console-attention";
 
 // Console reads live database rows; prerendering would freeze them at build.
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ export default async function ConsoleLayout({
   const nav = navFor({ compensation: canSeeCompensation(user), tenantWide: isTenantWide(user) });
   const companies = scopeCompanies(user, await listCompanies()).map((c) => ({ id: c.id, name: c.name }));
   const selected = await selectedCompanyId();
+  const selectedCompany = companies.some((c) => c.id === selected) ? selected : null;
+  const attention = await loadAttention(selectedCompany ?? companies[0]?.id ?? null);
 
   return (
     <ConsoleShell
@@ -40,7 +43,8 @@ export default async function ConsoleLayout({
       }}
       nav={nav}
       companies={companies}
-      selectedCompany={companies.some((c) => c.id === selected) ? selected : null}
+      selectedCompany={selectedCompany}
+      attention={attention}
       signOut={
         <form action={logout}>
           <button type="submit" className="text-sm text-rust hover:underline">

@@ -1,5 +1,6 @@
 "use client";
 
+import type { AttentionItem } from "@/lib/console-attention";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
@@ -380,11 +381,62 @@ function UserMenu({
   );
 }
 
+
+/** The few things waiting on someone right now — fills the sidebar with what is useful, not decoration. */
+function AttentionPanel({ items, onNavigate }: { items: AttentionItem[]; onNavigate?: () => void }) {
+  if (items.length === 0) return null;
+  const dot = { warning: "bg-amber", info: "bg-indigo", success: "bg-teal" } as const;
+  return (
+    <div className="mx-1 mb-3 rounded-xl border border-line bg-surface p-2.5">
+      <p className="px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">Needs attention</p>
+      <ul className="flex flex-col">
+        {items.map((it) => (
+          <li key={it.label}>
+            <Link
+              href={it.href}
+              onClick={onNavigate}
+              className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-[13px] text-ink-2 hover:bg-[var(--indigo)]/8 hover:text-ink transition-base"
+            >
+              <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot[it.tone]}`} />
+              <span className="min-w-0 flex-1 truncate">{it.label}</span>
+              <span className={`shrink-0 font-semibold tnum ${it.tone === "warning" ? "text-amber" : "text-ink"}`}>{it.value}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SidebarFooter({ user, collapsed }: { user: ShellUser; collapsed: boolean }) {
+  const initials = user.name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  return (
+    <div className={`border-t border-line p-2.5 ${collapsed ? "flex justify-center" : ""}`}>
+      <Link
+        href="/console/account"
+        title={collapsed ? user.name : undefined}
+        className="flex items-center gap-2.5 rounded-lg p-1.5 hover:bg-[var(--indigo)]/8 transition-base"
+      >
+        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-indigo text-xs font-bold text-on-indigo">
+          {initials}
+        </span>
+        {!collapsed && (
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-ink">{user.name}</span>
+            <span className="block truncate text-xs capitalize text-ink-3">{user.role.replace(/_/g, " ")}</span>
+          </span>
+        )}
+      </Link>
+    </div>
+  );
+}
+
 export default function ConsoleShell({
   user,
   nav,
   companies,
   selectedCompany,
+  attention = [],
   signOut,
   children,
 }: {
@@ -392,6 +444,7 @@ export default function ConsoleShell({
   nav: ConsoleNavEntry[];
   companies: { id: string; name: string }[];
   selectedCompany: string | null;
+  attention?: AttentionItem[];
   signOut: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -477,9 +530,20 @@ export default function ConsoleShell({
               </Suspense>
             </div>
           )}
-          <div className="flex-1 overflow-y-auto px-2">
+          {!collapsed && companies.length === 1 && (
+            <p className="mx-3 mt-3 truncate rounded-lg bg-surface-2 px-2.5 py-1.5 text-xs font-medium text-ink-2" title={companies[0].name}>
+              {companies[0].name}
+            </p>
+          )}
+          <div className="flex-1 overflow-y-auto px-2 flex flex-col">
             <NavList nav={nav} pathname={pathname} collapsed={collapsed} />
+            {!collapsed && (
+              <div className="mt-auto pt-2">
+                <AttentionPanel items={attention} />
+              </div>
+            )}
           </div>
+          <SidebarFooter user={user} collapsed={collapsed} />
 
           {collapsed && (
             <button
@@ -501,7 +565,7 @@ export default function ConsoleShell({
               onClick={() => setDrawer(false)}
               aria-hidden
             />
-            <aside className="lg:hidden fixed inset-y-0 left-0 z-50 w-[16rem] border-r border-line bg-sidebar overflow-y-auto">
+            <aside className="lg:hidden fixed inset-y-0 left-0 z-50 w-[16rem] border-r border-line bg-sidebar overflow-y-auto flex flex-col">
               <div className="h-14 flex items-center justify-between border-b border-line px-3">
                 <Brand collapsed={false} />
                 <button
@@ -513,14 +577,18 @@ export default function ConsoleShell({
                   <IconClose />
                 </button>
               </div>
-              <div className="px-2">
+              <div className="px-2 flex-1 flex flex-col">
                 <NavList
                   nav={nav}
                   pathname={pathname}
                   collapsed={false}
                   onNavigate={() => setDrawer(false)}
                 />
+                <div className="mt-auto pt-2">
+                  <AttentionPanel items={attention} onNavigate={() => setDrawer(false)} />
+                </div>
               </div>
+              <SidebarFooter user={user} collapsed={false} />
             </aside>
           </>
         )}
