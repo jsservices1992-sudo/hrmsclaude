@@ -112,7 +112,9 @@ export function describeStorageError(error: unknown): string {
 
   const t = s3.configured() ? s3.target() : null;
   const hint =
-    code === "NoSuchBucket"
+    status === 540
+      ? "540 is Supabase's answer for a paused project — free projects pause after about a week without use. Open the project in the Supabase dashboard and choose Restore; uploads work again once it is running."
+      : code === "NoSuchBucket"
       ? "The bucket named in S3_BUCKET does not exist."
       : code === "InvalidAccessKeyId" || code === "SignatureDoesNotMatch" || status === 403
         ? "The storage keys (S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY) were refused, or do not allow writing to this bucket."
