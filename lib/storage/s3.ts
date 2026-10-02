@@ -45,6 +45,44 @@ export function configured(): boolean {
   );
 }
 
+/**
+ * Where uploads are being sent — address and bucket only, never a key —
+ * with whatever about that address is likely to be wrong. An endpoint
+ * copied from the wrong place in a provider's dashboard is the usual
+ * cause of an upload that reaches a server but not a storage API.
+ */
+export function target(): { endpoint: string; bucket: string; region: string; problems: string[] } {
+  const raw = process.env.S3_ENDPOINT ?? "";
+  const bucket = process.env.S3_BUCKET ?? "";
+  const problems: string[] = [];
+  let shown = raw || "(not set — AWS S3 default)";
+  if (raw) {
+    try {
+      const u = new URL(raw);
+      shown = `${u.protocol}//${u.host}${u.pathname === "/" ? "" : u.pathname}`;
+      if (u.pathname && u.pathname !== "/") {
+        problems.push(`S3_ENDPOINT has a path ("${u.pathname}"). It should be only the API address, e.g. https://<account-id>.r2.cloudflarestorage.com — the bucket goes in S3_BUCKET.`);
+      }
+      if (bucket && u.host.startsWith(`${bucket}.`)) {
+        problems.push("S3_ENDPOINT starts with the bucket name. Remove it — the bucket goes only in S3_BUCKET.");
+      }
+      if (/\.r2\.dev$/i.test(u.host)) {
+        problems.push("S3_ENDPOINT is an r2.dev public URL, which serves files to browsers but does not accept uploads. Use the S3 API address: https://<account-id>.r2.cloudflarestorage.com");
+      }
+      if (/dash\.cloudflare\.com|console\.aws\.amazon\.com|supabase\.com\/dashboard/i.test(u.host + u.pathname)) {
+        problems.push("S3_ENDPOINT is a dashboard page, not the storage API address.");
+      }
+      if (/supabase\.co$/i.test(u.host) && !u.pathname.startsWith("/storage/v1/s3")) {
+        problems.push("For Supabase, S3_ENDPOINT must end in /storage/v1/s3.");
+      }
+      if (u.protocol !== "https:") problems.push("S3_ENDPOINT should start with https://");
+    } catch {
+      problems.push("S3_ENDPOINT is not a valid web address.");
+    }
+  }
+  return { endpoint: shown, bucket: bucket || "(not set)", region: process.env.S3_REGION ?? "auto", problems };
+}
+
 let client: S3Client | null = null;
 
 function s3(): S3Client {

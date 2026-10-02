@@ -86,18 +86,52 @@ export function save(key: string, bytes: Uint8Array): Promise<void> {
  * show to the administrator who has to fix it.
  */
 export function describeStorageError(error: unknown): string {
-  const e = error as { name?: string; Code?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+  const e = error as {
+    name?: string;
+    Code?: string;
+    message?: string;
+    $metadata?: { httpStatusCode?: number };
+    $response?: { statusCode?: number; headers?: Record<string, string>; body?: unknown };
+  };
   const code = e?.Code ?? e?.name ?? "Error";
-  const status = e?.$metadata?.httpStatusCode;
+  const status = e?.$metadata?.httpStatusCode ?? e?.$response?.statusCode;
+  const message = (e?.message ?? String(error)).split("\n")[0].replace(/\.+$/, "");
+
+  /* A reply that is not XML came from something other than a storage
+     API — a website, a proxy, a dashboard. Who answered, and the first
+     words of what it said, usually name the mistake outright. */
+  const headers = e?.$response?.headers ?? {};
+  const server = headers["server"] ?? headers["Server"];
+  const body = typeof e?.$response?.body === "string" ? e.$response.body : "";
+  const excerpt = body
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+
+  const t = s3.configured() ? s3.target() : null;
   const hint =
     code === "NoSuchBucket"
       ? "The bucket named in S3_BUCKET does not exist."
       : code === "InvalidAccessKeyId" || code === "SignatureDoesNotMatch" || status === 403
         ? "The storage keys (S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY) were refused, or do not allow writing to this bucket."
-        : /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|getaddrinfo/i.test(e?.message ?? "")
+        : /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|getaddrinfo/i.test(message)
           ? "The storage endpoint (S3_ENDPOINT) could not be reached."
-          : "";
-  return `The file could not be stored: ${code}${status ? ` (${status})` : ""} — ${e?.message ?? String(error)}${hint ? ` ${hint}` : ""}`;
+          : /XML parse|Deserialization/i.test(message)
+            ? "The address in S3_ENDPOINT answered, but it is not an S3 storage API."
+            : "";
+
+  return [
+    `The file could not be stored: ${code}${status ? ` (${status})` : ""} — ${message}.`,
+    hint,
+    t ? `Uploading to ${t.endpoint}, bucket "${t.bucket}".` : "",
+    ...(t?.problems ?? []),
+    server ? `Answered by: ${server}.` : "",
+    excerpt ? `It said: "${excerpt}"` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /**

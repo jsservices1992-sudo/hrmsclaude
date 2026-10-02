@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { signupEnabled } from "@/lib/auth/signup";
 import { storageConfigured, storageDriverName, trySave, read, remove } from "@/lib/storage";
+import { configured as s3Configured, target as s3Target } from "@/lib/storage/s3";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,8 @@ export async function GET(request: Request) {
   checks.documentStorage = {
     configured: storageOk,
     driver: storageOk ? storageDriverName() : undefined,
+    /* Address and bucket only — enough to spot a wrong endpoint, never a key. */
+    target: s3Configured() ? s3Target() : undefined,
     variables: storageOk ? undefined : storageVars,
     hint: storageOk
       ? undefined
