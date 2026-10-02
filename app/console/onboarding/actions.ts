@@ -37,7 +37,7 @@ import { parseJoinerCsv, unresolvedJoinerReferences } from "@/lib/hris/joiner-bu
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { checkUpload, storageKeyFor, MAX_FILE_BYTES } from "@/lib/storage/rules";
 import { resolvePay, isPayMode, payAgreementColumns, type ResolvedPay } from "@/lib/payroll/pay-resolution";
-import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
+import { trySave, remove, headHex, storageUnavailable } from "@/lib/storage";
 import { ensureEmployeeAccount } from "@/lib/auth/employee-account";
 import { currentOrigin } from "@/lib/http/origin";
 import { formatDate } from "@/lib/format/date";
@@ -618,7 +618,8 @@ export async function uploadJoinerDocument(
   const unavailable = storageUnavailable();
   if (unavailable) return { error: unavailable };
 
-  await save(key, bytes);
+  const storeFailed = await trySave(key, bytes);
+  if (storeFailed) return { error: storeFailed };
 
   try {
     await db

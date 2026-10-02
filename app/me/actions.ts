@@ -20,7 +20,7 @@ import {
   DOCUMENT_REQUIREMENTS,
   MAX_FILE_BYTES,
 } from "@/lib/storage/rules";
-import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
+import { trySave, remove, headHex, storageUnavailable } from "@/lib/storage";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { publishedRunFor } from "@/lib/ess/load";
 import { applyPunch, clockOf, type DayPunch } from "@/lib/ess/punch-day";
@@ -377,7 +377,8 @@ export async function uploadOwnDocument(_prev: SelfState, fd: FormData): Promise
   const unavailable = storageUnavailable();
   if (unavailable) return { error: unavailable };
 
-  await save(key, bytes);
+  const storeFailed = await trySave(key, bytes);
+  if (storeFailed) return { error: storeFailed };
 
   try {
     await db.insert(s.employeeDocuments).values({

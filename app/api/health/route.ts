@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { signupEnabled } from "@/lib/auth/signup";
-import { storageConfigured, storageDriverName } from "@/lib/storage";
+import { storageConfigured, storageDriverName, trySave, read, remove } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +17,15 @@ export const dynamic = "force-dynamic";
  * DATABASE_URL is set, not what it is. A health endpoint that echoes
  * its own credentials is worse than no health endpoint.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const checks: Record<string, unknown> = {};
+
+  /* Which code is live. "I deployed the fix" and "the fix is running"
+     are different claims; the commit settles which one is true. */
+  checks.version = {
+    commit:
+      process.env.RENDER_GIT_COMMIT ?? process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_COMMIT ?? "unknown",
+  };
 
   const databaseUrl = Boolean(process.env.DATABASE_URL);
   const storageOk = storageConfigured();
@@ -91,6 +98,24 @@ export async function GET() {
         error: error instanceof Error ? error.message : String(error),
         hint: "The database could not be reached. Check DATABASE_URL, and that the database allows connections from outside its own network.",
       };
+    }
+  }
+
+  /* `?storage=1` writes, reads back and removes a tiny file — the only
+     way to know uploads work is to do one. Opt-in, so a monitor polling
+     this endpoint does not write to the bucket every minute. */
+  if (new URL(request.url).searchParams.get("storage") === "1" && (storageOk || !isProduction)) {
+    const key = "health/probe.txt";
+    const failed = await trySave(key, new TextEncoder().encode(`probe ${new Date().toISOString()}`));
+    if (failed) {
+      checks.storageWrite = { ok: false, error: failed };
+    } else {
+      const back = await read(key).catch((e: unknown) => (e instanceof Error ? e.message : String(e)));
+      await remove(key).catch(() => false);
+      checks.storageWrite =
+        back instanceof Uint8Array
+          ? { ok: true }
+          : { ok: false, error: `Written, but could not be read back: ${back ?? "not found"}` };
     }
   }
 

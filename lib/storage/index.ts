@@ -79,6 +79,42 @@ export function save(key: string, bytes: Uint8Array): Promise<void> {
   return driver().save(key, bytes);
 }
 
+/**
+ * Explains a store failure in words someone can act on. The store's own
+ * error names the cause — a wrong bucket, a rejected key, an endpoint
+ * that does not answer — and carries no credential, so it is safe to
+ * show to the administrator who has to fix it.
+ */
+export function describeStorageError(error: unknown): string {
+  const e = error as { name?: string; Code?: string; message?: string; $metadata?: { httpStatusCode?: number } };
+  const code = e?.Code ?? e?.name ?? "Error";
+  const status = e?.$metadata?.httpStatusCode;
+  const hint =
+    code === "NoSuchBucket"
+      ? "The bucket named in S3_BUCKET does not exist."
+      : code === "InvalidAccessKeyId" || code === "SignatureDoesNotMatch" || status === 403
+        ? "The storage keys (S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY) were refused, or do not allow writing to this bucket."
+        : /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|getaddrinfo/i.test(e?.message ?? "")
+          ? "The storage endpoint (S3_ENDPOINT) could not be reached."
+          : "";
+  return `The file could not be stored: ${code}${status ? ` (${status})` : ""} — ${e?.message ?? String(error)}${hint ? ` ${hint}` : ""}`;
+}
+
+/**
+ * Saves, and turns a store failure into a message instead of a crash.
+ * An upload that throws takes the whole page down with an error screen
+ * and no reason; this returns the reason, and logs it for the server.
+ */
+export async function trySave(key: string, bytes: Uint8Array): Promise<string | null> {
+  try {
+    await save(key, bytes);
+    return null;
+  } catch (error) {
+    console.error(`[storage] save failed for ${key}:`, error);
+    return describeStorageError(error);
+  }
+}
+
 export function read(key: string): Promise<Uint8Array | null> {
   return driver().read(key);
 }

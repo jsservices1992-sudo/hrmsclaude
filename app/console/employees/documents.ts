@@ -19,7 +19,7 @@ import {
   EXIT_DOCUMENT_TYPES,
   MAX_FILE_BYTES,
 } from "@/lib/storage/rules";
-import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
+import { trySave, remove, headHex, storageUnavailable } from "@/lib/storage";
 
 export type DocumentState = { error?: string; ok?: string };
 
@@ -111,7 +111,8 @@ export async function uploadDocument(
   const unavailable = storageUnavailable();
   if (unavailable) return { error: unavailable };
 
-  await save(key, bytes);
+  const storeFailed = await trySave(key, bytes);
+  if (storeFailed) return { error: storeFailed };
 
   try {
     await db.insert(s.employeeDocuments).values({
@@ -313,7 +314,8 @@ export async function uploadExitDocument(
   const unavailable = storageUnavailable();
   if (unavailable) return { error: unavailable };
 
-  await save(key, bytes);
+  const storeFailed = await trySave(key, bytes);
+  if (storeFailed) return { error: storeFailed };
 
   try {
     await db.insert(s.employeeDocuments).values({

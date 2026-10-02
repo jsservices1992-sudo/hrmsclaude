@@ -13,7 +13,7 @@ import {
   canAccessCompany,
 } from "@/lib/auth/session";
 import { recordAuditAs } from "@/lib/audit/log";
-import { save, headHex, storageUnavailable } from "@/lib/storage";
+import { trySave, headHex, storageUnavailable } from "@/lib/storage";
 import { checkUpload } from "@/lib/storage/rules";
 import { submitted } from "@/lib/forms/submitted";
 
@@ -590,6 +590,20 @@ export async function saveRegistration(
  * image on every payslip.
  */
 export async function uploadCompanyLogo(
+  prev: SettingsState,
+  fd: FormData,
+): Promise<SettingsState> {
+  /* Whatever goes wrong, the administrator gets a sentence on the form,
+     not an error page with only a reference number on it. */
+  try {
+    return await uploadCompanyLogoUnguarded(prev, fd);
+  } catch (error) {
+    console.error("[logo] upload failed:", error);
+    return { error: `The logo could not be saved: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+async function uploadCompanyLogoUnguarded(
   _prev: SettingsState,
   fd: FormData,
 ): Promise<SettingsState> {
@@ -630,7 +644,8 @@ export async function uploadCompanyLogo(
   }
 
   const key = `companies/${companyId}/logo.${check.extension}`;
-  await save(key, bytes);
+  const storeFailed = await trySave(key, bytes);
+  if (storeFailed) return { error: storeFailed };
 
   /* Served by our own route rather than stored as a signed URL, which
      would expire and leave every payslip with a broken image. */

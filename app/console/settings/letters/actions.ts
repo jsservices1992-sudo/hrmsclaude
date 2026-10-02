@@ -8,7 +8,7 @@ import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
 import { checkUpload, isSafeKey, MAX_FILE_BYTES } from "@/lib/storage/rules";
-import { save, remove, headHex, storageUnavailable } from "@/lib/storage";
+import { trySave, remove, headHex, storageUnavailable } from "@/lib/storage";
 import { isLetterType, unknownPlaceholders, type LetterType } from "@/lib/letters/template";
 import { isLetterTheme } from "@/lib/letters/themes";
 import { docxToText } from "@/lib/letters/docx";
@@ -143,7 +143,8 @@ export async function saveLetterTemplate(
     if (unavailable) return { error: unavailable };
 
     const key = templateFileKey(companyId, type, check.extension!);
-    await save(key, bytes);
+    const storeFailed = await trySave(key, bytes);
+    if (storeFailed) return { error: storeFailed };
 
     // One key per company+type, so a re-upload overwrites rather than
     // accumulating files nothing ever points at again.
