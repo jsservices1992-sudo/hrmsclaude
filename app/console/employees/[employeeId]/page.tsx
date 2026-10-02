@@ -278,6 +278,9 @@ export default async function EmployeeDetailPage(
 
   return (
     <div className="flex flex-col gap-6">
+      <Link href="/console/employees" className="-mb-2 inline-flex w-fit items-center gap-1 text-sm font-medium text-ink-2 hover:text-ink">
+        ← Employees
+      </Link>
       <section className="rounded-xl border border-line bg-surface">
         <div className="flex flex-wrap items-start justify-between gap-5 p-5 sm:p-6">
           <div className="flex min-w-0 items-center gap-4">
