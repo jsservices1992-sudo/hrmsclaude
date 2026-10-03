@@ -6,8 +6,14 @@ import { checkSlabCoverage, computeProfessionalTax, type PtSlab } from "../lib/p
 
 const R = (rupees: number) => Math.round(rupees * 100);
 
-const ladderFor = (state: string): PtSlab[] =>
-  PT_SLABS.filter((s) => s.state === state).map((s) => ({
+/** The ladder in force on a date; a replaced schedule is a set of dated rows. */
+const ladderFor = (state: string, on = "2026-10-01"): PtSlab[] =>
+  PT_SLABS.filter(
+    (s) =>
+      s.state === state &&
+      (s.effectiveFrom ?? "2020-04-01") <= on &&
+      (s.effectiveTo == null || on <= s.effectiveTo),
+  ).map((s) => ({
     minPaise: s.min,
     maxPaise: s.max,
     amountPaise: s.amount,
@@ -17,26 +23,46 @@ const ladderFor = (state: string): PtSlab[] =>
     annualCapPaise: s.annualCap ?? R(2500),
   }));
 
-const deduct = (state: string, monthlyWage: number, month = 8) =>
+const deduct = (state: string, monthlyWage: number, month = 8, on?: string) =>
   computeProfessionalTax({
     stateCode: state,
     ptBasePaise: R(monthlyWage),
     month,
     gender: "male",
-    slabs: ladderFor(state),
+    slabs: ladderFor(state, on),
     applicable: true,
   }).amountPaise;
 
 const states = [...new Set(PT_SLABS.map((s) => s.state))];
 
 test("every state's slabs cover every wage exactly once", () => {
-  for (const state of states) {
-    assert.deepEqual(
-      checkSlabCoverage(ladderFor(state)),
-      [],
-      `${state} has a gap or an overlap in its slabs`,
-    );
+  for (const on of ["2026-09-30", "2026-10-01"]) {
+    for (const state of states) {
+      assert.deepEqual(
+        checkSlabCoverage(ladderFor(state, on)),
+        [],
+        `${state} has a gap or an overlap in its slabs on ${on}`,
+      );
+    }
   }
+});
+
+test("West Bengal's new schedule starts with October 2026 salary", () => {
+  // September keeps the old table, so a rerun of it does not change.
+  assert.equal(deduct("WB", 18_000, 9, "2026-09-30"), R(130));
+  assert.equal(deduct("WB", 45_000, 9, "2026-09-30"), R(200));
+  // Notification 1407-F.T.: nil to ₹20,000, then ₹100 / ₹140 / ₹170 / ₹208.
+  assert.equal(deduct("WB", 18_000, 10, "2026-10-01"), 0);
+  assert.equal(deduct("WB", 20_000, 10, "2026-10-01"), 0);
+  assert.equal(deduct("WB", 25_000, 10, "2026-10-01"), R(100));
+  assert.equal(deduct("WB", 45_000, 10, "2026-10-01"), R(140));
+  assert.equal(deduct("WB", 100_000, 10, "2026-10-01"), R(170));
+  assert.equal(deduct("WB", 120_000, 10, "2026-10-01"), R(208));
+});
+
+test("Odisha levies no professional tax after its 2026 repeal", () => {
+  assert.equal(JURISDICTIONS.find((j) => j.code === "OD")?.pt, false);
+  assert.equal(PT_SLABS.filter((s) => s.state === "OD").length, 0);
 });
 
 test("a schedule printed on half-yearly income is compared monthly", () => {
@@ -148,13 +174,11 @@ test("PF ceilings are dated rows: ₹15,000 to 16 Sep 2026, ₹25,000 from 17 Se
     assert.equal(hit.length, 1, `${key} on ${date} resolves to exactly one row`);
     return hit[0].value / 100;
   };
-  for (const key of ["epf.wage_ceiling", "epf.coverage_ceiling"]) {
+  // S.O. 5109(E) moved all of Chapter III together: PF, EPS and EDLI.
+  for (const key of ["epf.wage_ceiling", "epf.coverage_ceiling", "epf.eps_ceiling", "epf.edli_ceiling"]) {
     assert.equal(at(key, "2026-08-31"), 15000);
     assert.equal(at(key, "2026-09-16"), 15000);
     assert.equal(at(key, "2026-09-17"), 25000);
     assert.equal(at(key, "2026-09-30"), 25000);
   }
-  // EPS and EDLI move only when their own schemes are verified as revised.
-  assert.equal(at("epf.eps_ceiling", "2026-09-30"), 15000);
-  assert.equal(at("epf.edli_ceiling", "2026-09-30"), 15000);
 });

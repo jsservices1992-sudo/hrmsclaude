@@ -17,7 +17,7 @@ import {
   type ReceivableState,
 } from "./settlement-tax";
 import { regimeConfig, ageAsOfFinancialYearEnd } from "../tax/config";
-import { loadStructure, loadConventions } from "../payroll/load";
+import { loadConventions, loadStructureResolutionContext, resolveEmployeeStructure } from "../payroll/load";
 import {
   computeProration,
   paidDaysForPeriod,
@@ -110,7 +110,14 @@ export async function loadFnfCase(
         .limit(1)
     : [];
 
-  const structure = await loadStructure(employee.companyId);
+  /* The person's own structure — their salary row's, else their
+     department's, else the company default — as the payroll run resolves
+     it. The company's generic list split a gross into a basic this person
+     was never paid, and gratuity is a multiple of that basic. */
+  const structure = resolveEmployeeStructure(
+    await loadStructureResolutionContext(employee.companyId),
+    { employeeStructureId: salary?.structureId ?? null, employeeDepartmentId: employee.departmentId },
+  ).components;
   const evaluated = evaluateStructure(structure, monthlyGross);
   const monthlyBasic = evaluated.gratuityBasePaise;
 

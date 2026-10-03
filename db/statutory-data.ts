@@ -51,9 +51,9 @@ export const JURISDICTIONS: JurisdictionSeed[] = [
     code: "OD",
     name: "Odisha",
     kind: "state",
-    pt: true,
+    pt: false,
     lwf: true,
-    note: "Odisha State Tax on Professions, Trades, Callings and Employments Act 2000 — levied; slabs below are unverified",
+    note: "No professional tax from 1 April 2026: the Odisha State Tax on Professions, Trades, Callings and Employments Act 2000 was repealed by Ordinance No. 2 of 2026 (Odisha Gazette, 21 April 2026). Dues for earlier months remain recoverable.",
   },
   { code: "PB", name: "Punjab", kind: "state", pt: true, lwf: true },
   { code: "RJ", name: "Rajasthan", kind: "state", pt: false, lwf: false },
@@ -87,6 +87,11 @@ export type PtSlabSeed = {
   annualCap?: number;
   /** Punjab: owed only by a person actually liable to income tax. */
   requiresIncomeTaxLiability?: boolean;
+  /** When a state replaces its schedule, the old and new ladders are dated rows. */
+  effectiveFrom?: string;
+  effectiveTo?: string;
+  /** Overrides the state's entry in PT_SOURCES for a dated ladder. */
+  source?: string;
 };
 
 /**
@@ -140,11 +145,29 @@ export const PT_SLABS: PtSlabSeed[] = [
   { state: "MH", min: R(25001), max: null, amount: R(200), overrideMonth: 2, overrideAmount: R(300), gender: "female" },
 
   // West Bengal
-  { state: "WB", min: 0, max: R(10000), amount: 0 },
-  { state: "WB", min: R(10001), max: R(15000), amount: R(110) },
-  { state: "WB", min: R(15001), max: R(25000), amount: R(130) },
-  { state: "WB", min: R(25001), max: R(40000), amount: R(150) },
-  { state: "WB", min: R(40001), max: null, amount: R(200) },
+  /* The old schedule still governs September 2026 and earlier, so
+     arrears and reruns of those months keep it. */
+  ...[
+    { state: "WB", min: 0, max: R(10000), amount: 0 },
+    { state: "WB", min: R(10001), max: R(15000), amount: R(110) },
+    { state: "WB", min: R(15001), max: R(25000), amount: R(130) },
+    { state: "WB", min: R(25001), max: R(40000), amount: R(150) },
+    { state: "WB", min: R(40001), max: null, amount: R(200) },
+  ].map((r) => ({ ...r, effectiveTo: "2026-09-30" })),
+  /* Finance Dept Notification No. 1407-F.T., 18 August 2026, replacing
+     the Schedule from 1 October 2026: nil up to ₹20,000, and ₹208 above
+     ₹1,00,000 — ₹2,496 a year, under the ₹2,500 ceiling. */
+  ...[
+    { state: "WB", min: 0, max: R(20000), amount: 0 },
+    { state: "WB", min: R(20001), max: R(30000), amount: R(100) },
+    { state: "WB", min: R(30001), max: R(50000), amount: R(140) },
+    { state: "WB", min: R(50001), max: R(100000), amount: R(170) },
+    { state: "WB", min: R(100001), max: null, amount: R(208) },
+  ].map((r) => ({
+    ...r,
+    effectiveFrom: "2026-10-01",
+    source: "West Bengal Finance Dept (Revenue) Notification No. 1407-F.T. dated 18 August 2026, Schedule Part A Sl. No. 1, effective 1 October 2026 — wbprofessiontax.gov.in",
+  })),
 
   // Andhra Pradesh / Telangana
   { state: "AP", min: 0, max: R(15000), amount: 0 },
@@ -225,9 +248,8 @@ export const PT_SLABS: PtSlabSeed[] = [
   /* Odisha levies on annual income: nil to ₹1,60,000, ₹1,500 a year to
      ₹3,00,000, and ₹2,500 above — the top band as ₹200 a month with ₹300
      in February. Held as monthly bands (₹13,333 and ₹25,000 a month). */
-  { state: "OD", min: 0, max: R(13333), amount: 0 },
-  { state: "OD", min: R(13334), max: R(25000), amount: R(125) },
-  { state: "OD", min: R(25001), max: null, amount: R(200), overrideMonth: 2, overrideAmount: R(300) },
+  /* Odisha: none. Its Act was repealed from 1 April 2026 — see the
+     jurisdiction note. */
 
   // Monthly-wage states.
   ...MONTHLY("AS", [[10000, 0], [14999, 150], [24999, 180], [null, 208]]),
@@ -338,7 +360,6 @@ export const LWF_RATES: LwfRateSeed[] = [
 export const PT_SOURCES: Record<string, string> = {
   MH: "Maharashtra Profession Tax Act 1975, Schedule I (rates from 01-04-2023) — mahagst.gov.in",
   KA: "Karnataka Tax on Professions Act, Schedule (see s.3(2)), Sl.No.1, as amended by the Karnataka Tax on Professions (Amendment) Act 2025 — ptax.karnataka.gov.in",
-  OD: "Odisha State Tax on Professions, Trades, Callings and Employments Act 2000, Schedule — odishatax.gov.in",
   NL: "Nagaland Commissioner of State Taxes, Public Notice No. CT/LEG/P.TAX/2/2022 dated 25 September 2025 — nagalandtax.nic.in",
   TR: "Tripura Gazette Extraordinary No. 443, 25 July 2018, No.F.II-I(7)-TAX/99(P-I), as corrected by Gazette No. 1031 of 30 October 2018 — taxes.tripura.gov.in",
   MP: "MP Commercial Tax Dept PT schedule — mptax.mp.gov.in. The higher amount falls in the twelfth month of the tax year.",
@@ -531,20 +552,21 @@ export const STATUTORY_PARAMS = [
      its own dated row so that a later notification can move one without
      the others; nothing reads a single "PF limit". */
   { key: "epf.wage_ceiling", value: R(15000), unit: "paise" as const, effectiveTo: "2026-09-16", note: "PF contribution ceiling", source: "EPF & MP Act 1952, s.6, read with the ₹15,000 ceiling notified with effect from 1 September 2014" },
-  { key: "epf.wage_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "PF contribution ceiling — revised", source: "EPFO notification revising the wage ceiling from ₹15,000 to ₹25,000 w.e.f. 17-09-2026 (supplied by the owner; verify against the Gazette)" },
+  { key: "epf.wage_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "PF contribution ceiling — revised", source: "Gazette S.O. 5109(E), 17 September 2026, under Code on Social Security 2020 s.2(89) — the wage ceiling for Chapter III, which is EPF, EPS and EDLI alike" },
   { key: "epf.coverage_ceiling", value: R(15000), unit: "paise" as const, effectiveTo: "2026-09-16", note: "PF coverage (eligibility) ceiling — above it a new joiner with no prior membership is an excluded employee", source: "EPF Scheme 1952, para 2(f)" },
-  { key: "epf.coverage_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "PF coverage (eligibility) ceiling — revised", source: "EPFO notification revising the wage ceiling to ₹25,000 w.e.f. 17-09-2026 (supplied by the owner; verify against the Gazette)" },
-  /* EDLI keeps its own ceiling and rate. Left at ₹15,000 until the
-     consequential amendment to the EDLI Scheme is verified — the revision
-     notice speaks of EDLI coverage but not of its figures. */
-  { key: "epf.edli_ceiling", value: R(15000), unit: "paise" as const, note: "EDLI wage ceiling — VERIFY: not yet confirmed as revised with the PF ceiling", source: "EDLI Scheme 1976, para 8" },
+  { key: "epf.coverage_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "PF coverage (eligibility) ceiling — revised", source: "Gazette S.O. 5109(E), 17 September 2026, under Code on Social Security 2020 s.2(89) — the wage ceiling for Chapter III, which is EPF, EPS and EDLI alike" },
+  /* S.O. 5109(E) notifies the ceiling for all of Chapter III of the
+     Code on Social Security — EPF, EPS and EDLI — so all three moved on
+     17 September 2026. Each is still its own row. */
+  { key: "epf.edli_ceiling", value: R(15000), unit: "paise" as const, effectiveTo: "2026-09-16", note: "EDLI wage ceiling", source: "EDLI Scheme 1976, para 8" },
+  { key: "epf.edli_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "EDLI wage ceiling — revised", source: "Gazette S.O. 5109(E), 17 September 2026, under Code on Social Security 2020 s.2(89) — the wage ceiling for Chapter III, which is EPF, EPS and EDLI alike" },
   { key: "epf.edli_bps", value: 50, unit: "bps" as const, note: "0.5% EDLI contribution, employer only", source: "EDLI Scheme 1976, para 8(1)" },
   { key: "epf.admin_bps", value: 50, unit: "bps" as const, note: "0.5% EPF administration charge, employer only", source: "EPF Scheme 1952, para 30 — 0.50% w.e.f. 1 June 2018" },
   { key: "epf.employee_bps", value: 1200, unit: "bps" as const, note: "12% employee share", source: "Employees' Provident Funds Scheme 1952, para 29(1)" },
   { key: "epf.employer_bps", value: 1200, unit: "bps" as const, note: "12% employer share", source: "EPF & MP Act 1952, s.6 — the employer's contribution equals the employee's" },
   { key: "epf.eps_bps", value: 833, unit: "bps" as const, note: "8.33% diverted to pension scheme", source: "Employees' Pension Scheme 1995, para 3(1)" },
-  // Left at ₹15,000 until the EPS Scheme's own amendment is verified.
-  { key: "epf.eps_ceiling", value: R(15000), unit: "paise" as const, note: "Pension scheme wage ceiling — VERIFY: not yet confirmed as revised with the PF ceiling", source: "Employees' Pension Scheme 1995, para 3 — the pension contribution is computed on wages up to the statutory ceiling even where provident fund is not" },
+  { key: "epf.eps_ceiling", value: R(15000), unit: "paise" as const, effectiveTo: "2026-09-16", note: "Pension scheme wage ceiling", source: "Employees' Pension Scheme 1995, para 3" },
+  { key: "epf.eps_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "Pension scheme wage ceiling — revised; max employer EPS ₹2,083", source: "Gazette S.O. 5109(E), 17 September 2026, under Code on Social Security 2020 s.2(89) — the wage ceiling for Chapter III, which is EPF, EPS and EDLI alike. Who is in EPS at all is unchanged: a member who joined after 1 September 2014 above the old ceiling stays out" },
   { key: "esic.wage_threshold", value: R(21000), unit: "paise" as const, note: "Monthly gross coverage threshold", source: "Employees' State Insurance (Central) Rules 1950, rule 50" },
   { key: "esic.employee_bps", value: 75, unit: "bps" as const, note: "0.75% employee share", source: "Employees' State Insurance (Central) Rules 1950, rule 51 — with effect from 1 July 2019" },
   { key: "esic.employer_bps", value: 325, unit: "bps" as const, note: "3.25% employer share", source: "Employees' State Insurance (Central) Rules 1950, rule 51 — with effect from 1 July 2019" },
