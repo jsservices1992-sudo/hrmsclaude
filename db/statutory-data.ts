@@ -576,7 +576,7 @@ export const STATUTORY_PARAMS = [
      they were moved here, which is what lets a revised ceiling be a dated
      row rather than a release — and what keeps an already-paid month
      recalculating at the figures that were in force when it ran. */
-  { key: "gratuity.accrual_bps", value: 481, unit: "bps" as const, note: "4.81% — 15 days' wages a year over 26 working days, spread monthly", source: "Payment of Gratuity Act, s.4" },
+  { key: "gratuity.accrual_bps", value: 481, unit: "bps" as const, note: "4.81% — 15 days' wages a year over 26 working days, spread monthly", source: "Code on Social Security 2020 s.53 — on basic + DA, plus allowances above 50% of gross" },
   { key: "bonus.eligibility_wage", value: R(21000), unit: "paise" as const, note: "Monthly wages above this earn no statutory bonus", source: "Payment of Bonus Act, s.2(13)" },
   { key: "bonus.calculation_ceiling", value: R(7000), unit: "paise" as const, note: "Wages are capped at this for the calculation, separately from eligibility", source: "Payment of Bonus Act, s.12" },
   { key: "bonus.min_bps", value: 833, unit: "bps" as const, note: "8.33% — the minimum payable", source: "Payment of Bonus Act, s.10" },

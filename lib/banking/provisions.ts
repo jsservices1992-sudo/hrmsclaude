@@ -42,7 +42,7 @@ export type ProvisionSummary = {
 export type GratuityInput = {
   employeeId: string;
   empCode: string;
-  /** Basic plus dearness allowance for the month. */
+  /** The last drawn wage gratuity is a multiple of — the Code on Social Security s.2(88) wage. */
   monthlyBasicPaise: Paise;
   completedMonths: number;
   openingProvisionPaise: Paise;

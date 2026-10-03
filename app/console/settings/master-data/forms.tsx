@@ -437,7 +437,7 @@ export function PayComponentForm({
         <label className={check}><input type="checkbox" name="epfBase" defaultChecked={editing?.epfBase ?? false} />Counts to EPF wages</label>
         <label className={check}><input type="checkbox" name="ptBase" defaultChecked={editing?.ptBase ?? true} />Counts to PT gross</label>
         <label className={check}><input type="checkbox" name="bonusBase" defaultChecked={editing?.bonusBase ?? false} />Counts to bonus wage</label>
-        <label className={check}><input type="checkbox" name="gratuityBase" defaultChecked={editing?.gratuityBase ?? false} />Counts to gratuity wage</label>
+        <label className={check}><input type="checkbox" name="gratuityBase" defaultChecked={editing?.gratuityBase ?? false} />Basic or DA (gratuity base)</label>
         <label className={check}><input type="checkbox" name="prorates" defaultChecked={editing?.prorates ?? true} />Prorates for partial months</label>
         <label className={check}><input type="checkbox" name="active" defaultChecked={editing?.active ?? true} />Active</label>
       </div>

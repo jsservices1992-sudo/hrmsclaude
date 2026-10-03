@@ -215,3 +215,45 @@ export function codeWageSplit(
   }
   return { wagesPaise: included, remunerationPaise: included + excluded };
 }
+
+/**
+ * The gratuity wage: basic + DA, plus whatever every other allowance
+ * together — special allowance included — exceeds half of pay by.
+ *
+ * This is the owner's rule (3 October 2026): allowances are allowed up to
+ * half of gross, and only the excess is added back to basic. With basic
+ * at half of gross nothing is added; with basic at a third, the shortfall
+ * to half is.
+ *
+ * Pay here is the regular monthly pay only. Fully excluded sums
+ * (reimbursements) are not pay at all, and gratuity is a multiple of the
+ * last drawn wage, so a month's overtime, incentive or arrears is left out.
+ */
+export function gratuityWageFrom(basicDaPaise: Paise, payPaise: Paise): Paise {
+  return basicDaPaise + Math.max(0, payPaise - basicDaPaise - Math.floor(payPaise / 2));
+}
+
+/** The gratuity wage, read off a month's payroll lines. */
+export function gratuityWage(
+  lines: { code: string; kind: string; category?: string | null; amountPaise: Paise }[],
+  components: {
+    code: string;
+    esicTreatment?: EsicTreatment | null;
+    esicBase: boolean;
+    gratuityBase: boolean;
+  }[],
+): Paise {
+  const byCode = new Map(components.map((c) => [c.code, c]));
+  let basicDa = 0;
+  let pay = 0;
+  for (const l of lines) {
+    if (l.kind !== "earning" || l.category) continue;
+    const comp = byCode.get(l.code);
+    if (!comp) continue;
+    const t = comp.esicTreatment ?? defaultEsicTreatment(comp.code, comp.esicBase);
+    if (t === "excluded" || t === "overtime") continue;
+    pay += l.amountPaise;
+    if (comp.gratuityBase) basicDa += l.amountPaise;
+  }
+  return gratuityWageFrom(basicDa, pay);
+}

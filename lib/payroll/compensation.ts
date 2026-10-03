@@ -2,6 +2,7 @@ import { apportion, type Paise } from "./money";
 import {
   defaultEsicTreatment,
   esicWage,
+  gratuityWageFrom,
   type EsicTreatment,
   type EsicWageRule,
 } from "./esic-wage";
@@ -55,7 +56,10 @@ export type ComponentSpec = {
   ptBase: boolean;
   /** Counts toward the Payment of Bonus Act wage. */
   bonusBase: boolean;
-  /** Counts toward gratuity's "last drawn wages". */
+  /**
+   * Basic or DA — the gratuity wage before the 50% add-back (see
+   * `gratuityWagePaise`), and what the s.10(10) exemption is measured on.
+   */
   gratuityBase: boolean;
   prorates: boolean;
   sequence: number;
@@ -224,7 +228,18 @@ export type EvaluationResult = {
   esicCoverageBasePaise: Paise;
   ptBasePaise: Paise;
   bonusBasePaise: Paise;
+  /**
+   * Basic plus DA — the components flagged as the gratuity base. Still
+   * what the income-tax exemption under s.10(10) is measured on, because
+   * the Income-tax Act keeps its own definition of salary.
+   */
   gratuityBasePaise: Paise;
+  /**
+   * What gratuity itself is a multiple of: basic + DA, plus whatever all
+   * other allowances exceed half of gross by (see `gratuityWageFrom`).
+   * Before the Code, basic + DA alone.
+   */
+  gratuityWagePaise: Paise;
   /**
    * The statutory bonus, when the structure carries it as an employer
    * cost rather than a monthly earning — outside gross, inside CTC,
@@ -294,6 +309,7 @@ export function evaluateStructure(
       ptBasePaise: 0,
       bonusBasePaise: 0,
       gratuityBasePaise: 0,
+      gratuityWagePaise: 0,
       employerBonusPaise: 0,
       warnings: [ordered.message],
     };
@@ -448,6 +464,16 @@ export function evaluateStructure(
     ptBasePaise: sumWhere((c) => c.ptBase),
     bonusBasePaise: sumWhere((c) => c.bonusBase),
     gratuityBasePaise: sumWhere((c) => c.gratuityBase),
+    gratuityWagePaise:
+      esicRule === "social_security_code"
+        ? gratuityWageFrom(
+            sumWhere((c) => c.gratuityBase),
+            sumWhere((c) => {
+              const t = c.esicTreatment ?? defaultEsicTreatment(c.code, c.esicBase);
+              return t === "included" || t === "excluded_50";
+            }),
+          )
+        : sumWhere((c) => c.gratuityBase),
     employerBonusPaise,
     warnings,
   };
@@ -535,7 +561,7 @@ export function employerCostFor(
       : 0;
 
   const gratuity = Math.round(
-    (evaluation.gratuityBasePaise * p.gratuityAccrualBps) / 10000,
+    (evaluation.gratuityWagePaise * p.gratuityAccrualBps) / 10000,
   );
 
   const nps = pfRupee((evaluation.epfBasePaise * (p.employerNpsBps ?? 0)) / 10000);

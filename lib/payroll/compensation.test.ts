@@ -259,7 +259,8 @@ describe("CTC build-up", () => {
     assert.equal(b.employerPfPaise, R(1800));
     // Gross 50,000 is above the ESIC threshold
     assert.equal(b.employerEsicPaise, 0);
-    // Gratuity 4.81% of basic 25,000
+    /* Gratuity 4.81% of basic 25,000: allowances are exactly half of
+       gross, so nothing is added back. */
     assert.equal(b.gratuityProvisionPaise, Math.round((R(25000) * 481) / 10000));
     assert.equal(
       b.monthlyCtcPaise,

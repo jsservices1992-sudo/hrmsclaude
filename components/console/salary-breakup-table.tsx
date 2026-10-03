@@ -172,7 +172,7 @@ export function SalaryBreakupTable({
     {
       label: "Gratuity provision",
       monthly: ctc.gratuityProvisionPaise,
-      note: "Approximately 4.81% of basic — 15 days' wages a year, accrued monthly",
+      note: "Approximately 4.81% of basic + DA (plus any allowances above 50% of gross) — 15 days' wages a year, accrued monthly",
     },
     { label: "Employer ESIC", monthly: ctc.employerEsicPaise, note: "Employer share, where ESIC applies" },
     ...(ctc.otherEmployerPaise > 0

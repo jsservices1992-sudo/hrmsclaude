@@ -3,9 +3,13 @@ import { and, eq, isNull, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { computeSettlement, type SettlementResult } from "@/lib/payroll/settlement";
-import { previewRun, loadConventions } from "@/lib/payroll/load";
+import {
+  previewRun,
+  loadConventions,
+  loadStructureResolutionContext,
+  resolveEmployeeStructure,
+} from "@/lib/payroll/load";
 import { periodDivisor } from "@/lib/payroll/proration";
-import { DEFAULT_STRUCTURE } from "@/lib/payroll/engine";
 import { evaluateStructure } from "@/lib/payroll/compensation";
 
 /** Company default until a notice-policy table exists. */
@@ -117,8 +121,6 @@ export async function loadExitCase(
   });
   const line = preview?.results.find((r) => r.employeeId === row.employee.id);
 
-  // Gratuity is computed on last-drawn basic + DA, which is exactly the
-  // set of components flagged as a gratuity base.
   const [gradeRow] = row.employee.gradeId
     ? await db
         .select({ noticeDays: s.grades.noticeDays })
@@ -127,10 +129,17 @@ export async function loadExitCase(
         .limit(1)
     : [];
 
-  const monthlyBasic = evaluateStructure(
-    DEFAULT_STRUCTURE,
+  /* The person's own structure, as payroll resolves it. The engine's
+     built-in sample structure split every gross into a basic nobody in
+     the company was necessarily paid. */
+  const evaluated = evaluateStructure(
+    resolveEmployeeStructure(await loadStructureResolutionContext(row.employee.companyId), {
+      employeeStructureId: salary.structureId ?? null,
+      employeeDepartmentId: row.employee.departmentId,
+    }).components,
     salary.monthlyGrossPaise,
-  ).gratuityBasePaise;
+  );
+  const monthlyBasic = evaluated.gratuityBasePaise;
 
   /* Per-day value on the company's own proration basis — which this
      used to claim to do while both arms of the ternary returned 30, so
@@ -161,6 +170,7 @@ export async function loadExitCase(
       : "No payroll line for the final month",
     finalMonthDeductionsPaise: line?.deductionsPaise ?? 0,
     monthlyBasicPaise: monthlyBasic,
+    gratuityWagePaise: evaluated.gratuityWagePaise,
     perDayPaise: perDay,
     leaveBalanceDays: leaveDays,
     /* Same as the settlement path: the grade's notice period wins over

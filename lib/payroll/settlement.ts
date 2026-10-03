@@ -47,8 +47,13 @@ export type SettlementInput = {
   /** Statutory deductions on the final month's salary. */
   finalMonthDeductionsPaise: Paise;
 
-  /** Monthly basic + DA, used for gratuity and per-day valuations. */
+  /** Monthly basic + DA — the salary the s.10(10) exemption is measured on. */
   monthlyBasicPaise: Paise;
+  /**
+   * The last drawn wage gratuity is a multiple of: the Code on Social
+   * Security's s.2(88) wage. Absent, basic + DA, as before the Code.
+   */
+  gratuityWagePaise?: Paise;
   /** Per-day value used for notice and leave, on the company's basis. */
   perDayPaise: Paise;
 
@@ -160,7 +165,7 @@ export function computeSettlement(input: SettlementInput): SettlementResult {
   const gratuity = computeGratuity({
     dateOfJoining: input.dateOfJoining,
     lastWorkingDay: input.lastWorkingDay,
-    lastDrawnWagePaise: input.monthlyBasicPaise,
+    lastDrawnWagePaise: input.gratuityWagePaise ?? input.monthlyBasicPaise,
     exitType: input.exitType,
     fixedTerm: input.employmentType === "contract",
     fourYears240Days: input.gratuityFourYears240Days ?? false,

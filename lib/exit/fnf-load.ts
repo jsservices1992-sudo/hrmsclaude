@@ -120,6 +120,8 @@ export async function loadFnfCase(
   ).components;
   const evaluated = evaluateStructure(structure, monthlyGross);
   const monthlyBasic = evaluated.gratuityBasePaise;
+  /* Gratuity on the Code's wage; the tax exemption on basic + DA. */
+  const gratuityWage = evaluated.gratuityWagePaise;
 
   /* ---- leave, loans and clearance ---- */
   const balances = await db
@@ -209,6 +211,7 @@ export async function loadFnfCase(
     finalMonthBasis: `${finalMonth.basisLabel} in the final month`,
     finalMonthDeductionsPaise: 0,
     monthlyBasicPaise: monthlyBasic,
+    gratuityWagePaise: gratuityWage,
     perDayPaise: perDay,
     leaveBalanceDays: leaveDays,
     /* The grade's own notice period, where it has one. It was recorded

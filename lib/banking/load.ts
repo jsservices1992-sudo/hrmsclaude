@@ -6,6 +6,7 @@ import * as s from "@/db/schema";
 import { loadRegister, APPROVED_STATUSES } from "../statutory/load";
 import { loadConventions } from "../payroll/load";
 import { periodDivisor } from "../payroll/proration";
+import { gratuityWage } from "../payroll/esic-wage";
 import {
   buildPaymentRun,
   reconcilePaymentRun,
@@ -484,6 +485,27 @@ export async function loadProvisions(args: {
     standardDays: conventions.standardDays,
   });
 
+  /* Gratuity is provided on basic + DA plus whatever the other
+     allowances exceed half of pay by. Read from the run's own lines and
+     the company's components. */
+  const [runLines, components] = await Promise.all([
+    db
+      .select({
+        employeeId: s.payrollLines.employeeId,
+        code: s.payrollLines.code,
+        kind: s.payrollLines.kind,
+        category: s.payrollLines.category,
+        amountPaise: s.payrollLines.amountPaise,
+      })
+      .from(s.payrollLines)
+      .where(eq(s.payrollLines.runId, register.run.id)),
+    db.select().from(s.payComponents).where(eq(s.payComponents.companyId, args.companyId)),
+  ]);
+  const runLinesByEmployee = new Map<string, typeof runLines>();
+  for (const l of runLines) {
+    (runLinesByEmployee.get(l.employeeId) ?? runLinesByEmployee.set(l.employeeId, []).get(l.employeeId)!).push(l);
+  }
+
   const gratuityInputs = [];
   const leaveInputs = [];
   const bonusInputs = [];
@@ -498,7 +520,7 @@ export async function loadProvisions(args: {
     if (!intern) gratuityInputs.push({
       employeeId: emp.id,
       empCode: emp.empCode,
-      monthlyBasicPaise: basic,
+      monthlyBasicPaise: gratuityWage(runLinesByEmployee.get(emp.id) ?? [], components),
       completedMonths: monthsOfService(emp.dateOfJoining, asOf),
       openingProvisionPaise: openingOf(emp.id, "gratuity"),
       qualifyingMonths: 60,
