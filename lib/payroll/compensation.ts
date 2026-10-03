@@ -431,7 +431,7 @@ export function evaluateStructure(
     earnings.map((c) => ({
       code: c.code,
       amountPaise: values.get(c.code) ?? 0,
-      treatment: c.esicTreatment ?? defaultEsicTreatment(c.code, c.esicBase),
+      treatment: c.esicTreatment ?? defaultEsicTreatment(c.code, c.esicBase, c.gratuityBase),
     })),
     esicRule,
   );
@@ -469,7 +469,7 @@ export function evaluateStructure(
         ? gratuityWageFrom(
             sumWhere((c) => c.gratuityBase),
             sumWhere((c) => {
-              const t = c.esicTreatment ?? defaultEsicTreatment(c.code, c.esicBase);
+              const t = c.esicTreatment ?? defaultEsicTreatment(c.code, c.esicBase, c.gratuityBase);
               return t === "included" || t === "excluded_50";
             }),
           )

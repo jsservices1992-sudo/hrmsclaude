@@ -391,7 +391,7 @@ export function computeEmployeePay(args: {
       esicLines.push({
         code: def.code,
         amountPaise: amount,
-        treatment: def.esicTreatment ?? defaultEsicTreatment(def.code, def.esicBase),
+        treatment: def.esicTreatment ?? defaultEsicTreatment(def.code, def.esicBase, def.gratuityBase),
       });
     }
 
@@ -528,7 +528,7 @@ export function computeEmployeePay(args: {
     const amount = Math.round(perDay * offDaysWorked);
     if (amount > 0) {
       gross += amount;
-      esicLines.push({ code: "OFF_DAY_WORK", amountPaise: amount, treatment: "included" });
+      esicLines.push({ code: "OFF_DAY_WORK", amountPaise: amount, treatment: "excluded_50" });
       lines.push({
         code: "OFF_DAY_WORK",
         label: "Worked on a day off",

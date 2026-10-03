@@ -60,33 +60,60 @@ export function esicRuleFor(periodEndIso: string): EsicWageRule {
   return periodEndIso >= SOCIAL_SECURITY_CODE_FROM ? "social_security_code" : "esi_act";
 }
 
+/** Codes that are basic, dearness allowance or retaining allowance by name. */
+const BASIC_DA_CODES = [
+  "BASIC",
+  "BASIC_PAY",
+  "BASIC_SALARY",
+  "DA",
+  "VDA",
+  "DEARNESS",
+  "DEARNESS_ALLOWANCE",
+  "RA",
+  "RETAINING",
+  "RETAINING_ALLOWANCE",
+];
+
 /**
  * The treatment a component gets when nobody has chosen one.
  *
- * Known codes take the law's own classification, so a company that set its
- * components up before this existed is computed correctly without having
- * to revisit every one. Anything else falls back to the old flag.
+ * Only basic, DA and retaining allowance are wages outright. Every other
+ * allowance — special allowance included — is counted toward the 50%
+ * test and comes back into wages only by what all of them together
+ * exceed half of pay by. This is the owner's rule (3 October 2026) for
+ * PF, ESI and gratuity alike: basic ₹10,000 and special allowance
+ * ₹20,000 is a wage of ₹15,000, not ₹30,000.
+ *
+ * `basicOrDa` is the component's "Basic or DA" flag (stored as
+ * gratuityBase), so a company's own code for basic is recognised too.
+ * Overtime keeps its own treatment, and a component that was never in
+ * ESI wages stays out.
  */
-export function defaultEsicTreatment(code: string, esicBase: boolean): EsicTreatment {
+export function defaultEsicTreatment(
+  code: string,
+  esicBase: boolean,
+  basicOrDa = false,
+): EsicTreatment {
   const c = code.toUpperCase();
-  if (["HRA", "CONV", "CONVEYANCE", "COMMISSION"].includes(c)) return "excluded_50";
   if (["OT", "OVERTIME"].includes(c)) return "overtime";
-  return esicBase ? "included" : "excluded";
+  if (basicOrDa || BASIC_DA_CODES.includes(c)) return "included";
+  return esicBase ? "excluded_50" : "excluded";
 }
 
-/** Treatment for a one-off line, from what kind of variable pay it is. */
+/**
+ * Treatment for a one-off line, from what kind of variable pay it is.
+ *
+ * None of it is basic or DA, so under the 50% rule it is all counted
+ * toward the add-back rather than as wages outright.
+ */
 export function esicTreatmentForCategory(category: string | undefined): EsicTreatment {
   switch (category) {
     case "ot":
       return "overtime";
-    /* Commission and a bonus paid under a scheme sit in the Code's excluded
-       list. A deduction is not remuneration at all. */
-    case "bonus":
-      return "excluded_50";
     case "deduction":
       return "excluded";
     default:
-      return "included";
+      return "excluded_50";
   }
 }
 
@@ -189,15 +216,19 @@ export function describeEsicWage(w: EsicWage): string {
  * The Code on Wages 50% split, read off a month's earning lines with the
  * same per-component treatment PF and ESI use.
  *
- * "Wages" is everything paid that is not on the Code's exclusion list —
- * basic and DA, and also a special allowance or a monthly bonus — not
- * basic alone. Measuring basic alone flagged people as short whose only
- * exclusion was a modest HRA. Fully excluded sums (reimbursements,
- * gratuity) are not remuneration and sit on neither side.
+ * "Wages" here is what is included outright — basic, DA, retaining
+ * allowance — plus the add-back of allowances above half of pay, so it is
+ * never under 50% of remuneration; remuneration is all that is counted. Fully excluded sums (reimbursements, gratuity) are not
+ * remuneration and sit on neither side.
  */
 export function codeWageSplit(
   lines: { code: string; kind: string; category?: string | null; amountPaise: Paise }[],
-  components: { code: string; esicTreatment?: EsicTreatment | null; esicBase: boolean }[],
+  components: {
+    code: string;
+    esicTreatment?: EsicTreatment | null;
+    esicBase: boolean;
+    gratuityBase?: boolean;
+  }[],
 ): { wagesPaise: Paise; remunerationPaise: Paise } {
   const byCode = new Map(components.map((c) => [c.code, c]));
   let included = 0;
@@ -206,14 +237,15 @@ export function codeWageSplit(
     if (l.kind !== "earning") continue;
     const comp = byCode.get(l.code);
     const t: EsicTreatment = comp
-      ? comp.esicTreatment ?? defaultEsicTreatment(comp.code, comp.esicBase)
-      : l.code === "OFF_DAY_WORK"
-        ? "included"
-        : esicTreatmentForCategory(l.category ?? undefined);
+      ? comp.esicTreatment ?? defaultEsicTreatment(comp.code, comp.esicBase, comp.gratuityBase)
+      : esicTreatmentForCategory(l.category ?? undefined);
     if (t === "included") included += l.amountPaise;
     else if (t === "excluded_50" || t === "overtime") excluded += l.amountPaise;
   }
-  return { wagesPaise: included, remunerationPaise: included + excluded };
+  /* The add-back is what makes the wage at least half of pay, so the
+     figure returned is already after it. */
+  const { wage, remuneration } = codeWage(included, excluded);
+  return { wagesPaise: wage, remunerationPaise: remuneration };
 }
 
 /**
@@ -250,7 +282,7 @@ export function gratuityWage(
     if (l.kind !== "earning" || l.category) continue;
     const comp = byCode.get(l.code);
     if (!comp) continue;
-    const t = comp.esicTreatment ?? defaultEsicTreatment(comp.code, comp.esicBase);
+    const t = comp.esicTreatment ?? defaultEsicTreatment(comp.code, comp.esicBase, comp.gratuityBase);
     if (t === "excluded" || t === "overtime") continue;
     pay += l.amountPaise;
     if (comp.gratuityBase) basicDa += l.amountPaise;

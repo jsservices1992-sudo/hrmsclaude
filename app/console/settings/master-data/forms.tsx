@@ -451,7 +451,7 @@ export function PayComponentForm({
           defaultValue={
             state.values?.esicTreatment ??
             editing?.esicTreatment ??
-            (editing ? defaultEsicTreatment(editing.code, editing.esicBase) : "included")
+            (editing ? defaultEsicTreatment(editing.code, editing.esicBase, editing.gratuityBase) : "included")
           }
         >
           {ESIC_TREATMENTS.map((o) => (
@@ -461,9 +461,10 @@ export function PayComponentForm({
           ))}
         </Select>
         <span className="text-xs text-ink-3">
-          From 21 Nov 2025 this decides both PF and ESI wages. Under the Code,
-          excluded components come back into wages only
-          where together they exceed half of the month&apos;s pay. Overtime is
+          From 21 Nov 2025 this decides PF, ESI and gratuity wages. Basic and
+          DA are wages; every other allowance, special allowance included,
+          comes back into wages only where together they exceed half of the
+          month&apos;s pay. Overtime is
           left out of the ₹21,000 coverage test.
         </span>
       </label>

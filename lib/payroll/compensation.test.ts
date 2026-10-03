@@ -203,10 +203,11 @@ describe("Structure evaluation", () => {
     const e = evaluateStructure(STRUCTURE, GROSS);
     assert.equal(e.epfBasePaise, R(25000), "only BASIC is PF base");
     assert.equal(e.gratuityBasePaise, R(25000));
-    /* Basic 25,000 + HRA 10,000 + conveyance 1,600 + special 13,400. HRA
-       and conveyance are the Code's exclusions, 11,600 against a limit of
-       half of 50,000 — inside it, so they are simply left out. */
-    assert.equal(e.esicBasePaise, GROSS - R(10000) - R(1600), "HRA and conveyance excluded");
+    /* Basic 25,000 + HRA 10,000 + conveyance 1,600 + special 13,400. Only
+       basic is wages; every allowance together is 25,000, exactly half of
+       50,000, so nothing is added back. PF and ESI share this wage. */
+    assert.equal(e.esicBasePaise, R(25000), "basic only — allowances are within half");
+    assert.equal(e.pfWagePaise, R(25000));
     assert.equal(e.esicCoverageBasePaise, e.esicBasePaise, "no overtime in a structure");
   });
 
@@ -275,9 +276,9 @@ describe("CTC build-up", () => {
       employer: EMPLOYER,
     });
     assert.ok(b.employerEsicPaise > 0, "under threshold, employer ESIC applies");
-    /* Charged on ESI wages, not gross: of 18,000 the Code excludes HRA
-       (3,600) and conveyance (1,600), leaving 12,800. */
-    assert.equal(b.employerEsicPaise, Math.ceil((R(12800) * 325) / 10000));
+    /* Charged on ESI wages, not gross: of 18,000 basic is 9,000 and the
+       allowances are exactly half, so nothing is added back. */
+    assert.equal(b.employerEsicPaise, R(293));
   });
 
   test("REVERSE: a target CTC lands within a rupee of the target", () => {
@@ -351,7 +352,7 @@ describe("ESIC continuation inside a take-home solve", () => {
   // period started keeps paying ESIC even once wages rise above the
   // threshold mid-period — a fresh per-month threshold test misses this
   // and understates the gross a fixed take-home actually needs.
-  const aboveThreshold = evaluateStructure(STRUCTURE, R(30000));
+  const aboveThreshold = evaluateStructure(STRUCTURE, R(50000));
 
   test("without the flag, a mid-period month applies a fresh threshold test only", () => {
     const t = takeHomeFor(aboveThreshold, { ...TAKEHOME, month: 9 });
@@ -369,7 +370,7 @@ describe("ESIC continuation inside a take-home solve", () => {
   });
 
   test("solving a take-home for someone covered mid-period lands on the real target, not short by the ESIC it forgot", () => {
-    const target = R(27000);
+    const target = R(45000);
     const statutory = {
       epf: { wageCeilingPaise: R(15000), employeeBps: 1200 },
       esic: { wageThresholdPaise: R(21000), employeeBps: 75 },
