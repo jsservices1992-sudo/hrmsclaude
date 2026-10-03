@@ -26,7 +26,7 @@
 import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { eq, inArray, and } from "drizzle-orm";
+import { eq, inArray, and, sql } from "drizzle-orm";
 import * as s from "./schema";
 import {
   JURISDICTIONS,
@@ -71,11 +71,15 @@ try {
     )
     .onConflictDoUpdate({
       target: s.jurisdictions.stateCode,
+      /* `excluded` is the row we tried to insert. Naming the table's own
+         columns here set each one to itself, so a state that stopped
+         levying PT (Odisha, 2026) kept deducting it. */
       set: {
-        name: s.jurisdictions.name,
-        kind: s.jurisdictions.kind,
-        ptApplicable: s.jurisdictions.ptApplicable,
-        lwfApplicable: s.jurisdictions.lwfApplicable,
+        name: sql`excluded.name`,
+        kind: sql`excluded.kind`,
+        ptApplicable: sql`excluded.pt_applicable`,
+        lwfApplicable: sql`excluded.lwf_applicable`,
+        verificationNote: sql`excluded.verification_note`,
       },
     });
   console.log(`  jurisdictions      ${JURISDICTIONS.length}`);
@@ -88,6 +92,11 @@ try {
       .map((r) => r.stateCode),
   );
   const ptStates = [...new Set(PT_SLABS.map((r) => r.state))].filter((c) => !verifiedPt.has(c));
+
+  /* A state that no longer levies PT keeps no unverified slab that
+     could be applied by mistake. */
+  const noPt = JURISDICTIONS.filter((j) => !j.pt).map((j) => j.code);
+  await db.delete(s.ptSlabs).where(and(inArray(s.ptSlabs.stateCode, noPt), eq(s.ptSlabs.verified, false)));
 
   if (ptStates.length > 0) {
     await db.delete(s.ptSlabs).where(
