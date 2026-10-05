@@ -10,6 +10,7 @@ import {
 import { minimumWageFacts, assessStatutoryBonus, checkWageCodeSplit } from "./compensation";
 import { codeWageSplit, esicRuleFor } from "./esic-wage";
 import { loadStatutoryConfig } from "./load";
+import { effectiveAsOf } from "./statutory";
 
 function periodEndDate(year: number, month: number) {
   const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -40,7 +41,7 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
 
   // Bulk reads only — one query per concern, never one per employee.
   const asOf = periodEndDate(run.periodYear, run.periodMonth);
-  const [employees, lines, salaries, statutoryParams, statutory, branches, grades, components, companyRow] =
+  const [employees, lines, salaries, statutoryParams, statutory, branches, grades, components, companyRow, ptSlabs, lwfRates, minimumWages] =
     await Promise.all([
     db.select().from(s.employees).where(inArray(s.employees.id, employeeIds)),
     db
@@ -68,6 +69,9 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
       .from(s.companies)
       .where(eq(s.companies.id, run.companyId))
       .limit(1),
+    db.select().from(s.ptSlabs),
+    db.select().from(s.lwfRates),
+    db.select().from(s.minimumWages),
   ]);
 
   const empById = new Map(employees.map((e) => [e.id, e]));
@@ -158,6 +162,40 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
     salaries.filter((r) => r.effectiveFrom.slice(0, 7) === period).map((r) => r.employeeId),
   );
   const hasSalary = new Set(salaries.map((r) => r.employeeId));
+  const statesInRun = [
+    ...new Set(
+      summaries
+        .map((sm) => empById.get(sm.employeeId))
+        .map((e) => (e?.branchId ? stateByBranch.get(e.branchId) ?? null : null))
+        .filter((c): c is string => c !== null),
+    ),
+  ];
+
+  const unverifiedStatutoryReferences: string[] = [];
+  for (const state of statesInRun) {
+    if (statutory.ptApplicableByState[state]) {
+      const unverified = effectiveAsOf(ptSlabs.filter((r) => r.stateCode === state), asOf).filter((r) => !r.verified);
+      if (unverified.length > 0) {
+        unverifiedStatutoryReferences.push(`${state} professional tax slab`);
+      }
+    }
+    if (statutory.lwfApplicableByState[state]) {
+      const unverified = effectiveAsOf(lwfRates.filter((r) => r.stateCode === state), asOf).filter((r) => !r.verified);
+      if (unverified.length > 0) {
+        unverifiedStatutoryReferences.push(`${state} labour welfare fund rate`);
+      }
+    }
+    const effectiveMinimumWages = effectiveAsOf(minimumWages.filter((r) => r.stateCode === state), asOf);
+    const ownMinimumWages = effectiveMinimumWages.filter((r) => r.companyId === run.companyId);
+    const minimumWagePool =
+      ownMinimumWages.length > 0
+        ? ownMinimumWages
+        : effectiveMinimumWages.filter((r) => r.companyId === null);
+    const unverifiedMinimumWage = minimumWagePool.some((r) => !r.verified);
+    if (unverifiedMinimumWage) {
+      unverifiedStatutoryReferences.push(`${state} minimum wage`);
+    }
+  }
 
   /* Assessed per person, but only once the company has answered the two
      questions that make an assessment possible at all. */
@@ -281,13 +319,7 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
     bonusUnassessable,
     attendanceFinalised,
     statutoryConfigured: statutoryParams.length > 0,
-    ptUnmodelledStates: [
-      ...new Set(
-        summaries
-          .map((sm) => empById.get(sm.employeeId))
-          .map((e) => (e?.branchId ? stateByBranch.get(e.branchId) ?? null : null))
-          .filter((c): c is string => c !== null),
-      ),
-    ],
+    ptUnmodelledStates: statesInRun,
+    unverifiedStatutoryReferences,
   });
 }

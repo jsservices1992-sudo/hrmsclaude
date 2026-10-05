@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, isNull, lte } from "drizzle-orm";
+import { and, desc, eq, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { computeSettlement, type SettlementResult } from "@/lib/payroll/settlement";
@@ -8,9 +8,12 @@ import {
   loadConventions,
   loadStructureResolutionContext,
   resolveEmployeeStructure,
+  loadStatutoryConfig,
 } from "@/lib/payroll/load";
 import { periodDivisor } from "@/lib/payroll/proration";
-import { evaluateStructure } from "@/lib/payroll/compensation";
+import { evaluateStructure, evaluationWithEmployerWage } from "@/lib/payroll/compensation";
+import { coverageFor, pfMembership } from "@/lib/payroll/coverage";
+import { esicRuleFor } from "@/lib/payroll/esic-wage";
 
 /** Company default until a notice-policy table exists. */
 const DEFAULT_NOTICE_DAYS = 60;
@@ -74,10 +77,10 @@ export async function loadExitCase(
     .where(
       and(
         eq(s.employeeSalaries.employeeId, row.employee.id),
-        isNull(s.employeeSalaries.effectiveTo),
         lte(s.employeeSalaries.effectiveFrom, row.exit.lastWorkingDay),
       ),
     )
+    .orderBy(desc(s.employeeSalaries.effectiveFrom))
     .limit(1);
 
   if (!salary) {
@@ -132,13 +135,24 @@ export async function loadExitCase(
   /* The person's own structure, as payroll resolves it. The engine's
      built-in sample structure split every gross into a basic nobody in
      the company was necessarily paid. */
-  const evaluated = evaluateStructure(
+  const statutory = await loadStatutoryConfig(row.exit.lastWorkingDay, row.company.id);
+  const evaluated = evaluationWithEmployerWage(evaluateStructure(
     resolveEmployeeStructure(await loadStructureResolutionContext(row.employee.companyId), {
       employeeStructureId: salary.structureId ?? null,
       employeeDepartmentId: row.employee.departmentId,
     }).components,
     salary.monthlyGrossPaise,
-  );
+    undefined,
+    esicRuleFor(row.exit.lastWorkingDay),
+  ), {
+    epfCeilingPaise: statutory.epf.wageCeilingPaise,
+    epfCoverageCeilingPaise: statutory.epf.coverageCeilingPaise,
+    epfEmployerBps: statutory.epf.employerBps,
+    epfOnActualBasic: row.employee.pfContributionBasis === "company"
+      ? row.company.epfOnActualBasic : row.employee.pfContributionBasis === "higher",
+    ...coverageFor(row.company, row.employee),
+    ...pfMembership(row.employee),
+  });
   const monthlyBasic = evaluated.gratuityBasePaise;
 
   /* Per-day value on the company's own proration basis — which this

@@ -283,6 +283,7 @@ export async function loadPayslips(args: {
       const cost = employerCostFor(full, {
         epfCeilingPaise: statutory.epf.wageCeilingPaise,
         epfEmployerBps: statutory.epf.employerBps,
+        epfCoverageCeilingPaise: statutory.epf.coverageCeilingPaise,
         epfOnActualBasic: company?.epfOnActualBasic ?? false,
         esicThresholdPaise: statutory.esic.wageThresholdPaise,
         esicEmployerBps: statutory.esic.employerBps,

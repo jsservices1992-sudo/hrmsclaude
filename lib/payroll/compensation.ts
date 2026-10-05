@@ -2,7 +2,9 @@ import { apportion, type Paise } from "./money";
 import {
   defaultEsicTreatment,
   esicWage,
+  resolveEmployerWage,
   gratuityWageFrom,
+  type EsicWageLine,
   type EsicTreatment,
   type EsicWageRule,
 } from "./esic-wage";
@@ -210,6 +212,9 @@ export type EvaluatedComponent = {
 };
 
 export type EvaluationResult = {
+  pfApplicable?: boolean;
+  wageLines: EsicWageLine[];
+  wageRule: EsicWageRule;
   components: EvaluatedComponent[];
   grossPaise: Paise;
   /** Basic + DA — the components flagged as PF base. Also what HRA and 80CCD(2) read. */
@@ -235,8 +240,8 @@ export type EvaluationResult = {
    */
   gratuityBasePaise: Paise;
   /**
-   * What gratuity itself is a multiple of: basic + DA, plus whatever all
-   * other allowances exceed half of gross by (see `gratuityWageFrom`).
+   * Included contractual wages plus the specified-exclusion add-back
+   * (see `gratuityWageFrom`).
    * Before the Code, basic + DA alone.
    */
   gratuityWagePaise: Paise;
@@ -300,6 +305,8 @@ export function evaluateStructure(
   const ordered = resolveOrder(components);
   if (!ordered.ok) {
     return {
+      wageLines: [],
+      wageRule: esicRule,
       components: [],
       grossPaise: 0,
       epfBasePaise: 0,
@@ -454,6 +461,12 @@ export function evaluateStructure(
   }
 
   return {
+    wageLines: earnings.map((c) => ({
+      code: c.code,
+      amountPaise: values.get(c.code) ?? 0,
+      treatment: c.esicTreatment ?? defaultEsicTreatment(c.code, c.esicBase, c.gratuityBase),
+    })),
+    wageRule: esicRule,
     components: evaluated,
     grossPaise: gross,
     epfBasePaise: sumWhere((c) => c.epfBase),
@@ -467,7 +480,9 @@ export function evaluateStructure(
     gratuityWagePaise:
       esicRule === "social_security_code"
         ? gratuityWageFrom(
-            sumWhere((c) => c.gratuityBase),
+            sumWhere((c) =>
+              (c.esicTreatment ?? defaultEsicTreatment(c.code, c.esicBase, c.gratuityBase)) === "included",
+            ),
             sumWhere((c) => {
               const t = c.esicTreatment ?? defaultEsicTreatment(c.code, c.esicBase, c.gratuityBase);
               return t === "included" || t === "excluded_50";
@@ -484,6 +499,7 @@ export function evaluateStructure(
    ================================================================== */
 
 export type EmployerCostParams = {
+  epfCoverageCeilingPaise?: Paise;
   epfCeilingPaise: Paise;
   epfEmployerBps: number;
   epfOnActualBasic: boolean;
@@ -533,11 +549,37 @@ export type CtcBreakdown = {
 const pfRupee = (paise: number): Paise => Math.round(paise / 100) * 100;
 const esiRupee = (paise: number): Paise => Math.ceil(Math.round(paise) / 100) * 100;
 
+export function evaluationWithEmployerWage(
+  evaluation: EvaluationResult,
+  p: Pick<EmployerCostParams, "epfCeilingPaise" | "epfCoverageCeilingPaise" | "epfEmployerBps" | "epfOnActualBasic" | "epfEstablishmentCovered" | "pfOptedIn" | "hadPriorPfMembership">,
+): EvaluationResult {
+  if (evaluation.wageRule === "esi_act") return evaluation;
+  // Membership does not switch off because its own contribution raises wages.
+  const pfApplicable = p.epfEstablishmentCovered !== false && !epfExcluded({
+    pfWagePaise: esicWage(evaluation.wageLines, evaluation.wageRule, evaluation.employerBonusPaise).contributionWagePaise,
+    wageCeilingPaise: p.epfCoverageCeilingPaise ?? p.epfCeilingPaise,
+    optedIn: p.pfOptedIn ?? true, hadPriorMembership: p.hadPriorPfMembership ?? false,
+  });
+  const resolved = resolveEmployerWage(evaluation.wageLines, evaluation.wageRule, (wage) => {
+    if (!pfApplicable) return 0;
+    return pfRupee(((p.epfOnActualBasic ? wage : Math.min(wage, p.epfCeilingPaise)) * p.epfEmployerBps) / 10000);
+  }, evaluation.employerBonusPaise);
+  const regular = esicWage(evaluation.wageLines.filter((l) => l.treatment !== "overtime"), evaluation.wageRule, resolved.employerRemunerationPaise);
+  return { ...evaluation,
+    pfApplicable,
+    pfWagePaise: resolved.wage.contributionWagePaise,
+    esicBasePaise: resolved.wage.contributionWagePaise,
+    esicCoverageBasePaise: resolved.wage.coverageWagePaise,
+    gratuityWagePaise: regular.contributionWagePaise,
+  };
+}
+
 export function employerCostFor(
   evaluation: EvaluationResult,
   p: EmployerCostParams,
 ): { pf: Paise; esic: Paise; nps: Paise; gratuity: Paise; bonus: Paise; other: Paise } {
-  const excluded =
+  evaluation = evaluationWithEmployerWage(evaluation, p);
+  const excluded = evaluation.pfApplicable !== undefined ? !evaluation.pfApplicable :
     p.epfEstablishmentCovered === false ||
     epfExcluded({
       pfWagePaise: evaluation.pfWagePaise,
@@ -645,6 +687,8 @@ export function buildFromTargetCtc(args: {
 }
 
 export type TakeHomeParams = {
+  epfCoverageCeilingPaise?: Paise;
+  epfEmployerBps?: number;
   epfCeilingPaise: Paise;
   epfEmployeeBps: number;
   epfOnActualBasic: boolean;
@@ -698,7 +742,8 @@ export function takeHomeFor(
   evaluation: EvaluationResult,
   p: TakeHomeParams,
 ): { takeHome: Paise; epf: Paise; esic: Paise; pt: Paise; lwf: Paise } {
-  const excluded =
+  evaluation = evaluationWithEmployerWage(evaluation, { ...p, epfEmployerBps: p.epfEmployerBps ?? p.epfEmployeeBps });
+  const excluded = evaluation.pfApplicable !== undefined ? !evaluation.pfApplicable :
     p.epfEstablishmentCovered === false ||
     epfExcluded({
       pfWagePaise: evaluation.pfWagePaise,
@@ -741,6 +786,7 @@ export function buildFromTargetTakeHome(args: {
   /** Hold these components; the balance component absorbs the rest. */
   anchors?: Map<string, Paise>;
 }): CtcBreakdown & { takeHomePaise: Paise } {
+  const takeHomeParams = { ...args.takeHome, epfEmployerBps: args.employer.epfEmployerBps };
   let lo = 0;
   let hi = args.targetMonthlyTakeHomePaise * 3;
   let bestGross = 0;
@@ -748,7 +794,7 @@ export function buildFromTargetTakeHome(args: {
   for (let i = 0; i < 60; i++) {
     const mid = Math.floor((lo + hi) / 2);
     const evaluation = evaluateStructure(args.components, mid, args.anchors);
-    const { takeHome } = takeHomeFor(evaluation, args.takeHome);
+    const { takeHome } = takeHomeFor(evaluation, takeHomeParams);
     bestGross = mid;
     if (takeHome === args.targetMonthlyTakeHomePaise) break;
     if (takeHome < args.targetMonthlyTakeHomePaise) lo = mid;
@@ -763,7 +809,7 @@ export function buildFromTargetTakeHome(args: {
     anchors: args.anchors,
   });
   const evaluation = evaluateStructure(args.components, bestGross, args.anchors);
-  const { takeHome } = takeHomeFor(evaluation, args.takeHome);
+  const { takeHome } = takeHomeFor(evaluation, takeHomeParams);
 
   return { ...breakdown, takeHomePaise: takeHome };
 }
@@ -812,7 +858,7 @@ export function grossForTargetTakeHome(args: {
    */
   anchors?: Map<string, Paise>;
   statutory: {
-    epf: { wageCeilingPaise: Paise; employeeBps: number };
+    epf: { wageCeilingPaise: Paise; coverageCeilingPaise?: Paise; employeeBps: number };
     esic: { wageThresholdPaise: Paise; employeeBps: number };
     ptSlabsByState: Record<string, PtSlab[]>;
     ptApplicableByState: Record<string, boolean>;
@@ -840,6 +886,8 @@ export function grossForTargetTakeHome(args: {
     }).amountPaise;
 
   const paramsFor = (professionalTaxPaise: Paise): TakeHomeParams => ({
+    epfCoverageCeilingPaise: args.statutory.epf.coverageCeilingPaise,
+    epfEmployerBps: args.employer.epfEmployerBps,
     epfCeilingPaise: args.statutory.epf.wageCeilingPaise,
     epfEmployeeBps: args.statutory.epf.employeeBps,
     epfOnActualBasic: args.employer.epfOnActualBasic,
@@ -1111,12 +1159,11 @@ export type WageCodeCheck = {
  *
  * The Code on Wages caps the allowances that sit outside "wages" at half
  * of total remuneration; the same rule read from the other side is that
- * wages must be at least half. Which half you measure does not matter,
- * but *what you measure against* does, and it is the common mistake:
- * the test is against remuneration — what the person is paid — not
- * against cost to company. Employer provident fund and the gratuity
- * provision are costs the employer carries, never remuneration paid to
- * the employee, and including them lowers the required basic.
+ * wages must be at least half. Callers must supply statutory remuneration,
+ * not assume gross or CTC is interchangeable with it. The Ministry FAQ of
+ * 16 March 2026 includes employer PF/pension and statutory bonus in the
+ * 50% test and excludes gratuity and ESI. Stored-run callers include the
+ * actual employer contribution lines through codeWageSplit.
  *
  * Reported rather than enforced. Raising basic to satisfy this moves the
  * base for provident fund, gratuity and bonus all at once, which is a

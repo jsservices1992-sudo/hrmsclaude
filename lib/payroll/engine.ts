@@ -24,6 +24,7 @@ import {
   esicRuleFor,
   esicTreatmentForCategory,
   esicWage,
+  resolveEmployerWage,
   type EsicTreatment,
   type EsicWageLine,
 } from "./esic-wage";
@@ -565,7 +566,25 @@ export function computeEmployeePay(args: {
      paid out and never had ESIC charged on them at all. */
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const periodEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-  const esiWage = esicWage(esicLines, esicRuleFor(periodEnd));
+  const basis = e.pfContributionBasis ?? "company";
+  const epfInput = {
+    params: s.epf,
+    onActualBasic: basis === "company" ? c.epfOnActualBasic : basis === "higher",
+    edliApplicable: e.edliApplicability !== "no",
+    hadPriorMembership: e.hadPriorPfMembership,
+    optedIn: e.pfOptedIn,
+    vpfPercent: e.vpfPercent,
+    establishmentCovered: e.epfEstablishmentCovered,
+  };
+  const initialPf = computeEpf({ ...epfInput,
+    pfWagePaise: esicWage(esicLines, esicRuleFor(periodEnd), employerBonusThisMonth).contributionWagePaise,
+  });
+  // Once covered, the contribution's own add-back cannot exclude this member.
+  if (esicRuleFor(periodEnd) === "social_security_code" && initialPf.applicable) epfInput.optedIn = true;
+  const { wage: esiWage } = resolveEmployerWage(esicLines, esicRuleFor(periodEnd), (wage) => {
+    const contribution = computeEpf({ ...epfInput, pfWagePaise: wage });
+    return contribution.employerPfPaise + contribution.employerEpsPaise;
+  }, employerBonusThisMonth);
 
   /* ---- EPF ---- */
   /* Under the Code on Social Security (from 21 November 2025) PF is
@@ -574,7 +593,6 @@ export function computeEmployeePay(args: {
      components flagged as PF base (basic and DA). */
   const pfWage = esiWage.rule === "social_security_code" ? esiWage.contributionWagePaise : epfBase;
   const epfLines: typeof lines = [];
-  const basis = e.pfContributionBasis ?? "company";
   const pension = pensionEligibility({
     age: ageAtPeriodEnd(e.dateOfBirth, year, month),
     epsApplicability: e.epsApplicability ?? "auto",
@@ -583,14 +601,8 @@ export function computeEmployeePay(args: {
     coverageCeilingPaise: s.epf.coverageCeilingPaise ?? s.epf.wageCeilingPaise,
   });
   const epf = computeEpf({
+    ...epfInput,
     pfWagePaise: pfWage,
-    params: s.epf,
-    onActualBasic: basis === "company" ? c.epfOnActualBasic : basis === "higher",
-    edliApplicable: e.edliApplicability !== "no",
-    hadPriorMembership: e.hadPriorPfMembership,
-    optedIn: e.pfOptedIn,
-    vpfPercent: e.vpfPercent,
-    establishmentCovered: e.epfEstablishmentCovered,
     pensionEligible: pension.eligible,
   });
 

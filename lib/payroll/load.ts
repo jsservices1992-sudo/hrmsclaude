@@ -901,6 +901,7 @@ export async function previewRun(args: {
               employer: {
                 epfCeilingPaise: statutory.epf.wageCeilingPaise,
                 epfEmployerBps: statutory.epf.employerBps,
+                epfCoverageCeilingPaise: statutory.epf.coverageCeilingPaise,
                 epfOnActualBasic: company.epfOnActualBasic,
                 esicThresholdPaise: statutory.esic.wageThresholdPaise,
                 esicEmployerBps: statutory.esic.employerBps,

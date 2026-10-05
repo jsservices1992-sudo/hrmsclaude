@@ -203,11 +203,9 @@ describe("Structure evaluation", () => {
     const e = evaluateStructure(STRUCTURE, GROSS);
     assert.equal(e.epfBasePaise, R(25000), "only BASIC is PF base");
     assert.equal(e.gratuityBasePaise, R(25000));
-    /* Basic 25,000 + HRA 10,000 + conveyance 1,600 + special 13,400. Only
-       basic is wages; every allowance together is 25,000, exactly half of
-       50,000, so nothing is added back. PF and ESI share this wage. */
-    assert.equal(e.esicBasePaise, R(25000), "basic only — allowances are within half");
-    assert.equal(e.pfWagePaise, R(25000));
+    // Basic 25,000 plus special 13,400; HRA and conveyance are excluded.
+    assert.equal(e.esicBasePaise, R(38400));
+    assert.equal(e.pfWagePaise, R(38400));
     assert.equal(e.esicCoverageBasePaise, e.esicBasePaise, "no overtime in a structure");
   });
 
@@ -260,9 +258,7 @@ describe("CTC build-up", () => {
     assert.equal(b.employerPfPaise, R(1800));
     // Gross 50,000 is above the ESIC threshold
     assert.equal(b.employerEsicPaise, 0);
-    /* Gratuity 4.81% of basic 25,000: allowances are exactly half of
-       gross, so nothing is added back. */
-    assert.equal(b.gratuityProvisionPaise, Math.round((R(25000) * 481) / 10000));
+    assert.equal(b.gratuityProvisionPaise, Math.round((R(38400) * 481) / 10000));
     assert.equal(
       b.monthlyCtcPaise,
       b.monthlyGrossPaise + b.employerPfPaise + b.gratuityProvisionPaise,
@@ -276,9 +272,8 @@ describe("CTC build-up", () => {
       employer: EMPLOYER,
     });
     assert.ok(b.employerEsicPaise > 0, "under threshold, employer ESIC applies");
-    /* Charged on ESI wages, not gross: of 18,000 basic is 9,000 and the
-       allowances are exactly half, so nothing is added back. */
-    assert.equal(b.employerEsicPaise, R(293));
+    // 18,000 less HRA 3,600 and conveyance 1,600 = 12,800 wages.
+    assert.equal(b.employerEsicPaise, R(416));
   });
 
   test("REVERSE: a target CTC lands within a rupee of the target", () => {

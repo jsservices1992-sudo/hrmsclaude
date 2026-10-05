@@ -77,12 +77,9 @@ const BASIC_DA_CODES = [
 /**
  * The treatment a component gets when nobody has chosen one.
  *
- * Only basic, DA and retaining allowance are wages outright. Every other
- * allowance — special allowance included — is counted toward the 50%
- * test and comes back into wages only by what all of them together
- * exceed half of pay by. This is the owner's rule (3 October 2026) for
- * PF, ESI and gratuity alike: basic ₹10,000 and special allowance
- * ₹20,000 is a wage of ₹15,000, not ₹30,000.
+ * Section 2(88) includes contractual remuneration unless a specified
+ * exclusion applies. A regular special allowance is not itself a named
+ * exclusion. The 50% test is a floor, not a cap on included wages.
  *
  * `basicOrDa` is the component's "Basic or DA" flag (stored as
  * gratuityBase), so a company's own code for basic is recognised too.
@@ -97,7 +94,10 @@ export function defaultEsicTreatment(
   const c = code.toUpperCase();
   if (["OT", "OVERTIME"].includes(c)) return "overtime";
   if (basicOrDa || BASIC_DA_CODES.includes(c)) return "included";
-  return esicBase ? "excluded_50" : "excluded";
+  if (esicBase && ["HRA", "CONV", "CONVEYANCE", "CONVEYANCE_ALLOWANCE", "COMMISSION", "STATUTORY_BONUS"].includes(c)) {
+    return "excluded_50";
+  }
+  return esicBase ? "included" : "excluded";
 }
 
 /**
@@ -151,9 +151,9 @@ function codeWage(included: Paise, excluded: Paise) {
   return { remuneration, limit, addBack, wage: included + addBack };
 }
 
-export function esicWage(lines: EsicWageLine[], rule: EsicWageRule): EsicWage {
+export function esicWage(lines: EsicWageLine[], rule: EsicWageRule, employerRemunerationPaise: Paise = 0): EsicWage {
   const included = sum(lines, "included");
-  const excluded = sum(lines, "excluded_50");
+  const excluded = sum(lines, "excluded_50") + (rule === "social_security_code" ? employerRemunerationPaise : 0);
   const overtime = sum(lines, "overtime");
 
   if (rule === "esi_act") {
@@ -192,6 +192,41 @@ export function esicWage(lines: EsicWageLine[], rule: EsicWageRule): EsicWage {
   };
 }
 
+/** MoLE FAQ 16 March 2026: employer PF/pension and statutory bonus enter
+ * both remuneration and the exclusions subject to the 50% test. Solve
+ * against the rounded contribution, not an unrounded percentage estimate. */
+export function resolveEmployerWage(
+  lines: EsicWageLine[],
+  rule: EsicWageRule,
+  employerPfPensionFor: (wagePaise: Paise) => Paise,
+  statutoryBonusPaise: Paise = 0,
+): { wage: EsicWage; employerRemunerationPaise: Paise } {
+  let wage = esicWage(lines, rule, statutoryBonusPaise);
+  if (rule === "esi_act") return { wage, employerRemunerationPaise: 0 };
+  for (let i = 0; i < 100; i++) {
+    const employerRemunerationPaise = statutoryBonusPaise + employerPfPensionFor(wage.contributionWagePaise);
+    if (!Number.isSafeInteger(employerRemunerationPaise)) throw new Error("Invalid employer remuneration");
+    const next = esicWage(lines, rule, employerRemunerationPaise);
+    if (next.contributionWagePaise === wage.contributionWagePaise) {
+      return { wage: next, employerRemunerationPaise };
+    }
+    wage = next;
+  }
+  throw new Error("Employer PF/pension wage calculation did not converge; review PF coverage and rates");
+}
+
+/** Stored runs already contain the actual rounded EPF/EPS split. Do not
+ * add employee deductions, EDLI, administration, ESI or provisions. */
+export function employerRemunerationFrom(
+  lines: { code: string; kind: string; amountPaise: Paise }[],
+  components: { code: string; calcMethod?: string }[],
+): Paise {
+  const codes = new Set(["EPF_ER", "EPS_ER", ...components
+    .filter((c) => c.calcMethod === "statutory_bonus").map((c) => `${c.code}_ER`)]);
+  return lines.filter((l) => l.kind === "employer_contribution" && codes.has(l.code))
+    .reduce((total, l) => total + l.amountPaise, 0);
+}
+
 /** One line for a payslip saying how the wage was reached. */
 export function describeEsicWage(w: EsicWage): string {
   const rupees = (p: Paise) => `₹${(p / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -228,11 +263,12 @@ export function codeWageSplit(
     esicTreatment?: EsicTreatment | null;
     esicBase: boolean;
     gratuityBase?: boolean;
+    calcMethod?: string;
   }[],
 ): { wagesPaise: Paise; remunerationPaise: Paise } {
   const byCode = new Map(components.map((c) => [c.code, c]));
   let included = 0;
-  let excluded = 0;
+  let excluded = employerRemunerationFrom(lines, components);
   for (const l of lines) {
     if (l.kind !== "earning") continue;
     const comp = byCode.get(l.code);
@@ -249,20 +285,16 @@ export function codeWageSplit(
 }
 
 /**
- * The gratuity wage: basic + DA, plus whatever every other allowance
- * together — special allowance included — exceeds half of pay by.
- *
- * This is the owner's rule (3 October 2026): allowances are allowed up to
- * half of gross, and only the excess is added back to basic. With basic
- * at half of gross nothing is added; with basic at a third, the shortfall
- * to half is.
+ * Included contractual wages plus the excess of specified exclusions
+ * over half of remuneration. The caller must classify the components;
+ * passing basic alone loses other included pay such as special allowance.
  *
  * Pay here is the regular monthly pay only. Fully excluded sums
  * (reimbursements) are not pay at all, and gratuity is a multiple of the
  * last drawn wage, so a month's overtime, incentive or arrears is left out.
  */
-export function gratuityWageFrom(basicDaPaise: Paise, payPaise: Paise): Paise {
-  return basicDaPaise + Math.max(0, payPaise - basicDaPaise - Math.floor(payPaise / 2));
+export function gratuityWageFrom(includedPaise: Paise, payPaise: Paise): Paise {
+  return includedPaise + Math.max(0, payPaise - includedPaise - Math.floor(payPaise / 2));
 }
 
 /** The gratuity wage, read off a month's payroll lines. */
@@ -273,19 +305,26 @@ export function gratuityWage(
     esicTreatment?: EsicTreatment | null;
     esicBase: boolean;
     gratuityBase: boolean;
+    calcMethod?: string;
   }[],
+  rule: EsicWageRule = "social_security_code",
+  employerRemunerationPaise: Paise = 0,
 ): Paise {
   const byCode = new Map(components.map((c) => [c.code, c]));
-  let basicDa = 0;
-  let pay = 0;
+  let included = 0;
+  let pay = employerRemunerationFrom(lines, components);
   for (const l of lines) {
     if (l.kind !== "earning" || l.category) continue;
     const comp = byCode.get(l.code);
     if (!comp) continue;
+    if (rule === "esi_act") {
+      if (comp.gratuityBase) included += l.amountPaise;
+      continue;
+    }
     const t = comp.esicTreatment ?? defaultEsicTreatment(comp.code, comp.esicBase, comp.gratuityBase);
     if (t === "excluded" || t === "overtime") continue;
     pay += l.amountPaise;
-    if (comp.gratuityBase) basicDa += l.amountPaise;
+    if (t === "included") included += l.amountPaise;
   }
-  return gratuityWageFrom(basicDa, pay);
+  return rule === "esi_act" ? included : gratuityWageFrom(included, pay + employerRemunerationPaise);
 }

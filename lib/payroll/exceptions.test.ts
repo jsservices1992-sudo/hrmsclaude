@@ -130,6 +130,18 @@ test("run-wide problems are reported once, not per employee", () => {
   assert.equal(found.find((x) => x.code === "attendance_not_finalised")?.severity, "warning");
 });
 
+test("unverified statutory reference data blocks approval", () => {
+  const found = detectExceptions([row()], {
+    ...ctx,
+    unverifiedStatutoryReferences: ["Karnataka professional tax slab"],
+  });
+  const hit = found.find((x) => x.code === "unverified_statutory_reference");
+  assert.ok(hit);
+  assert.equal(hit.severity, "critical");
+  assert.match(hit.message, /Karnataka professional tax slab/);
+  assert.match(blockingSummary(found)!, /unverified statutory reference/);
+});
+
 test("criticals sort ahead of warnings", () => {
   const found = detectExceptions(
     [row({ dateOfJoining: "2026-09-02", bankAccount: null })],

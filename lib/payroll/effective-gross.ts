@@ -49,6 +49,7 @@ export function effectiveMonthlyGross(args: {
     employer: {
       epfCeilingPaise: statutory.epf.wageCeilingPaise,
       epfEmployerBps: statutory.epf.employerBps,
+      epfCoverageCeilingPaise: statutory.epf.coverageCeilingPaise,
       epfOnActualBasic: args.company.epfOnActualBasic,
       esicThresholdPaise: statutory.esic.wageThresholdPaise,
       esicEmployerBps: statutory.esic.employerBps,

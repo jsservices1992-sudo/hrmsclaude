@@ -137,15 +137,15 @@ describe("Default treatments", () => {
     assert.equal(defaultEsicTreatment("OT", true), "overtime");
   });
 
-  test("only basic, DA and retaining allowance are wages outright", () => {
+  test("basic, DA and retaining allowance are wages outright", () => {
     assert.equal(defaultEsicTreatment("BASIC", true), "included");
     assert.equal(defaultEsicTreatment("DA", true), "included");
     assert.equal(defaultEsicTreatment("MYBASE", true, true), "included", "flagged Basic or DA");
   });
 
-  test("special allowance and other allowances only count toward the 50% test", () => {
-    assert.equal(defaultEsicTreatment("SPL", true), "excluded_50");
-    assert.equal(defaultEsicTreatment("MEDICAL", true), "excluded_50");
+  test("regular allowances without a specified exclusion remain included", () => {
+    assert.equal(defaultEsicTreatment("SPL", true), "included");
+    assert.equal(defaultEsicTreatment("MEDICAL", true), "included");
     assert.equal(defaultEsicTreatment("WASHING", false), "excluded");
   });
 
@@ -174,22 +174,21 @@ test("the 50% split adds back allowances above half, so wages are never under ha
   ];
   const split = codeWageSplit(lines, components);
   assert.equal(split.remunerationPaise, 4_300_000);
-  /* Basic 20,900 + bonus 583.10 (set as included) = 21,483.10 against half
-     of 43,000 = 21,500; the 16.90 shortfall is added back. */
-  assert.equal(split.wagesPaise, 2_150_000);
+  // Basic, contractual bonus and special allowance are included; HRA is excluded.
+  assert.equal(split.wagesPaise, 3_464_000);
   assert.ok(split.wagesPaise * 2 >= split.remunerationPaise);
 });
 
-test("PF and ESI wage: basic 10,000 + special allowance 20,000 is 15,000, not 30,000", () => {
+test("PF and ESI wage: regular special allowance is not capped at half of gross", () => {
   const w = esicWage(
-    [line("BASIC", 10000, "included"), line("SPL", 20000, "excluded_50")],
+    [line("BASIC", 10000, "included"), line("SPL", 20000, defaultEsicTreatment("SPL", true))],
     "social_security_code",
   );
-  assert.equal(w.contributionWagePaise, R(15000));
-  assert.equal(w.coverageWagePaise, R(15000));
-  // Basic 15,000 of 30,000 leaves allowances at exactly half: nothing added.
+  assert.equal(w.contributionWagePaise, R(30000));
+  assert.equal(w.coverageWagePaise, R(30000));
+  // A specified exclusion at exactly half requires no add-back.
   const half = esicWage(
-    [line("BASIC", 15000, "included"), line("SPL", 15000, "excluded_50")],
+    [line("BASIC", 15000, "included"), line("HRA", 15000, "excluded_50")],
     "social_security_code",
   );
   assert.equal(half.contributionWagePaise, R(15000));

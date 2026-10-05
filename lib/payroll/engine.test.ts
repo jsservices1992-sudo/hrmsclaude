@@ -468,16 +468,16 @@ describe("ESIC on the Code's definition of wages", () => {
   const line = (r: ReturnType<typeof run>, code: string) =>
     r.lines.find((l) => l.code === code)?.amountPaise ?? 0;
 
-  test("allowances are left out of the wage when within half", () => {
+  test("specified exclusions are left out while special allowance stays included", () => {
     /* 20,000 gross on the default structure: basic 10,000, HRA 4,000,
-       conveyance 1,600, special 4,400. Allowances 10,000 — exactly half. */
+       conveyance 1,600, special 4,400. Included wages are 14,400. */
     const r = run({ monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true });
-    assert.equal(line(r, "ESIC_EE"), Math.ceil((L(10000) * 75) / 1000000) * 100);
-    assert.equal(line(r, "ESIC_ER"), Math.ceil((L(10000) * 325) / 1000000) * 100);
+    assert.equal(line(r, "ESIC_EE"), Math.ceil((L(14400) * 75) / 1000000) * 100);
+    assert.equal(line(r, "ESIC_ER"), Math.ceil((L(14400) * 325) / 1000000) * 100);
   });
 
   test("a gross over ₹21,000 is still covered when its ESI wage is not", () => {
-    /* 24,000 gross → 12,000 of wages, basic alone.
+    /* 24,000 gross -> 17,600 of wages including special allowance.
        Testing the ceiling on gross would have left this person unprotected. */
     const r = run({ monthlyGrossPaise: L(24000), esicCoveredAtPeriodStart: false });
     assert.ok(line(r, "ESIC_EE") > 0, "covered on ESI wages");
@@ -492,9 +492,8 @@ describe("ESIC on the Code's definition of wages", () => {
         { code: "OT", label: "Overtime", kind: "earning", category: "ot", amountPaise: L(15000) },
       ],
     });
-    /* Wages 10,000; allowances 10,000 + 15,000 OT = 25,000 against half of
-       35,000 — 7,500 over, so 7,500 is added back. */
-    assert.equal(line(withOt, "ESIC_EE"), Math.ceil((L(17500) * 75) / 1000000) * 100);
+    /* Employer PF/EPS 1,800 joins remuneration: half of 36,800 is 18,400. */
+    assert.equal(line(withOt, "ESIC_EE"), Math.ceil((L(18400) * 75) / 1000000) * 100);
     assert.ok(line(withOt, "ESIC_EE") > line(without, "ESIC_EE"));
   });
 
@@ -518,9 +517,8 @@ describe("ESIC on the Code's definition of wages", () => {
         { code: "INC", label: "Incentive", kind: "earning", category: "incentive", amountPaise: L(2000) },
       ],
     });
-    /* Basic 8,000; allowances 8,000 become 10,000 of 18,000, so 1,000 is
-       over half and is added back. */
-    assert.equal(line(withIncentive, "ESIC_ER") - line(base, "ESIC_ER"), Math.ceil((L(1000) * 325) / 1000000) * 100);
+    // Specified exclusions plus this incentive remain below half of remuneration.
+    assert.equal(line(withIncentive, "ESIC_ER"), line(base, "ESIC_ER"));
   });
 
   test("a period before the Code keeps the ESI Act's wage", () => {
@@ -537,7 +535,7 @@ describe("ESIC on the Code's definition of wages", () => {
   test("the payslip says how the wage was reached", () => {
     const r = run({ monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true });
     const basis = r.lines.find((l) => l.code === "ESIC_EE")!.basis;
-    assert.match(basis, /ESI wages ₹10,000/);
+    assert.match(basis, /ESI wages ₹14,400/);
   });
 });
 
@@ -667,12 +665,10 @@ describe("PF on the Code on Social Security's wage", () => {
     r.lines.find((l) => l.code === code)?.amountPaise ?? 0;
   test("from 21 November 2025, PF is charged on the Code's wage, not basic alone", () => {
     /* 20,000 gross: basic 10,000, HRA 4,000, conveyance 1,600, special
-       allowance 4,400. Special allowance is not basic, so it is only added
-       back above half of pay; allowances are 10,000 of 20,000, so wages
-       are 10,000. */
+       allowance 4,400. Basic plus regular special allowance is 14,400. */
     const r = run({ monthlyGrossPaise: L(20000), esicCoveredAtPeriodStart: true });
-    assert.equal(line(r, "EPF_WAGES"), L(10000));
-    assert.equal(line(r, "EPF_EE"), L(1200));
+    assert.equal(line(r, "EPF_WAGES"), L(14400));
+    assert.equal(line(r, "EPF_EE"), L(1728));
   });
 
   test("the PF ceiling still applies after the Code's wage is found", () => {

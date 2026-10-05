@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { computeSettlement } from "../payroll/settlement";
@@ -24,7 +24,10 @@ import {
   periodDivisor,
   prorate,
 } from "../payroll/proration";
-import { evaluateStructure } from "../payroll/compensation";
+import { evaluateStructure, evaluationWithEmployerWage } from "../payroll/compensation";
+import { loadStatutoryConfig } from "../payroll/load";
+import { coverageFor, pfMembership } from "../payroll/coverage";
+import { esicRuleFor } from "../payroll/esic-wage";
 import type { Regime } from "../tax/engine";
 
 /**
@@ -93,7 +96,10 @@ export async function loadFnfCase(
   const [salary] = await db
     .select()
     .from(s.employeeSalaries)
-    .where(eq(s.employeeSalaries.employeeId, employee.id))
+    .where(and(
+      eq(s.employeeSalaries.employeeId, employee.id),
+      lte(s.employeeSalaries.effectiveFrom, exitCase.lastWorkingDay),
+    ))
     .orderBy(desc(s.employeeSalaries.effectiveFrom))
     .limit(1);
 
@@ -118,7 +124,20 @@ export async function loadFnfCase(
     await loadStructureResolutionContext(employee.companyId),
     { employeeStructureId: salary?.structureId ?? null, employeeDepartmentId: employee.departmentId },
   ).components;
-  const evaluated = evaluateStructure(structure, monthlyGross);
+  const [companyRule] = await db.select().from(s.companies)
+    .where(eq(s.companies.id, employee.companyId)).limit(1);
+  const statutory = await loadStatutoryConfig(exitCase.lastWorkingDay, employee.companyId);
+  const evaluated = evaluationWithEmployerWage(
+    evaluateStructure(structure, monthlyGross, undefined, esicRuleFor(exitCase.lastWorkingDay)), {
+      epfCeilingPaise: statutory.epf.wageCeilingPaise,
+      epfCoverageCeilingPaise: statutory.epf.coverageCeilingPaise,
+      epfEmployerBps: statutory.epf.employerBps,
+      epfOnActualBasic: employee.pfContributionBasis === "company"
+        ? companyRule?.epfOnActualBasic ?? false : employee.pfContributionBasis === "higher",
+      ...(companyRule ? coverageFor(companyRule, employee) : {}),
+      ...pfMembership(employee),
+    },
+  );
   const monthlyBasic = evaluated.gratuityBasePaise;
   /* Gratuity on the Code's wage; the tax exemption on basic + DA. */
   const gratuityWage = evaluated.gratuityWagePaise;
@@ -192,14 +211,8 @@ export async function loadFnfCase(
     }),
   });
 
-  const [companyRule] = await db
-    .select({ fourYears240Days: s.companies.gratuityFourYears240Days })
-    .from(s.companies)
-    .where(eq(s.companies.id, employee.companyId))
-    .limit(1);
-
   const settlement = computeSettlement({
-    gratuityFourYears240Days: companyRule?.fourYears240Days ?? false,
+    gratuityFourYears240Days: companyRule?.gratuityFourYears240Days ?? false,
     employeeId: employee.id,
     name: `${employee.firstName} ${employee.lastName}`,
     exitType: exitCase.exitType,

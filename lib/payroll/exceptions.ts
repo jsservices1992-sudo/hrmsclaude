@@ -37,6 +37,7 @@ export type PayrollExceptionCode =
   | "minimum_wage_unverifiable"
   | "statutory_bonus_short"
   | "statutory_bonus_unassessable"
+  | "unverified_statutory_reference"
   | "wage_code_below_share"
   | "pt_state_unmodelled";
 
@@ -129,6 +130,12 @@ export type RunContext = {
    * letting a ₹0 pass for a considered figure.
    */
   ptUnmodelledStates?: string[];
+  /**
+   * Reference data used by this run but not yet marked verified against
+   * the named Act/notification. Seed data is useful for setup; payroll
+   * approval needs a human-checked source.
+   */
+  unverifiedStatutoryReferences?: string[];
   /** Above this share of the period, loss of pay is worth a second look. */
   excessiveLopRatio?: number;
 };
@@ -160,6 +167,13 @@ export function detectExceptions(
   for (const state of ctx.ptUnmodelledStates ?? []) {
     const why = PT_UNMODELLED[state];
     if (why) out.push({ code: "pt_state_unmodelled", severity: "warning", message: why });
+  }
+  for (const ref of ctx.unverifiedStatutoryReferences ?? []) {
+    out.push({
+      code: "unverified_statutory_reference",
+      severity: "critical",
+      message: `${ref} is in force for this run but is still marked unverified. Verify it against the latest Act or notification before approval.`,
+    });
   }
   if (ctx.bonusUnassessable) {
     out.push({
@@ -401,6 +415,7 @@ export const EXCEPTION_LABELS: Record<PayrollExceptionCode, string> = {
   minimum_wage_unverifiable: "Minimum wage could not be checked",
   statutory_bonus_short: "Statutory bonus short",
   statutory_bonus_unassessable: "Statutory bonus could not be assessed",
+  unverified_statutory_reference: "Unverified statutory reference",
   pt_state_unmodelled: "Professional tax not modelled for a state",
   wage_code_below_share: "Wages under half of pay",
 };

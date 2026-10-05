@@ -118,6 +118,7 @@ export async function resolvePay(args: {
   });
 
   const employer: EmployerCostParams = {
+    epfCoverageCeilingPaise: statutory.epf.coverageCeilingPaise,
     epfCeilingPaise: statutory.epf.wageCeilingPaise,
     epfEmployerBps: statutory.epf.employerBps,
     epfOnActualBasic: companyConfig?.epfOnActualBasic ?? false,
@@ -181,7 +182,9 @@ export async function resolvePay(args: {
     evaluation,
     takeHomeParams ?? {
       epfCeilingPaise: statutory.epf.wageCeilingPaise,
+      epfCoverageCeilingPaise: statutory.epf.coverageCeilingPaise,
       epfEmployeeBps: statutory.epf.employeeBps,
+      epfEmployerBps: statutory.epf.employerBps,
       epfOnActualBasic: employer.epfOnActualBasic,
       esicThresholdPaise: statutory.esic.wageThresholdPaise,
       esicEmployeeBps: statutory.esic.employeeBps,

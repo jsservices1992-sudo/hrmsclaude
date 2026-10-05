@@ -6,7 +6,7 @@ import * as s from "@/db/schema";
 import { loadRegister, APPROVED_STATUSES } from "../statutory/load";
 import { loadConventions } from "../payroll/load";
 import { periodDivisor } from "../payroll/proration";
-import { gratuityWage } from "../payroll/esic-wage";
+import { esicRuleFor, gratuityWage } from "../payroll/esic-wage";
 import {
   buildPaymentRun,
   reconcilePaymentRun,
@@ -485,8 +485,8 @@ export async function loadProvisions(args: {
     standardDays: conventions.standardDays,
   });
 
-  /* Gratuity is provided on basic + DA plus whatever the other
-     allowances exceed half of pay by. Read from the run's own lines and
+  /* Gratuity uses included wages plus the specified-exclusion add-back.
+     Read from the run's own lines and
      the company's components. */
   const [runLines, components] = await Promise.all([
     db
@@ -520,7 +520,7 @@ export async function loadProvisions(args: {
     if (!intern) gratuityInputs.push({
       employeeId: emp.id,
       empCode: emp.empCode,
-      monthlyBasicPaise: gratuityWage(runLinesByEmployee.get(emp.id) ?? [], components),
+      monthlyBasicPaise: gratuityWage(runLinesByEmployee.get(emp.id) ?? [], components, esicRuleFor(asOf.toISOString().slice(0, 10))),
       completedMonths: monthsOfService(emp.dateOfJoining, asOf),
       openingProvisionPaise: openingOf(emp.id, "gratuity"),
       qualifyingMonths: 60,
