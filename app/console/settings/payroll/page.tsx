@@ -59,6 +59,7 @@ import { RowPopover } from "@/app/console/runs/row-actions";
 import { loadSodPolicies } from "@/lib/audit/log";
 import { SodToggle } from "../../audit/forms";
 import { formatDate } from "@/lib/format/date";
+import { StatutoryFilters } from "./statutory-filters";
 
 export const metadata = { title: "Payroll rules" };
 
@@ -262,8 +263,22 @@ export default async function PayrollSettingsPage(
      wage once. Only the bands in force today are judged: a retired one
      is history, not a hole. */
   const today = new Date().toISOString().slice(0, 10);
+  const selectedState = jurisdictions.some((j) => j.stateCode === sp.state) ? String(sp.state) : "";
+  const selectedSkill = ["unskilled", "semi_skilled", "skilled", "highly_skilled"].includes(String(sp.skill)) ? String(sp.skill) : "";
+  const asOf = typeof sp.asOf === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.asOf)
+    ? sp.asOf : today;
+  const showHistory = sp.history === "1";
+  const inPeriod = (r: { effectiveFrom: string; effectiveTo: string | null }) =>
+    showHistory || (r.effectiveFrom <= asOf && (!r.effectiveTo || r.effectiveTo >= asOf));
+  const wageMatches = minWages.filter((w) => w.stateCode === selectedState && w.skillCategory === selectedSkill && inPeriod(w));
+  const zones = [...new Set(wageMatches.flatMap((w) => w.zone ? [w.zone] : []))].sort();
+  const selectedZone = zones.includes(String(sp.zone)) ? String(sp.zone) : "";
+  const visibleWages = wageMatches.filter((w) => !selectedZone || w.zone === selectedZone);
+  const visibleLwf = lwfRates.filter((r) => r.stateCode === selectedState && inPeriod(r));
+  const selectedStates = jurisdictions.filter((j) => j.stateCode === selectedState).map((j) => ({ id: j.stateCode, label: `${j.name} (${j.stateCode})` }));
+
   const liveSlabs = ptSlabs.filter(
-    (p) => p.effectiveFrom <= today && (p.effectiveTo === null || p.effectiveTo >= today),
+    (p) => p.effectiveFrom <= asOf && (p.effectiveTo === null || p.effectiveTo >= asOf),
   );
   const ptByState = [...new Set(ptSlabs.map((p) => p.stateCode))].sort().map((stateCode) => ({
     stateCode,
@@ -738,24 +753,23 @@ export default async function PayrollSettingsPage(
 
       {tab === "statutory" && (
         <div className="flex flex-col gap-4">
-          <div className="border border-amber/25 bg-amber-soft px-4 py-3 text-sm text-ink-2 rounded-lg">
-            <span className="text-xs font-semibold text-amber">Effective dated</span> — editing
-            writes a new version from the date you give. Runs already saved keep
-            the version they used, so history stays reproducible.
-          </div>
+          <StatutoryFilters key={`${selectedState}:${selectedSkill}:${selectedZone}:${asOf}:${showHistory}`}
+            companyId={companyId} states={jurisdictions.map((j) => ({ id: j.stateCode, label: j.name }))}
+            state={selectedState} skill={selectedSkill} zone={selectedZone} zones={zones} asOf={asOf} history={showHistory} />
+          {!selectedState && <p className="py-8 text-sm text-ink-2">No state selected.</p>}
+          {selectedState && <>
           <Card padded={false}>
             <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
               <span id="minimum-wages" className="text-[15px] font-semibold text-ink scroll-mt-24">State minimum wages</span>
-              <span className="text-xs font-medium text-ink-2 tnum">{minWages.length}</span>
+              <span className="text-xs font-medium text-ink-2 tnum">{visibleWages.length} rates</span>
             </div>
-            {minWages.length === 0 ? (
+            {!selectedSkill ? <p className="px-4 py-6 text-sm text-ink-2">No skill category selected.</p> : visibleWages.length === 0 ? (
               <p className="px-4 py-3 text-sm text-rust max-w-[70ch]">
-                None on file. Until a state&rsquo;s floor is recorded here, no salary
-                is checked against one — a run will say so rather than pass quietly.
+                No minimum wage recorded for this selection.
               </p>
             ) : (
               <ul className="divide-y divide-line-2">
-                {minWages.map((w) => (
+                {visibleWages.map((w) => (
                   <li key={w.id} className="px-4 py-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <span className="text-sm">
                       <span className="font-medium">{w.stateCode}</span>{" "}
@@ -774,11 +788,12 @@ export default async function PayrollSettingsPage(
                       </Badge>
                     </span>
                     {w.source && <span className="w-full text-xs text-ink-2 break-words">Source: {w.source}</span>}
-                    {isAdmin && !w.verified && (
+                    {isAdmin && !w.verified && <details className="w-full mt-2">
+                      <summary className="text-sm font-medium text-teal cursor-pointer">Verify this rate</summary>
                       <VerifyMinimumWageForm id={w.id}
                         companyId={w.companyId ?? (isTenantWide(user) ? null : companyId)}
                         companyOnly={w.companyId === null && !isTenantWide(user)} />
-                    )}
+                    </details>}
                   </li>
                 ))}
               </ul>
@@ -788,27 +803,28 @@ export default async function PayrollSettingsPage(
                 An administrator must set or verify minimum wage rates.
               </p>
             )}
-            {isAdmin && (
-              <div className="p-4 border-t border-line">
+            {isAdmin && selectedSkill && (
+              <details className="p-4 border-t border-line">
+                <summary className="text-sm font-medium cursor-pointer mb-3">Add revised rate</summary>
                 <MinimumWageForm
-                  states={jurisdictions.map((j) => ({
-                    id: j.stateCode,
-                    label: `${j.name} (${j.stateCode})`,
-                  }))}
+                  key={`${selectedState}:${selectedSkill}:${selectedZone}`}
+                  states={selectedStates}
+                  initialValues={{ stateCode: selectedState, skillCategory: selectedSkill, zone: selectedZone }}
                   companyId={companyId}
                   tenantWide={isTenantWide(user)}
                 />
-              </div>
+              </details>
             )}
           </Card>
 
           <Card padded={false}>
             <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-[15px] font-semibold text-ink">Labour welfare fund by state</span>
-              <span className="text-xs font-medium text-ink-2 tnum">{lwfRates.length}</span>
+              <span className="text-xs font-medium text-ink-2 tnum">{visibleLwf.length} rates</span>
             </div>
             <ul className="divide-y divide-line-2">
-              {lwfRates.map((r) => (
+              {visibleLwf.length === 0 && <li className="px-4 py-4 text-sm text-ink-2">{jurisdictions.find((j) => j.stateCode === selectedState)?.lwfApplicable ? "No rate recorded for this period." : "LWF is not applicable in this state."}</li>}
+              {visibleLwf.map((r) => (
                 <li key={r.id} className="px-4 py-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                   <span className="text-sm">
                     <span className="font-medium">{r.stateCode}</span>{" "}
@@ -833,30 +849,23 @@ export default async function PayrollSettingsPage(
               ))}
             </ul>
             {isAdmin && (
-              <div className="p-4 border-t border-line">
+              <details className="p-4 border-t border-line">
+                <summary className="text-sm font-medium cursor-pointer mb-3">Add LWF rate</summary>
                 <LwfRateForm
-                  states={jurisdictions.map((j) => ({
-                    id: j.stateCode,
-                    label: `${j.name} (${j.stateCode})`,
-                  }))}
+                  states={selectedStates}
                 />
-              </div>
+              </details>
             )}
           </Card>
 
           <Card padded={false}>
             <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-[15px] font-semibold text-ink">Professional tax slabs</span>
-              <span className="text-xs font-medium text-ink-2 tnum">{ptSlabs.length}</span>
+              <span className="text-xs font-medium text-ink-2 tnum">{ptSlabs.filter((p) => p.stateCode === selectedState && inPeriod(p)).length} slabs</span>
             </div>
-            <p className="px-4 py-2.5 text-xs text-ink-2 border-b border-line-2 max-w-[72ch]">
-              Seeded figures, none of them checked against a state Act. The
-              bands for a state have to cover every wage once between them —
-              a hole charges somebody nothing and an overlap charges them
-              twice, and neither shows up as an error when payroll runs.
-            </p>
             <div className="max-h-[32rem] overflow-y-auto divide-y divide-line">
-              {ptByState.map(({ stateCode, slabs, problems }) => (
+              {!ptSlabs.some((p) => p.stateCode === selectedState && inPeriod(p)) && <p className="px-4 py-4 text-sm text-ink-2">{jurisdictions.find((j) => j.stateCode === selectedState)?.ptApplicable ? "No slabs recorded for this period." : "Professional tax is not applicable in this state."}</p>}
+              {ptByState.filter((p) => p.stateCode === selectedState).map(({ stateCode, slabs, problems }) => (
                 <div key={stateCode} className="px-4 py-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1.5">
                     <span className="text-sm font-medium">{stateCode}</span>
@@ -874,7 +883,7 @@ export default async function PayrollSettingsPage(
                     </ul>
                   )}
                   <ul className="flex flex-col gap-1">
-                    {slabs.map((p) => (
+                    {slabs.filter(inPeriod).map((p) => (
                       <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs">
                         <span className="font-mono text-ink-2 tnum">
                           {formatINR(p.minPaise)} — {p.maxPaise === null ? "above" : formatINR(p.maxPaise)}
@@ -905,17 +914,17 @@ export default async function PayrollSettingsPage(
               ))}
             </div>
             {isAdmin && (
-              <div className="p-4 border-t border-line">
+              <details className="p-4 border-t border-line">
+                <summary className="text-sm font-medium cursor-pointer mb-3">Add professional tax slab</summary>
                 <PtSlabForm
-                  states={jurisdictions.map((j) => ({
-                    id: j.stateCode,
-                    label: `${j.name} (${j.stateCode})`,
-                  }))}
+                  states={selectedStates}
                 />
-              </div>
+              </details>
             )}
           </Card>
-
+          </>}
+          <details className="border-t border-line pt-4">
+          <summary className="text-sm font-semibold cursor-pointer mb-3">Central statutory parameters</summary>
           <Card padded={false}>
             <div className="px-5 py-3.5 border-b border-line-2">
               <span className="text-[15px] font-semibold text-ink">Central statutory parameters</span>
@@ -943,6 +952,7 @@ export default async function PayrollSettingsPage(
               ))}
             </ul>
           </Card>
+          </details>
         </div>
       )}
 

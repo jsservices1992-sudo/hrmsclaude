@@ -548,7 +548,7 @@ export function VerifyMinimumWageForm({ id, companyId, companyOnly }: {
     <input type="hidden" name="id" value={id} />
     <input type="hidden" name="companyId" value={companyId ?? ""} />
     <FormField label="Notification checked" required error={state.fieldErrors?.source}>
-      <Input name="source" required placeholder="Notification number, date or official URL" />
+      <Input name="source" required defaultValue={state.values?.source ?? ""} placeholder="Notification number, date or official URL" />
     </FormField>
     <div><SubmitButton pendingText="Verifying…">{companyOnly ? "Verify for this company" : "Verify rate"}</SubmitButton></div>
     <FormFeedback state={state} />
@@ -559,6 +559,7 @@ export function MinimumWageForm({
   states,
   companyId,
   tenantWide,
+  initialValues = {},
 }: {
   states: { id: string; label: string }[];
   /** This screen's company — where this form scopes to when not tenant-wide. */
@@ -569,10 +570,11 @@ export function MinimumWageForm({
    * "for my own company" — they have no shared row to reach.
    */
   tenantWide: boolean;
+  initialValues?: Record<string, string>;
 }) {
   const [state, action] = useActionState<PayrollSettingsState, FormData>(saveMinimumWage, {});
   const err = (k: string) => state.fieldErrors?.[k];
-  const val = (k: string, fallback = "") => state.values?.[k] ?? fallback;
+  const val = (k: string, fallback = "") => state.values?.[k] ?? initialValues[k] ?? fallback;
   const [scope, setScope] = useState(state.values?.companyId ? "own" : "shared");
 
   return (
@@ -603,7 +605,7 @@ export function MinimumWageForm({
       <input type="hidden" name="companyId" value={tenantWide ? (scope === "own" ? companyId : "") : companyId} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <FormField label="State" required error={err("stateCode")}>
-          <UiSelect name="stateCode" defaultValue={val("stateCode")} invalid={!!err("stateCode")}>
+          <UiSelect name="stateCode" defaultValue={val("stateCode", states.length === 1 ? states[0].id : "")} invalid={!!err("stateCode")}>
             <option value="">Choose a state…</option>
             {states.map((s) => (
               <option key={s.id} value={s.id}>{s.label}</option>
@@ -702,7 +704,7 @@ export function LwfRateForm({ states }: { states: { id: string; label: string }[
       </p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <FormField label="State" required error={err("stateCode")}>
-          <UiSelect name="stateCode" defaultValue={val("stateCode")} invalid={!!err("stateCode")}>
+          <UiSelect name="stateCode" defaultValue={val("stateCode", states.length === 1 ? states[0].id : "")} invalid={!!err("stateCode")}>
             <option value="">Choose a state…</option>
             {states.map((s) => (
               <option key={s.id} value={s.id}>{s.label}</option>
@@ -832,7 +834,7 @@ export function PtSlabForm({ states }: { states: { id: string; label: string }[]
       </p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <FormField label="State" required error={err("stateCode")}>
-          <UiSelect name="stateCode" defaultValue={val("stateCode")} invalid={!!err("stateCode")}>
+          <UiSelect name="stateCode" defaultValue={val("stateCode", states.length === 1 ? states[0].id : "")} invalid={!!err("stateCode")}>
             <option value="">Choose a state…</option>
             {states.map((s) => (
               <option key={s.id} value={s.id}>{s.label}</option>

@@ -15,6 +15,7 @@ import {
 import * as s from "@/db/schema";
 import { getSessionUser, canAccessCompany, isTenantWide } from "@/lib/auth/session";
 import { submitted } from "@/lib/forms/submitted";
+import { verificationErrorCode, verificationErrorMessage } from "@/lib/payroll/verification-error";
 import {
   starterComponents,
   STARTER_STRUCTURE_NAME,
@@ -701,6 +702,20 @@ export async function verifyMinimumWage(
   _prev: PayrollSettingsState,
   fd: FormData,
 ): Promise<PayrollSettingsState> {
+  try {
+    return await verifyMinimumWageInternal(fd);
+  } catch (error) {
+    const reference = randomUUID();
+    const code = verificationErrorCode(error);
+    console.error("minimum_wage.verification_failed", { reference, code });
+    return {
+      error: `${verificationErrorMessage(code)} Reference: ${reference}`,
+      values: submitted(fd),
+    };
+  }
+}
+
+async function verifyMinimumWageInternal(fd: FormData): Promise<PayrollSettingsState> {
   const companyId = nullable(fd.get("companyId"));
   const { user, error } = await requireMinimumWageAccess(companyId);
   if (error || !user) return { error: error ?? "Not authorised." };
