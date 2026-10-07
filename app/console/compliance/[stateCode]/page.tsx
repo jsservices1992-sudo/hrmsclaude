@@ -47,6 +47,10 @@ export default async function JurisdictionDetailPage(
         <p className="text-sm text-ink-2 mt-1">
           <span className="font-mono">{jur.stateCode}</span> · {jur.kind === "ut" ? "Union territory" : "State"}
         </p>
+        <Link href="/console/settings/payroll?tab=statutory#minimum-wages"
+          className="inline-block mt-3 text-sm font-medium text-teal underline underline-offset-2">
+          Minimum wage rates and verification
+        </Link>
       </div>
 
       {!isAdmin && (

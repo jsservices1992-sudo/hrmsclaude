@@ -23,6 +23,7 @@ import {
   GroupForm,
   BankForm,
   MinimumWageForm,
+  VerifyMinimumWageForm,
   LwfRateForm,
   PtSlabForm,
   RetireSlabForm,
@@ -744,7 +745,7 @@ export default async function PayrollSettingsPage(
           </div>
           <Card padded={false}>
             <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-[15px] font-semibold text-ink">State minimum wages</span>
+              <span id="minimum-wages" className="text-[15px] font-semibold text-ink scroll-mt-24">State minimum wages</span>
               <span className="text-xs font-medium text-ink-2 tnum">{minWages.length}</span>
             </div>
             {minWages.length === 0 ? (
@@ -772,9 +773,20 @@ export default async function PayrollSettingsPage(
                         {w.verified ? "verified" : "unverified"}
                       </Badge>
                     </span>
+                    {w.source && <span className="w-full text-xs text-ink-2 break-words">Source: {w.source}</span>}
+                    {isAdmin && !w.verified && (
+                      <VerifyMinimumWageForm id={w.id}
+                        companyId={w.companyId ?? (isTenantWide(user) ? null : companyId)}
+                        companyOnly={w.companyId === null && !isTenantWide(user)} />
+                    )}
                   </li>
                 ))}
               </ul>
+            )}
+            {!isAdmin && (
+              <p className="px-4 py-3 text-sm text-ink-2 border-t border-line">
+                An administrator must set or verify minimum wage rates.
+              </p>
             )}
             {isAdmin && (
               <div className="p-4 border-t border-line">

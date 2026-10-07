@@ -7,6 +7,7 @@ import {
   createPayrollGroup,
   createBankAccount,
   saveMinimumWage,
+  verifyMinimumWage,
   saveLwfRate,
   savePtSlab,
   retirePtSlab,
@@ -539,6 +540,21 @@ const SKILL_OPTIONS = [
   { id: "highly_skilled", label: "Highly skilled" },
 ];
 
+export function VerifyMinimumWageForm({ id, companyId, companyOnly }: {
+  id: string; companyId: string | null; companyOnly: boolean;
+}) {
+  const [state, action] = useActionState<PayrollSettingsState, FormData>(verifyMinimumWage, {});
+  return <form action={action} className="w-full flex flex-col gap-2 mt-2">
+    <input type="hidden" name="id" value={id} />
+    <input type="hidden" name="companyId" value={companyId ?? ""} />
+    <FormField label="Notification checked" required error={state.fieldErrors?.source}>
+      <Input name="source" required placeholder="Notification number, date or official URL" />
+    </FormField>
+    <div><SubmitButton pendingText="Verifying…">{companyOnly ? "Verify for this company" : "Verify rate"}</SubmitButton></div>
+    <FormFeedback state={state} />
+  </form>;
+}
+
 export function MinimumWageForm({
   states,
   companyId,
@@ -637,7 +653,7 @@ export function MinimumWageForm({
             invalid={!!err("effectiveFrom")}
           />
         </FormField>
-        <FormField label="Source" hint="The notification this came from">
+        <FormField label="Source" error={err("source")} hint="The notification this came from">
           <Input name="source" defaultValue={val("source")} placeholder="e.g. Haryana Labour Dept notification" />
         </FormField>
       </div>

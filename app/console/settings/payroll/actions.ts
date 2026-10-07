@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -697,6 +697,61 @@ async function requireMinimumWageAccess(companyId: string | null) {
   return { user, error: null };
 }
 
+export async function verifyMinimumWage(
+  _prev: PayrollSettingsState,
+  fd: FormData,
+): Promise<PayrollSettingsState> {
+  const companyId = nullable(fd.get("companyId"));
+  const { user, error } = await requireMinimumWageAccess(companyId);
+  if (error || !user) return { error: error ?? "Not authorised." };
+  const source = nullable(fd.get("source"));
+  if (!source) return { error: "Enter the notification checked before verifying.", fieldErrors: { source: "Required" } };
+  const [row] = await db.select().from(s.minimumWages)
+    .where(eq(s.minimumWages.id, String(fd.get("id") ?? ""))).limit(1);
+  if (!row || (row.companyId !== null && row.companyId !== companyId)) {
+    return { error: "This minimum wage is not available for that company." };
+  }
+  // A company administrator attests a company-scoped copy, never a shared row.
+  if (row.companyId === null && companyId !== null) {
+    const copied = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`minimum-wage:${companyId}:${row.stateCode}`}))`);
+      const own = await tx.select().from(s.minimumWages).where(and(
+        eq(s.minimumWages.companyId, companyId), eq(s.minimumWages.stateCode, row.stateCode),
+        eq(s.minimumWages.skillCategory, row.skillCategory),
+        row.zone === null ? isNull(s.minimumWages.zone) : eq(s.minimumWages.zone, row.zone),
+      ));
+      if (own.some((r) => r.effectiveFrom <= (row.effectiveTo ?? "9999-12-31") &&
+        row.effectiveFrom <= (r.effectiveTo ?? "9999-12-31"))) return false;
+      const id = randomUUID();
+      await tx.insert(s.minimumWages).values({ ...row, id, companyId, source, verified: true });
+      await tx.insert(s.auditLog).values({
+        id: randomUUID(), at: new Date().toISOString(), actor: user.email,
+        action: "minimum_wage.verified", entity: "minimum_wage", entityId: id,
+        after: JSON.stringify({ ...row, id, companyId, source, verified: true }), reason: source,
+      });
+      return true;
+    });
+    if (!copied) return { error: "A company rate already covers this period. Verify that company's row instead." };
+    revalidatePath("/console/settings/payroll");
+    revalidatePath("/console/payroll");
+    revalidatePath("/console/runs", "layout");
+    return { ok: "Rate verified for this company. Shared reference data is unchanged." };
+  }
+  await db.transaction(async (tx) => {
+    await tx.update(s.minimumWages).set({ verified: true, source }).where(eq(s.minimumWages.id, row.id));
+    await tx.insert(s.auditLog).values({
+      id: randomUUID(), at: new Date().toISOString(), actor: user.email,
+      action: "minimum_wage.verified", entity: "minimum_wage", entityId: row.id,
+      before: JSON.stringify({ verified: row.verified, source: row.source }),
+      after: JSON.stringify({ verified: true, source }), reason: source,
+    });
+  });
+  revalidatePath("/console/settings/payroll");
+  revalidatePath("/console/payroll");
+  revalidatePath("/console/runs", "layout");
+  return { ok: "Minimum wage verified against the recorded notification." };
+}
+
 export async function saveMinimumWage(
   _prev: PayrollSettingsState,
   fd: FormData,
@@ -722,6 +777,7 @@ export async function saveMinimumWage(
   const SKILLS = ["unskilled", "semi_skilled", "skilled", "highly_skilled"];
   const fieldErrors: Record<string, string> = {};
   if (!stateCode) fieldErrors.stateCode = "Required";
+  if (verified && !source) fieldErrors.source = "A notification source is required to verify this rate";
   if (!SKILLS.includes(skillCategory)) fieldErrors.skillCategory = "Required";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) fieldErrors.effectiveFrom = "Use YYYY-MM-DD";
   const monthly = Number(raw);

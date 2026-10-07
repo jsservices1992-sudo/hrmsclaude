@@ -392,6 +392,12 @@ export default async function PayrollConsolePage(
                               </>
                             )}
                             {e.message}
+                            {e.code === "unverified_statutory_reference" && (
+                              <Link href={`/console/settings/payroll?company=${encodeURIComponent(companyId)}&tab=statutory#minimum-wages`}
+                                className="block mt-2 text-sm font-medium text-teal underline underline-offset-2">
+                                Review and verify statutory rates
+                              </Link>
+                            )}
                           </li>
                         ))}
                       </ul>
