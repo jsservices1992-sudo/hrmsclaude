@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import { schemaReadiness } from "@/db/schema-readiness";
 import { signupEnabled } from "@/lib/auth/signup";
 import { storageConfigured, storageDriverName, trySave, read, remove } from "@/lib/storage";
 import { configured as s3Configured, target as s3Target } from "@/lib/storage/s3";
@@ -74,24 +75,26 @@ export async function GET(request: Request) {
         : "Using the local filesystem — expected in development.",
   };
 
-  /* Reachability and schema in one query: a database that answers but
-     has no tables is the other half of a failed deploy, and it fails
-     differently — db:push was never run at it. */
+  /* A populated old database can still crash every mapped SELECT.
+     Check required columns, not just whether any tables exist. */
   let ok = false;
   if (databaseUrl || !isProduction) {
     try {
-      const result = await db.execute<{ n: number }>(
-        sql`select count(*)::int as n from information_schema.tables
+      const result = await db.execute<{ table_name: string; column_name: string }>(
+        sql`select table_name, column_name from information_schema.columns
             where table_schema = 'public'`,
       );
-      const tables = Number(result[0]?.n ?? 0);
-      ok = tables > 0;
+      const tables = new Set(result.map(row => row.table_name)).size;
+      const readiness = schemaReadiness(result);
+      ok = readiness.ready;
       checks.schema = {
         reachable: true,
         tables,
+        compatible: readiness.ready,
+        missing: readiness.missing,
         hint: ok
           ? undefined
-          : "The database is reachable but has no tables. Run: DATABASE_URL=… npm run db:push && npm run db:triggers",
+          : "The database schema is behind this application release. Back up the database, then run npm run db:migrate and npm run db:check against this deployment's DATABASE_URL.",
       };
     } catch (error) {
       checks.schema = {

@@ -7,9 +7,9 @@ Review date: 9 October 2026. Input: the supplied payroll-audit.md.
 **Not certified compliant. Do not treat passing tests, verification flags,
 or this implementation as legal certification.** This is a first remediation
 batch, not closure of the entire audit. Database migrations 0027-0034 are
-prepared but have NOT been applied to the configured remote database. New
-application code requires those migrations before deployment. Confirm the
-database environment, take a backup and reconcile historical payroll first.
+applied to the configured remote database on 10 October 2026 after an archive
+backup. The post-migration schema check passes. Other deployments require the
+same backup/migration checks; reconcile historical payroll before acceptance.
 
 ## Findings and status
 
@@ -59,7 +59,7 @@ entitlements and official validation of other statutory filing formats.
 
 ## Deployment and acceptance checklist
 
-1. Confirm whether DATABASE_URL is staging or live. No remote mutation was performed for this batch.
+1. The configured remote database was backed up and migrated on 10 October 2026. Confirm the target and backup before migrating any other environment.
 2. Back up the database, rehearse migrations and verify source-key uniqueness/backfill totals on staging.
 3. Reconcile payroll TDS ledger to saved deductions and payments; distinguish accrual from actual withholding/deposit dates.
 4. Compare September PF/EPS/EDLI to authenticated EPFO examples, including excluded employees, joiners, leavers, LOP and take-home contracts. A blocking review is not a completed calculation.
@@ -77,7 +77,7 @@ entitlements and official validation of other statutory filing formats.
 
 ## Verification of this batch
 
-- `npm test`: 1,607 passed, zero failures.
+- `npm test`: 1,610 passed, zero failures (including schema-readiness regressions).
 - `npx tsc --noEmit`: passed.
 - `npm run lint`: zero errors, 58 warnings.
 - `npm run build`: passed.
@@ -88,5 +88,14 @@ entitlements and official validation of other statutory filing formats.
   and authenticated desktop/mobile browser workflows exercised locally:
   deposits/allocation bounds, second-reviewer controls, OT/bonus/leave/EPS
   posting, structured opening carry and company-scoped exports.
-  Remote database migration, bank acceptance and actual government validator/
-  portal acceptance have not been performed.
+  Configured remote database migration and read-only schema verification are
+  complete. Bank acceptance and actual government validator/portal acceptance
+  have not been performed.
+- Tax register now uses the existing shared worksheet batch loader instead of
+  querying every employee independently. Isolated integration verifies identical
+  worksheet arithmetic and 22 batch queries versus 40 repeated queries for the
+  two-employee fixture.
+- Post-migration authenticated HTTP smoke checks passed for 15 main pages and
+  statutory operation tabs, using a local production build against the
+  configured remote database. The public deployed URL was not supplied, so
+  these checks do not assert that its environment/storage settings match.

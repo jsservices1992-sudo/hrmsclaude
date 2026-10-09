@@ -699,9 +699,10 @@ export async function loadCompanyTax(
     )
     .orderBy(asc(s.employees.empCode));
 
+  const worksheets = await loadWorksheetsFor(employees.map(emp => emp.id), financialYear);
   const rows: TaxRow[] = [];
   for (const emp of employees) {
-    const w = await loadWorksheet(emp.id, financialYear);
+    const w = worksheets.get(emp.id);
     if (!w) continue;
     rows.push({
       employeeId: emp.id,

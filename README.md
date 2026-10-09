@@ -96,6 +96,7 @@ putting anyone's payroll in here.
 ```bash
 npm run dev              # development server
 npm run build            # production build
+npm run db:check         # read-only check for missing release tables/columns
 npm run db:push          # apply the schema
 npm run db:bootstrap     # create the first company and administrator
 npx tsc --noEmit -p .    # typecheck

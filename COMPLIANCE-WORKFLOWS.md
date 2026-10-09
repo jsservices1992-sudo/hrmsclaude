@@ -55,11 +55,19 @@ and historical-evidence findings; see `PAYROLL-AUDIT-REMEDIATION.md`.
 
 ## Deployment
 
-The configured remote database was not changed. Back up and rehearse migrations
-0027-0034 on staging before deploying this application version. Migration 0034
+On 10 October 2026, migrations through 0034 were applied to the configured
+remote database after a restricted-permission local PostgreSQL archive backup.
+`npm run db:check` confirms that all mapped application columns are present.
+Other environments must still be backed up and migrated before deploying this
+application version. Migration 0034
 makes minimum-wage version uniqueness company/zone-aware. Use durable production
 document storage and preserve evidence permissions. Reconcile historical
 bookings and balances before authorising production payroll.
+
+The health endpoint now checks every mapped column, including the compliance
+tables, rather than declaring an old populated database schema healthy. Run
+`npm run db:check` as a read-only rollout check. Document-store configuration
+and legal/historical evidence acceptance remain independent requirements.
 
 The isolated integration scripts intentionally require PostgreSQL on
 `127.0.0.1:55439` and `COMPLIANCE_TEST_FIXTURES=yes`; the browser test targets
