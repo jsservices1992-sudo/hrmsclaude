@@ -310,7 +310,7 @@ test("over-deduction across the year resolves to a refund, not a zero", () => {
   assert.equal(r.isRefund, true);
   assert.ok(r.tdsOnSettlementPaise < 0);
   assert.ok(
-    r.warnings.some((w) => w.includes("must be paid with the settlement")),
+    r.warnings.some((w) => w.includes("not automatically added to the settlement payout")),
   );
 });
 
@@ -394,7 +394,7 @@ test("past the SLA is overdue, and says by how much", () => {
     settled: false,
   });
   assert.equal(a.status, "overdue");
-  assert.match(a.note, /past the 45-day settlement commitment/);
+  assert.match(a.note, /past the 45-day wage-payment deadline/);
 });
 
 test("gratuity has its own faster clock and wins over the SLA", () => {

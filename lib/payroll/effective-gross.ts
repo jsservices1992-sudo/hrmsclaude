@@ -28,11 +28,14 @@ export function effectiveMonthlyGross(args: {
     employmentType?: string | null;
     gender?: "female" | "male" | "other" | null;
     employerNpsBps?: number | null;
+    esicDisabilityEligible?: boolean;
   };
   stateCode: string;
   month: number;
 }): { grossPaise: Paise; anchors?: Map<string, Paise> } {
-  const { salary, statutory } = args;
+  const { salary } = args;
+  const statutory = args.employee.esicDisabilityEligible ? { ...args.statutory,
+    esic: { ...args.statutory.esic, wageThresholdPaise: args.statutory.esic.disabilityWageThresholdPaise ?? 2500000 } } : args.statutory;
   if (salary.payMode !== "take_home" || !salary.targetTakeHomePaise) {
     return { grossPaise: salary.monthlyGrossPaise };
   }

@@ -880,8 +880,13 @@ export default async function EmployeeDetailPage(
                   vpfPercent={detail.employee.vpfPercent}
                   employerNpsBps={detail.employee.employerNpsBps}
                   pran={detail.employee.pran}
+                  esicDisabilityEligible={detail.employee.esicDisabilityEligible}
+                  esicDisabilityCertificateRef={detail.employee.esicDisabilityCertificateRef}
                   pfMaster={{
                     epsApplicability: detail.employee.epsApplicability,
+                    epsMember: detail.employee.epsMember,
+                    epsJoiningWagePaise: detail.employee.epsJoiningWagePaise,
+                    epsRevisionWagePaise: detail.employee.epsRevisionWagePaise,
                     edliApplicability: detail.employee.edliApplicability,
                     pfContributionBasis: detail.employee.pfContributionBasis,
                   }}

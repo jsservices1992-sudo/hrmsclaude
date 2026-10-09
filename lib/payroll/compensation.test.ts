@@ -773,12 +773,12 @@ describe("Minimum wage", () => {
     assert.equal(nov.compliant, false, "₹16,000 applies from October");
   });
 
-  test("no rule configured passes, but says so", () => {
+  test("no rule configured is not a compliance pass", () => {
     const r = checkMinimumWage({
       stateCode: "UP", skillCategory: "skilled",
       monthlyGrossPaise: R(9000), asOf: "2026-09-30", rules,
     });
-    assert.equal(r.compliant, true);
+    assert.equal(r.compliant, false);
     assert.match(r.message, /No minimum wage configured/);
   });
 });

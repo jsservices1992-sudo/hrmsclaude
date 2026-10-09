@@ -8,9 +8,20 @@ import {
   recordRecovery,
   writeOffDemand,
   reopenSettlement,
+  recordSettlementPayment,
   type FnfState,
 } from "./fnf-actions";
 import { Button, Input, Select, FormFeedback } from "@/components/console/ui";
+
+export function PaymentForm({ exitCaseId }: { exitCaseId: string }) {
+  const [state, action] = useActionState<FnfState, FormData>(recordSettlementPayment, {});
+  return <form action={action} className="flex flex-wrap items-end gap-3">
+    <input type="hidden" name="exitCaseId" value={exitCaseId} />
+    <label className="flex flex-col gap-1 text-xs">Payment date<Input type="date" name="paidAt" required /></label>
+    <label className="flex flex-col gap-1 text-xs">Bank / cheque reference<Input name="reference" minLength={5} required /></label>
+    <Button type="submit">Record payment</Button><FormFeedback state={state} />
+  </form>;
+}
 
 export function PrepareForm({ exitCaseId }: { exitCaseId: string }) {
   const [state, action] = useActionState<FnfState, FormData>(

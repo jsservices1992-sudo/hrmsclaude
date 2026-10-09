@@ -301,6 +301,8 @@ export function PayrollOverridesForm({
   applicability,
   employerNpsBps = 0,
   pran = null,
+  esicDisabilityEligible = false,
+  esicDisabilityCertificateRef = null,
   pfMaster = { epsApplicability: "auto", edliApplicability: "auto", pfContributionBasis: "company" },
 }: {
   employeeId: string;
@@ -308,7 +310,10 @@ export function PayrollOverridesForm({
   vpfPercent: number;
   employerNpsBps?: number;
   pran?: string | null;
-  pfMaster?: { epsApplicability: string; edliApplicability: string; pfContributionBasis: string };
+  esicDisabilityEligible?: boolean;
+  esicDisabilityCertificateRef?: string | null;
+  pfMaster?: { epsApplicability: string; edliApplicability: string; pfContributionBasis: string;
+    epsMember?: boolean | null; epsJoiningWagePaise?: number | null; epsRevisionWagePaise?: number | null };
   taxRegime: string;
   hadPriorPfMembership: boolean;
   applicability: {
@@ -325,6 +330,21 @@ export function PayrollOverridesForm({
   return (
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="employeeId" value={employeeId} />
+      <div className="grid sm:grid-cols-3 gap-3">
+        <label className="flex flex-col gap-1"><span className="text-xs font-medium text-ink-2">EPS membership before 17 Sep 2026 / at joining</span>
+          <Select name="epsMember" defaultValue={pfMaster.epsMember == null ? "unknown" : pfMaster.epsMember ? "yes" : "no"}>
+            <option value="unknown">Not verified</option><option value="yes">EPS member</option><option value="no">Not an EPS member</option>
+          </Select></label>
+        <label className="flex flex-col gap-1"><span className="text-xs font-medium text-ink-2">EPS joining wage (Rs.)</span>
+          <Input type="number" min={0} step="0.01" name="epsJoiningWage" defaultValue={pfMaster.epsJoiningWagePaise == null ? "" : pfMaster.epsJoiningWagePaise / 100} /></label>
+        <label className="flex flex-col gap-1"><span className="text-xs font-medium text-ink-2">Wage on 17 Sep 2026 (Rs.)</span>
+          <Input type="number" min={0} step="0.01" name="epsRevisionWage" defaultValue={pfMaster.epsRevisionWagePaise == null ? "" : pfMaster.epsRevisionWagePaise / 100} /></label>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <input type="hidden" name="esicDisabilitySettings" value="1" />
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="esicDisabilityEligible" defaultChecked={esicDisabilityEligible} />Verified PwD eligibility for ESI</label>
+        <label className="flex flex-col gap-1 text-xs">Disability certificate reference<Input name="esicDisabilityCertificateRef" defaultValue={esicDisabilityCertificateRef ?? ""} /></label>
+      </div>
       <div className="grid sm:grid-cols-3 gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium text-ink-2">Provident fund</span>

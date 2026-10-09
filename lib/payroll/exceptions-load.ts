@@ -11,6 +11,10 @@ import { minimumWageFacts, assessStatutoryBonus, checkWageCodeSplit } from "./co
 import { codeWageSplit, esicRuleFor } from "./esic-wage";
 import { loadStatutoryConfig } from "./load";
 import { effectiveAsOf } from "./statutory";
+import { epsEvidenceNeedsReview } from "./eps-evidence";
+import * as compliance from "@/db/compliance-schema";
+import { epsHistoryDigest, prepareOvertime } from "@/lib/statutory/operations";
+import { nationalFloor } from "@/lib/statutory/workflow-rules";
 
 function periodEndDate(year: number, month: number) {
   const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -50,6 +54,7 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
         code: s.payrollLines.code,
         kind: s.payrollLines.kind,
         category: s.payrollLines.category,
+        esicTreatment: s.payrollLines.esicTreatment,
         amountPaise: s.payrollLines.amountPaise,
         basis: s.payrollLines.basis,
       })
@@ -267,21 +272,20 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
         zone: e?.branchId ? zoneByBranch.get(e.branchId) ?? null : null,
         skillCategory:
           e?.skillCategory ?? (e?.gradeId ? skillByGrade.get(e.gradeId) ?? null : null),
-        monthlyGrossPaise: rateByEmployee.get(sm.employeeId) ?? null,
+        monthlyGrossPaise: sm.grossPaise,
         /* The basic on the run is what this month paid. It equals the
            full-month rate only when nothing was prorated. */
         monthlyBasicPaise:
-          sm.lopDays === 0 && sm.paidDays === sm.totalDays
-            ? /* Under the Code on Wages the floor is measured on wages —
+          /* Under the Code on Wages the floor is measured on wages —
                  basic, DA and every allowance not on the exclusion list,
                  special allowance and a monthly bonus included — the same
                  wage PF is charged on. Basic alone flagged people whose
                  special allowance already carried them well past it. */
               esicRuleFor(asOf) === "social_security_code"
               ? codeWageSplit(linesByEmployee.get(sm.employeeId) ?? [], components).wagesPaise
-              : basicByEmployee.get(sm.employeeId) ?? null
-            : null,
-        rules: statutory.minimumWages,
+              : basicByEmployee.get(sm.employeeId) ?? null,
+        rules: statutory.minimumWages.map(r => ({ ...r, monthlyPaise:
+          Math.round(r.monthlyPaise * (sm.totalDays > 0 ? sm.paidDays / sm.totalDays : 0)) })),
         asOf,
         companyId: run.companyId,
       })),
@@ -313,7 +317,7 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
     return current !== undefined && Math.abs(current - sm.lopDays) > 0.001;
   });
 
-  return detectExceptions(rows, {
+  const findings = detectExceptions(rows, {
     year: run.periodYear,
     month: run.periodMonth,
     bonusUnassessable,
@@ -322,4 +326,42 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
     ptUnmodelledStates: statesInRun,
     unverifiedStatutoryReferences,
   });
+  const notifications = await db.select().from(compliance.ruleNotifications);
+  const registers = await db.select().from(compliance.complianceRegisters).where(eq(compliance.complianceRegisters.companyId, run.companyId));
+  for (const summary of summaries) {
+    const employee = empById.get(summary.employeeId);
+    if (!employee) continue;
+    const who = { employeeId: employee.id, empCode: employee.empCode, name: `${employee.firstName} ${employee.lastName}` };
+    const state = employee.branchId ? stateByBranch.get(employee.branchId) ?? "" : "";
+    const floor = nationalFloor(notifications, state, asOf);
+    const proratedFloor = floor === null ? null : Math.round(floor * (summary.totalDays > 0 ? summary.paidDays / summary.totalDays : 0));
+    if (!isStipendiary(employee.employmentType) && proratedFloor !== null
+      && codeWageSplit(linesByEmployee.get(employee.id) ?? [], components).wagesPaise < proratedFloor) findings.push({ ...who, code: "below_minimum_wage", severity: "critical",
+        message: "Saved statutory wages are below the reviewed notified national floor for this period. Correct the salary before approval." });
+    const overtime = registers.find(r => r.kind === "overtime" && r.employeeId === employee.id && r.periodYear === run.periodYear && r.periodMonth === run.periodMonth && r.status === "posted");
+    const coverage = registers.find(r => r.kind === "worker_coverage" && r.employeeId === employee.id && r.status === "posted" && JSON.parse(r.snapshotJson).effectiveFrom <= asOf);
+    if (["permanent", "probation", "contract"].includes(employee.employmentType) && !coverage) findings.push({ ...who,
+      code: "statutory_workflow_incomplete", severity: "critical", message: "Worker/overtime coverage has not been reviewed. Record applicable establishment/job classification and post coverage evidence under Compliance operations." });
+    if (coverage && JSON.parse(coverage.snapshotJson).overtimeCovered) {
+      try {
+        const computed = await prepareOvertime(run.companyId, employee.id, run.periodYear, run.periodMonth, overtime ? JSON.parse(overtime.snapshotJson).divisor : 26);
+        const saved = (linesByEmployee.get(employee.id) ?? []).filter(l => l.code === "SYS_OT").reduce((sum, l) => sum + l.amountPaise, 0);
+        if (computed.amountPaise > 0 && (!overtime || computed.inputDigest !== JSON.parse(overtime.snapshotJson).inputDigest || saved !== computed.amountPaise)) {
+          findings.push({ ...who, code: "statutory_workflow_incomplete", severity: "critical", message: "Statutory overtime is missing, stale or not in this payroll. Prepare/post the attendance-derived overtime register under Compliance operations, then recalculate." });
+        }
+      } catch (error) { findings.push({ ...who, code: "statutory_workflow_incomplete", severity: "critical", message: error instanceof Error ? error.message : "Overtime attendance/evidence could not be verified" }); }
+    }
+    if (!pfByEmployee.has(employee.id)) continue;
+    if (epsEvidenceNeedsReview(employee, asOf)) findings.push({ ...who, code: "eps_membership_unverified", severity: "critical",
+      message: "UAN does not prove EPS membership. Open this employee's Payroll settings and record EPS membership / joining wage and, for pre-17 Sep 2026 non-EPS employees, their wage on 17 Sep 2026. Recalculate after saving." });
+    const epsDigest = epsHistoryDigest(employee);
+    if (!registers.some(r => r.kind === "eps_review" && r.employeeId === employee.id && r.status === "posted" && JSON.parse(r.snapshotJson).employeeDigest === epsDigest)) findings.push({ ...who,
+      code: "statutory_workflow_incomplete", severity: "critical", message: "EPS historical evidence/enrolment has not been reviewed for these settings. Complete and post EPS evidence under Compliance operations." });
+    const takeHome = salaries.some(row => row.employeeId === employee.id && row.effectiveFrom <= asOf && row.payMode === "take_home" && row.effectiveTo === null);
+    if ((statutory.epfPeriods?.length ?? 0) > 1 && (summary.lopDays > 0 || takeHome)) findings.push({ ...who,
+      code: "midperiod_pf_allocation_unverified", severity: "critical",
+      message: takeHome ? "PF parameters changed during this month. The take-home reverse solver does not yet use segmented ceilings; approval is blocked until that integration is complete."
+        : "PF parameters changed during this month and LOP is present. Monthly LOP cannot establish which ceiling period lost wages. Dated segment allocation must be implemented and reviewed before approval." });
+  }
+  return findings;
 }

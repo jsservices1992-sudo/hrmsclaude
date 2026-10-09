@@ -979,14 +979,14 @@ export type MinimumWageCheck = {
 };
 
 /** The floor in force for a state and skill on a date, if one is set. */
-export function applicableMinimumWage(
-  rules: MinimumWageRule[],
+export function applicableMinimumWage<T extends MinimumWageRule>(
+  rules: T[],
   stateCode: string,
   skillCategory: MinimumWageRule["skillCategory"],
   asOf: string,
   zone?: string | null,
   companyId?: string | null,
-): MinimumWageRule | null {
+): T | null {
   const forState = rules.filter(
     (r) =>
       r.stateCode === stateCode &&
@@ -1102,26 +1102,23 @@ export function checkMinimumWage(args: {
   monthlyGrossPaise: Paise;
   asOf: string;
   rules: MinimumWageRule[];
+  zone?: string | null;
+  companyId?: string | null;
+  statutoryWagePaise?: Paise;
 }): MinimumWageCheck {
-  const applicable = args.rules
-    .filter(
-      (r) =>
-        r.stateCode === args.stateCode &&
-        r.skillCategory === args.skillCategory &&
-        r.effectiveFrom <= args.asOf,
-    )
-    .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0];
+  const applicable = applicableMinimumWage(args.rules, args.stateCode, args.skillCategory,
+    args.asOf, args.zone ?? null, args.companyId ?? null);
 
   if (!applicable) {
     return {
-      compliant: true,
+      compliant: false,
       applicablePaise: null,
       shortfallPaise: 0,
       message: `No minimum wage configured for ${args.skillCategory.replace("_", " ")} in ${args.stateCode}`,
     };
   }
 
-  const shortfall = applicable.monthlyPaise - args.monthlyGrossPaise;
+  const shortfall = applicable.monthlyPaise - (args.statutoryWagePaise ?? args.monthlyGrossPaise);
   if (shortfall > 0) {
     return {
       compliant: false,

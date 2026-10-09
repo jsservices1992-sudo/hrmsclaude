@@ -412,6 +412,13 @@ test("a rounding adjustment is a deduction whichever way it went", () => {
 });
 
 describe("Working a weekly off", () => {
+  test("posted statutory overtime does not also receive the legacy single-rate off-day payment", () => {
+    const r = computeEmployeePay({ employee: { ...employee, monthlyGrossPaise: 30_000_00, offDaysWorked: 2,
+      oneOffLines: [{ code: "SYS_OT", label: "Statutory overtime", category: "ot", kind: "earning", amountPaise: 4_000_00, esicTreatment: "overtime" }] },
+      company: { ...company, weeklyOffWorkTreatment: "extra_day" }, statutory, year: 2026, month: 9 });
+    assert.equal(r.grossPaise, 34_000_00);
+    assert.ok(!r.lines.some(l => l.code === "OFF_DAY_WORK"));
+  });
   const withTreatment = (
     treatment: "ignore" | "extra_day" | "comp_off",
     offDaysWorked: number,

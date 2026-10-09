@@ -20,7 +20,7 @@ if (!url) {
 const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
 
 export default {
-  schema: "./db/schema.ts",
+  schema: ["./db/schema.ts", "./db/compliance-schema.ts"],
   out: "./db/migrations",
   dialect: "postgresql",
   dbCredentials: {

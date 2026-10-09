@@ -1416,7 +1416,7 @@ CREATE INDEX "tax_decl_fy_idx" ON "tax_declarations" USING btree ("financial_yea
 CREATE INDEX "tax_perq_idx" ON "tax_perquisites" USING btree ("employee_id","financial_year");--> statement-breakpoint
 CREATE UNIQUE INDEX "tax_proof_idx" ON "tax_proofs" USING btree ("declaration_id","section");--> statement-breakpoint
 CREATE INDEX "tax_proof_status_idx" ON "tax_proofs" USING btree ("status");--> statement-breakpoint
-CREATE UNIQUE INDEX "tds_ledger_idx" ON "tds_ledger" USING btree ("employee_id","financial_year","month");--> statement-breakpoint
+CREATE INDEX "tds_ledger_idx" ON "tds_ledger" USING btree ("employee_id","financial_year","month");--> statement-breakpoint
 CREATE UNIQUE INDEX "users_email_idx" ON "users" USING btree ("email");--> statement-breakpoint
 CREATE UNIQUE INDEX "variable_pay_type_idx" ON "variable_pay_types" USING btree ("company_id","code");--> statement-breakpoint
 CREATE INDEX "webhook_deliveries_sub_idx" ON "webhook_deliveries" USING btree ("subscription_id");--> statement-breakpoint

@@ -141,7 +141,7 @@ export default async function StatutoryPage(
           </>
         }
         actions={
-          <MonthNav year={year} month={month} href={(y, m) => `/console/statutory?company=${companyId}&year=${y}&month=${m}`} />
+          <div className="flex flex-wrap items-center gap-4"><a className="text-sm font-semibold text-indigo" href={`/console/statutory/operations?${query}`}>Compliance operations</a><MonthNav year={year} month={month} href={(y, m) => `/console/statutory?company=${companyId}&year=${y}&month=${m}`} /></div>
         }
       />
 

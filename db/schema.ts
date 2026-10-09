@@ -8,6 +8,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /* ------------------------------------------------------------------
    Conventions
@@ -476,6 +477,11 @@ export const employees = pgTable(
     pran: text("pran"),
     /** EPF master: EPS Applicable. "auto" is the statutory test (58, excluded voluntary members). */
     epsApplicability: text("eps_applicability", { enum: ["auto", "yes", "no"] }).notNull().default("auto"),
+    epsMember: boolean("eps_member"),
+    esicDisabilityEligible: boolean("esic_disability_eligible").notNull().default(false),
+    esicDisabilityCertificateRef: text("esic_disability_certificate_ref"),
+    epsJoiningWagePaise: bigint("eps_joining_wage_paise", { mode: "number" }),
+    epsRevisionWagePaise: bigint("eps_revision_wage_paise", { mode: "number" }),
     /** EPF master: EDLI Applicable. */
     edliApplicability: text("edli_applicability", { enum: ["auto", "no"] }).notNull().default("auto"),
     /** EPF master: contribute on the statutory ceiling, on the higher actual wage, or as the company does. */
@@ -707,7 +713,7 @@ export const payComponents = pgTable(
      * rest — so a component nobody has revisited is still computed right.
      */
     esicTreatment: text("esic_treatment", {
-      enum: ["included", "excluded_50", "excluded", "overtime"],
+      enum: ["included", "excluded_50", "excluded", "not_remuneration", "overtime"],
     }),
     ptBase: boolean("pt_base").notNull().default(true),
     /** Counts toward the Payment of Bonus Act wage. */
@@ -972,7 +978,8 @@ export const minimumWages = pgTable(
     verified: boolean("verified").notNull().default(false),
     source: text("source"),
   },
-  (t) => [index("minimum_wages_state_idx").on(t.stateCode, t.effectiveFrom)],
+  (t) => [index("minimum_wages_state_idx").on(t.stateCode, t.effectiveFrom),
+    uniqueIndex("minimum_wages_scoped_unique_idx").on(sql`coalesce(${t.companyId}, '')`, t.stateCode, sql`coalesce(${t.zone}, '')`, t.skillCategory, t.effectiveFrom)],
 );
 
 /* Effective-dated salary assignment — a revision is a new row, never an edit */
@@ -1223,6 +1230,9 @@ export const payrollLines = pgTable(
     category: text("category", {
       enum: ["ot", "bonus", "incentive", "arrear", "deduction", "other"],
     }),
+    esicTreatment: text("esic_treatment", {
+      enum: ["included", "excluded_50", "excluded", "not_remuneration", "overtime"],
+    }),
     amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
     /** How this figure was derived — powers the explainability requirement. */
     basis: text("basis"),
@@ -1289,7 +1299,7 @@ export const variablePayTypes = pgTable(
        reads it from the category: overtime as overtime, a bonus as an
        exclusion under the 50% rule, anything else as wages. */
     esicTreatment: text("esic_treatment", {
-      enum: ["included", "excluded_50", "excluded", "overtime"],
+      enum: ["included", "excluded_50", "excluded", "not_remuneration", "overtime"],
     }),
     /* Raised by the system rather than chosen by a person — arrears come
        from a backdated revision. Hidden from the entry forms, shown in
@@ -1336,9 +1346,12 @@ export const payrollAdjustments = pgTable(
     reason: text("reason"),
     createdBy: text("created_by").notNull(),
     createdAt: text("created_at").notNull(),
+    sourceKey: text("source_key"),
+    esicTreatment: text("esic_treatment", { enum: ["included", "excluded_50", "excluded", "not_remuneration", "overtime"] }),
   },
   (t) => [
     index("payroll_adjustments_period_idx").on(t.employeeId, t.periodYear, t.periodMonth),
+    uniqueIndex("payroll_adjustment_source_idx").on(t.sourceKey),
   ],
 );
 
@@ -2135,8 +2148,11 @@ export const fnfSettlements = pgTable(
     /** FR-PAY-21: release is gated on clearance unless overridden. */
     clearanceOverriddenBy: text("clearance_overridden_by"),
     clearanceOverrideReason: text("clearance_override_reason"),
-    slaDays: integer("sla_days").notNull().default(45),
+    slaDays: integer("sla_days").notNull().default(2),
     releasedAt: text("released_at"),
+    paidAt: text("paid_at"),
+    paymentReference: text("payment_reference"),
+    computationVersion: integer("computation_version").notNull().default(1),
     /** FR-PAY-20: a demand that is forgiven rather than collected. */
     writtenOffPaise: bigint("written_off_paise", { mode: "number" }).notNull().default(0),
     writeOffReason: text("write_off_reason"),
@@ -2577,11 +2593,13 @@ export const tdsLedger = pgTable(
     tdsPaise: bigint("tds_paise", { mode: "number" }).notNull(),
     /** Tax configuration set used, for FR-AUD-2 reproducibility. */
     configVersion: text("config_version").notNull(),
+    sourceKey: text("source_key").notNull(),
     runId: text("run_id").references(() => payrollRuns.id),
     computedAt: text("computed_at").notNull(),
   },
   (t) => [
-    uniqueIndex("tds_ledger_idx").on(t.employeeId, t.financialYear, t.month),
+    uniqueIndex("tds_ledger_source_idx").on(t.employeeId, t.sourceKey),
+    index("tds_ledger_period_idx").on(t.employeeId, t.financialYear, t.month),
   ],
 );
 

@@ -26,6 +26,7 @@ import { recordAuditAs } from "@/lib/audit/log";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { isRecalculable } from "@/lib/payroll/run-status";
 import { periodState } from "@/lib/payroll/period-lock";
+import { bookPayrollTds, reversePayrollTds } from "@/lib/tax/book";
 
 /**
  * Delegates to the shared recorder so every entry carries the actor's
@@ -187,6 +188,7 @@ export async function calculateRun(
             label: l.label,
             kind: l.kind,
             category: l.category ?? null,
+            esicTreatment: l.esicTreatment ?? null,
             amountPaise: l.amountPaise,
             basis: l.basis,
             sequence: i,
@@ -215,7 +217,7 @@ export async function calculateRun(
             financialYear,
             period,
             covered: r.esicCoveredNextPeriod,
-            decidedOnWagePaise: r.grossPaise,
+            decidedOnWagePaise: r.esicCoverageWagePaise ?? 0,
             decidedAt: now,
           });
       }
@@ -352,6 +354,8 @@ export async function approveRun(
   // Booked in the same transaction as the status change, so a run can
   // never be approved without its recoveries landing — or the reverse.
   const booking = await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(s.payrollRuns).where(eq(s.payrollRuns.id, runId)).for("update");
+    if (!locked || !["calculated", "in_review"].includes(locked.status)) return null;
     await tx.update(s.payrollRuns)
       .set({
         status: "approved",
@@ -360,6 +364,7 @@ export async function approveRun(
       })
       .where(eq(s.payrollRuns.id, runId));
 
+    await bookPayrollTds(tx, run);
     return await bookRecoveriesForRun(tx, {
       runId,
       year: run.periodYear,
@@ -367,6 +372,7 @@ export async function approveRun(
       actor: user.email,
     });
   });
+  if (!booking) return { error: "This run has already changed status. Refresh before approving." };
 
   await audit({
     actor: user.email,
@@ -491,9 +497,9 @@ export async function reopenRun(
     run.status === "closed";
 
   if (alreadyBooked) {
-    await db.transaction(async (tx) =>
-      reverseRecoveriesForRun(tx, { runId: run.id, actor: user.email }),
-    );
+    await db.transaction(async (tx) => {
+      await reverseRecoveriesForRun(tx, { runId: run.id, actor: user.email });
+    });
   }
 
   const preview = await previewRun({
@@ -508,6 +514,7 @@ export async function reopenRun(
   const newVersion = run.version + 1;
 
   await db.transaction(async (tx) => {
+    if (alreadyBooked) await reversePayrollTds(tx, run.id);
     await tx.insert(s.payrollRuns)
       .values({
         id: newId,
@@ -553,6 +560,7 @@ export async function reopenRun(
             label: l.label,
             kind: l.kind,
             category: l.category ?? null,
+            esicTreatment: l.esicTreatment ?? null,
             amountPaise: l.amountPaise,
             basis: l.basis,
             sequence: i,

@@ -26,6 +26,8 @@ export type EsicTreatment =
   | "excluded_50"
   /** Never wages: reimbursements, gratuity on exit, retrenchment pay. */
   | "excluded"
+  /** Annual performance incentive: outside remuneration and the add-back. */
+  | "not_remuneration"
   /** Overtime — its own rule, because coverage and contribution treat it differently. */
   | "overtime";
 
@@ -33,6 +35,7 @@ export const ESIC_TREATMENTS: { value: EsicTreatment; label: string; hint: strin
   { value: "included", label: "Included", hint: "Basic, DA, retaining allowance" },
   { value: "excluded_50", label: "Excluded, subject to the 50% rule", hint: "HRA, conveyance, commission" },
   { value: "excluded", label: "Fully excluded", hint: "Reimbursements, gratuity, retrenchment" },
+  { value: "not_remuneration", label: "Annual performance incentive", hint: "Outside remuneration and the 50% test" },
   { value: "overtime", label: "Overtime", hint: "Left out of the ₹21,000 test" },
 ];
 
@@ -257,7 +260,7 @@ export function describeEsicWage(w: EsicWage): string {
  * remuneration and sit on neither side.
  */
 export function codeWageSplit(
-  lines: { code: string; kind: string; category?: string | null; amountPaise: Paise }[],
+  lines: { code: string; kind: string; category?: string | null; esicTreatment?: EsicTreatment | null; amountPaise: Paise }[],
   components: {
     code: string;
     esicTreatment?: EsicTreatment | null;
@@ -272,9 +275,9 @@ export function codeWageSplit(
   for (const l of lines) {
     if (l.kind !== "earning") continue;
     const comp = byCode.get(l.code);
-    const t: EsicTreatment = comp
+    const t: EsicTreatment = l.esicTreatment ?? (comp
       ? comp.esicTreatment ?? defaultEsicTreatment(comp.code, comp.esicBase, comp.gratuityBase)
-      : esicTreatmentForCategory(l.category ?? undefined);
+      : esicTreatmentForCategory(l.category ?? undefined));
     if (t === "included") included += l.amountPaise;
     else if (t === "excluded_50" || t === "overtime") excluded += l.amountPaise;
   }
@@ -322,7 +325,7 @@ export function gratuityWage(
       continue;
     }
     const t = comp.esicTreatment ?? defaultEsicTreatment(comp.code, comp.esicBase, comp.gratuityBase);
-    if (t === "excluded" || t === "overtime") continue;
+    if (t === "excluded" || t === "not_remuneration" || t === "overtime") continue;
     pay += l.amountPaise;
     if (t === "included") included += l.amountPaise;
   }

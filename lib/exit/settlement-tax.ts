@@ -459,7 +459,7 @@ export function computeSeparationTax(
 
   if (stillToDeduct < 0) {
     warnings.push(
-      `More tax has been deducted this year than the final computation requires. ₹${(Math.abs(stillToDeduct) / 100).toFixed(2)} is a refund, and it must be paid with the settlement rather than left for the employee to claim.`,
+      `More tax has been deducted this year than the final computation requires. Reconcile the potential adjustment of ₹${(Math.abs(stillToDeduct) / 100).toFixed(2)} against the TDS deposits; it is not automatically added to the settlement payout.`,
     );
   }
 
@@ -524,14 +524,31 @@ export function assessAgeing(args: {
   gratuityDueWithinDays?: number;
   gratuityPayable: boolean;
   settled: boolean;
+  workingDays?: boolean;
+  holidays?: string[];
+  weeklyOffDays?: number[];
 }): SettlementAgeing {
+  if (!Number.isInteger(args.slaDays) || args.slaDays < 0 || args.slaDays > 366) {
+    throw new Error("Settlement SLA must be between 0 and 366 days");
+  }
   const gratuityDays = args.gratuityDueWithinDays ?? 30;
   const elapsed = Math.round(
     (Date.parse(args.today + "T00:00:00Z") -
       Date.parse(args.lastWorkingDay + "T00:00:00Z")) /
       86_400_000,
   );
-  const remaining = args.slaDays - elapsed;
+  let due = new Date(args.lastWorkingDay + "T00:00:00Z");
+  let counted = 0;
+  const holidaySet = new Set(args.holidays ?? []);
+  const offDays = new Set(args.weeklyOffDays ?? [0]);
+  if (args.workingDays && (offDays.size >= 7 || [...offDays].some(day => !Number.isInteger(day) || day < 0 || day > 6))) {
+    throw new Error("Settlement calendar must have at least one working day each week");
+  }
+  while (counted < args.slaDays) {
+    due = new Date(due.getTime() + 86_400_000);
+    if (!args.workingDays || (!offDays.has(due.getUTCDay()) && !holidaySet.has(due.toISOString().slice(0, 10)))) counted++;
+  }
+  const remaining = Math.round((due.getTime() - Date.parse(args.today + "T00:00:00Z")) / 86_400_000);
 
   if (args.settled) {
     return {
@@ -556,14 +573,14 @@ export function assessAgeing(args: {
     };
   }
 
-  if (elapsed > args.slaDays) {
+  if (remaining < 0) {
     return {
       daysSinceLastWorkingDay: elapsed,
       slaDays: args.slaDays,
       daysRemaining: remaining,
       gratuityDueWithinDays: gratuityDays,
       status: "overdue",
-      note: `${elapsed - args.slaDays} day(s) past the ${args.slaDays}-day settlement commitment.`,
+      note: `${Math.abs(remaining)} day(s) past the ${args.slaDays}-${args.workingDays ? "working-" : ""}day wage-payment deadline.`,
     };
   }
 

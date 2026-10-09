@@ -202,14 +202,14 @@ describe("Minimum wage", () => {
     assert.equal(found.filter((e) => e.code === "below_minimum_wage").length, 0);
   });
 
-  test("basic under the floor is raised, but does not block", () => {
+  test("statutory wages below the floor block despite sufficient gross", () => {
     const found = detectExceptions(
       [row({ ...floor, monthlyGrossPaise: 30_000_00, monthlyBasicPaise: 15_000_00 })],
       ctx,
     );
     const hit = found.find((e) => e.code === "basic_below_minimum_wage");
     assert.ok(hit);
-    assert.equal(hit.severity, "warning", "an interpretation is for a human, not a gate");
+    assert.equal(hit.severity, "critical");
   });
 
   test("a prorated month says nothing about basic rather than guessing", () => {

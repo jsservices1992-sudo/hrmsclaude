@@ -78,7 +78,7 @@ export const CENTRAL_FILINGS: FilingRule[] = [
   },
   {
     kind: "tds_24q",
-    label: "Form 24Q quarterly return",
+    label: "Form 138 quarterly salary TDS return (formerly 24Q)",
     authority: "Income Tax",
     frequency: "quarterly",
     dueDay: 31,

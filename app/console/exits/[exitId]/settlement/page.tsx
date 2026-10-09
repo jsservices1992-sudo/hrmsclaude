@@ -17,6 +17,7 @@ import {
   RecordRecoveryForm,
   WriteOffForm,
   ReopenForm,
+  PaymentForm,
 } from "../../fnf-forms";
 import { NoticeTreatmentForm } from "../../start-form";
 import { PageHeader, Card, Badge, type BadgeTone } from "@/components/console/ui";
@@ -441,6 +442,10 @@ export default async function SettlementPage(
             {stored?.status === "draft" && fnf.gate.canRelease && (
               <ReleaseForm exitCaseId={exitId} />
             )}
+            {stored?.status === "approved" && stored.computationVersion === 2 && <>
+              <Link href={`/console/exits/${exitId}/payout`} className="text-sm font-medium text-indigo">Download F&amp;F payout file</Link>
+              <PaymentForm exitCaseId={exitId} />
+            </>}
             {stored?.status === "draft" && !fnf.gate.canRelease && (
               <p className="text-sm text-rust max-w-[70ch]">
                 Cannot be released yet — {fnf.gate.reason}

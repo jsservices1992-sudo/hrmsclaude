@@ -203,7 +203,9 @@ export async function buildEpfReturn(
     const pension = pensionEligibility({
       age: ageAsOfMonth(emp.dateOfBirth, register.run.periodYear, register.run.periodMonth),
       epsApplicability: emp.epsApplicability,
-      existingMember: emp.hadPriorPfMembership || Boolean(emp.uan?.trim()),
+      existingMember: emp.epsMember ?? emp.epsApplicability === "yes",
+      dateOfJoining: emp.dateOfJoining, periodEnd,
+      joiningWagePaise: emp.epsJoiningWagePaise, revisionWagePaise: emp.epsRevisionWagePaise,
       pfWagePaise,
       coverageCeilingPaise: statutory.epf.coverageCeilingPaise ?? statutory.epf.wageCeilingPaise,
     });
@@ -218,6 +220,9 @@ export async function buildEpfReturn(
         empCode: emp.empCode,
         grossWagesPaise: m.grossPaise,
         epfWagesPaise: pfWagePaise,
+        pensionWagesPaise: m.amounts["EPS_WAGES"],
+        edliWagesPaise: m.amounts["EDLI_WAGES"],
+        pensionContributionPaise: m.amounts["EPS_WAGES"] !== undefined ? m.amounts[CODE.pension] ?? 0 : undefined,
         employeeContributionPaise: m.amounts[CODE.pfEmployee] ?? 0,
         employerContributionPaise:
           (m.amounts[CODE.pfEmployer] ?? 0) + (m.amounts[CODE.pension] ?? 0),

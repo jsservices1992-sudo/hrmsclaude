@@ -607,6 +607,21 @@ export async function setPayrollOverrides(
   const existingRaw = fd.get("existingEpfMember");
   const hadPriorPfMembership = existingRaw === null ? employee.hadPriorPfMembership : existingRaw === "yes";
   const epsApplicability = pick("epsApplicability", ["auto", "yes", "no"] as const, employee.epsApplicability);
+  const esicDisabilityEligible = fd.has("esicDisabilitySettings") ? fd.get("esicDisabilityEligible") === "on" : employee.esicDisabilityEligible;
+  const esicDisabilityCertificateRef = fd.has("esicDisabilityCertificateRef")
+    ? String(fd.get("esicDisabilityCertificateRef") ?? "").trim() || null : employee.esicDisabilityCertificateRef;
+  if (esicDisabilityEligible && (!esicDisabilityCertificateRef || esicDisabilityCertificateRef.length < 5)) {
+    return { error: "Record the verified disability certificate reference before selecting the PwD ESI ceiling." };
+  }
+  const memberRaw = fd.get("epsMember");
+  const epsMember = memberRaw === null ? employee.epsMember : memberRaw === "yes" ? true : memberRaw === "no" ? false : null;
+  const wageField = (key: string, current: number | null) => fd.has(key)
+    ? String(fd.get(key) ?? "").trim() === "" ? null : Math.round(Number(fd.get(key)) * 100) : current;
+  const epsJoiningWagePaise = wageField("epsJoiningWage", employee.epsJoiningWagePaise);
+  const epsRevisionWagePaise = wageField("epsRevisionWage", employee.epsRevisionWagePaise);
+  if ([epsJoiningWagePaise, epsRevisionWagePaise].some(v => v !== null && (!Number.isSafeInteger(v) || v < 0))) {
+    return { error: "EPS wages must be non-negative rupee amounts." };
+  }
   const edliApplicability = pick("edliApplicability", ["auto", "no"] as const, employee.edliApplicability);
   const pfContributionBasis = pick("pfContributionBasis", ["company", "ceiling", "higher"] as const, employee.pfContributionBasis);
 
@@ -643,6 +658,8 @@ export async function setPayrollOverrides(
     pran: employee.pran,
     hadPriorPfMembership: employee.hadPriorPfMembership,
     epsApplicability: employee.epsApplicability,
+    epsMember: employee.epsMember, epsJoiningWagePaise: employee.epsJoiningWagePaise, epsRevisionWagePaise: employee.epsRevisionWagePaise,
+    esicDisabilityEligible: employee.esicDisabilityEligible, esicDisabilityCertificateRef: employee.esicDisabilityCertificateRef,
     edliApplicability: employee.edliApplicability,
     pfContributionBasis: employee.pfContributionBasis,
     taxRegime: employee.taxRegime,
@@ -661,6 +678,8 @@ export async function setPayrollOverrides(
       pran,
       hadPriorPfMembership,
       epsApplicability,
+      epsMember, epsJoiningWagePaise, epsRevisionWagePaise,
+      esicDisabilityEligible, esicDisabilityCertificateRef,
       edliApplicability,
       pfContributionBasis,
       taxRegime,
@@ -684,6 +703,8 @@ export async function setPayrollOverrides(
       pran,
       hadPriorPfMembership,
       epsApplicability,
+      epsMember, epsJoiningWagePaise, epsRevisionWagePaise,
+      esicDisabilityEligible, esicDisabilityCertificateRef,
       edliApplicability,
       pfContributionBasis,
       taxRegime,

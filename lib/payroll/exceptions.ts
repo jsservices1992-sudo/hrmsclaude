@@ -35,9 +35,12 @@ export type PayrollExceptionCode =
   | "below_minimum_wage"
   | "basic_below_minimum_wage"
   | "minimum_wage_unverifiable"
+  | "statutory_workflow_incomplete"
   | "statutory_bonus_short"
   | "statutory_bonus_unassessable"
   | "unverified_statutory_reference"
+  | "eps_membership_unverified"
+  | "midperiod_pf_allocation_unverified"
   | "wage_code_below_share"
   | "pt_state_unmodelled";
 
@@ -314,12 +317,11 @@ export function detectExceptions(
         out.push({
           ...who,
           code: "basic_below_minimum_wage",
-          severity: "warning",
+          severity: "critical",
           message:
             `Total pay clears the minimum wage, but wages of ${rupees(r.monthlyBasicPaise)} — basic and the ` +
             `allowances the Code on Wages counts, HRA and conveyance left out — are under the ` +
-            `${rupees(r.minimumWagePaise)} floor. Provident fund is commonly held to be due on at least ` +
-            `the minimum wage — confirm the basis.`,
+            `${rupees(r.minimumWagePaise)} floor. Resolve the statutory wage shortfall before approval.`,
         });
       }
     } else if (r.minimumWageUnknown) {
@@ -413,9 +415,12 @@ export const EXCEPTION_LABELS: Record<PayrollExceptionCode, string> = {
   below_minimum_wage: "Below the minimum wage",
   basic_below_minimum_wage: "Basic below the minimum wage",
   minimum_wage_unverifiable: "Minimum wage could not be checked",
+  statutory_workflow_incomplete: "Statutory workflow needs review",
   statutory_bonus_short: "Statutory bonus short",
   statutory_bonus_unassessable: "Statutory bonus could not be assessed",
   unverified_statutory_reference: "Unverified statutory reference",
+  eps_membership_unverified: "EPS membership evidence required",
+  midperiod_pf_allocation_unverified: "Dated PF wage allocation required",
   pt_state_unmodelled: "Professional tax not modelled for a state",
   wage_code_below_share: "Wages under half of pay",
 };

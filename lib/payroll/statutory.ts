@@ -56,8 +56,8 @@ export type EpfParams = {
  *
  * - EPS stops at 58 (EPS 1995, para 12) — nothing overrides that.
  * - An explicit Yes/No on the employee master wins over the automatic test.
- * - Automatically, an existing EPF member (a prior membership, or a UAN on
- *   record) stays in EPS whatever their wage now is. Somebody who is not
+ * - A recorded EPS member stays in EPS whatever their wage now is.
+ *   EPF membership or a UAN alone does not establish EPS membership. Somebody who is not
  *   an existing member and whose wage is above the coverage ceiling is an
  *   excluded employee contributing voluntarily, and never enters EPS.
  */
@@ -68,6 +68,10 @@ export function pensionEligibility(args: {
   pfWagePaise: Paise;
   coverageCeilingPaise: Paise;
   isInternationalWorker?: boolean;
+  dateOfJoining?: string;
+  periodEnd?: string;
+  joiningWagePaise?: Paise | null;
+  revisionWagePaise?: Paise | null;
 }): { eligible: boolean; reason: string } {
   if (args.isInternationalWorker) {
     return { eligible: true, reason: "International worker — no wage ceiling applies" };
@@ -79,10 +83,23 @@ export function pensionEligibility(args: {
     };
   }
   if (args.epsApplicability === "no") {
+    if (args.periodEnd && args.periodEnd >= "2026-09-17" && args.revisionWagePaise != null && args.revisionWagePaise <= 2500000) {
+      return { eligible: true, reason: "Mandatory EPS enrolment based on recorded 17 September 2026 wage" };
+    }
     return { eligible: false, reason: "EPS set to No on the employee record" };
   }
   if (args.epsApplicability === "yes") {
     return { eligible: true, reason: "EPS set to Yes on the employee record" };
+  }
+  if (args.existingMember) return { eligible: true, reason: "Recorded EPS member" };
+  if (args.periodEnd && args.periodEnd >= "2026-09-17" && args.revisionWagePaise != null && args.revisionWagePaise <= 2500000) {
+    return { eligible: true, reason: "Mandatory EPS enrolment based on recorded 17 September 2026 wage" };
+  }
+  if (args.joiningWagePaise != null && args.dateOfJoining) {
+    const joiningCeiling = args.dateOfJoining >= "2026-09-17" ? 2500000
+      : args.dateOfJoining >= "2014-09-01" ? 1500000 : 650000;
+    return { eligible: args.joiningWagePaise <= joiningCeiling,
+      reason: "EPS eligibility based on recorded joining wage, not UAN or current salary" };
   }
   if (!args.existingMember && args.pfWagePaise > args.coverageCeilingPaise) {
     return {
@@ -278,6 +295,7 @@ export function computeEpf(input: EpfInput): EpfResult {
 export type EsicParams = {
   /** Monthly ESI wage threshold for coverage (₹21,000). */
   wageThresholdPaise: Paise;
+  disabilityWageThresholdPaise?: Paise;
   employeeBps: number; // 75 = 0.75%
   employerBps: number; // 325 = 3.25%
   /**
@@ -301,6 +319,7 @@ export function isContributionPeriodStart(month: number): boolean {
 }
 
 export type EsicInput = {
+  disabilityEligible?: boolean;
   /** Whether the establishment is covered by the Act — ten or more. */
   establishmentCovered?: boolean;
   /**
@@ -356,7 +375,8 @@ export function computeEsic(input: EsicInput): EsicResult {
     };
   }
 
-  const withinThreshold = input.coverageWagePaise <= params.wageThresholdPaise;
+  const threshold = input.disabilityEligible ? params.disabilityWageThresholdPaise ?? 2500000 : params.wageThresholdPaise;
+  const withinThreshold = input.coverageWagePaise <= threshold;
 
   // At a period boundary, coverage is re-tested against the threshold.
   // Within a period, coverage set at the start persists to period end even

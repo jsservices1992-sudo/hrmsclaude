@@ -78,10 +78,13 @@ putting anyone's payroll in here.
 - **No email.** There is no password reset, no invitation and no notification.
   An administrator issues passwords from Settings → Accounts and hands them
   over directly.
-- **Tax and statutory configuration is unverified.** `TAX_CONFIG_VERIFIED` is
-  `false`; the ECR and ESIC return formats are also flagged unverified. The
-  figures are development placeholders and have not been checked against the
-  Finance Act or signed off by a chartered accountant.
+- **Not legally certified.** Core FY 2026-27 tax configuration has verification
+  flags in `lib/tax/config.ts`; those flags are not certification of the whole
+  payroll workflow. ECR and ESIC return formats remain unverified. State
+  references, employer facts and filing outputs need independent review.
+  See `PAYROLL-AUDIT-REMEDIATION.md` for implemented fixes and remaining gaps.
+  `COMPLIANCE-WORKFLOWS.md` documents the statutory operations screens and
+  migrations 0027-0034, which must be rehearsed and applied before this release.
 - **Tax configuration covers FY 2026-27 only.** Tax cannot be computed in a
   financial year with no dated entry in `lib/tax/config.ts`. This is
   deliberate — silently reusing last year's slabs is worse than refusing.

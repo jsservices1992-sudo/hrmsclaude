@@ -1,10 +1,12 @@
 import { isStipendiary } from "@/lib/hris/stipend";
 import { coverageFor as personCoverage } from "@/lib/payroll/coverage";
 import "server-only";
+import { epfParamsFrom, epfPeriodsFor } from "./epf-period";
+import { authoritativeRuns } from "./authoritative-runs";
 
 /* The headcount each Act reaches from. Defaults, not law-by-state: a
    company that differs says so with its coverage setting. */
-import { and, asc, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import {
@@ -68,21 +70,22 @@ export function contributionPeriodKey(year: number, month: number) {
 export async function loadStatutoryConfig(
   asOf: string,
   companyId?: string | null,
+  reader: Pick<typeof db, "select"> = db,
 ): Promise<StatutoryConfig> {
   const effective = <T extends { effectiveFrom: string; effectiveTo: string | null }>(rows: T[]) =>
     effectiveAsOf(rows, asOf);
 
   const [params, slabs, lwf, juris, minWages] = await Promise.all([
-    db.select().from(s.statutoryParams),
-    db.select().from(s.ptSlabs).orderBy(asc(s.ptSlabs.minPaise)),
-    db.select().from(s.lwfRates),
-    db.select().from(s.jurisdictions),
+    reader.select().from(s.statutoryParams),
+    reader.select().from(s.ptSlabs).orderBy(asc(s.ptSlabs.minPaise)),
+    reader.select().from(s.lwfRates),
+    reader.select().from(s.jurisdictions),
     companyId
-      ? db
+      ? reader
           .select()
           .from(s.minimumWages)
           .where(or(isNull(s.minimumWages.companyId), eq(s.minimumWages.companyId, companyId)))
-      : db.select().from(s.minimumWages).where(isNull(s.minimumWages.companyId)),
+      : reader.select().from(s.minimumWages).where(isNull(s.minimumWages.companyId)),
   ]);
 
   const p = Object.fromEntries(effective(params).map((r) => [r.key, r.value]));
@@ -130,22 +133,11 @@ export async function loadStatutoryConfig(
   }
 
   return {
-    epf: {
-      wageCeilingPaise: p["epf.wage_ceiling"] ?? 1_500_000,
-      employeeBps: p["epf.employee_bps"] ?? 1200,
-      employerBps: p["epf.employer_bps"] ?? 1200,
-      epsBps: p["epf.eps_bps"] ?? 833,
-      epsCeilingPaise: p["epf.eps_ceiling"] ?? 1_500_000,
-      /* Held separately so a notification can move one without the
-         others: coverage decides who must join, the contribution ceiling
-         what they contribute on, EPS and EDLI their own wage bases. */
-      coverageCeilingPaise: p["epf.coverage_ceiling"] ?? p["epf.wage_ceiling"] ?? 1_500_000,
-      edliCeilingPaise: p["epf.edli_ceiling"] ?? 1_500_000,
-      edliBps: p["epf.edli_bps"] ?? 50,
-      adminBps: p["epf.admin_bps"] ?? 50,
-    },
+    epf: epfParamsFrom(p),
+    epfPeriods: epfPeriodsFor(params, asOf),
     esic: {
       wageThresholdPaise: p["esic.wage_threshold"] ?? 2_100_000,
+      disabilityWageThresholdPaise: p["esic.disability_wage_threshold"] ?? 2500000,
       /* ₹176 a day: at or below it the employee owes no share of their own. */
       lowWageDailyPaise: p["esic.low_wage_daily_limit"] ?? 17_600,
       employeeBps: p["esic.employee_bps"] ?? 75,
@@ -468,6 +460,15 @@ export async function previewRun(args: {
   if (!company) return null;
 
   const statutory = await loadStatutoryConfig(asOf, args.companyId);
+  const historicalRuns = await db.select().from(s.payrollRuns).where(eq(s.payrollRuns.companyId, args.companyId));
+  const fy = args.month >= 4 ? args.year : args.year - 1;
+  const earlierIds = authoritativeRuns(historicalRuns).filter(r =>
+    (r.periodMonth >= 4 ? r.periodYear : r.periodYear - 1) === fy
+    && r.periodYear * 12 + r.periodMonth < args.year * 12 + args.month).map(r => r.id);
+  const ptHistory = earlierIds.length ? await db.select().from(s.payrollLines)
+    .where(and(inArray(s.payrollLines.runId, earlierIds), eq(s.payrollLines.code, "PT"))) : [];
+  const ptYtd = new Map<string, number>();
+  for (const line of ptHistory) ptYtd.set(line.employeeId, (ptYtd.get(line.employeeId) ?? 0) + line.amountPaise);
   const structureCtx = await loadStructureResolutionContext(args.companyId);
 
   const rows = await db
@@ -483,14 +484,14 @@ export async function previewRun(args: {
       and(
         eq(s.employeeSalaries.employeeId, s.employees.id),
         lte(s.employeeSalaries.effectiveFrom, asOf),
-        isNull(s.employeeSalaries.effectiveTo),
+        or(isNull(s.employeeSalaries.effectiveTo), gte(s.employeeSalaries.effectiveTo, asOf)),
       ),
     )
     .where(
       and(
         eq(s.employees.companyId, args.companyId),
         lte(s.employees.dateOfJoining, asOf),
-        or(isNull(s.employees.dateOfExit), eq(s.employees.status, "resigned")),
+        or(isNull(s.employees.dateOfExit), gte(s.employees.dateOfExit, `${args.year}-${String(args.month).padStart(2, "0")}-01`)),
       ),
     );
 
@@ -629,7 +630,8 @@ export async function previewRun(args: {
      one worksheet are a sequential chain the driver does not pipeline.
      Fewer queries was the fix, not overlapping them. */
   const { loadWorksheetsFor } = await import("../tax/load");
-  const worksheets = await loadWorksheetsFor(rowsSalary.map(({ emp }) => emp.id));
+  const worksheets = await loadWorksheetsFor(rowsSalary.map(({ emp }) => emp.id),
+    args.month >= 4 ? args.year : args.year - 1, undefined, { year: args.year, month: args.month });
   const tdsByEmployee = new Map<string, { paise: number; basis: string }>();
   /*
    * Independent of the TDS map above: a rebate under section 87A can
@@ -729,7 +731,7 @@ export async function previewRun(args: {
       label: adj.label,
       kind: adj.kind,
       category: adj.category,
-      esicTreatment,
+      esicTreatment: adj.esicTreatment ?? esicTreatment,
       amountPaise: adj.amountPaise,
       reason: adj.reason ?? undefined,
     });
@@ -823,6 +825,10 @@ export async function previewRun(args: {
         dateOfBirth: emp.dateOfBirth,
         employerNpsBps: emp.employerNpsBps,
         epsApplicability: emp.epsApplicability,
+        epsMember: emp.epsMember,
+        esicDisabilityEligible: emp.esicDisabilityEligible,
+        epsJoiningWagePaise: emp.epsJoiningWagePaise,
+        epsRevisionWagePaise: emp.epsRevisionWagePaise,
         edliApplicability: emp.edliApplicability,
         pfContributionBasis: emp.pfContributionBasis,
         pfApplicability: emp.pfApplicability,
@@ -854,9 +860,8 @@ export async function previewRun(args: {
         // to current wages only covers an employee with no record yet (a new
         // joiner mid-period), which is the correct default for them.
         esicCoveredAtPeriodStart:
-          coverageByEmployee[emp.id] ??
-          gross <= statutory.esic.wageThresholdPaise,
-        ptYtdPaise: 0,
+          coverageByEmployee[emp.id],
+        ptYtdPaise: ptYtd.get(emp.id) ?? 0,
         monthlyTdsPaise: tdsByEmployee.get(emp.id)?.paise ?? 0,
         tdsBasis: tdsByEmployee.get(emp.id)?.basis,
         incomeTaxPayee: incomeTaxPayeeByEmployee.get(emp.id) ?? false,
@@ -903,7 +908,7 @@ export async function previewRun(args: {
                 epfEmployerBps: statutory.epf.employerBps,
                 epfCoverageCeilingPaise: statutory.epf.coverageCeilingPaise,
                 epfOnActualBasic: company.epfOnActualBasic,
-                esicThresholdPaise: statutory.esic.wageThresholdPaise,
+                esicThresholdPaise: employee.esicDisabilityEligible ? statutory.esic.disabilityWageThresholdPaise ?? 2500000 : statutory.esic.wageThresholdPaise,
                 esicEmployerBps: statutory.esic.employerBps,
                 gratuityAccrualBps: statutory.gratuity.accrualBps,
                 epfEdliBps: statutory.epf.edliBps,
@@ -927,7 +932,8 @@ export async function previewRun(args: {
                  comes up short of the promised take-home by exactly that
                  deduction, every month it recurs. */
               esicCoveredAtPeriodStart: employee.esicCoveredAtPeriodStart,
-              statutory,
+              statutory: employee.esicDisabilityEligible ? { ...statutory, esic: { ...statutory.esic,
+                wageThresholdPaise: statutory.esic.disabilityWageThresholdPaise ?? 2500000 } } : statutory,
             }).monthlyGrossPaise,
           }
         : employee;

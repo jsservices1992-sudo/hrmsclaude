@@ -1370,6 +1370,7 @@ export async function updateAdjustment(
     .where(eq(s.payrollAdjustments.id, id))
     .limit(1);
   if (!row) return { error: "Entry not found." };
+  if (row.sourceKey?.startsWith("compliance:")) return { error: "This earning is controlled by a posted compliance register and cannot be edited independently." };
 
   const [employee] = await db
     .select({ companyId: s.employees.companyId })
@@ -1442,6 +1443,7 @@ export async function removeAdjustment(
   const id = String(fd.get("id") ?? "");
   const [row] = await db.select().from(s.payrollAdjustments).where(eq(s.payrollAdjustments.id, id)).limit(1);
   if (!row) return { error: "Adjustment not found." };
+  if (row.sourceKey?.startsWith("compliance:")) return { error: "This earning is controlled by a posted compliance register and cannot be deleted independently." };
 
   const [employee] = await db
     .select({ companyId: s.employees.companyId })

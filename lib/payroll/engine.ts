@@ -1,4 +1,6 @@
 import { roundToRupee, type Paise, type RoundingMode } from "./money";
+import { computePeriodEpf, type EpfPeriod } from "./epf-period";
+import type { EpfInput } from "./statutory";
 
 /**
  * How a charge reaches one person: the statutory test, or an answer
@@ -106,6 +108,10 @@ export type EmployeeInput = {
   employerNpsBps?: number;
   /** Employee master: EPS Applicable. "auto" applies the statutory test. */
   epsApplicability?: "auto" | "yes" | "no";
+  epsMember?: boolean | null;
+  esicDisabilityEligible?: boolean;
+  epsJoiningWagePaise?: Paise | null;
+  epsRevisionWagePaise?: Paise | null;
   /** Employee master: EDLI Applicable. */
   edliApplicability?: "auto" | "no";
   /**
@@ -203,6 +209,7 @@ export type CompanyConfig = {
 
 export type StatutoryConfig = {
   epf: EpfParams;
+  epfPeriods?: EpfPeriod[];
   esic: EsicParams;
   /**
    * Rates that used to be constants in source. They are here so that a
@@ -232,6 +239,7 @@ export type PayLine = {
   kind: "earning" | "deduction" | "employer_contribution" | "info";
   /** Set on variable-pay lines; absent on structure and statutory lines. */
   category?: PayLineCategory;
+  esicTreatment?: EsicTreatment | null;
   amountPaise: Paise;
   /** Derivation shown to the user — the explainability requirement. */
   basis: string;
@@ -257,6 +265,7 @@ export type EmployeePayResult = {
   employerCostPaise: Paise;
   netPaise: Paise;
   esicCoveredNextPeriod: boolean;
+  esicCoverageWagePaise?: Paise;
   ptDeductedPaise: Paise;
   /** Present when the employee had loans to recover — PRD §3.10. */
   recovery: RecoveryPlan | null;
@@ -401,6 +410,7 @@ export function computeEmployeePay(args: {
       label: def.label,
       kind: "earning",
       amountPaise: amount,
+      esicTreatment: def.esicTreatment ?? defaultEsicTreatment(def.code, def.esicBase, def.gratuityBase),
       basis: (() => {
         const src =
           evaluated.components.find((x) => x.code === def.code)?.basis ?? "";
@@ -417,6 +427,12 @@ export function computeEmployeePay(args: {
   const epfLinesAt = lines.length;
 
   /* ---- Professional tax ---- */
+  // PT/LWF assess remuneration paid, including one-off earnings and off-day pay.
+  ptBase += (e.oneOffLines ?? []).filter(l => l.kind === "earning").reduce((sum, l) => sum + l.amountPaise, 0);
+  const statutoryOtPosted = (e.oneOffLines ?? []).some(l => l.code === "SYS_OT");
+  if (!statutoryOtPosted && c.weeklyOffWorkTreatment === "extra_day" && (e.offDaysWorked ?? 0) > 0 && proration.divisor > 0) {
+    ptBase += Math.round(e.monthlyGrossPaise / proration.divisor * e.offDaysWorked!);
+  }
   const pt = computeProfessionalTax({
     stateCode: e.stateCode,
     ptBasePaise: ptBase,
@@ -524,7 +540,7 @@ export function computeEmployeePay(args: {
      inside the month and already paid. Compensatory off is not money and
      is credited to leave when attendance is derived, not here. */
   const offDaysWorked = e.offDaysWorked ?? 0;
-  if (c.weeklyOffWorkTreatment === "extra_day" && offDaysWorked > 0) {
+  if (!statutoryOtPosted && c.weeklyOffWorkTreatment === "extra_day" && offDaysWorked > 0) {
     const perDay = proration.divisor > 0 ? e.monthlyGrossPaise / proration.divisor : 0;
     const amount = Math.round(perDay * offDaysWorked);
     if (amount > 0) {
@@ -554,6 +570,7 @@ export function computeEmployeePay(args: {
       label: adj.label,
       kind: adj.kind,
       category: adj.category,
+      esicTreatment: adj.kind === "earning" ? adj.esicTreatment ?? esicTreatmentForCategory(adj.category) : "excluded",
       amountPaise: adj.amountPaise,
       basis: adj.reason ?? (adj.kind === "earning" ? "One-off incentive" : "One-off deduction"),
     });
@@ -576,13 +593,33 @@ export function computeEmployeePay(args: {
     vpfPercent: e.vpfPercent,
     establishmentCovered: e.epfEstablishmentCovered,
   };
-  const initialPf = computeEpf({ ...epfInput,
-    pfWagePaise: esicWage(esicLines, esicRuleFor(periodEnd), employerBonusThisMonth).contributionWagePaise,
+  const coveredPfPeriods = new Set<string>();
+  const periodEpf = (input: EpfInput) => computePeriodEpf(input, {
+    coveredPeriods: coveredPfPeriods,
+    periods: s.epfPeriods ?? [], monthlyWagePaise: proration.factor > 0 ? Math.round(input.pfWagePaise / proration.factor) : 0,
+    year, month, dateOfJoining: e.dateOfJoining, dateOfExit: e.dateOfExit,
+    pensionEligibleFor: period => pensionEligibility({
+      age: ageAtPeriodEnd(e.dateOfBirth, year, month), epsApplicability: e.epsApplicability,
+      existingMember: e.epsMember ?? e.epsApplicability === "yes",
+      dateOfJoining: e.dateOfJoining, periodEnd: period.to,
+      joiningWagePaise: e.epsJoiningWagePaise, revisionWagePaise: e.epsRevisionWagePaise,
+      pfWagePaise: proration.factor > 0 ? Math.round(input.pfWagePaise / proration.factor) : 0,
+      coverageCeilingPaise: period.params.coverageCeilingPaise ?? period.params.wageCeilingPaise,
+    }).eligible,
   });
+  const originalOptedIn = epfInput.optedIn;
+  const initialWage = esicWage(esicLines, esicRuleFor(periodEnd), employerBonusThisMonth).contributionWagePaise;
+  const initialPf = periodEpf({ ...epfInput,
+    pfWagePaise: initialWage,
+  });
+  for (const period of s.epfPeriods ?? []) {
+    const monthlyWage = proration.factor > 0 ? Math.round(initialWage / proration.factor) : 0;
+    if (computeEpf({ ...epfInput, params: period.params, pfWagePaise: monthlyWage }).applicable) coveredPfPeriods.add(period.from);
+  }
   // Once covered, the contribution's own add-back cannot exclude this member.
   if (esicRuleFor(periodEnd) === "social_security_code" && initialPf.applicable) epfInput.optedIn = true;
   const { wage: esiWage } = resolveEmployerWage(esicLines, esicRuleFor(periodEnd), (wage) => {
-    const contribution = computeEpf({ ...epfInput, pfWagePaise: wage });
+    const contribution = periodEpf({ ...epfInput, optedIn: (s.epfPeriods?.length ?? 0) > 1 ? originalOptedIn : epfInput.optedIn, pfWagePaise: wage });
     return contribution.employerPfPaise + contribution.employerEpsPaise;
   }, employerBonusThisMonth);
 
@@ -596,12 +633,15 @@ export function computeEmployeePay(args: {
   const pension = pensionEligibility({
     age: ageAtPeriodEnd(e.dateOfBirth, year, month),
     epsApplicability: e.epsApplicability ?? "auto",
-    existingMember: e.hadPriorPfMembership,
+    existingMember: e.epsMember ?? e.epsApplicability === "yes",
+    dateOfJoining: e.dateOfJoining, periodEnd,
+    joiningWagePaise: e.epsJoiningWagePaise, revisionWagePaise: e.epsRevisionWagePaise,
     pfWagePaise: pfWage,
     coverageCeilingPaise: s.epf.coverageCeilingPaise ?? s.epf.wageCeilingPaise,
   });
-  const epf = computeEpf({
+  const epf = periodEpf({
     ...epfInput,
+    optedIn: (s.epfPeriods?.length ?? 0) > 1 ? originalOptedIn : epfInput.optedIn,
     pfWagePaise: pfWage,
     pensionEligible: pension.eligible,
   });
@@ -624,6 +664,8 @@ export function computeEmployeePay(args: {
           ? `${epf.reason} — Code on Wages wage ₹${(pfWage / 100).toFixed(2)} (basic ₹${(epfBase / 100).toFixed(2)} plus allowances counted as wages)`
           : epf.reason,
     });
+    epfLines.push({ code: "EPS_WAGES", label: "Pension wage considered", kind: "info", amountPaise: epf.epsWagePaise, basis: epf.reason });
+    epfLines.push({ code: "EDLI_WAGES", label: "EDLI wage considered", kind: "info", amountPaise: epf.edliWagePaise, basis: epf.reason });
     epfLines.push({
       code: "EPF_EE",
       label: "Provident fund — employee",
@@ -701,6 +743,7 @@ export function computeEmployeePay(args: {
 
 
   const esic = computeEsic({
+    disabilityEligible: e.esicDisabilityEligible,
     coverageWagePaise: esiWage.coverageWagePaise,
     contributionWagePaise: esiWage.contributionWagePaise,
     paidDays,
@@ -833,6 +876,7 @@ export function computeEmployeePay(args: {
     employerCostPaise: employerCost,
     netPaise: net,
     esicCoveredNextPeriod: esic.coveredForNextPeriod,
+    esicCoverageWagePaise: esiWage.coverageWagePaise,
     recovery,
     ptDeductedPaise: pt.amountPaise,
     warnings,

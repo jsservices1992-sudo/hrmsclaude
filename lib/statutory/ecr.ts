@@ -40,7 +40,7 @@ export const EPF_CHARGES_2026: EpfChargeParams = {
   adminChargeBps: 50,
   adminChargeMinPaise: 50000, // ₹500
   edliBps: 50,
-  edliMinPaise: 20000, // ₹200
+  edliMinPaise: 0,
   edliAdminBps: 0,
   wageCeilingPaise: 1_500_000,
 };
@@ -113,6 +113,9 @@ export type EcrMemberInput = {
   employeeContributionPaise: Paise;
   /** Total employer share, before the pension split. */
   employerContributionPaise: Paise;
+  pensionWagesPaise?: Paise;
+  edliWagesPaise?: Paise;
+  pensionContributionPaise?: Paise;
   /** Days in the month with no wages — loss of pay, or an unpaid gap. */
   nonContributoryDays: number;
   refundOfAdvancesPaise: Paise;
@@ -173,14 +176,14 @@ export function buildEcrLine(
   // each at its own ceiling.
   const epsCeiling = member.isInternationalWorker ? Infinity : (params.epsCeilingPaise ?? ceiling);
   const edliCeiling = member.isInternationalWorker ? Infinity : (params.edliCeilingPaise ?? ceiling);
-  const epsWagesPaise = member.eligibleForPension
+  const epsWagesPaise = member.pensionWagesPaise ?? (member.eligibleForPension
     ? Math.min(member.epfWagesPaise, epsCeiling)
-    : 0;
-  const edliWagesPaise = Math.min(member.epfWagesPaise, edliCeiling);
+    : 0);
+  const edliWagesPaise = member.edliWagesPaise ?? Math.min(member.epfWagesPaise, edliCeiling);
 
-  const epsContributionPaise = member.eligibleForPension
+  const epsContributionPaise = member.pensionContributionPaise ?? (member.eligibleForPension
     ? Math.round((epsWagesPaise * epsBps) / 10000)
-    : 0;
+    : 0);
 
   // Both columns are filed in whole rupees, so the difference must be
   // derived from the *rounded* pension figure. Rounding the paise-level

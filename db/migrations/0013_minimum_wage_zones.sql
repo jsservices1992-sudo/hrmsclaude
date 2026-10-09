@@ -15,5 +15,7 @@ ALTER TABLE "branches" ADD COLUMN IF NOT EXISTS "minimum_wage_zone" text;
 -- One rate per state, zone, skill and start date. Without this a second
 -- load of the same notification silently doubles the rows and the
 -- resolver picks whichever came back last.
-CREATE UNIQUE INDEX IF NOT EXISTS "minimum_wages_unique_idx"
+-- The replaying migration runner must not reintroduce the old unscoped
+-- uniqueness after 0034 installs the company-aware constraint.
+CREATE INDEX IF NOT EXISTS "minimum_wages_unique_idx"
   ON "minimum_wages" ("state_code", COALESCE("zone", ''), "skill_category", "effective_from");

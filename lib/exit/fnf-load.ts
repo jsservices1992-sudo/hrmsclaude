@@ -3,6 +3,8 @@ import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { computeSettlement } from "../payroll/settlement";
+import { authoritativeRuns } from "../payroll/authoritative-runs";
+import { loadWorksheet } from "../tax/load";
 import {
   exemptGratuity,
   exemptLeaveEncashment,
@@ -19,10 +21,7 @@ import {
 import { regimeConfig, ageAsOfFinancialYearEnd } from "../tax/config";
 import { loadConventions, loadStructureResolutionContext, resolveEmployeeStructure } from "../payroll/load";
 import {
-  computeProration,
-  paidDaysForPeriod,
   periodDivisor,
-  prorate,
 } from "../payroll/proration";
 import { evaluateStructure, evaluationWithEmployerWage } from "../payroll/compensation";
 import { loadStatutoryConfig } from "../payroll/load";
@@ -200,16 +199,14 @@ export async function loadFnfCase(
 
   const perDay = Math.round(monthlyGross / periodDivisor(prorationArgs));
 
-  /* Joining is passed too, so somebody who both joined and left inside
-     the final month is paid for the days between, not from the 1st. */
-  const finalMonth = computeProration({
-    ...prorationArgs,
-    paidDays: paidDaysForPeriod({
-      ...prorationArgs,
-      dateOfJoining: employee.dateOfJoining,
-      dateOfExit: lastWorkingDay,
-    }),
-  });
+  // Salary (including PF/ESI/PT/TDS) is paid once, through monthly payroll.
+  const companyRuns = await db.select().from(s.payrollRuns)
+    .where(eq(s.payrollRuns.companyId, employee.companyId));
+  const bookedRuns = authoritativeRuns(companyRuns);
+  const finalRun = bookedRuns.find(r => r.periodYear === exitYear && r.periodMonth === exitMonth);
+  const [finalSummary] = finalRun ? await db.select().from(s.payrollEmployeeSummaries)
+    .where(and(eq(s.payrollEmployeeSummaries.runId, finalRun.id), eq(s.payrollEmployeeSummaries.employeeId, employee.id))) : [];
+  if (!finalSummary) warnings.push("Final-month salary must be approved in Payroll before this settlement is released. It is not paid again in F&F.");
 
   const settlement = computeSettlement({
     gratuityFourYears240Days: companyRule?.gratuityFourYears240Days ?? false,
@@ -220,8 +217,8 @@ export async function loadFnfCase(
     employmentType: employee.employmentType,
     lastWorkingDay: exitCase.lastWorkingDay,
     resignationDate: exitCase.resignationDate,
-    finalMonthSalaryPaise: prorate(monthlyGross, finalMonth),
-    finalMonthBasis: `${finalMonth.basisLabel} in the final month`,
+    finalMonthSalaryPaise: 0,
+    finalMonthBasis: "Paid separately through final-month payroll; not duplicated in F&F",
     finalMonthDeductionsPaise: 0,
     monthlyBasicPaise: monthlyBasic,
     gratuityWagePaise: gratuityWage,
@@ -301,6 +298,7 @@ export async function loadFnfCase(
       gross: s.payrollEmployeeSummaries.grossPaise,
       year: s.payrollRuns.periodYear,
       month: s.payrollRuns.periodMonth,
+      runId: s.payrollRuns.id,
     })
     .from(s.payrollEmployeeSummaries)
     .innerJoin(
@@ -312,7 +310,8 @@ export async function loadFnfCase(
   const salaryToDate = paidRows
     .filter((r) => {
       const fy = r.month >= 4 ? r.year : r.year - 1;
-      return fy === fyStart;
+      return fy === fyStart && bookedRuns.some(run => run.id === r.runId)
+        && r.year * 12 + r.month <= exitYear * 12 + exitMonth;
     })
     .reduce((a, r) => a + r.gross, 0);
 
@@ -327,7 +326,10 @@ export async function loadFnfCase(
     );
   const tdsToDate = tdsRows.reduce((a, r) => a + r.tdsPaise, 0);
 
-  const tax = computeSeparationTax({
+  const worksheet = await loadWorksheet(employee.id, settlementFy, undefined, {
+    year: Number(exitCase.lastWorkingDay.slice(0, 4)), month: Number(exitCase.lastWorkingDay.slice(5, 7)),
+  });
+  let tax = computeSeparationTax({
     regime,
     config,
     limits: SEPARATION_LIMITS_2026,
@@ -335,11 +337,11 @@ export async function loadFnfCase(
       .filter((l) => l.kind === "payable" && l.code === "FINAL_SALARY")
       .reduce((a, l) => a + l.amountPaise, 0),
     exemptAllowancesToDatePaise: 0,
-    chapterViAPaise: 0,
+    chapterViAPaise: worksheet?.deductions.totalAllowedPaise ?? 0,
     professionalTaxPaidPaise: 0,
     tdsDeductedToDatePaise: tdsToDate,
-    previousEmployerSalaryPaise: 0,
-    previousEmployerTdsPaise: 0,
+    previousEmployerSalaryPaise: worksheet?.declaration?.previousSalaryPaise ?? 0,
+    previousEmployerTdsPaise: worksheet?.declaration?.previousTdsPaise ?? 0,
     gratuity: gratuityExemption,
     leaveEncashment: leaveExemption,
     separationCompensation: compensation,
@@ -348,6 +350,14 @@ export async function loadFnfCase(
   });
 
   warnings.push(...tax.warnings);
+  // A refund is a separate tax-adjustment workflow, not extra unpaid wages.
+  const withheldTds = Math.max(0, tax.tdsOnSettlementPaise);
+  if (withheldTds > 0) {
+    settlement.lines.push({ code: "TDS", label: "Income tax withheld", kind: "recovery",
+      amountPaise: withheldTds, basis: tax.basis, exemptPaise: 0 });
+    settlement.recoveriesPaise += withheldTds;
+    settlement.netPaise -= withheldTds;
+  }
 
   /* ---- stored state, receivable and the gate ---- */
   const [stored] = await db
@@ -356,6 +366,20 @@ export async function loadFnfCase(
     .where(eq(s.fnfSettlements.exitCaseId, exitCaseId))
     .orderBy(desc(s.fnfSettlements.createdAt))
     .limit(1);
+
+  // Released statements use the signed snapshot, not subsequently edited inputs.
+  if (stored && stored.status !== "draft") {
+    settlement.lines = JSON.parse(stored.linesJson);
+    settlement.payablesPaise = stored.payablesPaise;
+    settlement.recoveriesPaise = stored.recoveriesPaise;
+    settlement.netPaise = stored.netPaise;
+    if (stored.taxJson) tax = JSON.parse(stored.taxJson);
+  }
+  const calendarHolidays = await db.select().from(s.holidays).where(eq(s.holidays.companyId, employee.companyId));
+  const [shift] = await db.select().from(s.shifts)
+    .where(and(eq(s.shifts.companyId, employee.companyId), eq(s.shifts.isDefault, true))).limit(1);
+  const weeklyOffDays = shift?.weeklyOffDays.split(",").map(Number) ?? [0];
+  const holidays = calendarHolidays.filter(h => !h.restricted && (!h.branchId || h.branchId === employee.branchId)).map(h => h.date);
 
   const recoveries = stored
     ? await db
@@ -384,7 +408,10 @@ export async function loadFnfCase(
   const ageing = assessAgeing({
     lastWorkingDay: exitCase.lastWorkingDay,
     today,
-    slaDays: stored?.slaDays ?? 45,
+    slaDays: 2,
+    workingDays: true,
+    holidays,
+    weeklyOffDays,
     gratuityPayable: settlement.gratuity.cappedPaise > 0,
     settled: stored?.status === "paid" || stored?.status === "written_off",
   });
@@ -392,7 +419,9 @@ export async function loadFnfCase(
   const clearanceClosed = pendingClearance === 0;
   const overridden = Boolean(stored?.clearanceOverriddenBy);
 
-  const gate = clearanceClosed
+  const gate = !finalSummary
+    ? { canRelease: false, reason: "Approve this employee's final-month payroll first. Salary is paid through Payroll, not twice through F&F." }
+    : clearanceClosed
     ? { canRelease: true, reason: "Clearance is closed." }
     : overridden
       ? {
@@ -441,6 +470,8 @@ export async function loadFnfQueue(
   const byExit = new Map(settlements.map((x) => [x.exitCaseId, x]));
 
   const clearance = await db.select().from(s.clearanceItems);
+  const calendarHolidays = await db.select().from(s.holidays).where(inArray(s.holidays.companyId, companyIds));
+  const shifts = await db.select().from(s.shifts).where(and(inArray(s.shifts.companyId, companyIds), eq(s.shifts.isDefault, true)));
 
   const queue = rows.map(({ exitCase, emp }) => {
     const stored = byExit.get(exitCase.id);
@@ -451,7 +482,10 @@ export async function loadFnfQueue(
     const ageing = assessAgeing({
       lastWorkingDay: exitCase.lastWorkingDay,
       today,
-      slaDays: stored?.slaDays ?? 45,
+      slaDays: 2,
+      workingDays: true,
+      holidays: calendarHolidays.filter(h => h.companyId === emp.companyId && !h.restricted && (!h.branchId || h.branchId === emp.branchId)).map(h => h.date),
+      weeklyOffDays: shifts.find(s => s.companyId === emp.companyId)?.weeklyOffDays.split(",").map(Number) ?? [0],
       // Cheap approximation for the queue; the case view computes it properly.
       gratuityPayable: true,
       settled: stored?.status === "paid" || stored?.status === "written_off",

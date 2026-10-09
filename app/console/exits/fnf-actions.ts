@@ -13,6 +13,7 @@ import {
 import { recordAudit, loadSodPolicies } from "@/lib/audit/log";
 import { loadFnfCase } from "@/lib/exit/fnf-load";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
+import { TAX_CONFIG_VERSION } from "@/lib/tax/config";
 
 export type FnfState = { error?: string; ok?: string };
 
@@ -69,7 +70,8 @@ export async function prepareSettlement(
     preparedBy: user.email,
     approvedBy: null,
     createdAt: now,
-    slaDays: fnf.stored?.slaDays ?? 45,
+    slaDays: 2,
+    computationVersion: 2,
   };
 
   if (fnf.stored) {
@@ -197,12 +199,17 @@ export async function releaseSettlement(
   if (!fnf.gate.canRelease) {
     return { error: fnf.gate.reason };
   }
+  if (fnf.stored.linesJson !== JSON.stringify(fnf.settlement.lines) || fnf.stored.netPaise !== fnf.settlement.netPaise) {
+    return { error: "Inputs have changed since preparation. Compute and save again before release." };
+  }
 
   const recoverable = fnf.settlement.netPaise < 0;
   const now = new Date().toISOString();
 
   const settlementId = fnf.stored.id;
-  await db.transaction(async (tx) => {
+  const released = await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(s.fnfSettlements).where(eq(s.fnfSettlements.id, settlementId)).for("update");
+    if (!locked || locked.status !== "draft") return false;
     await tx
       .update(s.fnfSettlements)
       .set({
@@ -229,7 +236,9 @@ export async function releaseSettlement(
       .update(s.employees)
       .set({ status: "exited" })
       .where(eq(s.employees.id, fnf.employee.id));
+    return true;
   });
+  if (!released) return { error: "This settlement has already changed status. Refresh before releasing." };
 
   await recordAudit({
     user,
@@ -257,8 +266,51 @@ export async function releaseSettlement(
   return {
     ok: recoverable
       ? `Demand raised for ₹${(Math.abs(fnf.settlement.netPaise) / 100).toFixed(2)}. It is now a receivable and stays open until recovered or written off.`
-      : `Released. ₹${(fnf.settlement.netPaise / 100).toFixed(2)} joins the next bank file.`,
+      : `Released. ₹${(fnf.stored.netPaise / 100).toFixed(2)} is ready in the F&F payout file. Record the bank payment after transfer.`,
   };
+}
+
+export async function recordSettlementPayment(_prev: FnfState, fd: FormData): Promise<FnfState> {
+  const exitCaseId = String(fd.get("exitCaseId") ?? "");
+  const { user, fnf, error } = await requirePayroll(exitCaseId);
+  if (error || !user || !fnf) return { error: error ?? "Not authorised." };
+  const stored = fnf.stored;
+  if (!stored || stored.status !== "approved" || stored.computationVersion !== 2) {
+    return { error: "Only a released, tax-adjusted settlement can be marked paid. Recompute legacy settlements first." };
+  }
+  const reference = String(fd.get("reference") ?? "").trim();
+  const paidAt = String(fd.get("paidAt") ?? "");
+  if (reference.length < 5 || !/^\d{4}-\d{2}-\d{2}$/.test(paidAt)
+    || !Number.isFinite(Date.parse(paidAt)) || new Date(paidAt).toISOString().slice(0, 10) !== paidAt
+    || paidAt > new Date().toISOString().slice(0, 10)
+    || paidAt < fnf.exitCase.lastWorkingDay) return { error: "Enter a valid payment date and bank reference (at least 5 characters)." };
+  const tax = JSON.parse(stored.taxJson ?? "null") as { tdsOnSettlementPaise?: number } | null;
+  if (!tax || !Number.isSafeInteger(tax.tdsOnSettlementPaise)) return { error: "Saved tax computation is missing. Recompute the settlement." };
+  const month = Number(paidAt.slice(5, 7));
+  const year = Number(paidAt.slice(0, 4));
+  const exitMonth = Number(fnf.exitCase.lastWorkingDay.slice(5, 7));
+  const exitYear = Number(fnf.exitCase.lastWorkingDay.slice(0, 4));
+  if ((month >= 4 ? year : year - 1) !== (exitMonth >= 4 ? exitYear : exitYear - 1)) {
+    return { error: "Payment is in a different tax year. A payment-date tax review is required before recording it." };
+  }
+  const recorded = await db.transaction(async tx => {
+    const [locked] = await tx.select().from(s.fnfSettlements).where(eq(s.fnfSettlements.id, stored.id)).for("update");
+    if (!locked || locked.status !== "approved") return false;
+    await tx.update(s.fnfSettlements).set({ status: "paid", paidAt, paymentReference: reference })
+      .where(eq(s.fnfSettlements.id, stored.id));
+    await tx.insert(s.tdsLedger).values({
+      id: randomUUID(), employeeId: fnf.employee.id, financialYear: month >= 4 ? year : year - 1,
+      month, tdsPaise: Math.max(0, tax.tdsOnSettlementPaise!), sourceKey: `fnf:${stored.id}`,
+      configVersion: TAX_CONFIG_VERSION, computedAt: new Date().toISOString(),
+    }).onConflictDoNothing({ target: [s.tdsLedger.employeeId, s.tdsLedger.sourceKey] });
+    return true;
+  });
+  if (!recorded) return { error: "Payment has already been recorded." };
+  await recordAudit({ user, action: "fnf.paid", entity: "fnf_settlement", entityId: stored.id,
+    after: { netPaise: stored.netPaise, paidAt, reference } });
+  revalidatePath(`/console/exits/${exitCaseId}/settlement`);
+  revalidatePath("/console/exits");
+  return { ok: "Payment recorded and TDS posted to the ledger." };
 }
 
 /** Record money actually collected against a demand — FR-PAY-20. */
@@ -419,6 +471,7 @@ export async function reopenSettlement(
     return { error: "Reopening a settlement needs a reason on the record." };
   }
   if (!fnf.stored) return { error: "There is no settlement to reopen." };
+  if (fnf.stored.status === "paid") return { error: "A paid settlement cannot be reopened. Record a separate correction; do not pay it again." };
   if (fnf.stored.status === "draft") {
     return { error: "This settlement is still a draft; recompute it instead." };
   }

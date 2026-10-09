@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
+import { filingDigest, operationData, periodLiabilities } from "@/lib/statutory/operations";
 import {
   getSessionUser,
   canMutate,
@@ -48,8 +49,29 @@ export async function recordFiling(
         "A filing needs its acknowledgement number. Without one there is nothing to prove it was lodged.",
     };
   }
-  if (!filingKey || !kind || !Number.isInteger(periodYear) || !Number.isInteger(periodMonth)) {
+  if (!filingKey || !kind || !Number.isInteger(periodYear) || periodYear < 2000 || periodYear > 2200 || !Number.isInteger(periodMonth) || periodMonth < 1 || periodMonth > 12
+    || filingKey !== `${kind}:${stateCode ?? "-"}:${periodYear}:${String(periodMonth).padStart(2, "0")}`) {
     return { error: "That filing could not be identified." };
+  }
+  if (status === "filed" && kind === "tds_24q") {
+    const data = await operationData(companyId, periodYear, periodMonth);
+    const quarter = periodMonth <= 3 ? 4 : Math.floor((periodMonth - 4) / 3) + 1;
+    const verified = data.registers.some(r => {
+      if (r.kind !== "filing_validation" || r.status !== "posted") return false;
+      const snapshot = JSON.parse(r.snapshotJson);
+      return snapshot.quarter === quarter && snapshot.inputDigest === filingDigest(data, quarter);
+    });
+    if (!verified) return { error: "Form 138 needs a reviewed, current RPU/FVU validation artifact and report. Complete Compliance operations > Deposits & filing before recording the portal acknowledgement." };
+  }
+  const depositSchemes: Record<string, string> = { tds_deposit: "tds", epf_ecr: "epf", esic_contribution: "esic", pt_return: "pt", lwf_return: "lwf" };
+  const depositScheme = depositSchemes[kind];
+  if (status === "filed" && depositScheme) {
+    const data = await operationData(companyId, periodYear, periodMonth);
+    const liabilities = await periodLiabilities(companyId, periodYear, periodMonth);
+    const liability = liabilities.rows.find(r => r.scheme === depositScheme && r.stateCode === (stateCode ?? "-"));
+    const deposited = data.deposits.filter(d => d.scheme === depositScheme && d.stateCode === (stateCode ?? "-") && d.periodYear === periodYear && d.periodMonth === periodMonth)
+      .reduce((sum, d) => sum + d.amountPaise, 0);
+    if (!liability || deposited !== liability.amountPaise) return { error: "Record and reconcile the deposited challan under Compliance operations before marking this obligation filed." };
   }
 
   const now = new Date().toISOString();

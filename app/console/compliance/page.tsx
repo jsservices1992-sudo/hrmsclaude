@@ -39,6 +39,7 @@ export default async function ComplianceConfigPage() {
       <PageHeader
         eyebrow="Compliance"
         title="Statutory rules"
+        actions={<Link href="/console/statutory/operations?tab=notifications" className="text-sm font-semibold text-indigo">Notification tracker</Link>}
         description="Every row below is effective-dated. A payroll run records which versions it used, so recomputing a historic period reproduces what was actually paid."
       />
 

@@ -35,6 +35,8 @@ import {
   TAX_CONFIG_VERIFICATION,
 } from "./config";
 import { hasTaxConfig } from "./config";
+import { salaryProjection, taxPeriodForYear, fyMonthIndex as periodMonthIndex, type TaxPeriod } from "./projection-period";
+import { authoritativeRuns } from "../payroll/authoritative-runs";
 import {
   summarisePerquisites,
   valueExcessRetirals,
@@ -168,6 +170,8 @@ type WorksheetInputs = {
   statutory: Awaited<ReturnType<typeof loadStatutoryConfig>>;
   specialRateDecl: typeof s.taxSpecialRateDeclarations.$inferSelect | null;
   company: typeof s.companies.$inferSelect | null;
+  period: TaxPeriod;
+  history: { year: number; month: number; amountPaise: number; basicPaise: number; hraPaise: number }[];
 };
 
 function specialRateDeclarationFrom(
@@ -215,7 +219,7 @@ function composeWorksheet(
           company,
           employee: emp,
           stateCode: stateCode ?? "",
-          month: new Date().getUTCMonth() + 1,
+          month: input.period.month,
         })
       : null;
   const monthlyGross = effective?.grossPaise ?? salary?.monthlyGrossPaise ?? 0;
@@ -228,9 +232,14 @@ function composeWorksheet(
   const monthlyHra =
     evaluated.components.find((c) => c.code === "HRA")?.amountPaise ?? 0;
 
-  const annualGross = monthlyGross * 12;
-  const annualBasic = monthlyBasic * 12;
-  const annualHra = monthlyHra * 12;
+  const project = (monthlyPaise: number, key: "amountPaise" | "basicPaise" | "hraPaise") => salaryProjection({
+    financialYear, period: input.period, monthlyPaise,
+    dateOfJoining: emp.dateOfJoining, dateOfExit: emp.dateOfExit,
+    history: input.history.map(r => ({ year: r.year, month: r.month, amountPaise: r[key] })),
+  }).annualPaise;
+  const annualGross = project(monthlyGross, "amountPaise");
+  const annualBasic = project(monthlyBasic, "basicPaise");
+  const annualHra = project(monthlyHra, "hraPaise");
 
   /* ---- HRA exemption ---- */
   let hra: HraResult | null = null;
@@ -341,14 +350,13 @@ function composeWorksheet(
     config,
   });
 
-  const tdsToDate = ledger.reduce((a, r) => a + r.tdsPaise, 0);
+  const tdsToDate = ledger.filter(r => periodMonthIndex(r.month) < periodMonthIndex(input.period.month))
+    .reduce((a, r) => a + r.tdsPaise, 0);
 
   // Months left is a calendar fact, not a count of payroll runs. If runs
   // are behind, the year's tax still has to come out of the months that
   // are actually left — which is precisely what produces the spike.
-  const today = new Date();
-  const byCalendar = monthsRemainingInFy(today.getUTCMonth() + 1);
-  const monthsRemaining = Math.max(1, Math.min(byCalendar, 12 - ledger.length));
+  const monthsRemaining = monthsRemainingInFy(input.period.month);
 
   const pan = validatePan(emp.pan);
   if (!pan.valid) warnings.push(pan.reason);
@@ -441,9 +449,19 @@ export async function loadWorksheetsFor(
   employeeIds: string[],
   financialYear = CURRENT_FY,
   overrideRegime?: Regime,
+  requestedPeriod?: TaxPeriod,
 ): Promise<Map<string, TaxWorksheet>> {
   const out = new Map<string, TaxWorksheet>();
   if (employeeIds.length === 0 || !hasTaxConfig(financialYear)) return out;
+  const period = taxPeriodForYear(financialYear, requestedPeriod);
+  const asOf = new Date(Date.UTC(period.year, period.month, 0)).toISOString().slice(0, 10);
+  const runRows = await db.select().from(s.payrollRuns);
+  const bookedIds = authoritativeRuns(runRows).map(r => r.id);
+  const historyRows = bookedIds.length ? await db.select({ summary: s.payrollEmployeeSummaries, run: s.payrollRuns })
+    .from(s.payrollEmployeeSummaries).innerJoin(s.payrollRuns, eq(s.payrollRuns.id, s.payrollEmployeeSummaries.runId))
+    .where(and(inArray(s.payrollEmployeeSummaries.employeeId, employeeIds), inArray(s.payrollRuns.id, bookedIds))) : [];
+  const historyLines = bookedIds.length ? await db.select().from(s.payrollLines)
+    .where(and(inArray(s.payrollLines.employeeId, employeeIds), inArray(s.payrollLines.runId, bookedIds))) : [];
 
   const [emps, decls, salaries, flexi, perqs, ledgers, branchRows] = await Promise.all([
     db.select().from(s.employees).where(inArray(s.employees.id, employeeIds)),
@@ -501,7 +519,7 @@ export async function loadWorksheetsFor(
   // PT/LWF are state-wide, not company-scoped, so one call covers every
   // company in the batch; only the minimum-wage rows loadStatutoryConfig
   // also carries are company-scoped, and this projection does not use them.
-  const statutory = await loadStatutoryConfig(`${financialYear}-04-01`, null);
+  const statutory = await loadStatutoryConfig(asOf, null);
 
   const specialRateRows = await db
     .select()
@@ -531,13 +549,13 @@ export async function loadWorksheetsFor(
      be the earliest row, so a worksheet projected a salary from a year
      and two revisions ago. Someone whose only salary starts later is
      projected on that one rather than on nothing. */
-  const today = new Date().toISOString().slice(0, 10);
   const salaryByEmployee = new Map<string, (typeof salaries)[number]>();
   for (const row of salaries) {
+    if (row.effectiveFrom > asOf) continue;
     const held = salaryByEmployee.get(row.employeeId);
-    const started = row.effectiveFrom <= today;
+    const started = row.effectiveFrom <= asOf;
     if (!held) salaryByEmployee.set(row.employeeId, row);
-    else if (started && (held.effectiveFrom > today || row.effectiveFrom > held.effectiveFrom)) {
+    else if (started && (held.effectiveFrom > asOf || row.effectiveFrom > held.effectiveFrom)) {
       salaryByEmployee.set(row.employeeId, row);
     }
   }
@@ -579,6 +597,12 @@ export async function loadWorksheetsFor(
       composeWorksheet(
         {
           emp,
+          period,
+          history: historyRows.filter(r => r.summary.employeeId === emp.id).map(r => ({
+            year: r.run.periodYear, month: r.run.periodMonth, amountPaise: r.summary.grossPaise,
+            basicPaise: historyLines.filter(l => l.runId === r.run.id && l.employeeId === emp.id && ["BASIC", "DA", "VDA"].includes(l.code)).reduce((sum, l) => sum + l.amountPaise, 0),
+            hraPaise: historyLines.filter(l => l.runId === r.run.id && l.employeeId === emp.id && l.code === "HRA").reduce((sum, l) => sum + l.amountPaise, 0),
+          })),
           decl,
           salary: salaryByEmployee.get(emp.id) ?? null,
           structure: resolveEmployeeStructure(structureCtxs.get(emp.companyId)!, {
@@ -608,8 +632,9 @@ export async function loadWorksheet(
   employeeId: string,
   financialYear = CURRENT_FY,
   overrideRegime?: Regime,
+  requestedPeriod?: TaxPeriod,
 ): Promise<TaxWorksheet | null> {
-  const all = await loadWorksheetsFor([employeeId], financialYear, overrideRegime);
+  const all = await loadWorksheetsFor([employeeId], financialYear, overrideRegime, requestedPeriod);
   return all.get(employeeId) ?? null;
 }
 
