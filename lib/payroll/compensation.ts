@@ -1239,6 +1239,9 @@ export type BonusAssessment = {
  * to the state minimum wage where the minimum wage is higher.
  */
 export function assessStatutoryBonus(args: {
+  /** Missing state rules must not silently collapse a Code-era calculation to Rs 7,000. */
+  requireMinimumWage?: boolean;
+  paidFraction?: number;
   /** Wages as the Code defines them — basic and dearness allowance. */
   monthlyBonusWagePaise: Paise;
   /** What the structure pays toward the bonus this month. */
@@ -1284,12 +1287,15 @@ export function assessStatutoryBonus(args: {
       false,
     );
   }
+  if (args.requireMinimumWage && args.minimumWagePaise === null) {
+    return nil("The applicable state minimum wage is missing; use the reviewed annual bonus register, not an assumed calculation ceiling.", null);
+  }
 
   /* The calculation ceiling is a floor as much as a cap: where the state
      minimum wage is higher, the Act computes on that instead. */
   const ceiling = Math.max(p.calculationCeilingPaise, args.minimumWagePaise ?? 0);
   const wage = Math.min(args.monthlyBonusWagePaise, ceiling);
-  const entitlement = Math.round((wage * p.minPercent) / 100);
+  const entitlement = Math.round((wage * p.minPercent * Math.max(0, Math.min(1, args.paidFraction ?? 1))) / 100);
   const shortfall = Math.max(0, entitlement - args.paidPaise);
 
   return {

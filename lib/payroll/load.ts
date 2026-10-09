@@ -1,6 +1,7 @@
 import { isStipendiary } from "@/lib/hris/stipend";
 import { coverageFor as personCoverage } from "@/lib/payroll/coverage";
 import "server-only";
+import { gratuityParamsFrom } from "./gratuity-config";
 import { epfParamsFrom, epfPeriodsFor } from "./epf-period";
 import { authoritativeRuns } from "./authoritative-runs";
 
@@ -145,6 +146,7 @@ export async function loadStatutoryConfig(
     },
     gratuity: {
       accrualBps: p["gratuity.accrual_bps"] ?? GRATUITY_ACCRUAL_BPS,
+      params: gratuityParamsFrom(p),
     },
     minimumWages: effective(minWages).map((r) => ({
       stateCode: r.stateCode,

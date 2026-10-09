@@ -2,6 +2,7 @@ import "server-only";
 import * as disk from "./disk";
 import * as blob from "./blob";
 import * as s3 from "./s3";
+import { resolveStorageProvider } from "./provider";
 
 /**
  * Where documents are stored.
@@ -11,11 +12,9 @@ import * as s3 from "./s3";
  * same narrow interface, so nothing that saves or reads a document
  * knows or cares which is in use.
  *
- * S3 is checked first deliberately. Choosing it is the more explicit
- * act — a bucket, a key pair and an endpoint someone entered on
- * purpose — whereas a Blob token can arrive merely by connecting a
- * store in a dashboard. Whichever was configured on purpose should
- * win.
+ * STORAGE_PROVIDER explicitly selects a store and fails closed when
+ * its credentials are missing. Without it, legacy installs retain
+ * S3-first automatic selection.
  *
  * Production must not fall back to disk. A serverless filesystem is
  * ephemeral, so the fallback would appear to work — uploads succeed,
@@ -38,14 +37,20 @@ type Driver = {
   sizeOf: (key: string) => Promise<number | null>;
 };
 
+function selection() {
+  return resolveStorageProvider({
+    requested: process.env.STORAGE_PROVIDER,
+    production: process.env.NODE_ENV === "production",
+    s3Configured: s3.configured(),
+    blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim()),
+  });
+}
+
 function driver(): Driver {
-  if (s3.configured()) return s3;
-  if (process.env.BLOB_READ_WRITE_TOKEN) return blob;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "No durable document store is configured. Document storage would fall back to a local filesystem that does not survive a deploy, so uploaded documents would be silently lost.",
-    );
-  }
+  const { provider, error } = selection();
+  if (error) throw new Error(error);
+  if (provider === "s3") return s3;
+  if (provider === "vercel-blob") return blob;
   return disk;
 }
 
@@ -60,19 +65,17 @@ function driver(): Driver {
  * who can fix it.
  */
 export function storageUnavailable(): string | null {
-  if (storageConfigured()) return null;
-  if (process.env.NODE_ENV !== "production") return null;
-  return "Document storage is not configured for this deployment, so nothing can be uploaded yet. Point it at an S3-compatible bucket (S3_BUCKET, S3_ENDPOINT, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY) or connect a Vercel Blob store, then redeploy.";
+  return selection().error;
 }
 
 export function storageConfigured(): boolean {
-  return s3.configured() || Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  const { provider } = selection();
+  return provider === "s3" || provider === "vercel-blob";
 }
 
 /** Which store is in use, so a settings screen can say so plainly. */
-export function storageDriverName(): "s3" | "vercel-blob" | "local-disk" {
-  if (s3.configured()) return "s3";
-  return process.env.BLOB_READ_WRITE_TOKEN ? "vercel-blob" : "local-disk";
+export function storageDriverName(): "s3" | "vercel-blob" | "local-disk" | "unconfigured" {
+  return selection().provider ?? "unconfigured";
 }
 
 export function save(key: string, bytes: Uint8Array): Promise<void> {
@@ -110,7 +113,10 @@ export function describeStorageError(error: unknown): string {
     .trim()
     .slice(0, 160);
 
-  const t = s3.configured() ? s3.target() : null;
+  if (storageDriverName() === "vercel-blob") {
+    return "Vercel Blob could not store the file. Check the deployment's BLOB_READ_WRITE_TOKEN, private store access and service availability; no document was recorded as saved.";
+  }
+  const t = storageDriverName() === "s3" ? s3.target() : null;
   const hint =
     status === 540
       ? "540 is Supabase's answer for a paused project — free projects pause after about a week without use. Open the project in the Supabase dashboard and choose Restore; uploads work again once it is running."

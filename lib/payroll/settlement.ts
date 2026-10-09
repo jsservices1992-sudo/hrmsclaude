@@ -4,6 +4,7 @@ import {
   computeLeaveEncashment,
   type GratuityResult,
   type LeaveEncashmentResult,
+  type GratuityParams,
 } from "./gratuity";
 import {
   computeNotice,
@@ -54,6 +55,8 @@ export type SettlementInput = {
    * Security's s.2(88) wage. Absent, basic + DA, as before the Code.
    */
   gratuityWagePaise?: Paise;
+  gratuityParams?: GratuityParams;
+  noticeRecoveryReducesTaxableSalary?: boolean;
   /** Per-day value used for notice and leave, on the company's basis. */
   perDayPaise: Paise;
 
@@ -166,6 +169,7 @@ export function computeSettlement(input: SettlementInput): SettlementResult {
     dateOfJoining: input.dateOfJoining,
     lastWorkingDay: input.lastWorkingDay,
     lastDrawnWagePaise: input.gratuityWagePaise ?? input.monthlyBasicPaise,
+    params: input.gratuityParams,
     exitType: input.exitType,
     fixedTerm: input.employmentType === "contract",
     fourYears240Days: input.gratuityFourYears240Days ?? false,
@@ -289,14 +293,12 @@ export function computeSettlement(input: SettlementInput): SettlementResult {
 
   const exemptTotal = lines.reduce((a, l) => a + (l.exemptPaise ?? 0), 0);
 
-  // Notice recovered from the employee reduces taxable salary; notice paid
-  // by the employer is taxable in their hands.
+  // Employer notice pay is already in payables. A recovery is not a
+  // salary-tax deduction unless the reviewed policy explicitly permits it.
   const noticeTaxAdjustment =
-    noticeSettlement.kind === "recovery"
+    noticeSettlement.kind === "recovery" && input.noticeRecoveryReducesTaxableSalary
       ? -noticeSettlement.amountPaise
-      : noticeSettlement.kind === "payout"
-        ? noticeSettlement.amountPaise
-        : 0;
+      : 0;
 
   const taxableAddition =
     payables - exemptTotal - input.finalMonthSalaryPaise + noticeTaxAdjustment;

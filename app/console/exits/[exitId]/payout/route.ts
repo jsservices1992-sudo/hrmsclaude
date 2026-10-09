@@ -4,6 +4,7 @@ import * as s from "@/db/schema";
 import { getSessionUser, canSeeCompensation, canAccessCompany } from "@/lib/auth/session";
 import { recordAccess } from "@/lib/audit/log";
 import { buildPaymentRun, formatBankFile } from "@/lib/banking/payments";
+import { indiaToday } from "@/lib/format/date";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ exitId: string }> }) {
   const user = await getSessionUser();
@@ -15,7 +16,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ exi
     .where(eq(s.fnfSettlements.exitCaseId, exitId)).orderBy(desc(s.fnfSettlements.createdAt)).limit(1);
   if (!row) return new Response("Settlement not found.", { status: 404 });
   if (!canAccessCompany(user, row.company.id)) return new Response("Not authorised.", { status: 403 });
-  if (row.fnf.status !== "approved" || row.fnf.computationVersion !== 2 || row.fnf.netPaise <= 0)
+  if (row.fnf.status !== "approved" || row.fnf.computationVersion !== 3 || row.fnf.netPaise <= 0)
     return new Response("Only an unpaid, approved, tax-adjusted settlement can be exported.", { status: 409 });
   const [bank] = await db.select().from(s.bankAccounts).where(and(eq(s.bankAccounts.companyId, row.company.id), eq(s.bankAccounts.purpose, "salary")))
     .orderBy(desc(s.bankAccounts.isDefault)).limit(1);
@@ -29,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ exi
   }] });
   if (payments.blocked.length) return new Response(payments.blocked.map(b => b.reason).join("\n"), { status: 409 });
   const rendered = formatBankFile({ format: "neft", instructions: payments.instructions, companyName: row.company.name,
-    debitAccountNumber: bank.accountNumber, valueDate: new Date().toISOString().slice(0, 10), reference: `FNF-${row.fnf.id}` });
+    debitAccountNumber: bank.accountNumber, valueDate: indiaToday(), reference: `FNF-${row.fnf.id}` });
   await recordAccess({ user, dataClass: "bank", surface: "console/fnf payout", companyId: row.company.id,
     subjectEmployeeId: row.emp.id, rowCount: 1 });
   return new Response(rendered.content, { headers: { "content-type": "text/csv; charset=utf-8",

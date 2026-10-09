@@ -2,6 +2,8 @@ import "server-only";
 import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
+import { fnfTaxReviews } from "@/db/compliance-schema";
+import { currentFnfReview, fnfReviewDigest, parseFnfTaxFacts } from "./tax-review";
 import { computeSettlement } from "../payroll/settlement";
 import { authoritativeRuns } from "../payroll/authoritative-runs";
 import { loadWorksheet } from "../tax/load";
@@ -28,6 +30,7 @@ import { loadStatutoryConfig } from "../payroll/load";
 import { coverageFor, pfMembership } from "../payroll/coverage";
 import { esicRuleFor } from "../payroll/esic-wage";
 import type { Regime } from "../tax/engine";
+import { indiaToday } from "../format/date";
 
 /**
  * Assembling a full-and-final settlement from live data — PRD §3.16.
@@ -58,6 +61,9 @@ export type FnfCase = {
   /** Whether the settlement may be released right now, and why not. */
   gate: { canRelease: boolean; reason: string };
   warnings: string[];
+  taxReview: typeof fnfTaxReviews.$inferSelect | null;
+  reviewInputDigest: string;
+  reviewReady: boolean;
 };
 
 function completedYears(from: string, to: string): number {
@@ -73,7 +79,7 @@ function completedYears(from: string, to: string): number {
 
 export async function loadFnfCase(
   exitCaseId: string,
-  today = new Date().toISOString().slice(0, 10),
+  today = indiaToday(),
 ): Promise<FnfCase | null> {
   const [exitCase] = await db
     .select()
@@ -90,6 +96,13 @@ export async function loadFnfCase(
   if (!employee) return null;
 
   const warnings: string[] = [];
+  const [stored] = await db.select().from(s.fnfSettlements)
+    .where(eq(s.fnfSettlements.exitCaseId, exitCaseId))
+    .orderBy(desc(s.fnfSettlements.createdAt)).limit(1);
+  const [taxReview] = await db.select().from(fnfTaxReviews)
+    .where(and(eq(fnfTaxReviews.exitCaseId, exitCaseId), eq(fnfTaxReviews.companyId, employee.companyId)))
+    .orderBy(desc(fnfTaxReviews.recordedAt), desc(fnfTaxReviews.id)).limit(1);
+  const reviewFacts = parseFnfTaxFacts(taxReview?.factsJson);
 
   /* ---- salary and its break-up ---- */
   const [salary] = await db
@@ -222,6 +235,7 @@ export async function loadFnfCase(
     finalMonthDeductionsPaise: 0,
     monthlyBasicPaise: monthlyBasic,
     gratuityWagePaise: gratuityWage,
+    gratuityParams: statutory.gratuity.params,
     perDayPaise: perDay,
     leaveBalanceDays: leaveDays,
     /* The grade's own notice period, where it has one. It was recorded
@@ -229,7 +243,8 @@ export async function loadFnfCase(
        whatever the grade said, so a junior on thirty days' notice was
        charged for sixty they never owed. */
     noticeGradeDays: grade?.noticeDays ?? null,
-    companyDefaultNoticeDays: 60,
+    noticeRequiredDays: reviewFacts?.noticeDays,
+    companyDefaultNoticeDays: 0,
     leaveExtendsNotice: false,
     noticeWaived: exitCase.noticeWaived,
     employerPaysNoticeInLieu: exitCase.employerPaysNoticeInLieu,
@@ -254,18 +269,22 @@ export async function loadFnfCase(
 
   const gratuityExemption = exemptGratuity({
     receivedPaise: settlement.gratuity.cappedPaise,
-    monthlyBasicPaise: monthlyBasic,
-    completedYears: years,
-    coveredByAct: true,
+    monthlyBasicPaise: reviewFacts?.lastTaxSalaryPaise ?? 0,
+    completedYears: reviewFacts?.gratuityBasis === "s19_5" ? settlement.gratuity.countedYears : years,
+    coveredByAct: reviewFacts?.gratuityBasis === "s19_5",
+    averageMonthlyBasicPaise: reviewFacts?.gratuityAveragePaise,
+    previouslyExemptPaise: reviewFacts?.priorGratuityExemptPaise,
     limits: SEPARATION_LIMITS_2026,
     regime,
   });
 
   const leaveExemption = exemptLeaveEncashment({
     receivedPaise: settlement.leaveEncashment.grossPaise,
-    averageMonthlySalaryPaise: monthlyGross,
+    averageMonthlySalaryPaise: reviewFacts?.leaveAveragePaise ?? 0,
     completedYears: years,
-    encashedDays: leaveDays,
+    encashedDays: Math.min(leaveDays, reviewFacts?.earnedLeaveDays ?? 0),
+    leaveAvailedDays: reviewFacts?.leaveAvailedDays ?? 0,
+    previouslyExemptPaise: reviewFacts?.priorLeaveExemptPaise,
     isGovernmentEmployee: false,
     limits: SEPARATION_LIMITS_2026,
   });
@@ -324,11 +343,28 @@ export async function loadFnfCase(
         eq(s.tdsLedger.financialYear, fyStart),
       ),
     );
-  const tdsToDate = tdsRows.reduce((a, r) => a + r.tdsPaise, 0);
+  // This settlement's own withholding is not an earlier tax credit for
+  // recalculating the same settlement after its payment has been recorded.
+  const tdsToDate = tdsRows.filter(r => r.sourceKey !== `fnf:${stored?.id}`).reduce((a, r) => a + r.tdsPaise, 0);
 
   const worksheet = await loadWorksheet(employee.id, settlementFy, undefined, {
     year: Number(exitCase.lastWorkingDay.slice(0, 4)), month: Number(exitCase.lastWorkingDay.slice(5, 7)),
   });
+  const byId = <T extends { id: string }>(rows: T[]) => [...rows].sort((a, b) => a.id.localeCompare(b.id));
+  const reviewInputDigest = fnfReviewDigest({
+    version: 1, exitCase: { ...exitCase, status: undefined },
+    employee: { id: employee.id, companyId: employee.companyId, dateOfJoining: employee.dateOfJoining,
+      dateOfBirth: employee.dateOfBirth, employmentType: employee.employmentType, taxRegime: employee.taxRegime,
+      branchId: employee.branchId, pfContributionBasis: employee.pfContributionBasis,
+      pfOptedIn: employee.pfOptedIn, hadPriorPfMembership: employee.hadPriorPfMembership, uan: employee.uan },
+    salary, structure, companyRule, grade, statutory, conventions,
+    monthlyBasic, gratuityWage, perDay,
+    balances: byId(balances), loans: byId(loans), clearance: byId(clearanceItems),
+    salaryToDate, finalSummary, tdsToDate,
+    worksheet: { declaration: worksheet?.declaration, deductions: worksheet?.deductions },
+  });
+  const reviewReady = Boolean(currentFnfReview(taxReview, reviewInputDigest));
+  if (!reviewReady && stored?.status !== "paid") warnings.push("Separation tax and notice review is missing or stale. Record the salary-history, prior exemptions and employment-policy evidence below before preparation or release.");
   let tax = computeSeparationTax({
     regime,
     config,
@@ -336,9 +372,10 @@ export async function loadFnfCase(
     salaryToDatePaise: salaryToDate + settlement.lines
       .filter((l) => l.kind === "payable" && l.code === "FINAL_SALARY")
       .reduce((a, l) => a + l.amountPaise, 0),
-    exemptAllowancesToDatePaise: 0,
-    chapterViAPaise: worksheet?.deductions.totalAllowedPaise ?? 0,
-    professionalTaxPaidPaise: 0,
+    exemptAllowancesToDatePaise: reviewFacts?.exemptAllowancesYtdPaise ?? 0,
+    chapterViAPaise: reviewFacts?.chapterViaPaise ?? 0,
+    newRegimeAllowedDeductionsPaise: reviewFacts?.newRegimeAllowedDeductionsPaise ?? 0,
+    professionalTaxPaidPaise: reviewFacts?.professionalTaxYtdPaise ?? 0,
     tdsDeductedToDatePaise: tdsToDate,
     previousEmployerSalaryPaise: worksheet?.declaration?.previousSalaryPaise ?? 0,
     previousEmployerTdsPaise: worksheet?.declaration?.previousTdsPaise ?? 0,
@@ -347,7 +384,22 @@ export async function loadFnfCase(
     separationCompensation: compensation,
     notice,
     otherTaxablePaise: 0,
+    additionalIncomeToDatePaise: reviewFacts?.otherTaxableYtdPaise ?? 0,
   });
+  if (reviewReady && taxReview) tax.basis += `; reviewed separation facts ${taxReview.id} by ${taxReview.recordedBy}; ${reviewFacts!.gratuityBasis}; ${reviewFacts!.legalBasis}`;
+
+  // Entitlement and tax exemption are separate computations. The statement
+  // must carry the same exemption as the tax engine, not a generic ceiling.
+  for (const line of settlement.lines) {
+    if (line.code === "GRATUITY") line.exemptPaise = gratuityExemption.exemptPaise;
+    if (line.code === "LEAVE_ENCASH") line.exemptPaise = leaveExemption.exemptPaise;
+  }
+  settlement.gratuity.exemptPaise = gratuityExemption.exemptPaise;
+  settlement.gratuity.taxablePaise = gratuityExemption.taxablePaise;
+  settlement.leaveEncashment.exemptPaise = leaveExemption.exemptPaise;
+  settlement.leaveEncashment.taxablePaise = leaveExemption.taxablePaise;
+  settlement.exemptTotalPaise = tax.totalExemptPaise;
+  settlement.taxableAdditionPaise = Math.max(0, settlement.payablesPaise - tax.totalExemptPaise);
 
   warnings.push(...tax.warnings);
   // A refund is a separate tax-adjustment workflow, not extra unpaid wages.
@@ -360,13 +412,6 @@ export async function loadFnfCase(
   }
 
   /* ---- stored state, receivable and the gate ---- */
-  const [stored] = await db
-    .select()
-    .from(s.fnfSettlements)
-    .where(eq(s.fnfSettlements.exitCaseId, exitCaseId))
-    .orderBy(desc(s.fnfSettlements.createdAt))
-    .limit(1);
-
   // Released statements use the signed snapshot, not subsequently edited inputs.
   if (stored && stored.status !== "draft") {
     settlement.lines = JSON.parse(stored.linesJson);
@@ -374,6 +419,7 @@ export async function loadFnfCase(
     settlement.recoveriesPaise = stored.recoveriesPaise;
     settlement.netPaise = stored.netPaise;
     if (stored.taxJson) tax = JSON.parse(stored.taxJson);
+    settlement.exemptTotalPaise = tax.totalExemptPaise;
   }
   const calendarHolidays = await db.select().from(s.holidays).where(eq(s.holidays.companyId, employee.companyId));
   const [shift] = await db.select().from(s.shifts)
@@ -419,7 +465,9 @@ export async function loadFnfCase(
   const clearanceClosed = pendingClearance === 0;
   const overridden = Boolean(stored?.clearanceOverriddenBy);
 
-  const gate = !finalSummary
+  const gate = !reviewReady
+    ? { canRelease: false, reason: "Record a current separation tax and notice review below, then compute and save the settlement again." }
+    : !finalSummary
     ? { canRelease: false, reason: "Approve this employee's final-month payroll first. Salary is paid through Payroll, not twice through F&F." }
     : clearanceClosed
     ? { canRelease: true, reason: "Clearance is closed." }
@@ -450,13 +498,16 @@ export async function loadFnfCase(
     recoveries,
     gate,
     warnings,
+    taxReview: taxReview ?? null,
+    reviewInputDigest,
+    reviewReady,
   };
 }
 
 /** The F&F work queue, ordered by how late each case is — FR-PAY-21. */
 export async function loadFnfQueue(
   companyIds: string[],
-  today = new Date().toISOString().slice(0, 10),
+  today = indiaToday(),
 ) {
   if (companyIds.length === 0) return [];
 

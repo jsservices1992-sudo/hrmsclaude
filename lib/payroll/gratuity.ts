@@ -76,8 +76,8 @@ export function completedYears(dateOfJoining: string, lastWorkingDay: string): n
 
 /**
  * Gratuity = last drawn wages × 15/26 × completed years.
- * Six months or more of a part year rounds up — the rule that decides
- * whether someone at 4 years 7 months qualifies at all.
+ * Only a part year in excess of six calendar months rounds up.
+ * This formula does not itself establish the qualifying service period.
  */
 /** Days served past the given completed-year anniversary, both ends counted. */
 function daysBeyondAnniversary(dateOfJoining: string, lastWorkingDay: string, years: number): number {
@@ -113,12 +113,17 @@ export function computeGratuity(input: {
   /** Forfeiture requires an explicit, reasoned decision — never a default. */
   forfeited?: boolean;
   forfeitureReason?: string;
+  /** Supplied only by a separate, reviewed income-tax calculation. */
+  reviewedExemptPaise?: Paise;
 }): GratuityResult {
   const p = input.params ?? GRATUITY_DEFAULTS;
   const raw = serviceYears(input.dateOfJoining, input.lastWorkingDay);
 
-  const whole = Math.floor(raw);
-  const partYear = raw - whole;
+  const whole = completedYears(input.dateOfJoining, input.lastWorkingDay);
+  const joined = new Date(input.dateOfJoining + "T00:00:00Z");
+  const sixMonth = new Date(Date.UTC(joined.getUTCFullYear() + whole, joined.getUTCMonth() + 6, 1));
+  const lastDay = new Date(Date.UTC(sixMonth.getUTCFullYear(), sixMonth.getUTCMonth() + 1, 0)).getUTCDate();
+  sixMonth.setUTCDate(Math.min(joined.getUTCDate(), lastDay));
   /*
    * Pro rata means proportionate, so a fixed-term term is counted as it
    * was actually served. Rounding a part year up is the rule for regular
@@ -127,7 +132,7 @@ export function computeGratuity(input: {
    */
   const countedYears = input.fixedTerm
     ? Number(raw.toFixed(4))
-    : partYear >= 0.5
+    : Date.parse(input.lastWorkingDay + "T00:00:00Z") > sixMonth.getTime()
       ? whole + 1
       : whole;
 
@@ -183,7 +188,7 @@ export function computeGratuity(input: {
     (input.lastDrawnWagePaise * p.daysPerYear * countedYears) / p.monthDivisor,
   );
   const capped = Math.min(gross, p.ceilingPaise);
-  const exempt = Math.min(capped, p.exemptionCeilingPaise);
+  const exempt = Math.max(0, Math.min(capped, p.exemptionCeilingPaise, input.reviewedExemptPaise ?? 0));
 
   return {
     eligible: true,
@@ -232,6 +237,8 @@ export function computeLeaveEncashment(input: {
   exemptionCeilingPaise?: Paise;
   /** Only a retirement or resignation attracts the exemption. */
   isSeparation?: boolean;
+  /** Supplied only after the salary-history/leave/lifetime-limit test. */
+  reviewedExemptPaise?: Paise;
 }): LeaveEncashmentResult {
   const days = Math.max(0, input.balanceDays);
   const gross = Math.round(days * input.perDayPaise);
@@ -239,7 +246,7 @@ export function computeLeaveEncashment(input: {
   const separation = input.isSeparation ?? true;
   const ceiling = input.exemptionCeilingPaise ?? 2_500_000_00; // ₹25,00,000
 
-  const exempt = separation ? Math.min(gross, ceiling) : 0;
+  const exempt = separation ? Math.max(0, Math.min(gross, ceiling, input.reviewedExemptPaise ?? 0)) : 0;
 
   return {
     days,
@@ -248,7 +255,7 @@ export function computeLeaveEncashment(input: {
     exemptPaise: exempt,
     taxablePaise: Math.max(0, gross - exempt),
     reason: separation
-      ? "Exempt on separation under section 10(10AA), to the statutory ceiling"
+      ? "Separation encashment; exemption requires a separate reviewed income-tax calculation"
       : "Encashment in service is fully taxable",
   };
 }

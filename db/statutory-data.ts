@@ -489,12 +489,10 @@ export const MINIMUM_WAGES: MinimumWageSeed[] = [
    * at the same figures — and "graduate and above" takes the
    * highly-skilled slot, being the highest Delhi sets.
    */
-  w("DL", null, "2026-04-01", [18456, 20371, 22411, 24356],
-    "Delhi minimum wage notification, basic + VDA, supplied by the owner 18 September 2026. " +
-    "The highly-skilled figure is Delhi's 'graduate and above' rate. " +
-    "Confirmed by the owner on 18 September 2026 and cross-checked against Delhi's own day rates — " +
-    "₹710, ₹784, ₹862 and ₹937, each the monthly figure over 26. " +
-    "A compiled workbook gave ₹19,846 / ₹21,903 / ₹24,098 / ₹26,191 for the same period; these are what stand."),
+  w("DL", null, "2025-04-01", [18456, 20371, 22411, 24356],
+    "Delhi Labour Commissioner order F.No.(142)/02/MW/VII/Part file/211-241 dated 15 April 2025, effective 1 April 2025. " +
+    "Original: https://labour.delhi.gov.in/sites/default/files/Labour/generic_multiple_files/da15april2025.pdf . " +
+    "The highest slot represents clerical/supervisory graduate-and-above, not a general highly-skilled industry rate; review establishment/category applicability and subsequent notifications."),
   w("GA", "Zone A", "2026-04-01", [14274, 15782, 17290, 18500], "Labour Dept Notification (2026)"),
   w("GA", "Zone B", "2026-04-01", [14144, 15652, 17160, 18400], "Labour Dept Notification (2026)"),
   w("GJ", "Zone I", "2026-04-01", [13325, 13611, 13897, 14500], "Labour Dept Notification (2026)"),
@@ -566,7 +564,7 @@ export const STATUTORY_PARAMS = [
   { key: "epf.employer_bps", value: 1200, unit: "bps" as const, note: "12% employer share", source: "EPF & MP Act 1952, s.6 — the employer's contribution equals the employee's" },
   { key: "epf.eps_bps", value: 833, unit: "bps" as const, note: "8.33% diverted to pension scheme", source: "Employees' Pension Scheme 1995, para 3(1)" },
   { key: "epf.eps_ceiling", value: R(15000), unit: "paise" as const, effectiveTo: "2026-09-16", note: "Pension scheme wage ceiling", source: "Employees' Pension Scheme 1995, para 3" },
-  { key: "epf.eps_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "Pension scheme wage ceiling — revised; max employer EPS ₹2,083", source: "Gazette S.O. 5109(E), 17 September 2026, under Code on Social Security 2020 s.2(89) — the wage ceiling for Chapter III, which is EPF, EPS and EDLI alike. Who is in EPS at all is unchanged: a member who joined after 1 September 2014 above the old ceiling stays out" },
+  { key: "epf.eps_ceiling", value: R(25000), unit: "paise" as const, effectiveFrom: "2026-09-17", note: "Pension scheme wage ceiling — revised; max employer EPS ₹2,083", source: "Gazette S.O. 5109(E), 17 September 2026, under Code on Social Security 2020 s.2(89). Ceiling does not establish individual membership: review joining/revision wages and original EPFO enrolment evidence, including formerly excluded employees; do not assume post-2014 exclusion is permanent." },
   { key: "esic.wage_threshold", value: R(21000), unit: "paise" as const, note: "Monthly gross coverage threshold", source: "Employees' State Insurance (Central) Rules 1950, rule 50" },
   { key: "esic.employee_bps", value: 75, unit: "bps" as const, note: "0.75% employee share", source: "Employees' State Insurance (Central) Rules 1950, rule 51 — with effect from 1 July 2019" },
   { key: "esic.employer_bps", value: 325, unit: "bps" as const, note: "3.25% employer share", source: "Employees' State Insurance (Central) Rules 1950, rule 51 — with effect from 1 July 2019" },

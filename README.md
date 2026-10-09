@@ -39,7 +39,8 @@ filesystem does not survive a redeploy.
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string. Required everywhere. |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob store. Required in production. |
+| `STORAGE_PROVIDER` | Set to `vercel-blob` for this installation. |
+| `BLOB_READ_WRITE_TOKEN` | Private Vercel Blob store token, server-side only. |
 | `UPLOAD_ROOT` | Development only, when the Blob store is unset. |
 | `SIGNUP_ENABLED` | Set to `false` to close self-serve registration. |
 
@@ -48,15 +49,18 @@ filesystem does not survive a redeploy.
 1. Create a PostgreSQL database on Render, then copy its **External
    Database URL** into the Vercel project as `DATABASE_URL`. The internal
    URL only resolves inside Render's own network.
-2. Connect a Vercel Blob store to the project; it sets
-   `BLOB_READ_WRITE_TOKEN` for you.
-3. Push the schema at it, from your machine:
-   `DATABASE_URL=… npm run db:push && npm run db:triggers`
-   — `db:push` creates tables but not the triggers that keep the audit
-   log append-only.
-   (`drizzle.config.ts` switches to the Turso dialect when `DATABASE_URL`
-   is set, and uses a local file otherwise.)
+2. Connect a **private** Vercel Blob store to the project and enable its
+   token for the target deployment environment. Set `STORAGE_PROVIDER=vercel-blob`.
+   Keep `BLOB_READ_WRITE_TOKEN` in deployment secrets, never Git or a `NEXT_PUBLIC_` variable.
+   Existing documents in another store must be migrated separately; selecting a
+   provider does not copy them.
+3. Back up the database, then run `npm run db:migrate` and `npm run db:check`
+   against that deployment's `DATABASE_URL`. The migration runner also installs
+   the append-only audit triggers. Do not use `db:push` for production upgrades.
 4. Deploy.
+   Check `/api/health`; an administrator should also test upload, authenticated
+   download and unauthorized access with a disposable document. A configured
+   token is not proof that the store is reachable or its permissions are correct.
 5. Bootstrap the first administrator against the same database:
    `DATABASE_URL=… ADMIN_EMAIL=… ADMIN_NAME=… COMPANY_NAME=… npm run db:bootstrap`
 

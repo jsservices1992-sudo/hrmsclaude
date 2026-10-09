@@ -2,34 +2,78 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import {
   getSessionUser,
   canMutate,
   canAccessCompany,
+  canSeeCompensation,
 } from "@/lib/auth/session";
 import { recordAudit, loadSodPolicies } from "@/lib/audit/log";
 import { loadFnfCase } from "@/lib/exit/fnf-load";
 import { dispatchEvent } from "@/lib/webhooks/dispatch";
 import { TAX_CONFIG_VERSION } from "@/lib/tax/config";
+import { fnfTaxReviews } from "@/db/compliance-schema";
+import { fnfTaxFactsSchema } from "@/lib/exit/tax-review";
+import { indiaToday } from "@/lib/format/date";
 
 export type FnfState = { error?: string; ok?: string };
 
 async function requirePayroll(exitCaseId: string) {
   const user = await getSessionUser();
   if (!user) return { user: null, fnf: null, error: "Not authorised." as const };
-  if (!canMutate(user)) {
+  if (!canMutate(user) || !canSeeCompensation(user)) {
     return { user, fnf: null, error: "Only payroll may act on a settlement." as const };
   }
 
+  const [scope] = await db.select({ companyId: s.employees.companyId }).from(s.exitCases)
+    .innerJoin(s.employees, eq(s.exitCases.employeeId, s.employees.id)).where(eq(s.exitCases.id, exitCaseId)).limit(1);
+  if (!scope || !canAccessCompany(user, scope.companyId)) {
+    return { user, fnf: null, error: "Exit case not found or not authorised." as const };
+  }
   const fnf = await loadFnfCase(exitCaseId);
   if (!fnf) return { user, fnf: null, error: "Exit case not found." as const };
   if (!canAccessCompany(user, fnf.employee.companyId)) {
     return { user, fnf: null, error: "Not authorised." as const };
   }
   return { user, fnf, error: null };
+}
+
+export async function recordSeparationReview(_prev: FnfState, fd: FormData): Promise<FnfState> {
+  const exitCaseId = String(fd.get("exitCaseId") ?? "");
+  const { user, fnf, error } = await requirePayroll(exitCaseId);
+  if (error || !user || !fnf) return { error: error ?? "Not authorised." };
+  if (fnf.stored && fnf.stored.status !== "draft") return { error: "Reopen the settlement before changing its review." };
+  if (String(fd.get("inputDigest")) !== fnf.reviewInputDigest) return { error: "Inputs changed while this form was open. Refresh and review the latest figures." };
+  const numeric = ["lastTaxSalaryPaise", "gratuityAveragePaise", "leaveAveragePaise", "priorGratuityExemptPaise", "priorLeaveExemptPaise",
+    "earnedLeaveDays", "leaveAvailedDays", "noticeDays", "exemptAllowancesYtdPaise", "professionalTaxYtdPaise", "chapterViaPaise", "newRegimeAllowedDeductionsPaise", "otherTaxableYtdPaise"];
+  const raw: Record<string, unknown> = { gratuityBasis: fd.get("gratuityBasis"), legalBasis: fd.get("legalBasis") };
+  for (const key of numeric) {
+    const input = String(fd.get(key) ?? "").trim();
+    raw[key] = input === "" ? NaN : Number(input) * (key.endsWith("Paise") ? 100 : 1);
+    if (key.endsWith("Paise") && Number.isFinite(raw[key])) raw[key] = Math.round(raw[key] as number);
+  }
+  const parsed = fnfTaxFactsSchema.safeParse(raw);
+  const evidence = String(fd.get("evidence") ?? "").trim();
+  if (!parsed.success || evidence.length < 20 || evidence.length > 8000) return { error: "Complete every reviewed fact (zero where documented), legal basis and salary/leave/previous-employer/notice evidence references." };
+  if (parsed.data.earnedLeaveDays > fnf.settlement.leaveEncashment.days) return { error: "Tax-eligible earned leave cannot exceed the leave being encashed." };
+  const id = randomUUID();
+  const saved = await db.transaction(async tx => {
+    await tx.select().from(s.exitCases).where(eq(s.exitCases.id, exitCaseId)).for("update");
+    const [settlement] = await tx.select().from(s.fnfSettlements).where(eq(s.fnfSettlements.exitCaseId, exitCaseId)).for("update");
+    if (settlement && settlement.status !== "draft") return false;
+    await tx.insert(fnfTaxReviews).values({ id, exitCaseId, companyId: fnf.employee.companyId,
+      factsJson: JSON.stringify(parsed.data), inputDigest: fnf.reviewInputDigest, evidence,
+      recordedBy: user.email, recordedAt: new Date().toISOString() });
+    return true;
+  });
+  if (!saved) return { error: "The settlement was released while you were reviewing. Reopen it first." };
+  await recordAudit({ user, action: "fnf.tax_reviewed", entity: "fnf_tax_review", entityId: id,
+    after: { exitCaseId, inputDigest: fnf.reviewInputDigest }, reason: evidence });
+  revalidatePath(`/console/exits/${exitCaseId}/settlement`);
+  return { ok: "Review recorded. Compute and save the settlement before second-person release." };
 }
 
 /**
@@ -46,6 +90,8 @@ export async function prepareSettlement(
   const exitCaseId = String(fd.get("exitCaseId") ?? "");
   const { user, fnf, error } = await requirePayroll(exitCaseId);
   if (error || !user || !fnf) return { error: error ?? "Not authorised." };
+
+  if (!fnf.reviewReady) return { error: "Record a current separation tax and notice review first." };
 
   if (fnf.stored && fnf.stored.status !== "draft") {
     return {
@@ -71,14 +117,20 @@ export async function prepareSettlement(
     approvedBy: null,
     createdAt: now,
     slaDays: 2,
-    computationVersion: 2,
+    computationVersion: 3,
   };
 
-  if (fnf.stored) {
-    await db.update(s.fnfSettlements).set(row).where(eq(s.fnfSettlements.id, id));
-  } else {
-    await db.insert(s.fnfSettlements).values(row);
-  }
+  const prepared = await db.transaction(async tx => {
+    await tx.select().from(s.exitCases).where(eq(s.exitCases.id, exitCaseId)).for("update");
+    const [locked] = await tx.select().from(s.fnfSettlements).where(eq(s.fnfSettlements.exitCaseId, exitCaseId)).for("update");
+    const [review] = await tx.select().from(fnfTaxReviews).where(eq(fnfTaxReviews.exitCaseId, exitCaseId))
+      .orderBy(desc(fnfTaxReviews.recordedAt), desc(fnfTaxReviews.id)).limit(1);
+    if (review?.id !== fnf.taxReview?.id || (locked && (locked.status !== "draft" || locked.id !== id))) return false;
+    if (locked) await tx.update(s.fnfSettlements).set(row).where(eq(s.fnfSettlements.id, id));
+    else await tx.insert(s.fnfSettlements).values(row);
+    return true;
+  });
+  if (!prepared) return { error: "The settlement or its review changed while computing. Refresh before preparing again." };
 
   await recordAudit({
     user,
@@ -183,7 +235,7 @@ export async function releaseSettlement(
      rather than be unable to pay anybody. */
   const policies = await loadSodPolicies(fnf.employee.companyId);
   const preparerRule = policies.find((p) => p.rule === "preparer_cannot_approve");
-  if (preparerRule?.enabled !== false && fnf.stored.preparedBy === user.email) {
+  if (preparerRule?.enabled !== false && (fnf.stored.preparedBy === user.email || fnf.taxReview?.recordedBy === user.email)) {
     await recordAudit({
       user,
       action: "fnf.release.denied",
@@ -193,13 +245,14 @@ export async function releaseSettlement(
     });
     return {
       error:
-        "You prepared this settlement, so you cannot also release it — a second person must approve a payment. If this company has only one administrator, an admin can turn that rule off under Settings → Payroll, with a reason that is recorded.",
+        "You prepared this settlement or recorded its tax review, so a second person must release it. If this company has only one administrator, an admin can turn that rule off under Settings → Payroll, with a reason that is recorded.",
     };
   }
   if (!fnf.gate.canRelease) {
     return { error: fnf.gate.reason };
   }
-  if (fnf.stored.linesJson !== JSON.stringify(fnf.settlement.lines) || fnf.stored.netPaise !== fnf.settlement.netPaise) {
+  if (fnf.stored.computationVersion !== 3 || fnf.stored.taxJson !== JSON.stringify(fnf.tax)
+    || fnf.stored.linesJson !== JSON.stringify(fnf.settlement.lines) || fnf.stored.netPaise !== fnf.settlement.netPaise) {
     return { error: "Inputs have changed since preparation. Compute and save again before release." };
   }
 
@@ -208,8 +261,14 @@ export async function releaseSettlement(
 
   const settlementId = fnf.stored.id;
   const released = await db.transaction(async (tx) => {
+    await tx.select().from(s.exitCases).where(eq(s.exitCases.id, exitCaseId)).for("update");
+    const [review] = await tx.select().from(fnfTaxReviews).where(eq(fnfTaxReviews.exitCaseId, exitCaseId))
+      .orderBy(desc(fnfTaxReviews.recordedAt), desc(fnfTaxReviews.id)).limit(1);
+    if (review?.id !== fnf.taxReview?.id) return false;
     const [locked] = await tx.select().from(s.fnfSettlements).where(eq(s.fnfSettlements.id, settlementId)).for("update");
-    if (!locked || locked.status !== "draft") return false;
+    if (!locked || locked.status !== "draft" || locked.linesJson !== fnf.stored!.linesJson
+      || locked.taxJson !== fnf.stored!.taxJson || locked.preparedBy !== fnf.stored!.preparedBy
+      || locked.netPaise !== fnf.stored!.netPaise || locked.computationVersion !== 3) return false;
     await tx
       .update(s.fnfSettlements)
       .set({
@@ -275,14 +334,14 @@ export async function recordSettlementPayment(_prev: FnfState, fd: FormData): Pr
   const { user, fnf, error } = await requirePayroll(exitCaseId);
   if (error || !user || !fnf) return { error: error ?? "Not authorised." };
   const stored = fnf.stored;
-  if (!stored || stored.status !== "approved" || stored.computationVersion !== 2) {
+  if (!stored || stored.status !== "approved" || stored.computationVersion !== 3) {
     return { error: "Only a released, tax-adjusted settlement can be marked paid. Recompute legacy settlements first." };
   }
   const reference = String(fd.get("reference") ?? "").trim();
   const paidAt = String(fd.get("paidAt") ?? "");
   if (reference.length < 5 || !/^\d{4}-\d{2}-\d{2}$/.test(paidAt)
     || !Number.isFinite(Date.parse(paidAt)) || new Date(paidAt).toISOString().slice(0, 10) !== paidAt
-    || paidAt > new Date().toISOString().slice(0, 10)
+    || paidAt > indiaToday()
     || paidAt < fnf.exitCase.lastWorkingDay) return { error: "Enter a valid payment date and bank reference (at least 5 characters)." };
   const tax = JSON.parse(stored.taxJson ?? "null") as { tdsOnSettlementPaise?: number } | null;
   if (!tax || !Number.isSafeInteger(tax.tdsOnSettlementPaise)) return { error: "Saved tax computation is missing. Recompute the settlement." };

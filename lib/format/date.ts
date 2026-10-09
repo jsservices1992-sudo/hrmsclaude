@@ -22,6 +22,11 @@ const MONTHS = [
 
 const ISO = /^(\d{4})-(\d{2})-(\d{2})/;
 
+/** Business dates use IST, regardless of the server's timezone. */
+export function indiaToday(now = new Date()): string {
+  return new Date(now.getTime() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 /** `2026-09-15` → `15/09/2026`. Anything unparseable is returned as it came. */
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";

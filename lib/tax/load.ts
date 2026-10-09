@@ -1,13 +1,15 @@
 import "server-only";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { CURRENT_FY, monthsInQuarter, monthsRemainingInFy } from "./fy";
-import { buildForm16PartB } from "./form16";
+import { buildForm16PartB, sumMonthlyTds } from "./form16";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { loadStructure, loadStatutoryConfig, loadStructureResolutionContext, resolveEmployeeStructure } from "../payroll/load";
 import { effectiveMonthlyGross } from "../payroll/effective-gross";
-import { evaluateStructure } from "../payroll/compensation";
-import { projectAnnualProfessionalTax } from "../payroll/statutory";
+import { evaluateStructure, evaluationWithEmployerWage } from "../payroll/compensation";
+import { coverageFor, pfMembership } from "../payroll/coverage";
+import { esicRuleFor } from "../payroll/esic-wage";
+import { epfExcluded, projectAnnualProfessionalTax } from "../payroll/statutory";
 import {
   computeAnnualTax,
   computeDeductions,
@@ -171,7 +173,7 @@ type WorksheetInputs = {
   specialRateDecl: typeof s.taxSpecialRateDeclarations.$inferSelect | null;
   company: typeof s.companies.$inferSelect | null;
   period: TaxPeriod;
-  history: { year: number; month: number; amountPaise: number; basicPaise: number; hraPaise: number }[];
+  history: { year: number; month: number; amountPaise: number; basicPaise: number; hraPaise: number; employerPfPaise: number; employerNpsPaise: number }[];
 };
 
 function specialRateDeclarationFrom(
@@ -227,12 +229,21 @@ function composeWorksheet(
     warnings.push("No salary is on record, so the projection is nil");
   }
 
-  const evaluated = evaluateStructure(structure, monthlyGross, effective?.anchors);
-  const monthlyBasic = evaluated.epfBasePaise;
+  const evaluated = evaluationWithEmployerWage(evaluateStructure(structure, monthlyGross, effective?.anchors,
+    esicRuleFor(new Date(Date.UTC(input.period.year, input.period.month, 0)).toISOString().slice(0, 10))), {
+      epfCeilingPaise: statutory.epf.wageCeilingPaise,
+      epfCoverageCeilingPaise: statutory.epf.coverageCeilingPaise,
+      epfEmployerBps: statutory.epf.employerBps,
+      epfOnActualBasic: emp.pfContributionBasis === "company" ? company?.epfOnActualBasic ?? false : emp.pfContributionBasis === "higher",
+      ...(company ? coverageFor(company, emp) : {}), ...pfMembership(emp),
+    });
+  // HRA/deduction salary is not the wider statutory PF/Code wage.
+  const monthlyBasic = evaluated.components.filter(c => ["BASIC", "DA", "VDA"].includes(c.code))
+    .reduce((sum, c) => sum + c.amountPaise, 0);
   const monthlyHra =
     evaluated.components.find((c) => c.code === "HRA")?.amountPaise ?? 0;
 
-  const project = (monthlyPaise: number, key: "amountPaise" | "basicPaise" | "hraPaise") => salaryProjection({
+  const project = (monthlyPaise: number, key: "amountPaise" | "basicPaise" | "hraPaise" | "employerPfPaise" | "employerNpsPaise") => salaryProjection({
     financialYear, period: input.period, monthlyPaise,
     dateOfJoining: emp.dateOfJoining, dateOfExit: emp.dateOfExit,
     history: input.history.map(r => ({ year: r.year, month: r.month, amountPaise: r[key] })),
@@ -263,19 +274,26 @@ function composeWorksheet(
      back out under 80CCD(2) up to the regime's share of basic + DA — in
      either regime. Whatever sits above that cap stays taxed. */
   const npsBps = emp.employerNpsBps ?? 0;
-  const annualEmployerNps = npsBps > 0 ? (Math.round((monthlyBasic * npsBps) / 10000 / 100) * 100) * 12 : 0;
+  const annualEmployerNps = project(Math.round(evaluated.epfBasePaise * npsBps / 10000 / 100) * 100, "employerNpsPaise");
+  const onActual = emp.pfContributionBasis === "company" ? company?.epfOnActualBasic ?? false : emp.pfContributionBasis === "higher";
+  const pfWage = onActual ? evaluated.pfWagePaise : Math.min(evaluated.pfWagePaise, statutory.epf.wageCeilingPaise);
+  const excludedPf = evaluated.pfApplicable === undefined ? epfExcluded({ pfWagePaise: evaluated.pfWagePaise,
+    wageCeilingPaise: statutory.epf.coverageCeilingPaise ?? statutory.epf.wageCeilingPaise,
+    optedIn: emp.pfOptedIn, hadPriorMembership: pfMembership(emp).hadPriorPfMembership }) : !evaluated.pfApplicable;
+  const monthlyEmployerPf = excludedPf || (company && coverageFor(company, emp).epfEstablishmentCovered === false)
+    ? 0 : Math.round(pfWage * statutory.epf.employerBps / 10000 / 100) * 100;
+  const annualEmployerPf = project(monthlyEmployerPf, "employerPfPaise");
 
   /* Employer PF and NPS above ₹7.5 lakh a year together are a perquisite
      under s.17(2)(vii). Worked out here unless somebody has already
      entered the retirals perquisite by hand, which then stands. Employer
-     PF is taken at the ceiling — the least it can be — so this never
-     overstates. */
+     Approved PF/EPS and NPS history is authoritative. Future contributions
+     use actual/capped membership and remaining employed months. */
   const autoRetiral =
-    annualEmployerNps > 0 && !perqRows.some((p) => p.code === "RETIRAL")
+    !perqRows.some((p) => p.code === "RETIRAL")
       ? valueExcessRetirals(
           {
-            employerPfPaise:
-              Math.round((statutory.epf.wageCeilingPaise * statutory.epf.employerBps) / 10000) * 12,
+            employerPfPaise: annualEmployerPf,
             employerNpsPaise: annualEmployerNps,
             employerSuperannuationPaise: 0,
           },
@@ -602,6 +620,8 @@ export async function loadWorksheetsFor(
             year: r.run.periodYear, month: r.run.periodMonth, amountPaise: r.summary.grossPaise,
             basicPaise: historyLines.filter(l => l.runId === r.run.id && l.employeeId === emp.id && ["BASIC", "DA", "VDA"].includes(l.code)).reduce((sum, l) => sum + l.amountPaise, 0),
             hraPaise: historyLines.filter(l => l.runId === r.run.id && l.employeeId === emp.id && l.code === "HRA").reduce((sum, l) => sum + l.amountPaise, 0),
+            employerPfPaise: historyLines.filter(l => l.runId === r.run.id && l.employeeId === emp.id && ["EPF_ER", "EPS_ER"].includes(l.code)).reduce((sum, l) => sum + l.amountPaise, 0),
+            employerNpsPaise: historyLines.filter(l => l.runId === r.run.id && l.employeeId === emp.id && l.code === "NPS_ER").reduce((sum, l) => sum + l.amountPaise, 0),
           })),
           decl,
           salary: salaryByEmployee.get(emp.id) ?? null,
@@ -849,7 +869,7 @@ export async function loadForm16(
       regime: worksheet.regime,
       annual: worksheet.annual,
       deductions: worksheet.deductions,
-      tdsByMonth: new Map(ledger.map((r) => [r.month, r.tdsPaise])),
+      tdsByMonth: sumMonthlyTds(ledger),
       hraExemptPaise: worksheet.hra?.exemptPaise,
     }),
   };

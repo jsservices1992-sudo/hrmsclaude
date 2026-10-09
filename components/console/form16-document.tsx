@@ -64,7 +64,7 @@ export function Form16Document({
       </header>
 
       <p className={`${BAND} border-x-0`}>
-        FORM 16 · PART B — ANNEXURE · FINANCIAL YEAR {form.financialYear}-
+        SALARY TAX WORKING STATEMENT · FINANCIAL YEAR {form.financialYear}-
         {String((form.financialYear + 1) % 100).padStart(2, "0")} · ASSESSMENT YEAR{" "}
         {form.assessmentYear}
       </p>
@@ -186,10 +186,10 @@ export function Form16Document({
           </p>
         )}
         <p>
-          This is Part B, generated from payroll records. It is not a complete
-          Form 16: Part A, carrying the deductor&rsquo;s challan details and the
-          tax credit actually matched by the department, is issued through
-          TRACES and must be obtained from your employer separately. File your
+          This payroll working statement is not a statutory TDS certificate.
+          {form.financialYear >= 2026 ? " Form 130" : " Form 16"}, including
+          matched tax-credit details, must be generated and downloaded from
+          TRACES and signed by the deductor. Obtain it from your employer. File your
           return against the credit shown in your Form 26AS or AIS, not against
           this statement alone.
         </p>

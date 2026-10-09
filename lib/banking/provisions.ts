@@ -49,6 +49,8 @@ export type GratuityInput = {
   /** Below the qualifying period nothing is payable on resignation. */
   qualifyingMonths: number;
   ceilingPaise: Paise;
+  daysPerYear?: number;
+  monthDivisor?: number;
 };
 
 /**
@@ -78,7 +80,9 @@ export function provideGratuity(args: {
   for (const e of args.employees) {
     // Fifteen days of wages for each completed year, on a 26-day month.
     const years = e.completedMonths / 12;
-    const gross = Math.round((e.monthlyBasicPaise * 15 * years) / 26);
+    const daysPerYear = e.daysPerYear ?? 15;
+    const monthDivisor = e.monthDivisor ?? 26;
+    const gross = Math.round((e.monthlyBasicPaise * daysPerYear * years) / monthDivisor);
     const capped = Math.min(gross, e.ceilingPaise);
     const closing = Math.round((capped * (10000 - discount)) / 10000);
 
@@ -93,7 +97,7 @@ export function provideGratuity(args: {
       basis:
         e.completedMonths < e.qualifyingMonths
           ? `${e.completedMonths} months' service — accrued although not yet vested at ${e.qualifyingMonths} months`
-          : `${e.completedMonths} months' service, 15/26 of monthly wages a year${
+          : `${e.completedMonths} months' service, ${daysPerYear}/${monthDivisor} of monthly wages a year${
               capped < gross ? `, capped at ₹${(e.ceilingPaise / 100).toFixed(0)}` : ""
             }`,
     });

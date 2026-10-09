@@ -168,8 +168,9 @@ test("Delhi carries the rates its own notification prints", () => {
     assert.equal(r?.monthlyPaise, expected[i] * 100, `DL ${skill}`);
   });
   const row = MINIMUM_WAGES.find((w) => w.state === "DL")!;
-  assert.match(row.source, /graduate and above/i, "the mapping must be stated on the row");
-  assert.match(row.source, /Confirmed by the owner/, "and record that they were confirmed");
+  assert.match(row.source, /graduate-and-above/i, "the mapping must be stated on the row");
+  assert.match(row.source, /da15april2025\.pdf/, "record the original government document");
+  assert.equal(row.effectiveFrom, "2025-04-01", "the original order is not a 2026 revision");
 });
 
 test("Delhi's monthly rates still agree with the day rates it publishes", () => {

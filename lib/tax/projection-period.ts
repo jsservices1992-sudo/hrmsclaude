@@ -1,7 +1,10 @@
+import { indiaToday } from "../format/date";
+
 export type TaxPeriod = { year: number; month: number };
 
 export function taxPeriodForYear(financialYear: number, requested?: TaxPeriod, now = new Date()): TaxPeriod {
-  const period = requested ?? { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1 };
+  const today = indiaToday(now);
+  const period = requested ?? { year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) };
   if (!Number.isInteger(period.month) || period.month < 1 || period.month > 12 || !Number.isInteger(period.year)) {
     throw new Error("Invalid payroll tax period");
   }

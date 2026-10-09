@@ -217,7 +217,7 @@ export type StatutoryConfig = {
    * which is also what keeps an old month recalculating at the rate that
    * was in force then, rather than at today's.
    */
-  gratuity: { accrualBps: number };
+  gratuity: { accrualBps: number; params?: import("./gratuity").GratuityParams };
   bonus: BonusParams;
   /** Employees an establishment must have before the Bonus Act applies. */
   bonusHeadcountThreshold: number;

@@ -1,6 +1,10 @@
 import type { Paise } from "@/lib/payroll/money";
 import type { AnnualComputation, DeductionResult, Regime } from "./engine";
 
+export function sumMonthlyTds(rows: { month: number; tdsPaise: Paise }[]): Map<number, Paise> {
+  return rows.reduce((totals, r) => totals.set(r.month, (totals.get(r.month) ?? 0) + r.tdsPaise), new Map<number, Paise>());
+}
+
 /**
  * Form 16 Part B — the employer's statement of a year's salary and tax.
  *

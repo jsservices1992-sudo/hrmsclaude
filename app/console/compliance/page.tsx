@@ -5,6 +5,7 @@ import * as s from "@/db/schema";
 import { formatINR } from "@/lib/payroll/money";
 import { getSessionUser } from "@/lib/auth/session";
 import { AddStatutoryParamForm } from "./forms";
+import { GRATUITY_PARAM_KEYS } from "@/lib/payroll/gratuity-config";
 import { PageHeader, Card, Badge, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
 
@@ -170,7 +171,7 @@ export default async function ComplianceConfigPage() {
               above is closed the day before the new one starts, so a period
               already run still reproduces what it was actually paid on.
             </p>
-            <AddStatutoryParamForm paramKeys={[...new Set(params.map((p) => p.key))]} />
+            <AddStatutoryParamForm paramKeys={[...new Set([...params.map((p) => p.key), ...GRATUITY_PARAM_KEYS])]} />
           </div>
         )}
       </Card>

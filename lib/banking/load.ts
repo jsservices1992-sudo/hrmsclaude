@@ -4,7 +4,8 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { loadRegister, APPROVED_STATUSES } from "../statutory/load";
-import { loadConventions } from "../payroll/load";
+import { loadConventions, loadStatutoryConfig } from "../payroll/load";
+import { GRATUITY_DEFAULTS } from "../payroll/gratuity";
 import { periodDivisor } from "../payroll/proration";
 import { esicRuleFor, gratuityWage } from "../payroll/esic-wage";
 import {
@@ -440,6 +441,8 @@ export async function loadProvisions(args: {
   if (!register) return null;
 
   const asOf = new Date(Date.UTC(args.year, args.month, 0));
+  const statutory = await loadStatutoryConfig(asOf.toISOString().slice(0, 10), args.companyId);
+  const gratuityParams = statutory.gratuity.params ?? GRATUITY_DEFAULTS;
 
   // Last month's closing is this month's opening.
   const previous =
@@ -523,8 +526,10 @@ export async function loadProvisions(args: {
       monthlyBasicPaise: gratuityWage(runLinesByEmployee.get(emp.id) ?? [], components, esicRuleFor(asOf.toISOString().slice(0, 10))),
       completedMonths: monthsOfService(emp.dateOfJoining, asOf),
       openingProvisionPaise: openingOf(emp.id, "gratuity"),
-      qualifyingMonths: 60,
-      ceilingPaise: 2_000_000_00,
+      qualifyingMonths: (emp.employmentType === "contract" ? gratuityParams.fixedTermQualifyingYears : gratuityParams.qualifyingYears) * 12,
+      ceilingPaise: gratuityParams.ceilingPaise,
+      daysPerYear: gratuityParams.daysPerYear,
+      monthDivisor: gratuityParams.monthDivisor,
     });
 
     const days = balanceByEmployee.get(emp.id) ?? 0;

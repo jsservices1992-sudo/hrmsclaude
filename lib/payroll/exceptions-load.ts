@@ -1,5 +1,5 @@
 import { isStipendiary } from "@/lib/hris/stipend";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import {
@@ -7,7 +7,7 @@ import {
   type ExceptionInput,
   type PayrollException,
 } from "./exceptions";
-import { minimumWageFacts, assessStatutoryBonus, checkWageCodeSplit } from "./compensation";
+import { applicableMinimumWage, minimumWageFacts, assessStatutoryBonus, checkWageCodeSplit } from "./compensation";
 import { codeWageSplit, esicRuleFor } from "./esic-wage";
 import { loadStatutoryConfig } from "./load";
 import { effectiveAsOf } from "./statutory";
@@ -106,15 +106,11 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
    * classified its own components — never from the code's name. Guessing
    * that "BNS" is the statutory bonus is how somebody gets paid twice.
    */
-  const bonusWageCodes = new Set(components.filter((c) => c.bonusBase).map((c) => c.code));
-  /* Both shapes the bonus can take: an earning inside gross, and the
-     employer-cost accrual the engine books as <code>_ER. Counting only
-     the first reported the whole entitlement as outstanding for a
-     company that does pay it, just not out of this month's gross. */
+  // Employer accrual is not evidence of a bonus paid to the employee.
   const bonusPayingCodes = new Set(
     components
       .filter((c) => c.bonusRole === "statutory_bonus")
-      .flatMap((c) => [c.code, `${c.code}_ER`]),
+      .map((c) => c.code),
   );
   const declaredHeadcount = companyRow[0]?.declaredHeadcount ?? null;
 
@@ -135,16 +131,16 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
     linesByEmployee.set(l.employeeId, list);
   }
 
-  const bonusWageByEmployee = new Map<string, number>();
   const bonusPaidByEmployee = new Map<string, number>();
   for (const l of lines) {
-    if (bonusWageCodes.has(l.code)) {
-      bonusWageByEmployee.set(l.employeeId, (bonusWageByEmployee.get(l.employeeId) ?? 0) + l.amountPaise);
-    }
-    if (bonusPayingCodes.has(l.code)) {
+    if (l.kind === "earning" && bonusPayingCodes.has(l.code)) {
       bonusPaidByEmployee.set(l.employeeId, (bonusPaidByEmployee.get(l.employeeId) ?? 0) + l.amountPaise);
     }
   }
+  const financialYear = run.periodMonth >= 4 ? run.periodYear : run.periodYear - 1;
+  const bonusAttendance = await db.select().from(s.attendanceRecords).where(and(
+    inArray(s.attendanceRecords.employeeId, employeeIds), gte(s.attendanceRecords.date, `${financialYear}-04-01`),
+    lte(s.attendanceRecords.date, asOf)));
 
   /* PF and ESIC only actually apply where the run deducted them, so the
      identifier checks follow the money rather than a policy flag that may
@@ -208,13 +204,27 @@ export async function loadRunExceptions(runId: string): Promise<PayrollException
     if (bonusUnassessable) {
       return { bonusShortfallPaise: null, bonusEntitlementPaise: null };
     }
+    const employee = empById.get(employeeId);
+    const summary = summaries.find(sm => sm.employeeId === employeeId);
+    const fraction = summary && summary.totalDays > 0 ? summary.paidDays / summary.totalDays : 0;
+    const workedDays = bonusAttendance.filter(r => r.employeeId === employeeId && ["present", "on_duty", "half_day"].includes(r.status))
+      .reduce((sum, r) => sum + (r.status === "half_day" ? .5 : 1), 0);
+    // Fewer evidenced days cannot establish ineligibility: statutory deemed
+    // days and final annual entitlement are reviewed in the annual register.
+    if (!employee || fraction <= 0 || workedDays < 30) return { bonusShortfallPaise: null, bonusEntitlementPaise: null };
+    const state = employee.branchId ? stateByBranch.get(employee.branchId) : null;
+    const skill = employee.skillCategory ?? (employee.gradeId ? skillByGrade.get(employee.gradeId) : null);
+    const minimumWage = state && skill ? applicableMinimumWage(statutory.minimumWages, state, skill,
+      asOf, employee.branchId ? zoneByBranch.get(employee.branchId) : null, run.companyId) : null;
     const a = assessStatutoryBonus({
-      monthlyBonusWagePaise: bonusWageByEmployee.get(employeeId) ?? 0,
+      monthlyBonusWagePaise: Math.round(codeWageSplit(linesByEmployee.get(employeeId) ?? [], components).wagesPaise / fraction),
       paidPaise: bonusPaidByEmployee.get(employeeId) ?? 0,
-      minimumWagePaise: null,
+      minimumWagePaise: minimumWage?.monthlyPaise ?? null,
+      requireMinimumWage: true,
+      paidFraction: fraction,
       declaredHeadcount,
       headcountThreshold: statutory.bonusHeadcountThreshold,
-      daysWorkedInYear: 365,
+      daysWorkedInYear: workedDays,
       params: statutory.bonus,
     });
     return {

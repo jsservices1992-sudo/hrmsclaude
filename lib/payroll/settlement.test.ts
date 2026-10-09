@@ -79,7 +79,8 @@ describe("Gratuity", () => {
     });
     assert.equal(g.cappedPaise, R(2000000), "capped at ₹20,00,000");
     assert.ok(g.grossPaise > g.cappedPaise);
-    assert.equal(g.taxablePaise, 0, "fully exempt up to the ceiling");
+    assert.equal(g.exemptPaise, 0, "entitlement ceiling is not proof of a tax exemption");
+    assert.equal(g.taxablePaise, g.cappedPaise);
   });
 
   test("forfeiture must be explicit and carries a reason", () => {
@@ -114,7 +115,7 @@ describe("Gratuity", () => {
 /* ==================== Leave encashment ==================== */
 
 describe("Leave encashment", () => {
-  test("exempt on separation under 10(10AA)", () => {
+  test("separation entitlement does not itself establish a tax exemption", () => {
     const l = computeLeaveEncashment({
       balanceDays: 30,
       perDayPaise: R(2000),
@@ -122,8 +123,8 @@ describe("Leave encashment", () => {
       isSeparation: true,
     });
     assert.equal(l.grossPaise, R(60000));
-    assert.equal(l.exemptPaise, R(60000));
-    assert.equal(l.taxablePaise, 0);
+    assert.equal(l.exemptPaise, 0);
+    assert.equal(l.taxablePaise, R(60000));
   });
 
   test("fully taxable when encashed in service", () => {
@@ -144,6 +145,7 @@ describe("Leave encashment", () => {
       exitType: "retirement",
       isSeparation: true,
       exemptionCeilingPaise: R(2500000),
+      reviewedExemptPaise: R(2500000),
     });
     assert.equal(l.grossPaise, R(4000000));
     assert.equal(l.exemptPaise, R(2500000));
@@ -379,7 +381,7 @@ describe("Full and final settlement", () => {
 
   test("exempt amounts are tracked separately from payables", () => {
     const r = computeSettlement(baseInput());
-    assert.ok(r.exemptTotalPaise > 0, "leave and gratuity carry exemptions");
+    assert.equal(r.exemptTotalPaise, 0, "tax exemptions require a separate reviewed calculation");
     assert.ok(
       r.taxableAdditionPaise < r.payablesPaise,
       "taxable addition excludes exempt components",

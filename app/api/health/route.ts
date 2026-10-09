@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { schemaReadiness } from "@/db/schema-readiness";
 import { signupEnabled } from "@/lib/auth/signup";
-import { storageConfigured, storageDriverName, trySave, read, remove } from "@/lib/storage";
+import { storageConfigured, storageDriverName, storageUnavailable, trySave, read, remove } from "@/lib/storage";
 import { configured as s3Configured, target as s3Target } from "@/lib/storage/s3";
 
 export const dynamic = "force-dynamic";
@@ -66,13 +66,13 @@ export async function GET(request: Request) {
     configured: storageOk,
     driver: storageOk ? storageDriverName() : undefined,
     /* Address and bucket only — enough to spot a wrong endpoint, never a key. */
-    target: s3Configured() ? s3Target() : undefined,
+    target: storageDriverName() === "s3" && s3Configured() ? s3Target() : undefined,
     variables: storageOk ? undefined : storageVars,
-    hint: storageOk
+    hint: storageUnavailable() ?? (storageOk
       ? undefined
       : isProduction
         ? "No durable document store is configured, so uploads are refused rather than written to a filesystem that does not survive a deploy. Set S3_BUCKET, S3_ENDPOINT, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY for any S3-compatible bucket (Cloudflare R2, Backblaze B2, AWS S3), or connect a Vercel Blob store. Environment variables are fixed at build time, so redeploy after setting them."
-        : "Using the local filesystem — expected in development.",
+        : "Using the local filesystem — expected in development."),
   };
 
   /* A populated old database can still crash every mapped SELECT.

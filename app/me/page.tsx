@@ -150,7 +150,7 @@ export default async function MePage(props: PageProps<"/me">) {
     { id: "attendance", label: "Attendance" },
     { id: "leave", label: "Leave" },
     { id: "tax", label: "Tax" },
-    { id: "form16", label: "Form 16" },
+    { id: "form16", label: "Salary tax statement" },
     { id: "documents", label: "Documents" },
     { id: "profile", label: "Profile" },
     { id: "assets", label: "Assets", count: myAssets.length },

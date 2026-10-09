@@ -18,10 +18,12 @@ import {
   WriteOffForm,
   ReopenForm,
   PaymentForm,
+  SeparationReviewForm,
 } from "../../fnf-forms";
 import { NoticeTreatmentForm } from "../../start-form";
 import { PageHeader, Card, Badge, type BadgeTone } from "@/components/console/ui";
 import { formatDate } from "@/lib/format/date";
+import { parseFnfTaxFacts } from "@/lib/exit/tax-review";
 
 export const metadata = { title: "Full & final settlement" };
 
@@ -148,9 +150,18 @@ export default async function SettlementPage(
         </div>
       )}
 
+      {canAct && (!stored || stored.status === "draft") && <section data-print="hide" className="border-y border-line py-5 flex flex-col gap-4">
+        <div className="flex flex-wrap justify-between gap-2"><h2 className="text-base font-semibold">Separation tax &amp; notice review</h2>
+          <Badge tone={fnf.reviewReady ? "teal" : "brass"}>{fnf.reviewReady ? "Current" : "Review required"}</Badge>
+        </div>
+        {fnf.taxReview && <p className="text-xs text-ink-3">Recorded by {fnf.taxReview.recordedBy} on {formatDate(fnf.taxReview.recordedAt.slice(0, 10))}</p>}
+        <SeparationReviewForm key={fnf.reviewInputDigest} exitCaseId={exitId} inputDigest={fnf.reviewInputDigest}
+          facts={parseFnfTaxFacts(fnf.taxReview?.factsJson)} evidence={fnf.taxReview?.evidence} />
+      </section>}
+
       {fnf.warnings.length > 0 && (
         <div className="border border-amber/30 bg-amber-soft px-5 py-4 rounded-xl">
-          <p className="text-sm font-semibold text-amber mb-1">Before you release this</p>
+          <p className="text-sm font-semibold text-amber mb-1">{stored?.status === "paid" ? "Statement notes" : "Before you release this"}</p>
           <ul className="text-sm text-ink-2 max-w-[76ch] flex flex-col gap-1">
             {[...new Set(fnf.warnings)].map((w, i) => (
               <li key={i}>· {w}</li>
@@ -169,7 +180,7 @@ export default async function SettlementPage(
             warn: recoverable,
           },
           {
-            l: tax.isRefund ? "Tax refund" : "Tax on settlement",
+            l: tax.isRefund ? "Excess TDS" : "Tax on settlement",
             v: formatINR(Math.abs(tax.tdsOnSettlementPaise)),
           },
         ].map((x) => (
@@ -290,7 +301,7 @@ export default async function SettlementPage(
         <Row label="Tax for the year" value={formatINR(tax.annualTaxPaise)} />
         <Row label="Already deducted" value={formatINR(tax.alreadyDeductedPaise)} recovery />
         <Row
-          label={tax.isRefund ? "Refund due with the settlement" : "Tax to deduct from the settlement"}
+          label={tax.isRefund ? "Excess TDS for separate tax adjustment" : "Tax to deduct from the settlement"}
           value={formatINR(Math.abs(tax.tdsOnSettlementPaise))}
           strong
         />
@@ -442,10 +453,13 @@ export default async function SettlementPage(
             {stored?.status === "draft" && fnf.gate.canRelease && (
               <ReleaseForm exitCaseId={exitId} />
             )}
-            {stored?.status === "approved" && stored.computationVersion === 2 && <>
+            {stored?.status === "approved" && stored.computationVersion === 3 && <>
               <Link href={`/console/exits/${exitId}/payout`} className="text-sm font-medium text-indigo">Download F&amp;F payout file</Link>
               <PaymentForm exitCaseId={exitId} />
             </>}
+            {stored?.status === "approved" && stored.computationVersion !== 3 && <p className="text-sm text-rust">
+              Legacy calculation: payment and export are blocked. Reopen this settlement, record its separation tax and notice review, then compute and release it again.
+            </p>}
             {stored?.status === "draft" && !fnf.gate.canRelease && (
               <p className="text-sm text-rust max-w-[70ch]">
                 Cannot be released yet — {fnf.gate.reason}

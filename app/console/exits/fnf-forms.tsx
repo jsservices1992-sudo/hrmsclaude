@@ -9,9 +9,57 @@ import {
   writeOffDemand,
   reopenSettlement,
   recordSettlementPayment,
+  recordSeparationReview,
   type FnfState,
 } from "./fnf-actions";
-import { Button, Input, Select, FormFeedback } from "@/components/console/ui";
+import { Button, Input, Select, Textarea, FormFeedback } from "@/components/console/ui";
+import type { FnfTaxFacts } from "@/lib/exit/tax-review";
+
+const REVIEW_FIELDS: { key: keyof FnfTaxFacts; label: string; money?: boolean }[] = [
+  { key: "lastTaxSalaryPaise", label: "Last Basic + eligible DA", money: true },
+  { key: "gratuityAveragePaise", label: "Gratuity: 10 months before exit month (Basic + eligible DA)", money: true },
+  { key: "leaveAveragePaise", label: "Leave: 10 months preceding retirement (Basic + eligible DA)", money: true },
+  { key: "priorGratuityExemptPaise", label: "Other gratuity exemptions used", money: true },
+  { key: "priorLeaveExemptPaise", label: "Other leave exemptions used", money: true },
+  { key: "earnedLeaveDays", label: "Eligible earned leave credited (days)" },
+  { key: "leaveAvailedDays", label: "Earned leave used / previously encashed (days)" },
+  { key: "noticeDays", label: "Contractual notice period (days)" },
+  { key: "exemptAllowancesYtdPaise", label: "Actual YTD exempt allowances", money: true },
+  { key: "professionalTaxYtdPaise", label: "Actual YTD professional tax paid", money: true },
+  { key: "chapterViaPaise", label: "Allowed Chapter VI-A deductions", money: true },
+  { key: "newRegimeAllowedDeductionsPaise", label: "Allowed new-regime deductions (employer NPS etc.)", money: true },
+  { key: "otherTaxableYtdPaise", label: "Other taxable income / perquisites", money: true },
+];
+
+export function SeparationReviewForm({ exitCaseId, inputDigest, facts, evidence }: {
+  exitCaseId: string; inputDigest: string; facts: FnfTaxFacts | null; evidence?: string;
+}) {
+  const [state, action, pending] = useActionState<FnfState, FormData>(recordSeparationReview, {});
+  return <form action={action} className="flex flex-col gap-4">
+    <input type="hidden" name="exitCaseId" value={exitCaseId} />
+    <input type="hidden" name="inputDigest" value={inputDigest} />
+    <label className="flex flex-col gap-1 text-xs">Gratuity tax basis
+      <Select name="gratuityBasis" defaultValue={facts?.gratuityBasis ?? "s19_6"}>
+        <option value="s19_6">Section 19, Sl. 6 - other gratuity</option>
+        <option value="s19_5">Section 19, Sl. 5 - documented 1972 Act basis</option>
+      </Select>
+    </label>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {REVIEW_FIELDS.map(({ key, label, money }) => <label key={key} className="flex flex-col gap-1 text-xs min-w-0">
+        {label}{money ? " (INR)" : ""}
+        <Input name={key} type="number" min="0" step={key === "noticeDays" ? "1" : "0.01"} required
+          defaultValue={facts ? Number(facts[key]) / (money ? 100 : 1) : undefined} />
+      </label>)}
+    </div>
+    <label className="flex flex-col gap-1 text-xs">Legal basis / DA terms / eligibility decision
+      <Textarea name="legalBasis" required rows={3} minLength={20} maxLength={4000} defaultValue={facts?.legalBasis} />
+    </label>
+    <label className="flex flex-col gap-1 text-xs">Salary-history worksheets, leave ledger, prior-employer declarations and notice-policy references
+      <Textarea name="evidence" required rows={3} minLength={20} maxLength={8000} defaultValue={evidence} />
+    </label>
+    <div className="flex flex-wrap items-center gap-3"><Button type="submit" disabled={pending}>Record reviewed facts</Button><FormFeedback state={state} /></div>
+  </form>;
+}
 
 export function PaymentForm({ exitCaseId }: { exitCaseId: string }) {
   const [state, action] = useActionState<FnfState, FormData>(recordSettlementPayment, {});

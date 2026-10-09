@@ -68,6 +68,8 @@ export function exemptGratuity(args: {
   coveredByAct: boolean;
   /** Average of the last ten months, for the non-covered computation. */
   averageMonthlyBasicPaise?: Paise;
+  /** Earlier and other-employer exemption usage for the Sl. No. 6 limit. */
+  previouslyExemptPaise?: Paise;
   limits: SeparationExemptionLimits;
   regime: Regime;
 }): ExemptionResult {
@@ -91,7 +93,7 @@ export function exemptGratuity(args: {
   const statutory = args.coveredByAct
     ? Math.round((args.monthlyBasicPaise * 15 * args.completedYears) / 26)
     : Math.round(
-        ((args.averageMonthlyBasicPaise ?? args.monthlyBasicPaise) *
+        ((args.averageMonthlyBasicPaise ?? 0) *
           args.completedYears) /
           2,
       );
@@ -104,14 +106,15 @@ export function exemptGratuity(args: {
         : `Half a month's average salary for ${args.completedYears} completed year(s)`,
       amountPaise: statutory,
     },
-    { label: "Statutory ceiling", amountPaise: args.limits.gratuityCeilingPaise },
+    { label: "Available statutory ceiling", amountPaise: Math.max(0,
+      args.limits.gratuityCeilingPaise - (args.coveredByAct ? 0 : (args.previouslyExemptPaise ?? 0))) },
   ];
 
   const exempt = Math.max(0, Math.min(...workings.map((w) => w.amountPaise)));
 
-  if (!args.coveredByAct && !args.averageMonthlyBasicPaise) {
+  if (!args.coveredByAct && args.averageMonthlyBasicPaise === undefined) {
     warnings.push(
-      "This employee is outside the Payment of Gratuity Act, where the exemption uses the average salary of the last ten months. Last drawn wages have been used instead, which may overstate the exemption.",
+      "The ten-month average salary is missing. No exemption has been assumed; using last drawn wages may overstate the exemption.",
     );
   }
 
@@ -138,6 +141,8 @@ export function exemptLeaveEncashment(args: {
   completedYears: number;
   /** Leave actually encashed, in days. */
   encashedDays: number;
+  /** Earned leave used during service, including leave already encashed. */
+  leaveAvailedDays?: number;
   /** A government employee's encashment is wholly exempt. */
   isGovernmentEmployee: boolean;
   /** Exemption already used at an earlier employer, in this lifetime. */
@@ -174,13 +179,11 @@ export function exemptLeaveEncashment(args: {
     };
   }
 
-  const perDay = Math.round(args.averageMonthlySalaryPaise / 30);
-
   // The admissible limb: 30 days a year of service, less leave already
   // taken — capped here at what was actually encashed.
   const admissibleDays = Math.min(
-    args.encashedDays,
-    args.completedYears * args.limits.leaveDaysPerYear,
+    Math.max(0, args.encashedDays),
+    Math.max(0, args.completedYears * args.limits.leaveDaysPerYear - (args.leaveAvailedDays ?? 0)),
   );
 
   const workings: ExemptionWorking[] = [
@@ -191,7 +194,7 @@ export function exemptLeaveEncashment(args: {
     },
     {
       label: `${admissibleDays} day(s) at ${args.limits.leaveDaysPerYear} a year of service`,
-      amountPaise: admissibleDays * perDay,
+      amountPaise: Math.round(admissibleDays * args.averageMonthlySalaryPaise / 30),
     },
     {
       label: "Lifetime ceiling",
@@ -367,6 +370,10 @@ export function treatNoticePay(args: {
    ================================================================== */
 
 export type SeparationTaxInput = {
+  /** Reviewed deductions that survive the new regime, e.g. employer NPS. */
+  newRegimeAllowedDeductionsPaise?: Paise;
+  /** Additional historical taxable remuneration, not cash paid in F&F. */
+  additionalIncomeToDatePaise?: Paise;
   regime: Regime;
   config: RegimeConfig;
   limits: SeparationExemptionLimits;
@@ -440,7 +447,7 @@ export function computeSeparationTax(
    * annual projection applied to a final month.
    */
   const annual = computeAnnualTax({
-    grossSalaryPaise: input.salaryToDatePaise + totalTaxable,
+    grossSalaryPaise: input.salaryToDatePaise + totalTaxable + (input.additionalIncomeToDatePaise ?? 0),
     exemptAllowancesPaise: input.exemptAllowancesToDatePaise,
     perquisitesPaise: 0,
     previousEmployerSalaryPaise: input.previousEmployerSalaryPaise,
@@ -448,7 +455,7 @@ export function computeSeparationTax(
     professionalTaxPaidPaise: input.professionalTaxPaidPaise,
     deductions: {
       lines: [],
-      totalAllowedPaise: input.config.allowsChapterViA ? input.chapterViAPaise : 0,
+      totalAllowedPaise: input.config.allowsChapterViA ? input.chapterViAPaise : (input.newRegimeAllowedDeductionsPaise ?? 0),
       disallowedPaise: 0,
     },
     config: input.config,

@@ -1,12 +1,12 @@
 # Payroll audit remediation
 
-Review date: 9 October 2026. Input: the supplied payroll-audit.md.
+Review updated: 10 October 2026. Input: the supplied payroll-audit.md.
 
 ## Release status
 
 **Not certified compliant. Do not treat passing tests, verification flags,
 or this implementation as legal certification.** This is a first remediation
-batch, not closure of the entire audit. Database migrations 0027-0034 are
+batch, not closure of the entire audit. Database migrations 0027-0036 are
 applied to the configured remote database on 10 October 2026 after an archive
 backup. The post-migration schema check passes. Other deployments require the
 same backup/migration checks; reconcile historical payroll before acceptance.
@@ -21,21 +21,21 @@ same backup/migration checks; reconcile historical payroll before acceptance.
 | H4 payment deadline | Implemented, integration pending | Default two working days with company/branch holidays and weekly offs. Gratuity retains its separate clock. This does not itself arrange a timely bank payment. |
 | H5 mid-month PF | Partial | Dated ceiling segments and saved EPS/EDLI bases implemented. September examples tested. LOP allocation and take-home solver integration are unresolved and block affected approvals. Authenticate the mirrored EPFO FAQ before relying on it for filing. |
 | H6 EPS membership | Partial, historical acceptance pending | Separate EPS membership, joining wage and revision-date wage evidence with employee settings, transition report and reviewed evidence register implemented. UAN alone is not EPS proof. Missing/changed evidence blocks approval. Reconcile actual EPFO history before acceptance. |
-| M1 minimum wage | Partial | Statutory wage shortfalls block approval; partial-month floors are prorated; zone/company selection shared; missing rule is no longer reported compliant by the helper. Verify and correct each state's dated seed records, including Delhi and Karnataka. |
-| M2 bonus | Partial | Reviewed annual workflow implements applicable minimum-wage ceiling, actual/deemed days, statutory wage base, floor, set-on/set-off, deadline and payroll posting. Certified accounts, applicability/exclusions and opening carry need human acceptance; leaver supplemental payouts remain. Legacy basic-only bonus assessment is not a compliance determination. |
-| M3 gratuity exemption | Open, legal review required | Code gratuity entitlement and income-tax exemption must be separate, with documented applicable legal basis and ten-month salary history. Existing exemption cannot be relied on as final. |
-| M4 leave exemption | Open | Replace gross salary shortcut with supported ten-month basic/DA history, leave availed and lifetime exemption usage; align display and tax computation. |
-| M5 TDS projection | Partial | Run-period-driven projection, actual earlier booked salary, employed-month proration and earlier-period TDS ledger implemented. F&F uses exit period and carries Chapter VI-A/previous-employer data. Current extras/LOP, actual PF/NPS perquisites and F&F HRA/PT exemptions remain unresolved. |
+| M1 minimum wage | Partial | Statutory wage shortfalls block approval; floors are prorated; zone/company selection shared. Delhi original April 2025 order authenticated: erroneous April 2026 seed date corrected in source and only matching unverified global DB rows. Reviewed/company overrides preserved. Other state original records, including Karnataka paise/category applicability, remain. |
+| M2 bonus | Partial | Reviewed annual workflow implements minimum-wage ceiling, actual/deemed days, statutory wages, floor, set-on/off, deadline and posting. Monthly advisory no longer uses Basic flags, 365 assumed days, missing-floor Rs 7,000 fallback or employer accrual as payment; it uses statutory wage rate, applicable state floor and attendance evidence. Final annual applicability/accounts/carry require review; leaver supplemental payments remain. |
+| M3 gratuity exemption | Review workflow implemented; legal acceptance pending | Explicit documented Sl. 5/6 basis, supported separate ten-month average, prior exemptions, no last-salary fallback. Generic entitlement no longer auto-grants exemption. Missing/stale review blocks preparation/release. Code/tax transition classification must be reviewed, not inferred. |
+| M4 leave exemption | Tax workflow implemented; evidence pending | Separate eligible Basic/DA historical average, earned leave, leave used and other exemption usage required; rounding fixed; statement/tax aligned. No gross-salary shortcut. Legal entitlement/history must be supported by reviewer evidence. |
+| M5 TDS projection | Partial | Actual earlier booked salary and PF/EPS/NPS history, remaining employed months, higher/capped PF membership and excess-retiral detection without NPS implemented. HRA/deduction salary separated from PF wage. F&F reviewed YTD allowances/PT and regime-allowed deductions replace zero/projected guesses; previous employer data retained. Current-period extras/LOP, dated future PT and full perquisite accrual valuation remain unresolved. |
 | M6 incentive/arrears | Partial | Explicit not_remuneration treatment excludes annual performance incentives from numerator and denominator, preserved on saved lines. Classification needs human review. Arrear attribution to original periods remains open. |
 | M7 overtime | Partial | Reviewed coverage and attendance-derived double-rate daily/weekly/off-day OT registers and posting implemented; prevents duplicate legacy off-day earnings. Take-home contracts, mid-month salary changes and establishment-specific policy require review. |
 | M8 worker leave | Partial | Reviewed covered-worker identification, qualification, accrual, protected refused leave and year-end carry/encashment implemented; preserves more favourable benefits. Separation entitlement and historical balance evidence remain. |
 | M9 ESI | Partial | PwD ceiling with certificate reference and separate statutory coverage wage/freeze implemented. Validate contribution-period continuation, OT eligibility treatment and rate-versus-earned-wage interpretation against ESIC guidance. |
 | L1 EDLI floor | Implemented | Removed default Rs 200 EDLI floor. Verify employer-level administrative minima separately. |
-| L2 tax forms | Partial | Calendar names Form 138 with legacy alias. Other labels and official Form 130/124 and FVU layouts remain; do not file an unvalidated export. |
+| L2 tax forms | Partial | Calendar names Form 138 with legacy alias. Salary-tax document explicitly a working statement, not a valid certificate; Form 130 must come from TRACES and be signed. Same-month payroll/F&F deductions are summed. Official Form 124/130 capture and remaining accepted filing layouts remain. |
 | L3 citations/docs | Partial | README no longer equates configured verified flags with readiness. WB final-notification citation and remaining EPS seed commentary still need correction against originals. |
 | L4 LWF | Open | Verify rates and eligibility under each state's own Act. Do not import another statute's supervisor threshold. |
 | L5 PT/LWF base | Partial | Additional earnings included in monthly base; PT YTD loaded from authoritative earlier FY runs. State-specific earnings exclusions and annual-income assessments remain. |
-| L6 caps/notice policy | Open | Replace hardcoded provision caps and notice defaults with dated statutory/company policy. |
+| L6 caps/notice policy | Hooks/review implemented; policy evidence pending | F&F and banking use shared effective-dated gratuity parameters; no duplicated hardcoded provision cap. Notice days require contractual review, not a 60-day guess. Absent gratuity parameters retain explicit defaults; reviewers must establish applicable notification/policy. |
 
 ## Workflow implementation update
 
@@ -77,7 +77,7 @@ entitlements and official validation of other statutory filing formats.
 
 ## Verification of this batch
 
-- `npm test`: 1,610 passed, zero failures (including schema-readiness regressions).
+- `npm test`: 1,631 passed, zero failures (including separation review, bonus advisory, date, storage-provider and tax regressions).
 - `npx tsc --noEmit`: passed.
 - `npm run lint`: zero errors, 58 warnings.
 - `npm run build`: passed.
@@ -99,3 +99,30 @@ entitlements and official validation of other statutory filing formats.
   statutory operation tabs, using a local production build against the
   configured remote database. The public deployed URL was not supplied, so
   these checks do not assert that its environment/storage settings match.
+
+## Separation review update
+
+See SEPARATION-REVIEW.md. Guarded PostgreSQL integration verifies missing/stale
+review gates, statement/tax agreement, append-only evidence and excess employer
+PF perquisite without NPS. Authenticated local desktop/mobile browser checks
+exercise review, prepare, independent release, payment and payout safety. No live
+employee evidence/approval/payment is fabricated. Migration 0035 adds only the
+review table; 0036 corrects narrowly matched unverified Delhi seed dates/sources.
+Backup before this batch: `data/backups/pre-fnf-review-20261010-1791574181020.dump`.
+
+Still open engineering: September split PF LOP/take-home integration, leaver
+supplemental awards, original-period arrears, covered-worker separation leave,
+current-period TDS extras/LOP, establishment-specific overtime, applicable-state
+LWF/PT classification, complete official filing/certificate artifact workflows,
+and deployment document-storage configuration. Reviewed source/history records
+and actual bank/government acceptance are separate acceptance requirements.
+
+## Selected document storage
+
+Vercel Blob is the selected provider. Set `STORAGE_PROVIDER=vercel-blob` and
+connect a private store's `BLOB_READ_WRITE_TOKEN` in deployment environment
+settings. Explicit selection cannot fall back to another store or ephemeral
+disk when the token is missing. Existing uploads/downloads use private Blob
+access and authenticated application routes. The local environment has no Blob
+token; live upload/download and permission acceptance are not yet verified.
+Never send the token in chat or commit it. See README.md for deployment steps.

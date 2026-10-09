@@ -16,7 +16,7 @@ import type { Sql } from "postgres";
  * different mechanism.
  */
 
-export const APPEND_ONLY_TABLES = ["audit_log", "access_log"] as const;
+export const APPEND_ONLY_TABLES = ["audit_log", "access_log", "fnf_tax_reviews"] as const;
 
 const FUNCTION_NAME = "lekha_refuse_mutation";
 

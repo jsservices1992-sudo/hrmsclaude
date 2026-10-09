@@ -282,6 +282,19 @@ test("the settlement is taxed with the year, not as a separate month", () => {
   assert.equal(r.alreadyDeductedPaise, R(20000));
 });
 
+test("reviewed new-regime deductions survive without allowing ordinary old-regime claims", () => {
+  const original = separation();
+  const reviewed = separation({ chapterViAPaise: R(150000), newRegimeAllowedDeductionsPaise: R(50000) });
+  assert.equal(original.taxableIncomePaise - reviewed.taxableIncomePaise, R(50000));
+});
+
+test("historical taxable extras affect tax but are not a settlement cash component", () => {
+  const original = separation();
+  const reviewed = separation({ additionalIncomeToDatePaise: R(80000) });
+  assert.equal(reviewed.taxableIncomePaise - original.taxableIncomePaise, R(80000));
+  assert.equal(reviewed.totalSettlementPaise, original.totalSettlementPaise);
+});
+
 test("only the non-exempt part of a settlement component is taxed", () => {
   const g = exemptGratuity({
     receivedPaise: R(400000), monthlyBasicPaise: R(50000), completedYears: 10,

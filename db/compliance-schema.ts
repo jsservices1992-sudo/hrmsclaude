@@ -1,5 +1,16 @@
 import { pgTable, text, integer, bigint, uniqueIndex, index } from "drizzle-orm/pg-core";
-import { companies, employees, tdsLedger } from "./schema";
+import { companies, employees, tdsLedger, exitCases } from "./schema";
+
+export const fnfTaxReviews = pgTable("fnf_tax_reviews", {
+  id: text("id").primaryKey(),
+  exitCaseId: text("exit_case_id").notNull().references(() => exitCases.id),
+  companyId: text("company_id").notNull().references(() => companies.id),
+  factsJson: text("facts_json").notNull(),
+  inputDigest: text("input_digest").notNull(),
+  evidence: text("evidence").notNull(),
+  recordedBy: text("recorded_by").notNull(),
+  recordedAt: text("recorded_at").notNull(),
+}, t => [index("fnf_tax_review_exit_idx").on(t.exitCaseId, t.recordedAt)]);
 
 export const statutoryDeposits = pgTable("statutory_deposits", {
   id: text("id").primaryKey(), companyId: text("company_id").notNull().references(() => companies.id),
