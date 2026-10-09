@@ -3,7 +3,7 @@ import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { formatINR } from "@/lib/payroll/money";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser, canManageSharedStatutory } from "@/lib/auth/session";
 import { AddStatutoryParamForm } from "./forms";
 import { GRATUITY_PARAM_KEYS } from "@/lib/payroll/gratuity-config";
 import { PageHeader, Card, Badge, Table, THead, TH, TBody, TR, TD } from "@/components/console/ui";
@@ -13,7 +13,8 @@ export const metadata = { title: "Statutory rules" };
 
 export default async function ComplianceConfigPage() {
   const user = (await getSessionUser())!;
-  const isAdmin = user.role === "admin";
+  const canEditShared = canManageSharedStatutory(user);
+  const companyStatutoryHref = `/console/settings/payroll?tab=statutory${user.companyId ? `&company=${encodeURIComponent(user.companyId)}` : ""}`;
 
   const [juris, slabs, lwf, params] = await Promise.all([
     db.select().from(s.jurisdictions).orderBy(asc(s.jurisdictions.name)),
@@ -43,6 +44,15 @@ export default async function ComplianceConfigPage() {
         actions={<Link href="/console/statutory/operations?tab=notifications" className="text-sm font-semibold text-indigo">Notification tracker</Link>}
         description="Every row below is effective-dated. A payroll run records which versions it used, so recomputing a historic period reproduces what was actually paid."
       />
+
+      {!canEditShared && (
+        <div className="border-b border-line-2 pb-4 text-sm text-ink-2">
+          <p>Shared statutory references are read-only for this account.</p>
+          <Link href={companyStatutoryHref} className="inline-block mt-2 font-semibold text-indigo">
+            Company minimum wages &amp; verification
+          </Link>
+        </div>
+      )}
 
       {/*
         Two different states of the world, and the banner said the first
@@ -164,7 +174,7 @@ export default async function ComplianceConfigPage() {
             ))}
           </tbody>
         </table>
-        {isAdmin && (
+        {canEditShared && (
           <div className="p-4 border-t border-line-2 flex flex-col gap-2">
             <p className="text-sm text-ink-2 max-w-[80ch]">
               Change a figure by adding the version that replaces it. The row
@@ -222,7 +232,7 @@ export default async function ComplianceConfigPage() {
                   </TD>
                   <TD>
                     <Link href={`/console/compliance/${j.stateCode}`} className="text-sm font-semibold text-indigo hover:text-indigo-2">
-                      {isAdmin ? "Manage →" : "View →"}
+                      {canEditShared ? "Manage →" : "View →"}
                     </Link>
                   </TD>
                 </TR>

@@ -7,6 +7,7 @@ import {
   canSeeCompensation,
   canOpenEmployeeDocument,
   canExportCompanyData,
+  canManageSharedStatutory,
   type Principal,
 } from "./permissions";
 
@@ -24,6 +25,13 @@ const hr = who({ role: "hr_manager", employeeId: null, compensationScope: "none"
 const payroll = who({ role: "payroll_manager", employeeId: null, compensationScope: "company" });
 const auditor = who({ role: "auditor", companyId: null, employeeId: null, compensationScope: "all" });
 const admin = who({ role: "admin", companyId: null, employeeId: null, compensationScope: "all" });
+
+test("shared statutory writes require both operator scope and administrator role", () => {
+  for (const role of ["admin", "payroll_manager", "hr_manager", "auditor", "employee"] as const) {
+    assert.equal(canManageSharedStatutory(who({ role, companyId: null })), role === "admin");
+    assert.equal(canManageSharedStatutory(who({ role, companyId: "co_a" })), false);
+  }
+});
 
 test("scope 'own' is not company-wide compensation access", () => {
   assert.equal(canSeeCompensation(employee), false);

@@ -67,6 +67,11 @@ export function isTenantWide(p: Pick<Principal, "companyId">): boolean {
   return p.companyId === null;
 }
 
+/** Shared legal reference changes affect every company on the instance. */
+export function canManageSharedStatutory(p: Pick<Principal, "role" | "companyId">): boolean {
+  return p.role === "admin" && isTenantWide(p);
+}
+
 export function canAccessCompany(
   p: Pick<Principal, "companyId">,
   companyId: string,

@@ -4,7 +4,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { formatINR } from "@/lib/payroll/money";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser, canManageSharedStatutory } from "@/lib/auth/session";
 import {
   JurisdictionForm,
   VerifyPtSlabForm,
@@ -20,7 +20,7 @@ export default async function JurisdictionDetailPage(
   props: PageProps<"/console/compliance/[stateCode]">,
 ) {
   const user = (await getSessionUser())!;
-  const isAdmin = user.role === "admin";
+  const isAdmin = canManageSharedStatutory(user);
   const { stateCode } = await props.params;
 
   const [jur] = await db.select().from(s.jurisdictions).where(eq(s.jurisdictions.stateCode, stateCode)).limit(1);
@@ -47,7 +47,7 @@ export default async function JurisdictionDetailPage(
         <p className="text-sm text-ink-2 mt-1">
           <span className="font-mono">{jur.stateCode}</span> · {jur.kind === "ut" ? "Union territory" : "State"}
         </p>
-        <Link href="/console/settings/payroll?tab=statutory#minimum-wages"
+        <Link href={`/console/settings/payroll?tab=statutory&state=${encodeURIComponent(stateCode)}${user.companyId ? `&company=${encodeURIComponent(user.companyId)}` : ""}#minimum-wages`}
           className="inline-block mt-3 text-sm font-medium text-teal underline underline-offset-2">
           Minimum wage rates and verification
         </Link>
@@ -55,7 +55,7 @@ export default async function JurisdictionDetailPage(
 
       {!isAdmin && (
         <p className="text-sm text-amber border border-amber/25 bg-amber-soft px-4 py-3 rounded-lg">
-          Only an administrator can change statutory rules. You can review what is configured.
+          Shared PT, LWF and jurisdiction references are read-only. Only an instance operator can change them.
         </p>
       )}
 

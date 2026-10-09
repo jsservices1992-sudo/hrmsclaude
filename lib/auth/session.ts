@@ -107,6 +107,7 @@ export {
   canActOnPeople,
   canSeeCompensation,
   isTenantWide,
+  canManageSharedStatutory,
   canAccessCompany,
   canOpenEmployeeDocument,
   canExportCompanyData,

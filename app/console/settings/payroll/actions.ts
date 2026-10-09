@@ -13,7 +13,7 @@ import {
   IDENTIFIER_MESSAGES as MSG,
 } from "@/lib/hris/identifiers";
 import * as s from "@/db/schema";
-import { getSessionUser, canAccessCompany, isTenantWide } from "@/lib/auth/session";
+import { getSessionUser, canAccessCompany, isTenantWide, canManageSharedStatutory } from "@/lib/auth/session";
 import { submitted } from "@/lib/forms/submitted";
 import { verificationErrorCode, verificationErrorMessage } from "@/lib/payroll/verification-error";
 import {
@@ -71,7 +71,7 @@ async function audit(e: {
 async function requireTenantWide() {
   const { user, error } = await requireAdmin();
   if (error || !user) return { user, error };
-  if (!isTenantWide(user)) {
+  if (!canManageSharedStatutory(user)) {
     await audit({
       actor: user.email,
       action: "statutory_reference.denied",

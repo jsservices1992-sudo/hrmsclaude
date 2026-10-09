@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { eq, and, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
-import { getSessionUser, isTenantWide } from "@/lib/auth/session";
+import { getSessionUser, canManageSharedStatutory } from "@/lib/auth/session";
 import { recordAuditAs } from "@/lib/audit/log";
 
 export type ComplianceState = { error?: string; ok?: string };
@@ -32,7 +32,7 @@ async function requireAdmin() {
   if (user.role !== "admin") {
     return { user, error: "Only an administrator can change statutory rules." as const };
   }
-  if (!isTenantWide(user)) {
+  if (!canManageSharedStatutory(user)) {
     return {
       user,
       error:

@@ -15,6 +15,7 @@ import {
   getSessionUser,
   canAccessCompany,
   isTenantWide,
+  canManageSharedStatutory,
   scopeCompanies,
 } from "@/lib/auth/session";
 import {
@@ -91,6 +92,7 @@ export default async function PayrollSettingsPage(
   if (!company) notFound();
 
   const isAdmin = user.role === "admin";
+  const canEditShared = canManageSharedStatutory(user);
 
   const [params, minWages, lwfRates, ptSlabs, jurisdictions, groups, banks, calendars, employees, branches, departments, grades] =
     await Promise.all([
@@ -314,7 +316,7 @@ export default async function PayrollSettingsPage(
       )}
 
       <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
-        <nav aria-label="Payroll rules" className="lg:sticky lg:top-20">
+        <nav aria-label="Payroll rules" className="min-w-0 lg:sticky lg:top-20">
           <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
             {TABS.map((t) => {
               const on = tab === t.id;
@@ -753,6 +755,12 @@ export default async function PayrollSettingsPage(
 
       {tab === "statutory" && (
         <div className="flex flex-col gap-4">
+          {!canEditShared && (
+            <p className="border-b border-line-2 pb-3 text-sm text-ink-2">
+              Company minimum wages: {isAdmin ? "editable and verifiable" : "read-only"}.
+              Shared PF/ESI parameters, PT slabs and LWF rates: read-only; managed by the instance operator.
+            </p>
+          )}
           <StatutoryFilters key={`${selectedState}:${selectedSkill}:${selectedZone}:${asOf}:${showHistory}`}
             companyId={companyId} states={jurisdictions.map((j) => ({ id: j.stateCode, label: j.name }))}
             state={selectedState} skill={selectedSkill} zone={selectedZone} zones={zones} asOf={asOf} history={showHistory} />
@@ -848,7 +856,7 @@ export default async function PayrollSettingsPage(
                 </li>
               ))}
             </ul>
-            {isAdmin && (
+            {canEditShared && (
               <details className="p-4 border-t border-line">
                 <summary className="text-sm font-medium cursor-pointer mb-3">Add LWF rate</summary>
                 <LwfRateForm
@@ -901,7 +909,7 @@ export default async function PayrollSettingsPage(
                           <Badge tone={p.verified ? "teal" : "brass"}>
                             {p.verified ? "verified" : "unverified"}
                           </Badge>
-                          {isAdmin && (
+                          {canEditShared && (
                             <RowPopover label="Retire" title={`Retire ${p.stateCode} slab`} panelClassName="p-3 w-72">
                               <RetireSlabForm slabId={p.id} />
                             </RowPopover>
@@ -913,7 +921,7 @@ export default async function PayrollSettingsPage(
                 </div>
               ))}
             </div>
-            {isAdmin && (
+            {canEditShared && (
               <details className="p-4 border-t border-line">
                 <summary className="text-sm font-medium cursor-pointer mb-3">Add professional tax slab</summary>
                 <PtSlabForm
@@ -940,7 +948,7 @@ export default async function PayrollSettingsPage(
                       {p.unit === "paise" ? formatINR(p.value) : p.unit === "bps" ? `${(p.value / 100).toFixed(2)}%` : p.value}
                     </p>
                   </div>
-                  {isAdmin && (
+                  {canEditShared && (
                     <StatutoryParamForm
                       paramKey={p.key}
                       unit={p.unit}
