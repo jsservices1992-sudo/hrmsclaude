@@ -6,9 +6,10 @@ export function StatutoryFilters({ companyId, states, state, skill, zone, zones,
   companyId: string; states: { id: string; label: string }[];
   state: string; skill: string; zone: string; zones: string[]; asOf: string; history: boolean;
 }) {
-  return <form method="get" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 border-b border-line pb-5">
+  return <form method="get" className="border-y border-line-2 py-4">
     <input type="hidden" name="company" value={companyId} />
     <input type="hidden" name="tab" value="statutory" />
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
     <FormField label="State">
       <Select name="state" defaultValue={state} onChange={(e) => {
         const form = e.currentTarget.form!;
@@ -41,9 +42,12 @@ export function StatutoryFilters({ companyId, states, state, skill, zone, zones,
     <FormField label="Rates as of">
       <Input name="asOf" type="date" defaultValue={asOf} required />
     </FormField>
-    <label className="flex items-center gap-2 text-sm self-end py-2">
-      <input name="history" type="checkbox" value="1" defaultChecked={history} /> Include history and upcoming rates
+    </div>
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+    <label className="flex items-center gap-2 text-sm text-ink-2">
+      <input name="history" type="checkbox" value="1" defaultChecked={history} className="h-4 w-4 accent-indigo" /> History &amp; upcoming rates
     </label>
-    <div className="self-end"><SubmitButton>Apply filters</SubmitButton></div>
+    <SubmitButton size="sm">Apply filters</SubmitButton>
+    </div>
   </form>;
 }

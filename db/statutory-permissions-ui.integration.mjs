@@ -17,11 +17,14 @@ const browser = await chromium.launch({ headless: true });
 const ids = [];
 const state = `TEST-${randomUUID()}`;
 const paramId = randomUUID();
+const wageId = randomUUID();
 try {
   await sql`insert into jurisdictions (state_code, name, kind, pt_applicable, lwf_applicable)
     values (${state}, 'TEST permission jurisdiction', 'state', false, false)`;
   await sql`insert into statutory_params (id, key, value, unit, effective_from, source, verified)
     values (${paramId}, ${"test.permission." + paramId}, 0, 'count', '2026-01-01', 'TEST ONLY', false)`;
+  await sql`insert into minimum_wages (id, company_id, state_code, skill_category, monthly_paise, effective_from, source, verified)
+    values (${wageId}, ${fixture.companyId}, ${state}, 'unskilled', 1800000, '2026-01-01', 'TEST ONLY: synthetic notification reference for layout and permission checks', false)`;
   for (const scope of ["operator", "company", "auditor"]) {
     const id = randomUUID();
     const session = randomUUID();
@@ -53,12 +56,14 @@ try {
       const wageForm = page.locator("form").filter({ has: page.locator('input[name="monthly"]') });
       assert.equal(await wageForm.locator('input[name="companyId"]').inputValue(), fixture.companyId);
       assert.equal(await wageForm.locator('select[name="scope"]').count(), 0);
-      await page.setViewportSize({ width: 390, height: 844 });
-      await page.locator("#minimum-wages").waitFor({ state: "visible" });
-      await page.getByText("Shared PF/ESI parameters, PT slabs and LWF rates:", { exact: false }).waitFor();
-      await page.screenshot({ path: "/tmp/hrms-statutory-company-mobile.png" });
-      const overflow = await page.evaluate(() => [...document.querySelectorAll("body *")].filter(el => el.getBoundingClientRect().right > innerWidth + 1).slice(0, 5).map(el => ({ tag: el.tagName, classes: el.className, text: el.textContent.slice(0, 80) })));
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, JSON.stringify(overflow));
+      for (const width of [1440, 390, 320]) {
+        await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
+        await page.locator("#minimum-wages").waitFor({ state: "visible" });
+        await page.getByText("Shared PF/ESI: read-only", { exact: true }).waitFor();
+        await page.screenshot({ path: `/tmp/hrms-statutory-company-${width}.png`, fullPage: true });
+        const overflow = await page.evaluate(() => [...document.querySelectorAll("body *")].filter(el => el.getBoundingClientRect().right > innerWidth + 1).slice(0, 5).map(el => ({ tag: el.tagName, classes: el.className, text: el.textContent.slice(0, 80) })));
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, JSON.stringify(overflow));
+      }
     }
     assert.doesNotMatch(await page.locator("body").innerText(), /This page could not load/);
     await context.close();
@@ -72,5 +77,6 @@ try {
   }
   await sql`delete from jurisdictions where state_code = ${state}`;
   await sql`delete from statutory_params where id = ${paramId}`;
+  await sql`delete from minimum_wages where id = ${wageId}`;
   await sql.end();
 }

@@ -756,19 +756,23 @@ export default async function PayrollSettingsPage(
       {tab === "statutory" && (
         <div className="flex flex-col gap-4">
           {!canEditShared && (
-            <p className="border-b border-line-2 pb-3 text-sm text-ink-2">
-              Company minimum wages: {isAdmin ? "editable and verifiable" : "read-only"}.
-              Shared PF/ESI parameters, PT slabs and LWF rates: read-only; managed by the instance operator.
-            </p>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <Badge tone={isAdmin ? "teal" : "neutral"}>Company minimum wages: {isAdmin ? "editable" : "read-only"}</Badge>
+              <Badge tone="neutral">Shared PF/ESI: read-only</Badge>
+              <Badge tone="neutral">PT &amp; LWF: read-only</Badge>
+            </div>
           )}
           <StatutoryFilters key={`${selectedState}:${selectedSkill}:${selectedZone}:${asOf}:${showHistory}`}
             companyId={companyId} states={jurisdictions.map((j) => ({ id: j.stateCode, label: j.name }))}
             state={selectedState} skill={selectedSkill} zone={selectedZone} zones={zones} asOf={asOf} history={showHistory} />
-          {!selectedState && <p className="py-8 text-sm text-ink-2">No state selected.</p>}
+          {!selectedState && <div className="border-b border-line-2 py-10">
+            <h2 className="text-base font-semibold text-ink">Statutory rates</h2>
+            <p className="mt-2 text-sm text-ink-3">No state selected.</p>
+          </div>}
           {selectedState && <>
-          <Card padded={false}>
-            <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
-              <span id="minimum-wages" className="text-[15px] font-semibold text-ink scroll-mt-24">State minimum wages</span>
+          <section aria-labelledby="minimum-wages" className="border-b border-line-2 pb-4">
+            <div className="py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="minimum-wages" className="text-base font-semibold text-ink scroll-mt-24">State minimum wages</h2>
               <span className="text-xs font-medium text-ink-2 tnum">{visibleWages.length} rates</span>
             </div>
             {!selectedSkill ? <p className="px-4 py-6 text-sm text-ink-2">No skill category selected.</p> : visibleWages.length === 0 ? (
@@ -778,25 +782,28 @@ export default async function PayrollSettingsPage(
             ) : (
               <ul className="divide-y divide-line-2">
                 {visibleWages.map((w) => (
-                  <li key={w.id} className="px-4 py-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <li key={w.id} className="py-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <span className="text-sm">
-                      <span className="font-medium">{w.stateCode}</span>{" "}
+                      <span className="font-semibold">{jurisdictions.find(j => j.stateCode === w.stateCode)?.name ?? w.stateCode}</span>{" "}
                       {w.zone && <span className="text-ink-2">{w.zone}</span>}{" "}
                       <span className="text-ink-2">{w.skillCategory.replace("_", " ")}</span>
                     </span>
-                    <span className="flex flex-wrap items-baseline gap-x-3 text-xs">
-                      <span className="font-mono tnum">{formatINR(w.monthlyPaise)}</span>
+                    <span className="flex flex-wrap items-center gap-2 text-xs sm:justify-end">
+                      <span className="font-mono text-lg font-semibold text-ink tnum">{formatINR(w.monthlyPaise)}</span>
+                      <span className="text-ink-3">/ month</span>
+                    </span>
+                    <span className="flex flex-wrap items-center gap-2 text-xs sm:col-span-2">
                       <span className="font-mono text-ink-3">
                         from {formatDate(w.effectiveFrom)}
                         {w.effectiveTo ? ` to ${formatDate(w.effectiveTo)}` : ""}
                       </span>
-                      {w.companyId && <Badge tone="indigo">this company</Badge>}
+                      <Badge tone="neutral">{w.companyId ? "Company rate" : "Shared reference"}</Badge>
                       <Badge tone={w.verified ? "teal" : "brass"}>
                         {w.verified ? "verified" : "unverified"}
                       </Badge>
                     </span>
-                    {w.source && <span className="w-full text-xs text-ink-2 break-words">Source: {w.source}</span>}
-                    {isAdmin && !w.verified && <details className="w-full mt-2">
+                    {w.source && <span className="text-xs leading-5 text-ink-3 break-words [overflow-wrap:anywhere] sm:col-span-2">Source: {w.source}</span>}
+                    {isAdmin && !w.verified && <details className="min-w-0 sm:col-span-2">
                       <summary className="text-sm font-medium text-teal cursor-pointer">Verify this rate</summary>
                       <VerifyMinimumWageForm id={w.id}
                         companyId={w.companyId ?? (isTenantWide(user) ? null : companyId)}
@@ -823,9 +830,9 @@ export default async function PayrollSettingsPage(
                 />
               </details>
             )}
-          </Card>
+          </section>
 
-          <Card padded={false}>
+          <section className="border-b border-line-2 pb-4">
             <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-[15px] font-semibold text-ink">Labour welfare fund by state</span>
               <span className="text-xs font-medium text-ink-2 tnum">{visibleLwf.length} rates</span>
@@ -864,9 +871,9 @@ export default async function PayrollSettingsPage(
                 />
               </details>
             )}
-          </Card>
+          </section>
 
-          <Card padded={false}>
+          <section className="border-b border-line-2 pb-4">
             <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-[15px] font-semibold text-ink">Professional tax slabs</span>
               <span className="text-xs font-medium text-ink-2 tnum">{ptSlabs.filter((p) => p.stateCode === selectedState && inPeriod(p)).length} slabs</span>
@@ -929,7 +936,7 @@ export default async function PayrollSettingsPage(
                 />
               </details>
             )}
-          </Card>
+          </section>
           </>}
           <details className="border-t border-line pt-4">
           <summary className="text-sm font-semibold cursor-pointer mb-3">Central statutory parameters</summary>
