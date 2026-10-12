@@ -23,6 +23,7 @@ export function salaryProjection(args: {
   financialYear: number; period: TaxPeriod; monthlyPaise: number;
   dateOfJoining: string; dateOfExit?: string | null;
   history: { year: number; month: number; amountPaise: number }[];
+  currentPeriodPaise?: number;
 }) {
   const current = args.period.year * 12 + args.period.month;
   const actualPaise = args.history.filter(r => {
@@ -30,6 +31,7 @@ export function salaryProjection(args: {
     return fy === args.financialYear && r.year * 12 + r.month < current;
   }).reduce((sum, r) => sum + r.amountPaise, 0);
   let projectedMonths = 0;
+  let currentEmployedFraction = 0;
   for (let i = fyMonthIndex(args.period.month); i < 12; i++) {
     const month = ((i + 3) % 12) + 1;
     const year = month >= 4 ? args.financialYear : args.financialYear + 1;
@@ -39,7 +41,15 @@ export function salaryProjection(args: {
     const days = Number(end.slice(8));
     const first = args.dateOfJoining > start ? Number(args.dateOfJoining.slice(8)) : 1;
     const last = args.dateOfExit && args.dateOfExit < end ? Number(args.dateOfExit.slice(8)) : days;
-    projectedMonths += Math.max(0, last - first + 1) / days;
+    const fraction = Math.max(0, last - first + 1) / days;
+    projectedMonths += fraction;
+    if (year === args.period.year && month === args.period.month) currentEmployedFraction = fraction;
   }
-  return { annualPaise: actualPaise + Math.round(args.monthlyPaise * projectedMonths), projectedMonths };
+  if (args.currentPeriodPaise !== undefined && (!Number.isSafeInteger(args.currentPeriodPaise) || args.currentPeriodPaise < 0)) {
+    throw new Error("Current-period salary must be non-negative integer paise");
+  }
+  const projectedPaise = args.currentPeriodPaise === undefined
+    ? Math.round(args.monthlyPaise * projectedMonths)
+    : args.currentPeriodPaise + Math.round(args.monthlyPaise * (projectedMonths - currentEmployedFraction));
+  return { annualPaise: actualPaise + projectedPaise, projectedMonths };
 }

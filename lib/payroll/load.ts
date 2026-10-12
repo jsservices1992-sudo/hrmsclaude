@@ -798,6 +798,7 @@ export async function previewRun(args: {
     }
   }
 
+  const recomputeInputs = new Map<string, Parameters<typeof computeEmployeePay>[0]>();
   const results = rowsSalary
     .map(({ emp, branch, salary }): EmployeeInput => {
       const gross = salary.monthlyGrossPaise;
@@ -940,16 +941,36 @@ export async function previewRun(args: {
           }
         : employee;
 
-      return computeEmployeePay({
+      const computation = {
         employee: forRun,
         company,
         statutory,
         year: args.year,
         month: args.month,
-      });
+      };
+      if (!lockedTakeHome) recomputeInputs.set(forRun.id, computation);
+      return computeEmployeePay(computation);
     })
     .concat(professionalResults)
     .sort((a, b) => b.grossPaise - a.grossPaise);
+
+  // Reproject fixed-gross payroll using this month's actual earnings and
+  // contributions. Future months retain the contractual salary estimate.
+  const currentPayroll = new Map(results.filter(r => recomputeInputs.has(r.employeeId)).map(r => {
+    const amount = (codes: string[]) => r.lines.filter(l => codes.includes(l.code)).reduce((sum, l) => sum + l.amountPaise, 0);
+    return [r.employeeId, { amountPaise: r.grossPaise, basicPaise: amount(["BASIC", "DA", "VDA"]),
+      hraPaise: amount(["HRA"]), employerPfPaise: amount(["EPF_ER", "EPS_ER"]), employerNpsPaise: amount(["NPS_ER"]) }] as const;
+  }));
+  const currentWorksheets = await loadWorksheetsFor([...currentPayroll.keys()],
+    args.month >= 4 ? args.year : args.year - 1, undefined, { year: args.year, month: args.month }, currentPayroll);
+  for (let i = 0; i < results.length; i++) {
+    const input = recomputeInputs.get(results[i].employeeId);
+    const worksheet = currentWorksheets.get(results[i].employeeId);
+    if (!input || !worksheet) continue;
+    results[i] = computeEmployeePay({ ...input, employee: { ...input.employee,
+      monthlyTdsPaise: worksheet.projection.monthlyTdsPaise, tdsBasis: worksheet.projection.basis,
+      incomeTaxPayee: worksheet.annual.tax.taxBeforeRebatePaise > 0 } });
+  }
 
   /* Everybody the join dropped. Read separately rather than made into a
      left join: the engine wants a salary, and giving it a null one to

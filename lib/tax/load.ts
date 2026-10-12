@@ -158,6 +158,11 @@ export type TaxWorksheet = {
  * arithmetic below has one home either way: `loadWorksheet` is the same
  * path as the batch, asked for a single employee.
  */
+export type CurrentPayrollTaxAmounts = {
+  amountPaise: number; basicPaise: number; hraPaise: number;
+  employerPfPaise: number; employerNpsPaise: number;
+};
+
 type WorksheetInputs = {
   emp: typeof s.employees.$inferSelect;
   decl: typeof s.taxDeclarations.$inferSelect | null;
@@ -173,6 +178,7 @@ type WorksheetInputs = {
   specialRateDecl: typeof s.taxSpecialRateDeclarations.$inferSelect | null;
   company: typeof s.companies.$inferSelect | null;
   period: TaxPeriod;
+  currentPayroll?: CurrentPayrollTaxAmounts;
   history: { year: number; month: number; amountPaise: number; basicPaise: number; hraPaise: number; employerPfPaise: number; employerNpsPaise: number }[];
 };
 
@@ -247,6 +253,7 @@ function composeWorksheet(
     financialYear, period: input.period, monthlyPaise,
     dateOfJoining: emp.dateOfJoining, dateOfExit: emp.dateOfExit,
     history: input.history.map(r => ({ year: r.year, month: r.month, amountPaise: r[key] })),
+    currentPeriodPaise: input.currentPayroll?.[key],
   }).annualPaise;
   const annualGross = project(monthlyGross, "amountPaise");
   const annualBasic = project(monthlyBasic, "basicPaise");
@@ -468,6 +475,7 @@ export async function loadWorksheetsFor(
   financialYear = CURRENT_FY,
   overrideRegime?: Regime,
   requestedPeriod?: TaxPeriod,
+  currentPayroll?: ReadonlyMap<string, CurrentPayrollTaxAmounts>,
 ): Promise<Map<string, TaxWorksheet>> {
   const out = new Map<string, TaxWorksheet>();
   if (employeeIds.length === 0 || !hasTaxConfig(financialYear)) return out;
@@ -616,6 +624,7 @@ export async function loadWorksheetsFor(
         {
           emp,
           period,
+          currentPayroll: currentPayroll?.get(emp.id),
           history: historyRows.filter(r => r.summary.employeeId === emp.id).map(r => ({
             year: r.run.periodYear, month: r.run.periodMonth, amountPaise: r.summary.grossPaise,
             basicPaise: historyLines.filter(l => l.runId === r.run.id && l.employeeId === emp.id && ["BASIC", "DA", "VDA"].includes(l.code)).reduce((sum, l) => sum + l.amountPaise, 0),

@@ -1,6 +1,6 @@
 # Payroll audit remediation
 
-Review updated: 10 October 2026. Input: the supplied payroll-audit.md.
+Review updated: 12 October 2026. Input: the supplied payroll-audit.md.
 
 ## Release status
 
@@ -25,7 +25,7 @@ same backup/migration checks; reconcile historical payroll before acceptance.
 | M2 bonus | Partial | Reviewed annual workflow implements minimum-wage ceiling, actual/deemed days, statutory wages, floor, set-on/off, deadline and posting. Monthly advisory no longer uses Basic flags, 365 assumed days, missing-floor Rs 7,000 fallback or employer accrual as payment; it uses statutory wage rate, applicable state floor and attendance evidence. Final annual applicability/accounts/carry require review; leaver supplemental payments remain. |
 | M3 gratuity exemption | Review workflow implemented; legal acceptance pending | Explicit documented Sl. 5/6 basis, supported separate ten-month average, prior exemptions, no last-salary fallback. Generic entitlement no longer auto-grants exemption. Missing/stale review blocks preparation/release. Code/tax transition classification must be reviewed, not inferred. |
 | M4 leave exemption | Tax workflow implemented; evidence pending | Separate eligible Basic/DA historical average, earned leave, leave used and other exemption usage required; rounding fixed; statement/tax aligned. No gross-salary shortcut. Legal entitlement/history must be supported by reviewer evidence. |
-| M5 TDS projection | Partial | Actual earlier booked salary and PF/EPS/NPS history, remaining employed months, higher/capped PF membership and excess-retiral detection without NPS implemented. HRA/deduction salary separated from PF wage. F&F reviewed YTD allowances/PT and regime-allowed deductions replace zero/projected guesses; previous employer data retained. Current-period extras/LOP, dated future PT and full perquisite accrual valuation remain unresolved. |
+| M5 TDS projection | Partial | Actual earlier booked salary and PF/EPS/NPS history, remaining employed months, higher/capped PF membership and excess-retiral detection without NPS implemented. HRA/deduction salary separated from PF wage. F&F reviewed YTD allowances/PT and regime-allowed deductions replace zero/projected guesses; previous employer data retained. Fixed-gross payroll now feeds current earned gross/Basic/DA/HRA and employer PF/EPS/NPS into a second TDS computation; one-offs are not repeated in future months. Take-home TDS integration, dated future PT and full perquisite accrual valuation remain unresolved. |
 | M6 incentive/arrears | Partial | Explicit not_remuneration treatment excludes annual performance incentives from numerator and denominator, preserved on saved lines. Classification needs human review. Arrear attribution to original periods remains open. |
 | M7 overtime | Partial | Reviewed coverage and attendance-derived double-rate daily/weekly/off-day OT registers and posting implemented; prevents duplicate legacy off-day earnings. Take-home contracts, mid-month salary changes and establishment-specific policy require review. |
 | M8 worker leave | Partial | Reviewed covered-worker identification, qualification, accrual, protected refused leave and year-end carry/encashment implemented; preserves more favourable benefits. Separation entitlement and historical balance evidence remain. |
@@ -112,7 +112,7 @@ Backup before this batch: `data/backups/pre-fnf-review-20261010-1791574181020.du
 
 Still open engineering: September split PF LOP/take-home integration, leaver
 supplemental awards, original-period arrears, covered-worker separation leave,
-current-period TDS extras/LOP, establishment-specific overtime, applicable-state
+take-home current-period TDS integration, establishment-specific overtime, applicable-state
 LWF/PT classification, complete official filing/certificate artifact workflows,
 and deployment document-storage configuration. Reviewed source/history records
 and actual bank/government acceptance are separate acceptance requirements.
@@ -126,3 +126,15 @@ disk when the token is missing. Existing uploads/downloads use private Blob
 access and authenticated application routes. The local environment has no Blob
 token; live upload/download and permission acceptance are not yet verified.
 Never send the token in chat or commit it. See README.md for deployment steps.
+
+## 12 October: current payroll tax input correction
+
+Fixed-gross payroll recomputes TDS using its actual current-period earnings and
+employer contributions, while later months retain the contractual estimate.
+Current-period input replaces only that month's projected amount; zero-pay
+months and joiner/leaver proration are covered by regression tests. Isolated
+PostgreSQL integration checks worksheet/payroll TDS equality and reconciled net.
+Take-home contracts are intentionally not declared resolved: the reverse solver
+must be integrated separately. The additional worksheet pass is batched, not one
+query chain per employee. No live payroll or statutory evidence was changed.
+Primary tax basis reviewed: [Income-tax Act 2025, section 392](https://www.incometaxindia.gov.in/w/section-392-6).
