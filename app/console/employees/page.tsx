@@ -178,8 +178,7 @@ export default async function EmployeesPage(props: PageProps<"/console/employees
       {/* ---------------- header ---------------- */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-indigo">People</p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">Employees</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Employees</h1>
           <p className="text-sm text-ink-2 mt-1">
             {activeCount} active
             {Object.keys(byState).length > 0 && (

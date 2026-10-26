@@ -38,8 +38,7 @@ export default async function FlexiPage(props: PageProps<"/console/flexi">) {
   if (!plan) {
     return (
       <div className="flex flex-col gap-4">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-indigo">Payroll</p>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">Flexible benefits</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Flexible benefits</h1>
         <p className="text-ink-2">
           No flexi plan is configured for {company.name} this financial year.
         </p>

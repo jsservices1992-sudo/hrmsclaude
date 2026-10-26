@@ -55,7 +55,7 @@ export default async function EmployeeLettersPage(
         <Link href={`/console/employees/${employeeId}`} className="text-sm font-medium text-ink-2 hover:text-ink">
           ← {emp.firstName} {emp.lastName}
         </Link>
-        <h1 className="text-xl font-semibold text-ink mt-1">Letters</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-ink mt-1">Letters</h1>
       </div>
 
       <Tabs>

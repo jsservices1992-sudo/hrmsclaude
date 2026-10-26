@@ -30,9 +30,9 @@ import {
   ReassignTeamForm,
   ReplacementForm,
   HeadcountForm,
-  NodeEditButton,
   type PersonOption,
 } from "./forms";
+import { OrgChart } from "./org-chart";
 import { formatDate } from "@/lib/format/date";
 
 export const metadata = { title: "Org chart" };
@@ -58,79 +58,11 @@ type Ctx = {
   q: string;
 };
 
-/** Highlights the matched part of a name when the tree is filtered. */
-function matches(node: OrgNode, q: string): boolean {
-  if (!q) return true;
-  return `${node.name} ${node.empCode} ${node.designation ?? ""} ${node.department ?? ""}`
-    .toLowerCase()
-    .includes(q);
-}
-
-/** A node is kept when it matches, or when anything beneath it does. */
+/** A node is kept when it, or anything beneath it, matches the search. */
 function subtreeMatches(node: OrgNode, q: string): boolean {
-  return matches(node, q) || node.children.some((c) => subtreeMatches(c, q));
-}
-
-function Node({ node, ctx }: { node: OrgNode; ctx: Ctx }) {
-  const leaving = node.status !== "active";
-  const dimmed = ctx.q && !matches(node, ctx.q);
-  const visibleChildren = node.children.filter((c) => subtreeMatches(c, ctx.q));
-
-  return (
-    <li className="relative">
-      {/* Elbow connector into the parent's rail */}
-      <div className="group flex flex-wrap items-center gap-x-2.5 gap-y-1 py-1.5 pl-4 relative before:absolute before:left-0 before:top-1/2 before:w-3 before:border-t before:border-line-2">
-        <Link
-          href={`/console/employees/${node.id}`}
-          className={`text-sm font-medium hover:text-indigo hover:underline ${dimmed ? "text-ink-3" : ""}`}
-        >
-          {node.name}
-        </Link>
-        <span className="font-mono text-xs text-ink-3">{node.empCode}</span>
-        {node.designation && <span className="text-xs text-ink-2">{node.designation}</span>}
-        {node.department && <span className="text-xs font-medium text-ink-2">{node.department}</span>}
-
-        {node.directCount > 0 && (
-          <Badge tone="neutral">
-            {node.directCount} direct
-            {node.totalCount !== node.directCount && ` · ${node.totalCount} total`}
-          </Badge>
-        )}
-        {leaving && (
-          <Badge tone={node.status === "exited" ? "rust" : "brass"}>
-            {departureLabel(node)}
-          </Badge>
-        )}
-        {leaving && node.replacementName && (
-          <Badge tone="teal">→ {node.replacementName}</Badge>
-        )}
-        {leaving && node.directCount > 0 && !node.replacementName && (
-          <Badge tone="rust">team needs a manager</Badge>
-        )}
-
-        {ctx.canAct && (
-          <NodeEditButton
-            name={node.name}
-            empCode={node.empCode}
-            employeeId={node.id}
-            designation={node.designation}
-            departmentId={node.departmentId}
-            managerId={node.managerId}
-            departments={ctx.departments}
-            managers={ctx.people}
-          />
-        )}
-      </div>
-
-      {visibleChildren.length > 0 && (
-        <ul className="ml-4 border-l border-line-2">
-          {visibleChildren.map((c) => (
-            <Node key={c.id} node={c} ctx={ctx} />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
+  if (!q) return true;
+  const hit = `${node.name} ${node.empCode} ${node.designation ?? ""} ${node.department ?? ""}`.toLowerCase().includes(q);
+  return hit || node.children.some((c) => subtreeMatches(c, q));
 }
 
 /** Open positions by department, and the plan they are counted against. */
@@ -354,7 +286,7 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
       ) : view === "tree" ? (
         <Card padded={false}>
           <div className="px-5 py-3.5 border-b border-line-2 flex flex-wrap items-center justify-between gap-3">
-            <span className="text-[15px] font-semibold text-ink">Reporting tree</span>
+            <span className="font-display text-[15px] font-bold text-ink">Reporting tree</span>
             <FilterBar
               action="/console/org"
               mode="filter"
@@ -371,15 +303,19 @@ export default async function OrgPage(props: PageProps<"/console/org">) {
               </FilterField>
             </FilterBar>
           </div>
-          <div className="p-4 overflow-x-auto">
+          <div className="p-4">
             {visibleRoots.length === 0 ? (
               <EmptyState title="Nobody matches that" description="Try a different name, code or team." />
             ) : (
-              <ul className="min-w-[34rem]">
-                {visibleRoots.map((r) => (
-                  <Node key={r.id} node={r} ctx={ctx} />
-                ))}
-              </ul>
+              <OrgChart
+                key={q}
+                roots={org.roots}
+                q={q}
+                today={TODAY}
+                canAct={canAct}
+                departments={ctx.departments}
+                people={ctx.people}
+              />
             )}
           </div>
         </Card>

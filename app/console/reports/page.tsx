@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/console/ui";
 import { listCompanies } from "@/lib/payroll/load";
 import {
   getSessionUser,
@@ -230,22 +231,11 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
   if (!selected) {
     return (
       <div className="flex flex-col gap-6 max-w-[84rem]">
-        <section className="rounded-xl border border-line bg-surface">
-              <div className="relative flex flex-wrap items-end justify-between gap-5 p-6 sm:p-8">
-            <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-soft px-2.5 py-1 text-xs font-semibold text-indigo">
-                {MONTHS[month - 1]} {year} · {company.name}
-              </span>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink mt-4">
-                Reports
-              </h1>
-              <p className="text-ink-2 mt-2 max-w-[60ch]">
-                Every report in one place. Open one to see it, filter it and download it.
-              </p>
-            </div>
-            {filters}
-          </div>
-        </section>
+        <PageHeader
+          title="Reports"
+          description={`${company.name} · ${MONTHS[month - 1]} ${year} · every report in one place — open one to see it, filter it and download it.`}
+          actions={filters}
+        />
 
         {CATALOG.map((g) => {
           const items = g.items.filter((i) => !i.compensation || seesComp);
@@ -253,7 +243,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
           return (
             <section key={g.group} className="flex flex-col gap-3">
               <div>
-                <h2 className="text-lg font-bold text-ink">{g.group}</h2>
+                <h2 className="font-display text-[15px] font-bold tracking-tight text-ink">{g.group}</h2>
                 <p className="text-sm text-ink-3">{g.blurb}</p>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -636,7 +626,7 @@ export default async function ReportsPage(props: PageProps<"/console/reports">) 
               {selected.icon}
             </span>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">{selected.title}</h1>
+              <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{selected.title}</h1>
               <p className="text-sm text-ink-2 mt-1">
                 {selected.description} · {company.name} · {MONTHS[month - 1]} {year}
               </p>
