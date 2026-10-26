@@ -17,6 +17,24 @@ export const metadata: Metadata = {
 
 const PLANS = [
   {
+    name: "Starter",
+    price: "Free",
+    unit: "no card needed",
+    min: "Up to 10 employees",
+    blurb: "For a small team getting started — sign up and run your first payroll today.",
+    features: [
+      "Employee records and documents",
+      "Attendance and leave",
+      "Monthly payroll with payslips",
+      "EPF, ESIC, PT and LWF calculated for you",
+      "One legal entity",
+      "Move to a paid plan any time — your data stays",
+    ],
+    cta: "Sign up free",
+    href: "/signup?plan=starter",
+    featured: false,
+  },
+  {
     name: "Core",
     price: "₹65",
     unit: "per employee / month",
@@ -54,7 +72,7 @@ const PLANS = [
       "Up to 5 legal entities",
     ],
     cta: "Book a demo",
-    href: "/demo?plan=growth",
+    href: "/demo?plan=payroll",
     featured: true,
   },
   {
@@ -74,7 +92,7 @@ const PLANS = [
       "Priority support with a named contact",
     ],
     cta: "Talk to us",
-    href: "/demo?plan=enterprise",
+    href: "/demo?plan=governed",
     featured: false,
   },
 ];
@@ -90,7 +108,7 @@ export default function PricingPage() {
 
       <Section bordered={false}>
         <Container>
-          <div className="grid lg:grid-cols-3 gap-5">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {PLANS.map((plan) => (
               <div
                 key={plan.name}

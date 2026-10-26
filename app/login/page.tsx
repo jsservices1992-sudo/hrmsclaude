@@ -19,14 +19,30 @@ export const dynamic = "force-dynamic";
  * no environment in which serving it is correct, and a flag is a thing
  * that can be set wrongly.
  */
-export default async function LoginPage() {
+export default async function LoginPage(props: PageProps<"/login">) {
   const user = await getSessionUser();
   if (user) redirect(user.role === "employee" ? "/me" : "/console");
+  const signupClosed = (await props.searchParams).signup === "closed" && !signupEnabled();
 
   return (
     <AuthShell
       title="Sign in"
-      description="Enter the email and password your company gave you."
+      description={
+        signupClosed ? (
+          <>
+            <span className="mb-3 block rounded-xl border border-amber/30 bg-amber-soft px-3.5 py-2.5 text-sm text-amber">
+              New companies can&apos;t sign up on their own right now.{" "}
+              <Link href="/demo" className="font-semibold underline">
+                Book a demo
+              </Link>{" "}
+              and we&apos;ll set yours up.
+            </span>
+            Already have an account? Enter the email and password your company gave you.
+          </>
+        ) : (
+          "Enter the email and password your company gave you."
+        )
+      }
       footer={
         <>
           {signupEnabled() && (

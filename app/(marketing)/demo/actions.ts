@@ -13,7 +13,7 @@ export type DemoState = {
   values?: Record<string, string>;
 };
 
-const PLANS = new Set(["starter", "growth", "enterprise"]);
+const PLANS = new Set(["core", "payroll", "governed"]);
 
 /**
  * A request for a demo or a call, from the public site.

@@ -8,9 +8,9 @@ export const metadata = {
 };
 
 const PLAN_LABEL: Record<string, string> = {
-  starter: "Starter",
-  growth: "Growth",
-  enterprise: "Enterprise",
+  core: "Core",
+  payroll: "Payroll",
+  governed: "Governed",
 };
 
 export default async function DemoPage(props: PageProps<"/demo">) {
@@ -28,7 +28,7 @@ export default async function DemoPage(props: PageProps<"/demo">) {
               </span>
             )}
             <h1 className="text-4xl font-bold leading-[1.1] tracking-[-0.02em] text-ink sm:text-5xl">
-              {plan === "enterprise" ? "Talk to us" : "Book a demo"}
+              {plan === "governed" ? "Talk to us" : "Book a demo"}
             </h1>
             <p className="max-w-lg text-lg leading-relaxed text-ink-2">
               Bring one month of real payroll. We run it in Lekha with you and reconcile it line by line against
