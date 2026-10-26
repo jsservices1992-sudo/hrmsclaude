@@ -3222,3 +3222,27 @@ export const periodUnlocks = pgTable(
   },
   (t) => [index("period_unlocks_company_idx").on(t.companyId, t.periodYear, t.periodMonth)],
 );
+
+/**
+ * Someone asking for a demo or a conversation from the public site —
+ * the pricing page's buttons and "Book a demo". Platform-level, not
+ * tied to any company: the people asking are not customers yet.
+ */
+export const demoRequests = pgTable(
+  "demo_requests",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    company: text("company").notNull(),
+    /** The headcount band they picked, as shown on the form. */
+    employees: text("employees"),
+    /** Which plan's button brought them here, if any. */
+    plan: text("plan"),
+    message: text("message"),
+    status: text("status", { enum: ["new", "contacted", "closed"] }).notNull().default("new"),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [index("demo_requests_created_idx").on(t.createdAt)],
+);

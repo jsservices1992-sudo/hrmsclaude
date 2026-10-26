@@ -33,6 +33,7 @@ const PLANS = [
       "One legal entity, unlimited branches",
     ],
     cta: "Start here",
+    href: "/signup",
     featured: false,
   },
   {
@@ -53,6 +54,7 @@ const PLANS = [
       "Up to 5 legal entities",
     ],
     cta: "Book a demo",
+    href: "/demo?plan=growth",
     featured: true,
   },
   {
@@ -72,6 +74,7 @@ const PLANS = [
       "Priority support with a named contact",
     ],
     cta: "Talk to us",
+    href: "/demo?plan=enterprise",
     featured: false,
   },
 ];
@@ -126,7 +129,7 @@ export default function PricingPage() {
 
                 <div className="p-6 pt-0">
                   <Link
-                    href="/pricing"
+                    href={plan.href}
                     className={`w-full inline-flex items-center justify-center px-5 py-3 text-sm font-medium transition-colors ${
                       plan.featured
                         ? "rounded-lg bg-indigo text-on-indigo border border-indigo shadow-sm hover:bg-indigo-2"
@@ -250,7 +253,7 @@ export default function PricingPage() {
               </p>
             </div>
             <Link
-              href="/"
+              href="/demo"
               className="inline-flex items-center px-5 py-3 text-sm font-medium bg-paper text-ink hover:bg-surface-2 transition-colors shrink-0"
             >
               Book a demo

@@ -105,6 +105,7 @@ export const CONSOLE_NAV: ConsoleNavEntry[] = [
       { href: "/console/import", label: "Import data", icon: "box" },
       { href: "/console/settings/api", label: "API & webhooks", icon: "flow" },
       { href: "/console/setup", label: "Setup checklist", icon: "check" },
+      { href: "/console/demo-requests", label: "Demo requests", icon: "userPlus", needsTenantWide: true },
     ],
   },
 ];

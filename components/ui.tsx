@@ -259,9 +259,9 @@ export function PageHero({
           </h1>
           <p className="max-w-[58ch] text-lg text-ink-2 leading-relaxed pretty sm:text-xl">{lede}</p>
           <div className="flex flex-wrap justify-center gap-3 pt-1">
-            <Button href="/pricing">Book a demo</Button>
-            <Button href="/login" variant="secondary">
-              Sign in
+            <Button href="/demo">Book a demo</Button>
+            <Button href="/signup" variant="secondary">
+              Create your company
             </Button>
           </div>
         </div>

@@ -56,7 +56,7 @@ export default function SiteFooter() {
             <p className="mb-4 text-sm font-bold text-ink">Get started</p>
             <ul className="flex flex-col gap-2.5 text-sm">
               <li>
-                <Link href="/pricing" className="font-semibold text-indigo hover:text-indigo-2">
+                <Link href="/demo" className="font-semibold text-indigo hover:text-indigo-2">
                   Book a demo →
                 </Link>
               </li>

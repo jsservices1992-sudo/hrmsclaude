@@ -75,7 +75,15 @@ export function target(): { endpoint: string; bucket: string; region: string; pr
       if (/supabase\.co$/i.test(u.host) && !u.pathname.startsWith("/storage/v1/s3")) {
         problems.push("For Supabase, S3_ENDPOINT must end in /storage/v1/s3.");
       }
-      if (u.protocol !== "https:") problems.push("S3_ENDPOINT should start with https://");
+      /* Plain http is fine to a store on the same private network — a
+         container name, localhost or a private address — and only a
+         problem when the keys would cross the internet in the clear. */
+      const internal =
+        !u.hostname.includes(".") ||
+        u.hostname === "localhost" ||
+        /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(u.hostname) ||
+        /\.(internal|local|lan)$/.test(u.hostname);
+      if (u.protocol !== "https:" && !internal) problems.push("S3_ENDPOINT should start with https:// — it is a public address.");
     } catch {
       problems.push("S3_ENDPOINT is not a valid web address.");
     }

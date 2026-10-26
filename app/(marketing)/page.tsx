@@ -173,7 +173,8 @@ export default function HomePage() {
               rupee.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
-              <Button href="/pricing">Book a demo</Button>
+              <Button href="/signup">Create your company</Button>
+              <Button href="/demo" variant="secondary">Book a demo</Button>
               <Button href="/compliance" variant="secondary">
                 Check your states
               </Button>
@@ -390,7 +391,7 @@ export default function HomePage() {
               </p>
               <div className="mt-2 flex flex-wrap justify-center gap-3">
                 <Link
-                  href="/pricing"
+                  href="/demo"
                   className="inline-flex items-center rounded-xl bg-surface px-5 py-3 text-sm font-semibold text-ink transition-base hover:-translate-y-px"
                 >
                   Book a demo

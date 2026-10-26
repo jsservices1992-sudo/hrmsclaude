@@ -159,10 +159,16 @@ export default function SiteNav() {
               Sign in
             </Link>
             <Link
-              href="/pricing"
-              className="inline-flex items-center rounded-xl bg-indigo px-4 py-2 text-sm font-semibold text-on-indigo shadow-[0_8px_20px_-8px_var(--indigo)] transition-base hover:bg-indigo-2"
+              href="/demo"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-ink-2 hover:text-ink hover:bg-surface-2 transition-colors"
             >
               Book a demo
+            </Link>
+            <Link
+              href="/signup"
+              className="inline-flex items-center rounded-xl bg-indigo px-4 py-2 text-sm font-semibold text-on-indigo shadow-[0_8px_20px_-8px_var(--indigo)] transition-base hover:bg-indigo-2"
+            >
+              Create company
             </Link>
           </div>
 
@@ -237,8 +243,14 @@ export default function SiteNav() {
         </ul>
         <div className="p-5 sm:p-8 flex flex-col gap-3">
           <Link
-            href="/pricing"
+            href="/signup"
             className="inline-flex items-center justify-center px-5 py-3 text-sm font-medium rounded-lg bg-indigo text-on-indigo border border-indigo shadow-sm"
+          >
+            Create company
+          </Link>
+          <Link
+            href="/demo"
+            className="inline-flex items-center justify-center px-5 py-3 text-sm font-medium rounded-lg border border-line bg-surface text-ink"
           >
             Book a demo
           </Link>
